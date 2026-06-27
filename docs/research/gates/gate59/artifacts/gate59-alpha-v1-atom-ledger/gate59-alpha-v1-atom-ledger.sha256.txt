@@ -1,0 +1,13 @@
+# Gate 59 Alpha v1 atom ledger identity
+
+2E93104E8D610964A0F07A6CE12A531A83F7C4A2764BDF94EDDF94DDF665EF08  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl
+B0E72B79A19F3FD0A411FBF1D0D1BD36B2763E33F9885145B3AE73958DD0D698  docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.decisions.jsonl
+A819E356AA43838642CB7E64564682441E8EC5B3DBDB1AD30B11F907906CBE80  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.contract.json
+E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.rows.jsonl
+2EB1F6FDCE1D081CC755988BCC1A5C175810750443203DB7954C1CE7BE9232E9  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.summary.json
+066527A652C2F16DE94C89A20C942D9743A96C05545E3DAD9FD676A3751CF546  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.receipt.json
+A119F42C8A23546C0844D47F722BBC32235B1AAC90196375DE21DFCD0D36E294  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.hash.json
+D6B6FD60DC874CB1AAD4C0BE88BE35AA20CCAF56B9D11B44939AFF3C21AA0786  docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md.report-text
+
+combined_hash 6D7470286DFFFBD1DB9FDABB789C8D3B467195A8B4BB25B05530C5AA738DCA1E
+rebuild_command npm run engine:gate59:alpha-v1-atom-ledger

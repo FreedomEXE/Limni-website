@@ -8,54 +8,60 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 58C: forced28-cot-strength-directional-arbitration.
+Gate 59: alpha-v1-atom-ledger-contract.
 
-Objective: convert the Gate 58 COT x Strength forensic matrix into a small,
-predeclared set of full-surface directional systems, forcing exactly `28` pair
-decisions per supported week over the `373`-week Strength/COT intersection.
+Objective: freeze the row-level Alpha v1 atom ledger contract for the current
+forced-28 COT parent + healthy Strength fallback engine, so later Regime work can
+join against a stable 28-pair shadow ledger instead of retuning Strength or
+rewriting the signal layer.
 
-Status: complete and stopped. Gate 58C used only the existing Gate 58 matrix and
-warehouse long/short outcomes. It did not run raw M1 simulation, write app code,
-change COT source logic, change Strength windows/source, add row vetoes, skip
-pair-weeks, add eligibility filters, exclude pairs/calendar periods, introduce
-regimes, risk overlays, execution changes, market-open confirmation, new
-thresholds, new buckets, or parameter searches. Validation: `10,444` rows,
-`373` full weeks, `28` symbols per week, `0` duplicate week/symbol rows, `0`
-missing COT rows, `0` missing Strength rows, `20,888` warehouse directional rows
-read, and `0` missing warehouse outcomes. Durable report:
-`docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`.
+Status: complete and stopped locally. Gate 59 used only existing Gate 58 matrix
+rows and Gate 58C Candidate C decision rows. It did not run raw M1 simulation,
+write app code, change COT source logic, change Strength windows/source, add
+row vetoes, skip pair-weeks, add eligibility filters, exclude pairs/calendar
+periods, introduce Regime, risk overlays, execution changes, market-open
+confirmation, new thresholds, new buckets, or parameter searches. Validation:
+`10,444` atom ledger rows, `373` full weeks, `28` symbols per week, `0`
+duplicate matrix week/symbol rows, `0` duplicate Candidate C week/symbol rows,
+`0` missing Candidate C rows, `0` unexpected Candidate C rows, `0` final-side
+mismatch rows, `0` rule-source mismatch rows, `0` missing COT rows, `0` missing
+Strength rows, `0` missing long outcomes, `0` missing short outcomes, `0` price
+bundle mismatches, and `0` warehouse mismatches. Durable report:
+`docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md`.
 Tracked SHA identity:
-`docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.sha256.txt`.
+`docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.sha256.txt`.
 
-Verdict: `PASS_FORCED_28_DIRECTIONAL_LOCK`. Gate 58C is accepted as provisional
-Alpha v1 for forward comparison, not permanent Strength endorsement. The unique
-lock candidate is `C_STRENGTH_HEALTHY_COT_FALLBACK`: use Gate 57E Strength for
-`compressed:persistent`, `compressed:flip`, and `middle:persistent`; otherwise
-fall back to locked COT. Candidate D collapses to the same row-level decisions
-as Candidate C and is reported as a duplicate, not a second lock. Candidate C
-metrics: ADR Grid `1648.2508`, DD `-312.0722`, R/DD `5.2816`, PF `1.1643`,
-Weekly Hold ADR `534.3663`, top-five absolute week share `0.0773`, top absolute
-pair share `0.0844`, `1` negative year with worst year `2019` at `-32.5370`,
-and top positive lifecycle x phase delta from `compressed:flip` (`835` rows,
-`343` weeks, `+215.4996` ADR Grid vs COT), so the lock screen does not depend
-on a tiny cell. COT full `388`-week metrics remain reported separately from the
-direct `373`-week comparison window.
+Verdict: `PASS_ALPHA_V1_ATOM_LEDGER_CONTRACT_FROZEN`. Alpha id:
+`ALPHA_V1_COT_PARENT_STRENGTH_HEALTHY_FALLBACK`. Schema version:
+`gate59_alpha_v1_atom_ledger_v1`. The atom ledger carries lineage, COT atoms,
+Strength atoms, arbitration state, ADR Grid and Weekly Hold long/short/chosen/
+opposite/baseline-delta outcomes, diagnostics, and a reserved null Regime
+placeholder namespace. Reconciliation: final side source counts are `3,067` COT
+rows and `7,377` Strength rows; ADR Grid chosen is `1648.250785`, candidate
+minus COT is `+230.728889`, candidate minus Gate 57E Strength is `+261.969473`;
+Weekly Hold chosen is `534.366308`, candidate minus COT is `+180.396944`, and
+candidate minus Gate 57E Strength is `+132.841546`.
 
-Alpha v1 governance: `ALPHA_V1_COT_PARENT_STRENGTH_HEALTHY_FALLBACK` is frozen
-as the current forced-28 directional comparison baseline. Strength remains
-provisional signal debt; the PF caveat is real; no silent Strength retuning,
-removal, or replacement is allowed inside Regime, risk, execution, MT5/live, or
-app gates. Future Strength change must be a new versioned research gate compared
-against COT-only, Alpha v1, Regime-only forced-28 shadow signal when available,
-and future Alpha v2 arbitration candidates. Alpha layers force 28; risk and
-portfolio layers may later reduce expression, but the shadow ledger must retain
-all 28 signal outcomes.
+Governance: Gate 59 does not upgrade Alpha v1 into a finished trading system.
+Strength remains provisional signal debt; the PF caveat from Gate 58C remains
+real; no silent Strength retuning, removal, or replacement is allowed inside
+Regime, risk, execution, MT5/live, or app gates. Alpha layers force 28;
+risk/portfolio layers may later reduce expression, but the shadow ledger must
+retain all 28 signal outcomes.
+
+Authority nuance for the next agent: Alpha v1 is COT-parented as governance and
+fallback language, but row-level authority is Strength-heavy: `7,377 / 10,444`
+rows (`70.6%`) use Strength and `3,067 / 10,444` rows (`29.4%`) fall back to
+COT. Later Regime gates must test COT-only, Gate 57E Strength-only, Alpha v1
+overall, Alpha v1 Strength-authorized rows, and Alpha v1 COT-fallback rows
+separately before making Alpha v2 arbitration claims.
 
 ## Next Requested Review
 
-Stop after Gate 58C. Do not proceed to regimes, risk overlays, execution work,
-MT5/live, app work, or cleanup in the same run. After Gate 58C packaging/push,
-the next permitted research gate is Gate 59: Alpha v1 atom ledger contract.
+Stop after Gate 59. Do not proceed to Regime source integrity, Regime shadow
+signal construction, risk overlays, execution work, MT5/live, app work, or
+cleanup in the same run. The next permitted research gate is Gate 60: Regime
+source integrity, not Regime strategy arbitration.
 
 ## Current Ownership Model
 
@@ -241,6 +247,8 @@ the next permitted research gate is Gate 59: Alpha v1 atom ledger contract.
 `docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md`
 
 `docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`
+
+`docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md`
 
 ## Forward Research Command
 
