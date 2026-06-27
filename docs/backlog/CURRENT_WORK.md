@@ -8,75 +8,88 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60B: regime-source-foundation-parity.
+Gate 60D: bpr-source-eligibility.
 
-Objective: bring macro Regime source inputs closer to COT/Strength parity
-before any Regime side is built, using the frozen Gate 59 Alpha v1 week
-identity as the denominator.
+Objective: resolve BPR source eligibility before any Regime transform, broad
+matrix, Regime LONG/SHORT side, Alpha v2, risk, execution, MT5/live, app work,
+or source mutation.
 
 Status: complete, committed, and pushed for review on
-`codex/gate50-macro-source-promotion-proof`. Gate 60B proof commit:
-`2b89476` (`Gate 60B: add regime source foundation proof`). This work ledger
-records the current pushed review state in the branch head.
+`codex/gate50-macro-source-promotion-proof`. Gate 60D proof commit:
+`7a57e3b` (`Gate 60D BPR source eligibility proof`). This ledger update records
+the current Gate 60D review state after external verification.
 
 Verdict:
-`PASS_RRP_ALPHA_WEEK_SHADOW_REBUILD_FULL_COVERAGE__FULL_FAMILY_STILL_BLOCKED`.
+`FAIL_CLOSED_BPR_SOURCE_ELIGIBILITY_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE`.
 
-Gate 60B command:
-`npm run engine:gate60b:regime-source-foundation`.
+Gate 60D command:
+`npm run engine:gate60d:bpr-source-eligibility`.
 
 Durable artifacts:
 
 - Report:
-  `docs/research/gates/gate60b/GATE60B_REGIME_SOURCE_FOUNDATION_2026-06-27.md`
-- Registry contract JSON:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-registry.contract.json`
-- Alpha-week source rows JSONL:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-alpha-week-source-foundation.rows.jsonl`
-- Alpha v1 join-map JSONL:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-alpha-v1-source-foundation-join-map.rows.jsonl`
+  `docs/research/gates/gate60d/GATE60D_BPR_SOURCE_ELIGIBILITY_2026-06-27.md`
+- BPR source registry v2:
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-registry-v2.contract.json`
+- BPR publication timing proof JSONL:
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-publication-timing-proof.rows.jsonl`
+- BPR currency-week atom ledger JSONL:
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-currency-week-atom-ledger.rows.jsonl`
+- BPR unresolved rows JSONL:
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-unresolved-rows.rows.jsonl`
+- BPR raw artifact, raw observation, and availability-event hash maps:
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-raw-artifact-hash-map.json`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-raw-observation-hash-map.json`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-availability-event-hash-map.json`
 - Summary JSON and Markdown:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.summary.json`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.summary.json`
   and
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.summary.md`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.summary.md`
 - Query/probe receipt:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.query-receipt.md`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.query-receipt.md`
 - SHA identity:
-  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.sha256.txt`
+  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.sha256.txt`
 
-Validation: staged diff check passed; SHA identity matched; root TypeScript
-passed; join map contains `10,444` rows; source foundation rows contain `8,952`
-rows. Denominator remains `373` Alpha weeks and `28` symbols/week with `0`
-dropped output rows and `0` duplicate output row keys.
+Validation: `npm run engine:gate60d:bpr-source-eligibility` passed; targeted
+ESLint on the Gate 60D verifier passed; `git diff --check` and
+`git diff --cached --check` passed before the proof commit.
 
-Source result: RRP Alpha-week shadow maps `10,444 / 10,444` rows. Rate parent
-and CPI parent each map `10,444 / 10,444` rows but remain `SEALED_PARENT`, not
-standalone ACTIVE feature bundles. RRP shadow is `BUILDING_SHADOW`, not a
-promoted Regime side. BPR remains `QUARANTINED` for all `10,444` rows.
-Valuation/PPP/NEER/REER remains raw/source-only `BUILDING_SHADOW` for all
-`10,444` rows. Full-family source eligibility remains `0 / 10,444`.
+Denominator result: Gate 59 Alpha v1 remained `10,444` rows, `373` weeks, and
+`28` symbols/week with `0` duplicate input row keys, `0` duplicate input
+week-symbol rows, `5,968` BPR currency-week atom rows, `1,472` BPR publication
+timing proof rows, and `0` duplicate BPR proof row keys.
+
+Source result: BPR remains unusable for Regime construction. Gate 60D emitted
+`5,968` BPR atom rows, of which `1,999` filled and `3,969` failed closed. The
+unresolved-row ledger contains `4,001` rows: `3,941` are dominated by missing
+numeric `netShareOfGross` values, and `32` are late-2025 publication timing /
+promotion-blocked rows across `2025-10-07` and `2025-11-04` for both BPR
+contracts.
 
 Key hashes:
 
-- Source registry hash:
-  `9EC1D0877E03A4CAD753015E4A3F2E944F22E6A73F1E6FF008B7786C99D583D8`
-- Source content invariant hash:
-  `E40E207E27FB3461C66DCE07F30601010DB4CA01AC342AE3EA1530EA91695458`
-- Join-map hash:
-  `AB85E93DCC62CC900ED48751ACD627DDBC142BB695DD92130BF2E566BE308554`
+- BPR source registry hash:
+  `9226D3707F3EE4AA4B64587FCE3A68CD8A659F912C0C4C1116E59FA27D7F62AF`
+- BPR source content invariant hash:
+  `20F5A88FCA8B5901FC879C076E3DF21872E9126D87C1BD5419709A5203DE5894`
+- BPR currency-week atom ledger hash:
+  `7B1B809CCA1CBB6B60A1E1AFECB44A4F1B4E308244DB4F37611CFD46CD55DCC7`
+- BPR unresolved rows hash:
+  `3EB3D6C671CE93263AA3E28A860DF3185970CF15877C045F3815DB60E28BF354`
 
 ## Next Requested Review
 
-Stop after Gate 60B. Do not proceed to Regime shadow-signal construction, final
-Regime long/short pair decisions, Alpha v2 arbitration, risk overlays, execution
-work, MT5/live, app work, COT changes, Strength changes, Alpha v1 changes, Gate
-59 row changes, macro source row changes, source promotion, or cleanup in the
-same run.
+Stop after Gate 60D. Do not proceed to Regime atom transforms, broad matrix,
+Regime LONG/SHORT side, support/oppose/fade labels, P&L, attribution, Alpha v2,
+risk overlays, execution work, MT5/live, app work, COT changes, Strength
+changes, Alpha v1 changes, Gate 59 row changes, macro source row changes, or
+source promotion.
 
-Next decision: human review of the Gate 60B source foundation. The forward
-choice is whether the RRP Alpha-week shadow rebuild is acceptable as a future
-source-promotion candidate while BPR and valuation remain blocked, or whether
-more source repair is required before any forced-28 Regime macro side is opened.
+Next gate: Gate 60E, BPR value extraction / source-contract rescue. It remains
+BPR-only. The objective is to explain and, only if the source contract permits,
+repair missing `netShareOfGross` values before any Regime progress. Keep the
+late-2025 timing ambiguity separate from the value-missing issue. Emit a new
+fail-closed receipt and stop.
 
 ## Current Ownership Model
 
@@ -270,6 +283,10 @@ more source repair is required before any forced-28 Regime macro side is opened.
 `docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`
 
 `docs/research/gates/gate60b/GATE60B_REGIME_SOURCE_FOUNDATION_2026-06-27.md`
+
+`docs/research/gates/gate60c/GATE60C_REGIME_SOURCE_ATOM_FILL_2026-06-27.md`
+
+`docs/research/gates/gate60d/GATE60D_BPR_SOURCE_ELIGIBILITY_2026-06-27.md`
 
 ## Forward Research Command
 
