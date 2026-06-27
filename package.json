@@ -26,6 +26,7 @@
     "engine:gate58c:forced28-directional-arbitration": "tsx engine/scripts/verification/build-gate58c-forced28-directional-arbitration.ts",
     "engine:gate59:alpha-v1-atom-ledger": "tsx engine/scripts/verification/build-gate59-alpha-v1-atom-ledger.ts",
     "engine:gate60a:alpha-v1-macro-join-map": "tsx engine/scripts/verification/build-gate60a-alpha-v1-macro-join-map.ts",
+    "engine:gate60b:regime-source-foundation": "tsx engine/scripts/verification/build-gate60b-regime-source-foundation.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
