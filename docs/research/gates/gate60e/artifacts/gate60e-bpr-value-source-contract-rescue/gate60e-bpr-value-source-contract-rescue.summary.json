@@ -1,0 +1,148 @@
+{
+  "gate_id": "Gate 60E: bpr-value-source-contract-rescue",
+  "verdict": "FAIL_CLOSED_BPR_VALUE_SOURCE_CONTRACT_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE",
+  "command": "npm run engine:gate60e:bpr-value-source-contract-rescue",
+  "denominator": {
+    "input_rows": 10444,
+    "expected_input_rows": 10444,
+    "alpha_weeks": 373,
+    "expected_alpha_weeks": 373,
+    "expected_symbols_per_week": 28,
+    "symbols_per_week_histogram": {
+      "28": 373
+    },
+    "raw_rows_per_week_histogram": {
+      "28": 373
+    },
+    "full_weeks": 373,
+    "duplicate_input_row_keys": 0,
+    "duplicate_input_week_symbol_rows": 0,
+    "bpr_currencies": [
+      "AUD",
+      "CAD",
+      "CHF",
+      "EUR",
+      "GBP",
+      "JPY",
+      "NZD",
+      "USD"
+    ],
+    "expected_bpr_currencies": [
+      "AUD",
+      "CAD",
+      "CHF",
+      "EUR",
+      "GBP",
+      "JPY",
+      "NZD",
+      "USD"
+    ],
+    "bpr_value_matrix_rows": 5968,
+    "expected_bpr_value_matrix_rows": 5968,
+    "dropped_bpr_value_matrix_rows": 0,
+    "duplicate_bpr_value_matrix_row_keys": 0,
+    "bpr_source_observation_diagnostic_rows": 1472,
+    "duplicate_bpr_source_observation_diagnostic_row_keys": 0,
+    "bpr_raw_artifact_index_rows": 184,
+    "duplicate_bpr_raw_artifact_index_row_keys": 0
+  },
+  "value_source_contract_version": "gate60e_bpr_value_source_contract_v1",
+  "raw_artifact_index_version": "gate60e_bpr_raw_artifact_value_index_v1",
+  "source_observation_diagnostic_version": "gate60e_bpr_source_observation_value_diagnostic_v1",
+  "value_matrix_version": "gate60e_bpr_value_availability_matrix_v1",
+  "publication_timing_separate_version": "gate60e_bpr_publication_timing_separate_v1",
+  "fail_closed_receipt_version": "gate60e_bpr_value_fail_closed_receipt_v1",
+  "dataset_id": "01a3b789-2928-4886-a627-eaf5ae689790",
+  "fail_closed_receipt": {
+    "receipt_version": "gate60e_bpr_value_fail_closed_receipt_v1",
+    "verdict": "FAIL_CLOSED_BPR_VALUE_SOURCE_CONTRACT_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE",
+    "matrix_rows": 5968,
+    "matrix_value_present_rows": 2027,
+    "matrix_value_missing_rows": 3941,
+    "matrix_fail_closed_rows": 3969,
+    "matrix_publication_timing_fail_closed_rows": 64,
+    "matrix_value_missing_and_publication_timing_overlap_rows": 36,
+    "source_observation_rows": 1472,
+    "source_observation_value_present_rows": 500,
+    "source_observation_value_missing_rows": 972,
+    "late_2025_publication_timing_source_rows_separate": 32,
+    "unresolved_rows": 4001,
+    "matrix_missing_reason_counts": {
+      "currency_mapping_error": 5,
+      "futures_options_contract_limitation": 2786,
+      "truly_absent_from_cftc_bpr_report": 1150
+    },
+    "source_observation_missing_reason_counts": {
+      "currency_mapping_error": 1,
+      "futures_options_contract_limitation": 686,
+      "truly_absent_from_cftc_bpr_report": 285
+    },
+    "matrix_missing_reason_counts_by_source_currency": {
+      "cftc_bpr_futures|AUD": {
+        "truly_absent_from_cftc_bpr_report": 149
+      },
+      "cftc_bpr_futures|CAD": {
+        "truly_absent_from_cftc_bpr_report": 38
+      },
+      "cftc_bpr_futures|CHF": {
+        "truly_absent_from_cftc_bpr_report": 274
+      },
+      "cftc_bpr_futures|GBP": {
+        "truly_absent_from_cftc_bpr_report": 16
+      },
+      "cftc_bpr_futures|JPY": {
+        "truly_absent_from_cftc_bpr_report": 66
+      },
+      "cftc_bpr_futures|NZD": {
+        "currency_mapping_error": 5,
+        "truly_absent_from_cftc_bpr_report": 234
+      },
+      "cftc_bpr_futures|USD": {
+        "truly_absent_from_cftc_bpr_report": 373
+      },
+      "cftc_bpr_options|AUD": {
+        "futures_options_contract_limitation": 368
+      },
+      "cftc_bpr_options|CAD": {
+        "futures_options_contract_limitation": 373
+      },
+      "cftc_bpr_options|CHF": {
+        "futures_options_contract_limitation": 373
+      },
+      "cftc_bpr_options|EUR": {
+        "futures_options_contract_limitation": 189
+      },
+      "cftc_bpr_options|GBP": {
+        "futures_options_contract_limitation": 373
+      },
+      "cftc_bpr_options|JPY": {
+        "futures_options_contract_limitation": 364
+      },
+      "cftc_bpr_options|NZD": {
+        "futures_options_contract_limitation": 373
+      },
+      "cftc_bpr_options|USD": {
+        "futures_options_contract_limitation": 373
+      }
+    },
+    "repair_candidates_without_source_mutation": {
+      "source_observation_currency_mapping_errors": 1,
+      "matrix_currency_mapping_error_rows": 5,
+      "source_observation_parser_extraction_failures": 0,
+      "matrix_parser_extraction_failure_rows": 0
+    },
+    "stop_line": "Gate 60E stops at BPR value source-contract diagnosis. No Regime transform, broad matrix, Regime side, support/oppose/fade label, P&L, attribution, Alpha v2, risk/execution/MT5/live/app work, or source mutation was run."
+  },
+  "hashes": {
+    "gate59_alpha_ledger_jsonl_sha256": "E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633",
+    "bpr_value_source_contract_hash": "82B166D4595207AB4C5ED48CF515DDF71E86672F9CCFF6A1EDD569AE0C159208",
+    "bpr_raw_artifact_value_index_hash": "B1425CBC78EDCAF6EF76F18DEA9BB4134343DE04D78BB4DD7609520A389684F8",
+    "bpr_source_observation_value_diagnostic_hash": "B23D562619715F54B511D0EB0EA57CDF9A4B4EFE53014B805B2C70578A901273",
+    "bpr_value_availability_matrix_hash": "435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB",
+    "bpr_publication_timing_separate_hash": "A459C973DBD0B4871F61615378E61ED702AEF2BFE5EE473541A2D90A3CC5AE53",
+    "bpr_value_fail_closed_receipt_hash": "6BF23B7D5A3BE508575992F5CA58CEC6C2B87A5A76A409E693612AEBB6E7DEA7",
+    "bpr_unresolved_rows_hash": "0149AB8C7F6F5DC27A631F4E2D364CF23A0D92909B2A13087677A43410B6462E",
+    "bpr_value_source_content_invariant_hash": "713C0FB26DFB0DDB51268BED0F11F99CBFAB02ED18241E50CADA6FA5499C605B"
+  },
+  "stop_line": "Stop after BPR value source-contract rescue. No Regime transform, broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L, attribution, Alpha v2, risk, execution, MT5/live, app/runtime work, COT/Strength/Alpha v1/Gate59 mutation, or macro source row mutation."
+}

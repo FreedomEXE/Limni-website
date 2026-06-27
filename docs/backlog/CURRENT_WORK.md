@@ -8,88 +8,78 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60D: bpr-source-eligibility.
+Gate 60E: bpr-value-source-contract-rescue.
 
-Objective: resolve BPR source eligibility before any Regime transform, broad
-matrix, Regime LONG/SHORT side, Alpha v2, risk, execution, MT5/live, app work,
-or source mutation.
+Objective: investigate the `3,941` missing BPR `netShareOfGross` matrix rows
+against raw CFTC BPR artifacts and the frozen Gate 59 Alpha v1 denominator.
+This gate is BPR-only and source-contract-only.
 
-Status: complete, committed, and pushed for review on
-`codex/gate50-macro-source-promotion-proof`. Gate 60D proof commit:
-`7a57e3b` (`Gate 60D BPR source eligibility proof`). This ledger update records
-the current Gate 60D review state after external verification.
+Status: complete locally and ready for commit/push review on
+`codex/gate50-macro-source-promotion-proof`.
 
 Verdict:
-`FAIL_CLOSED_BPR_SOURCE_ELIGIBILITY_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE`.
+`FAIL_CLOSED_BPR_VALUE_SOURCE_CONTRACT_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE`.
 
-Gate 60D command:
-`npm run engine:gate60d:bpr-source-eligibility`.
+Gate 60E command:
+`npm run engine:gate60e:bpr-value-source-contract-rescue`.
 
 Durable artifacts:
 
 - Report:
-  `docs/research/gates/gate60d/GATE60D_BPR_SOURCE_ELIGIBILITY_2026-06-27.md`
-- BPR source registry v2:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-registry-v2.contract.json`
-- BPR publication timing proof JSONL:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-publication-timing-proof.rows.jsonl`
-- BPR currency-week atom ledger JSONL:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-currency-week-atom-ledger.rows.jsonl`
-- BPR unresolved rows JSONL:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-unresolved-rows.rows.jsonl`
-- BPR raw artifact, raw observation, and availability-event hash maps:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-raw-artifact-hash-map.json`
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-raw-observation-hash-map.json`
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-availability-event-hash-map.json`
-- Summary JSON and Markdown:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.summary.json`
-  and
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.summary.md`
-- Query/probe receipt:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.query-receipt.md`
-- SHA identity:
-  `docs/research/gates/gate60d/artifacts/gate60d-bpr-source-eligibility/gate60d-bpr-source-eligibility.sha256.txt`
+  `docs/research/gates/gate60e/GATE60E_BPR_VALUE_SOURCE_CONTRACT_RESCUE_2026-06-27.md`
+- BPR value source contract v1:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-v1.contract.json`
+- BPR raw artifact value index:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-raw-artifact-value-index.rows.jsonl`
+- BPR source-observation value diagnostic:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-source-observation-value-diagnostic.rows.jsonl`
+- BPR value availability matrix:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-availability-matrix.rows.jsonl`
+- Separate late-2025 BPR publication timing rows:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-publication-timing-separate.rows.jsonl`
+- Fail-closed receipt and unresolved rows:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-fail-closed-receipt.json`
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-unresolved-rows.rows.jsonl`
+- Summary, query receipt, and SHA identity:
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.summary.json`
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.summary.md`
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.query-receipt.md`
+  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.sha256.txt`
 
-Validation: `npm run engine:gate60d:bpr-source-eligibility` passed; targeted
-ESLint on the Gate 60D verifier passed; `git diff --check` and
-`git diff --cached --check` passed before the proof commit.
+Validation: `npm run engine:gate60e:bpr-value-source-contract-rescue` passed;
+targeted ESLint on the Gate 60E verifier passed.
 
 Denominator result: Gate 59 Alpha v1 remained `10,444` rows, `373` weeks, and
-`28` symbols/week with `0` duplicate input row keys, `0` duplicate input
-week-symbol rows, `5,968` BPR currency-week atom rows, `1,472` BPR publication
-timing proof rows, and `0` duplicate BPR proof row keys.
+`28` symbols/week with `0` duplicate input row keys and `0` duplicate input
+week-symbol rows. Gate 60E emitted `5,968` BPR value matrix rows, `1,472`
+source-observation diagnostic rows, `184` raw artifact index rows, and `0`
+duplicate output row keys.
 
-Source result: BPR remains unusable for Regime construction. Gate 60D emitted
-`5,968` BPR atom rows, of which `1,999` filled and `3,969` failed closed. The
-unresolved-row ledger contains `4,001` rows: `3,941` are dominated by missing
-numeric `netShareOfGross` values, and `32` are late-2025 publication timing /
-promotion-blocked rows across `2025-10-07` and `2025-11-04` for both BPR
-contracts.
+Source result: BPR remains fail-closed. Gate 60E found `3,941` BPR value-missing
+matrix rows: `2,786` futures/options contract-limitation rows, `1,150` rows
+truly absent from the contracted CFTC BPR futures report, and `5` NZD futures
+rows caused by one currency-label contract error (`CME NEW ZEALAND DOLLAR` vs
+current `NZ DOLLAR`). The `32` late-2025 publication timing source rows remain
+separate from the value-missing rows.
 
 Key hashes:
 
-- BPR source registry hash:
-  `9226D3707F3EE4AA4B64587FCE3A68CD8A659F912C0C4C1116E59FA27D7F62AF`
-- BPR source content invariant hash:
-  `20F5A88FCA8B5901FC879C076E3DF21872E9126D87C1BD5419709A5203DE5894`
-- BPR currency-week atom ledger hash:
-  `7B1B809CCA1CBB6B60A1E1AFECB44A4F1B4E308244DB4F37611CFD46CD55DCC7`
-- BPR unresolved rows hash:
-  `3EB3D6C671CE93263AA3E28A860DF3185970CF15877C045F3815DB60E28BF354`
+- BPR value source contract hash:
+  `82B166D4595207AB4C5ED48CF515DDF71E86672F9CCFF6A1EDD569AE0C159208`
+- BPR value availability matrix hash:
+  `435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB`
+- BPR fail-closed receipt hash:
+  `6BF23B7D5A3BE508575992F5CA58CEC6C2B87A5A76A409E693612AEBB6E7DEA7`
+- BPR value source content invariant hash:
+  `713C0FB26DFB0DDB51268BED0F11F99CBFAB02ED18241E50CADA6FA5499C605B`
 
 ## Next Requested Review
 
-Stop after Gate 60D. Do not proceed to Regime atom transforms, broad matrix,
-Regime LONG/SHORT side, support/oppose/fade labels, P&L, attribution, Alpha v2,
-risk overlays, execution work, MT5/live, app work, COT changes, Strength
-changes, Alpha v1 changes, Gate 59 row changes, macro source row changes, or
-source promotion.
-
-Next gate: Gate 60E, BPR value extraction / source-contract rescue. It remains
-BPR-only. The objective is to explain and, only if the source contract permits,
-repair missing `netShareOfGross` values before any Regime progress. Keep the
-late-2025 timing ambiguity separate from the value-missing issue. Emit a new
-fail-closed receipt and stop.
+Stop after Gate 60E. Do not proceed to BPR promotion, Regime atom transforms,
+broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L,
+attribution, Alpha v2, risk overlays, execution work, MT5/live, app work, COT
+changes, Strength changes, Alpha v1 changes, Gate 59 row changes, macro source
+row changes, or source mutation.
 
 ## Current Ownership Model
 

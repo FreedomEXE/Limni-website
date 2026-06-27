@@ -29,6 +29,7 @@
     "engine:gate60b:regime-source-foundation": "tsx engine/scripts/verification/build-gate60b-regime-source-foundation.ts",
     "engine:gate60c:regime-source-atom-fill": "tsx engine/scripts/verification/build-gate60c-regime-source-atom-fill.ts",
     "engine:gate60d:bpr-source-eligibility": "tsx engine/scripts/verification/build-gate60d-bpr-source-eligibility.ts",
+    "engine:gate60e:bpr-value-source-contract-rescue": "tsx engine/scripts/verification/build-gate60e-bpr-value-source-contract-rescue.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
