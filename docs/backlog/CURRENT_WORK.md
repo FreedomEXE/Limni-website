@@ -15,12 +15,13 @@ forced-28 COT parent + healthy Strength fallback engine, so later Regime work ca
 join against a stable 28-pair shadow ledger instead of retuning Strength or
 rewriting the signal layer.
 
-Status: complete and stopped locally. Gate 59 used only existing Gate 58 matrix
-rows and Gate 58C Candidate C decision rows. It did not run raw M1 simulation,
-write app code, change COT source logic, change Strength windows/source, add
-row vetoes, skip pair-weeks, add eligibility filters, exclude pairs/calendar
-periods, introduce Regime, risk overlays, execution changes, market-open
-confirmation, new thresholds, new buckets, or parameter searches. Validation:
+Status: complete, stopped, committed, and pushed in `05dc4b7` (`Gate 59: freeze
+alpha v1 atom ledger`). Gate 59 used only existing Gate 58 matrix rows and Gate
+58C Candidate C decision rows. It did not run raw M1 simulation, write app code,
+change COT source logic, change Strength windows/source, add row vetoes, skip
+pair-weeks, add eligibility filters, exclude pairs/calendar periods, introduce
+Regime, risk overlays, execution changes, market-open confirmation, new
+thresholds, new buckets, or parameter searches. Validation:
 `10,444` atom ledger rows, `373` full weeks, `28` symbols per week, `0`
 duplicate matrix week/symbol rows, `0` duplicate Candidate C week/symbol rows,
 `0` missing Candidate C rows, `0` unexpected Candidate C rows, `0` final-side
