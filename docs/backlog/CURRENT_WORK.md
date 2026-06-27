@@ -8,85 +8,83 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60G: bpr-forced28-source-direction-ledger.
+Gate 60H: bpr-source-direction-eligibility-classes.
 
-Objective: build a BPR forced-28 source-direction ledger against the frozen
-Gate 59 Alpha v1 denominator. This gate is BPR-only and source-direction-only.
+Objective: lock BPR source-direction eligibility classes after Gate 60G using
+Gate 60G artifacts only. This gate is BPR-only and eligibility-only.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Verdict:
-`PASS_BPR_FORCED28_SOURCE_DIRECTION_LEDGER__DEGRADED_FLAGS_SEPARATE__NO_REGIME_SIDE`.
+`PASS_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_LOCKED__GATE60G_ARTIFACTS_ONLY__NO_REGIME_SIDE`.
 
-Gate 60G command:
-`npm run engine:gate60g:bpr-forced28-source-direction-ledger`.
+Gate 60H command:
+`npm run engine:gate60h:bpr-source-direction-eligibility-classes`.
 
 Durable artifacts:
 
 - Report:
-  `docs/research/gates/gate60g/GATE60G_BPR_FORCED28_SOURCE_DIRECTION_LEDGER_2026-06-27.md`
-- BPR currency-state ledger:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-currency-state-ledger.rows.jsonl`
-- BPR synthetic USD ledger:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-synthetic-usd-ledger.rows.jsonl`
-- BPR pair-direction ledger:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-pair-direction-ledger.rows.jsonl`
-- BPR source-quality summary:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-source-quality-summary.json`
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-source-quality-summary.md`
-- BPR unresolved/degraded-state report:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-unresolved-degraded-state-report.rows.jsonl`
+  `docs/research/gates/gate60h/GATE60H_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_2026-06-27.md`
+- Eligibility decision table:
+  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-eligibility-decision-table.rows.jsonl`
+  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-eligibility-decision-table.md`
+- Eligibility summary:
+  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility-summary.json`
 - Query receipt and SHA identity:
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-forced28-source-direction-ledger.query-receipt.md`
-  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-forced28-source-direction-ledger.sha256.txt`
+  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility.query-receipt.md`
+  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility-classes.sha256.txt`
 
-Validation: `npm run engine:gate60g:bpr-forced28-source-direction-ledger`
-passed. Targeted full-config ESLint on the Gate 60G verifier timed out without
-diagnostics after repeated attempts; Gate 60F targeted ESLint still completed
-normally, and a successful Gate 60G command run remains the executable
-validation proof. `git diff --check` and `git diff --cached --check` should be
-run before commit.
+Validation: `npm run engine:gate60h:bpr-source-direction-eligibility-classes`
+passed. Targeted full-config ESLint on the Gate 60H verifier timed out without
+diagnostics, matching the Gate 60G verifier lint behavior. `git diff --check`
+passed with only the existing Windows LF-to-CRLF warning on `package.json`.
 
-Denominator result: Gate 59 Alpha v1 remained `10,444` rows, `373` weeks, and
-`28` symbols/week. Gate 60G emitted `2,984` BPR currency-state rows, `373`
-synthetic USD rows, and exactly `10,444` BPR pair-direction rows with `0`
-duplicate pair-direction row keys, `0` neutral pair-direction rows, and `0`
-futures/options mixing rows.
+Denominator result: Gate 60G pair rows remained `10,444` rows, `373` weeks, and
+`28` symbols/week. Gate 60H found `0` duplicate pair row keys, `0` neutral
+pair-direction rows, `0` non-`BASE_CURRENCY`/`QUOTE_CURRENCY` rows, `0`
+LONG/SHORT side violations, `0` Regime-side violations, `0` futures/options
+mixing rows, and `0` source mutation rows.
 
-Source-direction result: BPR v1 candidate direction remains futures-only
-(`bpr_futures`). Futures/options remains separate shadow-only
-(`bpr_futures_and_options`). Gate 60G adds a derived
-`bpr_futures_carried_state` atom and a versioned
-`bpr_futures_synthetic_usd_state` atom using inverse average of available
-same-week non-USD BPR futures states. Pair rows carry only `BASE_CURRENCY` /
-`QUOTE_CURRENCY` BPR source direction, not LONG/SHORT or Regime side. Quality
-and promotion eligibility stay separate from direction.
+Eligibility result:
 
-Quality result:
-
-- Currency-state quality counts:
-  `{"unresolved_no_prior":375,"raw_present":1805,"synthetic_usd":370,"carried_fresh":131,"carried_stale":291,"unresolved_source_ambiguous":5,"timing_blocked_carry":7}`
-- Pair direction rule counts:
-  `{"deterministic_unresolved_currency_rank_fallback":259,"single_numeric_state_degraded":2142,"numeric_value_comparison":8043}`
-- Pair source-direction eligible rows: `8,043`
+- Source-direction eligible pair rows: `8,043`
+- Source-direction ineligible pair rows: `2,401`
 - Promotion eligible pair-direction rows: `5,113`
 - Promotion ineligible pair-direction rows: `5,331`
+- `raw_present`: promotion eligible, `1,805` currency-state rows and `12,635`
+  pair-quality occurrences.
+- `carried_fresh`: promotion eligible, `131` currency-state rows and `917`
+  pair-quality occurrences.
+- `carried_stale`: shadow-only, `291` currency-state rows and `2,037`
+  pair-quality occurrences.
+- `synthetic_usd`: source-direction eligible with row-level promotion,
+  `370` currency-state rows and `2,590` pair-quality occurrences; `686`
+  occurrences are promotion eligible and `1,904` are shadow-only.
+- `single_numeric_state_degraded`: shadow-only, `2,142` pair-rule rows.
+- `deterministic_unresolved_currency_rank_fallback`: fail-closed, `259`
+  pair-rule rows.
+- `timing_blocked_carry`: shadow-only, `7` currency-state rows and `49`
+  pair-quality occurrences.
+- `unresolved_no_prior`: fail-closed, `375` currency-state rows and `2,625`
+  pair-quality occurrences.
+- `unresolved_source_ambiguous`: fail-closed, `5` currency-state rows and `35`
+  pair-quality occurrences.
 
 Key hashes:
 
-- BPR currency-state ledger hash:
-  `44AC1DBC4B9DC662004B9273017E44B27FB77B98F30504606A19A9409DA42067`
-- BPR synthetic USD ledger hash:
-  `6420A21421253C65D206E19B117C314A5B54F62AC8CF58949BDDBF11DEAA41DA`
-- BPR pair-direction ledger hash:
+- Gate 60G pair-direction ledger input hash:
   `15FCBCD62973A889423A328D5C32D72965EAC584034EE202070B636881CB7939`
-- BPR source-direction content invariant hash:
-  `D9225E11FA9E4FC6C740AB6A69D036AE966ECAA608A5FA29425275797688FD58`
+- Gate 60H decision table JSONL hash:
+  `9B271BD1186ADE5602C0393E17DDAA7A6C3DDF30E9416520AF4D191E64F24E8E`
+- Gate 60H summary JSON hash:
+  `D3D7ECF367D0DCC598A818CE230D610CE588CFFC08AB9BF2E919A685DB942DC5`
+- Gate 60H content invariant hash:
+  `9DAD0DFC6165355A0BF95FA3C08C69F47B6C04B298F87AE6F396DCDF9674B13D`
 
 ## Next Requested Review
 
-Stop after Gate 60G. Do not proceed to BPR promotion, Regime atom transforms,
+Stop after Gate 60H. Do not proceed to BPR promotion, Regime atom transforms,
 broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L,
 attribution, Alpha v2, risk overlays, execution work, MT5/live, app work, COT
 changes, Strength changes, Alpha v1 changes, Gate 59 row changes, macro source
