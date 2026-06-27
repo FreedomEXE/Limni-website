@@ -1,0 +1,12 @@
+# Gate 60A Alpha v1 macro join-map identity
+
+E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.rows.jsonl
+521B7FA4A975500F5B2FF6223044C536DFE5EE5DF2EF8FC60AA5E247A9459D42  docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.rows.jsonl
+75AACD3720920A77C1644EF676358FC3FA3D8841E9ECBEE73436712D00E67148  docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.summary.md
+AA0746B24B0279B22DD745527A051739E969FB2472BFDF8218AAD5E97923F9DF  docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.query-receipt.md
+425FCB151D96FC28BBD8EA3388EB2D6AC23DD749138C0CDBCF6B029D7323ACE0  docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md.report-text
+C900DF6EB5F4E595A7B284663B10536CDE31958E7026CEFA3C60FBB73DBD65C2  source_content_invariant
+
+combined_hash 0EE3772024FF5458E41DBFEEF09323E73731173EC36883B72C8BF4EC087346D0
+rebuild_command npm run engine:gate60a:alpha-v1-macro-join-map
+mapping_rule_version gate60a_alpha_week_utc_date_to_macro_week_id_v1

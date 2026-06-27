@@ -8,44 +8,58 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60: regime-source-integrity.
+Gate 60A: alpha-v1-macro-join-map-proof.
 
-Objective: verify whether macro source families are clean, point-in-time,
-active, deterministic, and eligible to support a future forced-28 Regime shadow
-signal against the frozen Gate 59 Alpha v1 atom ledger.
+Objective: build a source-only deterministic macro join-map from the frozen
+Gate 59 Alpha v1 atom ledger to existing macro warehouse source-family state,
+without building a Regime side or outputting macro LONG/SHORT decisions.
 
 Status: complete and stopped locally in
-`docs/research/gates/gate60/GATE60_REGIME_SOURCE_INTEGRITY_2026-06-27.md`.
-Not committed or pushed yet.
+`docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`.
+Not committed or pushed yet. Gate 60 was already committed and pushed in
+`21fd342` (`Gate 60: record regime source integrity`) and PR `#2` was retargeted
+to a narrow Gate 60 review base.
 
 Verdict:
-`FAIL_FULL_FAMILY_SOURCE_ELIGIBILITY__PASS_RRP_ONLY_WITH_ALPHA_WEEK_ALIGNMENT_BLOCKER`.
+`PASS_JOIN_MAP_PROOF__FAIL_CLOSED_FULL_FAMILY_SOURCE_ELIGIBILITY`.
 
-Read: only the `real_rate_pressure_attribution_v1` lane is ACTIVE for
-historical-backtest source reads. BPR remains blocked by Gate 52A source
-ambiguity/quarantine rules; nominal rates and CPI are clean SEALED source
-parents but not standalone ACTIVE families; valuation remains source-only /
-BUILDING with no promotion manifest or aggregate manifests.
+Gate 60A command:
+`npm run engine:gate60a:alpha-v1-macro-join-map`.
 
-Critical blocker: Gate 50 active RRP proof was against the older Gate 44
-`372`-week / `10,416` pair-week control. Exact `week_open_utc` overlap with the
-Gate 59 Alpha v1 ledger is only `357 / 373` weeks, or `9,996 / 10,444` Alpha
-rows. A future source-only gate must prove a deterministic Alpha v1 macro
-join-map or rebuild macro snapshots on the Alpha v1 week identity before any
-Regime shadow signal construction.
+Durable artifacts:
+
+- Join-map JSONL:
+  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.rows.jsonl`
+- Summary Markdown:
+  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.summary.md`
+- Query/probe receipt:
+  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.query-receipt.md`
+- SHA identity:
+  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.sha256.txt`
+
+Validation: `10,444` input rows, `373` weeks, `28` symbols/week, `0`
+duplicate input row keys, `10,444` output join-map rows, `0` dropped rows, and
+`0` duplicate output row keys. Mapping rule:
+`gate60a_alpha_week_utc_date_to_macro_week_id_v1`, which maps each Alpha
+`week_open_utc` to `macro_week_YYYY-MM-DD` using the UTC date portion of the
+Alpha timestamp.
+
+Source result: full-family eligible rows are `0 / 10,444`; fail-closed rows are
+`10,444 / 10,444`. RRP is ACTIVE but covers only `9,996 / 10,444` Alpha rows
+under the mapping, leaving `16` missing mapped macro weeks / `448` rows. Rate
+and CPI are clean SEALED parents, not standalone ACTIVE sources. BPR is
+governance-quarantined by Gate 52A. Valuation remains BUILDING/non-promoted.
 
 ## Next Requested Review
 
-Stop after Gate 60 source-integrity receipt. Do not proceed to Regime shadow
-signal construction, final Regime long/short pair decisions, Alpha v2
-arbitration, risk overlays, execution work, MT5/live, app work, or cleanup in
-the same run.
+Stop after Gate 60A. Do not proceed to Regime shadow-signal construction, final
+Regime long/short pair decisions, Alpha v2 arbitration, risk overlays, execution
+work, MT5/live, app work, COT changes, Strength changes, Alpha v1 changes, Gate
+59 row changes, macro source row changes, or cleanup in the same run.
 
-Next permitted gate: source-only Alpha v1 macro join-map proof. It must use the
-Gate 59 atom ledger denominator (`373` weeks, `10,444` rows, `28` symbols per
-week), do zero P&L, define deterministic macro week mapping, fail closed on
-missing/stale/quarantined/non-ACTIVE rows, and emit join-map/source-content
-hashes before any Regime signal work.
+Next decision: human review. The forward choice is either repair/rebuild macro
+source snapshots onto the Gate 59 Alpha v1 week identity, or keep Regime blocked
+until source-family eligibility can pass without row skips or imputation.
 
 ## Current Ownership Model
 
@@ -233,6 +247,10 @@ hashes before any Regime signal work.
 `docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`
 
 `docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md`
+
+`docs/research/gates/gate60/GATE60_REGIME_SOURCE_INTEGRITY_2026-06-27.md`
+
+`docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`
 
 ## Forward Research Command
 
