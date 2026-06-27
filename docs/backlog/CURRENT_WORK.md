@@ -8,43 +8,36 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 57E: frs15-phase-conditioned-remainder-rule.
+Gate 58: cot-strength-forensic-matrix.
 
-Objective: test one final narrow point-in-time Strength state variable,
-`phaseBucket`, while also testing Freedom's full-28 anti-curve-fit sanity case.
+Objective: build a frozen pair-week forensic matrix for the locked COT baseline
+(`CLP carry-forward + carry-previous tie fill`) and locked FRS15 Strength
+baseline (`phase_conditioned_remainder`) joined to Gate 57A0B warehouse
+long/short outcomes.
 
-Status: warehouse-only evaluation is complete and stopped. The primary
-candidate `phase_conditioned_remainder` is mechanically valid (`10,444` rows,
-`373` weeks, `28` rows/week, `0` duplicate week/symbol rows) and improves PF
-versus Gate 57D compressed/remainder while preserving most of Gate 57D's
-DD/R-DD improvement: `ADR 1386.2813`, `DD -304.4126`, `R/DD 4.5540`,
-`PF 1.3027`. It nearly matches Gate 57C original binary PF (`1.3027` vs
-`1.3035`) while materially improving ADR, DD, and R/DD. The full-28 phase sanity
-candidate fails as a standalone rule (`ADR 1239.1000`, `DD -466.1116`,
-`R/DD 2.6584`, `PF 1.2455`), so the evidence supports a lifecycle x phase
-Strength rule rather than phase alone across the whole basket. Verdict:
-`PASS_WAREHOUSE_ONLY_PHASE_CONDITIONED_REMAINDER_LOCK_CANDIDATE__FULL28_PHASE_SANITY_FAILS`.
+Status: complete and stopped. Gate 58 built the COT x Strength state surface on
+the supported intersection only: `10,444` rows, `373` weeks, `28` rows/week,
+`0` duplicate week/symbol rows, `0` missing COT rows, `0` missing Strength rows,
+and `0` missing long/short warehouse outcomes. The primary window is
+`2019-04-14T23:00:00.000Z` through `2026-05-31T23:00:00.000Z`. The COT full
+baseline remains separately labelled as `388` weeks; the excluded FRS15 warmup
+remainder is `14` COT-only weeks, plus one COT-only week outside the Strength
+requested support (`2026-06-07T23:00:00.000Z`). Verdict:
+`PASS_WAREHOUSE_ONLY_FORENSIC_MATRIX_BUILT_NO_DIRECTIONAL_PROMOTION`.
 Durable receipt:
-`docs/research/gates/gate57/GATE57E_FRS15_PHASE_CONDITIONED_REMAINDER_RULE_2026-06-26.md`.
-No raw M1 ADR Grid simulation, no open confirmation, no engine/evaluator
-semantic changes, no COT changes, no regimes, no COT+Strength, no risk overlays,
-no MT5/live, and no app refactor work.
+`docs/research/gates/gate58/GATE58_COT_STRENGTH_FORENSIC_MATRIX_2026-06-27.md`.
+Rows artifact:
+`docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl`.
+No raw M1 ADR Grid simulation, COT source change, Strength source/window
+change, regime, risk overlay, MT5/live/app work, new evaluator/backtest engine,
+or final combined-system promotion was run.
 
 ## Next Requested Review
 
-Freedom wants no more standalone COT or Strength tests for now. Next step should
-be a final review/lock decision for one Strength baseline, explicitly checking:
-
-- Strength uses `373` supported weeks because FRS15 needs a 15-week warmup,
-  while locked COT used the fuller seven-year parent window.
-- The COT and Strength baseline rules must be simple and institutional enough
-  before promotion into a combined directional-layer study.
-
-If Strength passes review, open a new gate for a broad COT x Strength forensic
-matrix using warehouse aggregation only. The matrix should expose agreement,
-disagreement, COT-only, Strength-only, retained/removed rows, and metric deltas
-before any regimes, risk overlays, MT5/live, app work, or final combined system
-selection.
+Stop after Gate 58. The matrix is descriptive evidence only. Any combined
+directional rule suggested by the matrix must be confirmed in a later named gate
+before promotion, threshold optimization, risk work, execution work, MT5/live,
+or app work.
 
 ## Current Ownership Model
 
