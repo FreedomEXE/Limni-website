@@ -16,9 +16,11 @@ without building a Regime side or outputting macro LONG/SHORT decisions.
 
 Status: complete and stopped locally in
 `docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`.
-Not committed or pushed yet. Gate 60 was already committed and pushed in
-`21fd342` (`Gate 60: record regime source integrity`) and PR `#2` was retargeted
-to a narrow Gate 60 review base.
+Gate 60A proof was committed in `7e1066b`
+(`Gate 60A: add alpha v1 macro join-map proof`) and pushed for review on
+`codex/gate50-macro-source-promotion-proof`. Gate 60 was already committed and
+pushed in `21fd342` (`Gate 60: record regime source integrity`) and PR `#2` was
+retargeted to a narrow Gate 60 review base.
 
 Verdict:
 `PASS_JOIN_MAP_PROOF__FAIL_CLOSED_FULL_FAMILY_SOURCE_ELIGIBILITY`.
