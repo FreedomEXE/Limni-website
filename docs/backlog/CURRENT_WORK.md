@@ -8,60 +8,75 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60A: alpha-v1-macro-join-map-proof.
+Gate 60B: regime-source-foundation-parity.
 
-Objective: build a source-only deterministic macro join-map from the frozen
-Gate 59 Alpha v1 atom ledger to existing macro warehouse source-family state,
-without building a Regime side or outputting macro LONG/SHORT decisions.
+Objective: bring macro Regime source inputs closer to COT/Strength parity
+before any Regime side is built, using the frozen Gate 59 Alpha v1 week
+identity as the denominator.
 
-Status: complete and stopped locally in
-`docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`.
-Gate 60A proof was committed in `7e1066b`
-(`Gate 60A: add alpha v1 macro join-map proof`) and pushed for review on
-`codex/gate50-macro-source-promotion-proof`. Gate 60 was already committed and
-pushed in `21fd342` (`Gate 60: record regime source integrity`) and PR `#2` was
-retargeted to a narrow Gate 60 review base.
+Status: complete, committed, and pushed for review on
+`codex/gate50-macro-source-promotion-proof`. Gate 60B proof commit:
+`2b89476` (`Gate 60B: add regime source foundation proof`). This work ledger
+records the current pushed review state in the branch head.
 
 Verdict:
-`PASS_JOIN_MAP_PROOF__FAIL_CLOSED_FULL_FAMILY_SOURCE_ELIGIBILITY`.
+`PASS_RRP_ALPHA_WEEK_SHADOW_REBUILD_FULL_COVERAGE__FULL_FAMILY_STILL_BLOCKED`.
 
-Gate 60A command:
-`npm run engine:gate60a:alpha-v1-macro-join-map`.
+Gate 60B command:
+`npm run engine:gate60b:regime-source-foundation`.
 
 Durable artifacts:
 
-- Join-map JSONL:
-  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.rows.jsonl`
-- Summary Markdown:
-  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.summary.md`
+- Report:
+  `docs/research/gates/gate60b/GATE60B_REGIME_SOURCE_FOUNDATION_2026-06-27.md`
+- Registry contract JSON:
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-registry.contract.json`
+- Alpha-week source rows JSONL:
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-alpha-week-source-foundation.rows.jsonl`
+- Alpha v1 join-map JSONL:
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-alpha-v1-source-foundation-join-map.rows.jsonl`
+- Summary JSON and Markdown:
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.summary.json`
+  and
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.summary.md`
 - Query/probe receipt:
-  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.query-receipt.md`
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.query-receipt.md`
 - SHA identity:
-  `docs/research/gates/gate60a/artifacts/gate60a-alpha-v1-macro-join-map/gate60a-alpha-v1-macro-join-map.sha256.txt`
+  `docs/research/gates/gate60b/artifacts/gate60b-regime-source-foundation/gate60b-regime-source-foundation.sha256.txt`
 
-Validation: `10,444` input rows, `373` weeks, `28` symbols/week, `0`
-duplicate input row keys, `10,444` output join-map rows, `0` dropped rows, and
-`0` duplicate output row keys. Mapping rule:
-`gate60a_alpha_week_utc_date_to_macro_week_id_v1`, which maps each Alpha
-`week_open_utc` to `macro_week_YYYY-MM-DD` using the UTC date portion of the
-Alpha timestamp.
+Validation: staged diff check passed; SHA identity matched; root TypeScript
+passed; join map contains `10,444` rows; source foundation rows contain `8,952`
+rows. Denominator remains `373` Alpha weeks and `28` symbols/week with `0`
+dropped output rows and `0` duplicate output row keys.
 
-Source result: full-family eligible rows are `0 / 10,444`; fail-closed rows are
-`10,444 / 10,444`. RRP is ACTIVE but covers only `9,996 / 10,444` Alpha rows
-under the mapping, leaving `16` missing mapped macro weeks / `448` rows. Rate
-and CPI are clean SEALED parents, not standalone ACTIVE sources. BPR is
-governance-quarantined by Gate 52A. Valuation remains BUILDING/non-promoted.
+Source result: RRP Alpha-week shadow maps `10,444 / 10,444` rows. Rate parent
+and CPI parent each map `10,444 / 10,444` rows but remain `SEALED_PARENT`, not
+standalone ACTIVE feature bundles. RRP shadow is `BUILDING_SHADOW`, not a
+promoted Regime side. BPR remains `QUARANTINED` for all `10,444` rows.
+Valuation/PPP/NEER/REER remains raw/source-only `BUILDING_SHADOW` for all
+`10,444` rows. Full-family source eligibility remains `0 / 10,444`.
+
+Key hashes:
+
+- Source registry hash:
+  `9EC1D0877E03A4CAD753015E4A3F2E944F22E6A73F1E6FF008B7786C99D583D8`
+- Source content invariant hash:
+  `E40E207E27FB3461C66DCE07F30601010DB4CA01AC342AE3EA1530EA91695458`
+- Join-map hash:
+  `AB85E93DCC62CC900ED48751ACD627DDBC142BB695DD92130BF2E566BE308554`
 
 ## Next Requested Review
 
-Stop after Gate 60A. Do not proceed to Regime shadow-signal construction, final
+Stop after Gate 60B. Do not proceed to Regime shadow-signal construction, final
 Regime long/short pair decisions, Alpha v2 arbitration, risk overlays, execution
 work, MT5/live, app work, COT changes, Strength changes, Alpha v1 changes, Gate
-59 row changes, macro source row changes, or cleanup in the same run.
+59 row changes, macro source row changes, source promotion, or cleanup in the
+same run.
 
-Next decision: human review. The forward choice is either repair/rebuild macro
-source snapshots onto the Gate 59 Alpha v1 week identity, or keep Regime blocked
-until source-family eligibility can pass without row skips or imputation.
+Next decision: human review of the Gate 60B source foundation. The forward
+choice is whether the RRP Alpha-week shadow rebuild is acceptable as a future
+source-promotion candidate while BPR and valuation remain blocked, or whether
+more source repair is required before any forced-28 Regime macro side is opened.
 
 ## Current Ownership Model
 
@@ -253,6 +268,8 @@ until source-family eligibility can pass without row skips or imputation.
 `docs/research/gates/gate60/GATE60_REGIME_SOURCE_INTEGRITY_2026-06-27.md`
 
 `docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`
+
+`docs/research/gates/gate60b/GATE60B_REGIME_SOURCE_FOUNDATION_2026-06-27.md`
 
 ## Forward Research Command
 
