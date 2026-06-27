@@ -1,0 +1,8 @@
+# Gate 58B COT x Strength Directional Hypothesis Confirmation identity
+
+2E93104E8D610964A0F07A6CE12A531A83F7C4A2764BDF94EDDF94DDF665EF08  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl
+A2119B2EEA8B784AAEC63EC1F0C76B00E69793F7854DCC79DF56572BB29A0CAA  docs/research/gates/gate58b/artifacts/gate58b-cot-strength-hypothesis-confirmation/gate58b-cot-strength-hypothesis-confirmation.result.json
+124DDBDD91E97BDA4615087239065E61C2483ECA0374212ABF5365C741E8208F  docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md.receipt-text
+
+combined_hash E8C342FF1E261A7C77109C1887E32CD2A7C52971C5965A51C7C4F9CD5A253547
+rebuild_command npm run engine:gate58b:cot-strength-hypothesis-confirmation

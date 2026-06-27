@@ -8,36 +8,40 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 58: cot-strength-forensic-matrix.
+Gate 58B: cot-strength-directional-hypothesis-confirmation.
 
-Objective: build a frozen pair-week forensic matrix for the locked COT baseline
-(`CLP carry-forward + carry-previous tie fill`) and locked FRS15 Strength
-baseline (`phase_conditioned_remainder`) joined to Gate 57A0B warehouse
-long/short outcomes.
+Objective: use the completed Gate 58 forensic matrix to test a small,
+predeclared set of COT x Strength directional/eligibility hypotheses without
+opening regimes, risk, execution, app, or live work.
 
-Status: complete and stopped. Gate 58 built the COT x Strength state surface on
-the supported intersection only: `10,444` rows, `373` weeks, `28` rows/week,
-`0` duplicate week/symbol rows, `0` missing COT rows, `0` missing Strength rows,
-and `0` missing long/short warehouse outcomes. The primary window is
-`2019-04-14T23:00:00.000Z` through `2026-05-31T23:00:00.000Z`. The COT full
-baseline remains separately labelled as `388` weeks; the excluded FRS15 warmup
-remainder is `14` COT-only weeks, plus one COT-only week outside the Strength
-requested support (`2026-06-07T23:00:00.000Z`). Verdict:
-`PASS_WAREHOUSE_ONLY_FORENSIC_MATRIX_BUILT_NO_DIRECTIONAL_PROMOTION`.
+Status: complete and stopped. Gate 58B consumed the frozen Gate 58 matrix and
+read existing warehouse outcome component rows only. It tested: COT-side weak
+state veto, Gate 57E Strength-side weak state veto, constructive-state
+eligibility, agreement-only, and disagreement-only references. Validation:
+`10,444` matrix rows, `20,888` warehouse directional rows read, `0` missing
+warehouse directional outcomes, `0` duplicate retained week/symbol rows in the
+candidate hypotheses. Verdict:
+`PASS_WITH_CAVEATS_STRENGTH_VETO_ALIVE_NO_LOCK_YEAR_STABILITY_CAVEAT`.
 Durable receipt:
-`docs/research/gates/gate58/GATE58_COT_STRENGTH_FORENSIC_MATRIX_2026-06-27.md`.
-Rows artifact:
-`docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl`.
-No raw M1 ADR Grid simulation, COT source change, Strength source/window
-change, regime, risk overlay, MT5/live/app work, new evaluator/backtest engine,
-or final combined-system promotion was run.
+`docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md`.
+Best alive candidate is `B_gate57e_strength_side_weak_state_veto`: `7,377`
+retained rows, ADR Grid `1469.9312`, DD `-254.3672`, R/DD `5.7788`, PF
+`1.2147`, top-five absolute week share `0.0825`. It beats both COT and Strength
+373-week baselines on aggregate ADR/DD/R-DD/PF, but it has `2` negative ADR Grid
+years (`2019` roughly flat at `-0.7514`, `2023` at `-52.6640`), so it is alive
+but not locked. COT-side weak-state veto fails versus the baselines on aggregate
+ADR/DD/R-DD. No raw M1 ADR Grid simulation, COT source change, Strength
+source/window change, new buckets/windows/thresholds, regime, risk overlay,
+MT5/live/app work, new evaluator/backtest engine, or final combined-system
+promotion was run.
 
 ## Next Requested Review
 
-Stop after Gate 58. The matrix is descriptive evidence only. Any combined
-directional rule suggested by the matrix must be confirmed in a later named gate
-before promotion, threshold optimization, risk work, execution work, MT5/live,
-or app work.
+Stop after Gate 58B. Do not start regimes in the same run. Next decision is
+human review: either accept the Strength-side weak-state veto as an alive but
+caveated combined-directional candidate for a later lock-confirmation gate, or
+retain COT and Strength as separate baselines and move to regimes without a
+combined directional lock. Do not choose by raw ADR alone.
 
 ## Current Ownership Model
 
