@@ -18,6 +18,9 @@ export const GATE57B_GATE_ID = "Gate 57B: friday-strength-15w-relative-lifecycle
 export const GATE57B_HYPOTHESIS_ID = "friday_strength_15w_relative_lifecycle";
 export const GATE57B_SIGNAL_VERSION = "friday_relative_strength_15w_v1";
 export const GATE57B_FEATURE_BUNDLE_ID = "gate57b_friday_relative_strength_15w_v1";
+export const GATE57C_GATE_ID = "Gate 57C: frs15-binary-lifecycle-rule-test";
+export const GATE57C_HYPOTHESIS_ID = "frs15_binary_lifecycle_rule_test";
+export const GATE57C_FEATURE_BUNDLE_ID = "gate57c_frs15_binary_lifecycle_rule_v1";
 export const GATE55E_PRICE_BUNDLE_ID = "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953";
 export const GATE57B_DEFAULT_FROM_WEEK = "2019-01-07T00:00:00.000Z";
 export const GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE = "2026-06-08T00:00:00.000Z";
@@ -40,9 +43,13 @@ export type Gate57BFrs15ManifestSignalId =
   | "compressed_selected"
   | "middle_selected"
   | "extreme_selected"
+  | "compressed_fade"
+  | "middle_fade"
+  | "extreme_fade"
   | "no_extreme_selected"
   | "persistent_selected"
-  | "flip_selected";
+  | "flip_selected"
+  | "binary_lifecycle_selected_else_extreme_fade";
 
 export type Gate57BFrs15BuildOptions = {
   fromWeek?: string;
@@ -50,6 +57,14 @@ export type Gate57BFrs15BuildOptions = {
   lookbackWeeks?: number;
   closeLookbackMinutes?: number;
   signalIds?: Gate57BFrs15ManifestSignalId[];
+  gateId?: string;
+  hypothesisId?: string;
+  featureBundleId?: string;
+  manifestIdPrefix?: string;
+  signalIdPrefix?: string;
+  rowIdPrefix?: string;
+  decisionScopePrefix?: string;
+  sourceContextIds?: string[];
 };
 
 export type Gate57BFrs15CurrencyScore = {
@@ -284,10 +299,13 @@ function candidateIncludes(signalId: Gate57BFrs15ManifestSignalId, decision: Gat
     case "parent_fade":
       return true;
     case "compressed_selected":
+    case "compressed_fade":
       return decision.lifecycleBucket === "compressed";
     case "middle_selected":
+    case "middle_fade":
       return decision.lifecycleBucket === "middle";
     case "extreme_selected":
+    case "extreme_fade":
       return decision.lifecycleBucket === "extreme";
     case "no_extreme_selected":
       return decision.lifecycleBucket !== "extreme";
@@ -295,17 +313,24 @@ function candidateIncludes(signalId: Gate57BFrs15ManifestSignalId, decision: Gat
       return decision.phaseBucket === "persistent";
     case "flip_selected":
       return decision.phaseBucket === "flip";
+    case "binary_lifecycle_selected_else_extreme_fade":
+      return true;
     default:
       return false;
   }
 }
 
-function candidateSide(signalId: Gate57BFrs15ManifestSignalId, side: ResearchDecisionSide) {
-  return signalId === "parent_fade" ? opposite(side) : side;
+function candidateSide(signalId: Gate57BFrs15ManifestSignalId, decision: Gate57BFrs15PairDecision) {
+  const shouldFade = signalId === "parent_fade" ||
+    signalId === "compressed_fade" ||
+    signalId === "middle_fade" ||
+    signalId === "extreme_fade" ||
+    (signalId === "binary_lifecycle_selected_else_extreme_fade" && decision.lifecycleBucket === "extreme");
+  return shouldFade ? opposite(decision.selectedSide) : decision.selectedSide;
 }
 
-function candidateScope(signalId: Gate57BFrs15ManifestSignalId) {
-  return `fx_28pair_weekly_friday_relative_strength_15w_${signalId}`;
+function candidateScope(signalId: Gate57BFrs15ManifestSignalId, decisionScopePrefix: string) {
+  return `${decisionScopePrefix}_${signalId}`;
 }
 
 function candidateDescription(signalId: Gate57BFrs15ManifestSignalId) {
@@ -320,50 +345,68 @@ function candidateDescription(signalId: Gate57BFrs15ManifestSignalId) {
       return "Middle 14 of 28 weekly absolute score-spread rows; selected side.";
     case "extreme_selected":
       return "Top 7 of 28 weekly absolute score-spread rows; selected side.";
+    case "compressed_fade":
+      return "Bottom 7 of 28 weekly absolute score-spread rows; opposite selected side.";
+    case "middle_fade":
+      return "Middle 14 of 28 weekly absolute score-spread rows; opposite selected side.";
+    case "extreme_fade":
+      return "Top 7 of 28 weekly absolute score-spread rows; opposite selected side.";
     case "no_extreme_selected":
       return "Parent selected rows excluding the top weekly absolute score-spread quartile.";
     case "persistent_selected":
       return "Rows whose selected side matches the previous supported Friday side for the same pair.";
     case "flip_selected":
       return "Rows whose selected side flips versus the previous supported Friday side for the same pair.";
+    case "binary_lifecycle_selected_else_extreme_fade":
+      return "Forced 28-row binary lifecycle rule: compressed and middle selected, extreme faded.";
     default:
       return signalId;
   }
 }
 
-function buildRows(signalId: Gate57BFrs15ManifestSignalId, decisions: Gate57BFrs15PairDecision[]): ResearchDecisionRow[] {
+function buildRows(
+  signalId: Gate57BFrs15ManifestSignalId,
+  decisions: Gate57BFrs15PairDecision[],
+  rowIdPrefix: string,
+  sourceGate: string,
+): ResearchDecisionRow[] {
   return decisions
     .filter((decision) => candidateIncludes(signalId, decision))
-    .map((decision) => ({
-      row_id: `gate57b_${signalId}_${decision.weekOpenUtc.slice(0, 10)}_${decision.symbol}`,
-      week_open_utc: decision.weekOpenUtc,
-      symbol: decision.symbol,
-      side: candidateSide(signalId, decision.selectedSide),
-      decision_timestamp_utc: decision.decisionTimestampUtc,
-      source_metadata: {
-        source_gate: GATE57B_GATE_ID,
-        source_signal: signalId,
-        selected_side: decision.selectedSide,
-        requested_friday_freeze_utc: decision.decisionTimestampUtc,
-        current_close_time_utc: decision.currentCloseTimeUtc,
-        lookback_friday_freeze_utc: decision.lookbackTimestampUtc,
-        lookback_close_time_utc: decision.lookbackCloseTimeUtc,
-        base_currency: decision.baseCurrency,
-        quote_currency: decision.quoteCurrency,
-        lifecycle_bucket: decision.lifecycleBucket,
-        phase_bucket: decision.phaseBucket,
-        tie_policy: decision.tiePolicy,
-      },
-      signal_scores: {
-        base_score: round(decision.baseScore),
-        quote_score: round(decision.quoteScore),
-        score_spread: round(decision.scoreSpread),
-        abs_score_spread: round(decision.absScoreSpread),
-        pair_log_return_pct_15w: round(decision.pairLogReturnPct),
-      },
-      bucket_id: `${decision.lifecycleBucket}_${decision.phaseBucket}`,
-      regime_id: null,
-    }));
+    .map((decision) => {
+      const side = candidateSide(signalId, decision);
+      const includeFinalSide = rowIdPrefix !== "gate57b";
+      return {
+        row_id: `${rowIdPrefix}_${signalId}_${decision.weekOpenUtc.slice(0, 10)}_${decision.symbol}`,
+        week_open_utc: decision.weekOpenUtc,
+        symbol: decision.symbol,
+        side,
+        decision_timestamp_utc: decision.decisionTimestampUtc,
+        source_metadata: {
+          source_gate: sourceGate,
+          source_signal: signalId,
+          selected_side: decision.selectedSide,
+          ...(includeFinalSide ? { final_side: side } : {}),
+          requested_friday_freeze_utc: decision.decisionTimestampUtc,
+          current_close_time_utc: decision.currentCloseTimeUtc,
+          lookback_friday_freeze_utc: decision.lookbackTimestampUtc,
+          lookback_close_time_utc: decision.lookbackCloseTimeUtc,
+          base_currency: decision.baseCurrency,
+          quote_currency: decision.quoteCurrency,
+          lifecycle_bucket: decision.lifecycleBucket,
+          phase_bucket: decision.phaseBucket,
+          tie_policy: decision.tiePolicy,
+        },
+        signal_scores: {
+          base_score: round(decision.baseScore),
+          quote_score: round(decision.quoteScore),
+          score_spread: round(decision.scoreSpread),
+          abs_score_spread: round(decision.absScoreSpread),
+          pair_log_return_pct_15w: round(decision.pairLogReturnPct),
+        },
+        bucket_id: `${decision.lifecycleBucket}_${decision.phaseBucket}`,
+        regime_id: null,
+      };
+    });
 }
 
 function buildConfigHash(options: {
@@ -372,13 +415,15 @@ function buildConfigHash(options: {
   toWeekExclusive: string;
   lookbackWeeks: number;
   closeLookbackMinutes: number;
+  gateId: string;
+  featureBundleId: string;
 }) {
   return sha256Stable({
-    gate_id: GATE57B_GATE_ID,
+    gate_id: options.gateId,
     signal_id: options.signalId,
     signal_version: GATE57B_SIGNAL_VERSION,
     price_bundle_id: GATE55E_PRICE_BUNDLE_ID,
-    feature_bundle_id: GATE57B_FEATURE_BUNDLE_ID,
+    feature_bundle_id: options.featureBundleId,
     from_week: options.fromWeek,
     to_week_exclusive: options.toWeekExclusive,
     lookback_weeks: options.lookbackWeeks,
@@ -406,7 +451,11 @@ function validateShape(
     rowsByWeek.set(row.week_open_utc, (rowsByWeek.get(row.week_open_utc) ?? 0) + 1);
   }
   const parentSignals: Gate57BFrs15ManifestSignalId[] = ["parent_selected", "parent_fade"];
-  const nonFullParentWeeks = parentSignals.includes(signalId)
+  const fullWeekSignals: Gate57BFrs15ManifestSignalId[] = [
+    ...parentSignals,
+    "binary_lifecycle_selected_else_extreme_fade",
+  ];
+  const nonFullParentWeeks = fullWeekSignals.includes(signalId)
     ? [...rowsByWeek.entries()].filter(([, count]) => count !== 28).map(([week]) => week)
     : [];
   return {
@@ -429,22 +478,27 @@ function buildManifest(options: {
   toWeekExclusive: string;
   lookbackWeeks: number;
   closeLookbackMinutes: number;
+  gateId: string;
+  hypothesisId: string;
+  featureBundleId: string;
+  manifestIdPrefix: string;
+  signalIdPrefix: string;
+  rowIdPrefix: string;
+  decisionScopePrefix: string;
+  sourceContextIds: string[];
 }) {
-  const rows = buildRows(options.signalId, options.decisions);
+  const rows = buildRows(options.signalId, options.decisions, options.rowIdPrefix, options.gateId);
   const manifest: ResearchDecisionManifest = {
-    manifest_id: `gate57b_friday_relative_strength_15w_${options.signalId}_manifest_v1`,
+    manifest_id: `${options.manifestIdPrefix}_${options.signalId}_manifest_v1`,
     manifest_version: RESEARCH_DECISION_MANIFEST_VERSION,
-    gate_id: GATE57B_GATE_ID,
-    hypothesis_id: GATE57B_HYPOTHESIS_ID,
-    signal_id: `gate57b_frs15_${options.signalId}`,
+    gate_id: options.gateId,
+    hypothesis_id: options.hypothesisId,
+    signal_id: `${options.signalIdPrefix}_${options.signalId}`,
     signal_version: GATE57B_SIGNAL_VERSION,
-    decision_scope: candidateScope(options.signalId),
+    decision_scope: candidateScope(options.signalId, options.decisionScopePrefix),
     price_bundle_id: GATE55E_PRICE_BUNDLE_ID,
-    feature_bundle_id: GATE57B_FEATURE_BUNDLE_ID,
-    source_context_ids: [
-      "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
-      "docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md",
-    ],
+    feature_bundle_id: options.featureBundleId,
+    source_context_ids: options.sourceContextIds,
     universe: {
       asset_class: "fx",
       symbols: FX_SYMBOLS,
@@ -454,7 +508,7 @@ function buildManifest(options: {
       to_week_open_utc: options.supportedWeeks.at(-1) ?? options.toWeekExclusive,
     },
     source_metadata: {
-      source_gate: GATE57B_GATE_ID,
+      source_gate: options.gateId,
       description: candidateDescription(options.signalId),
       price_bundle_id: GATE55E_PRICE_BUNDLE_ID,
       source_table: "canonical_price_bars",
@@ -615,6 +669,17 @@ export async function buildGate57BFridayRelativeStrength15wManifests(
     1,
     Math.floor(rawOptions.closeLookbackMinutes ?? CLOSE_LOOKBACK_MINUTES),
   );
+  const gateId = rawOptions.gateId ?? GATE57B_GATE_ID;
+  const hypothesisId = rawOptions.hypothesisId ?? GATE57B_HYPOTHESIS_ID;
+  const featureBundleId = rawOptions.featureBundleId ?? GATE57B_FEATURE_BUNDLE_ID;
+  const manifestIdPrefix = rawOptions.manifestIdPrefix ?? "gate57b_friday_relative_strength_15w";
+  const signalIdPrefix = rawOptions.signalIdPrefix ?? "gate57b_frs15";
+  const rowIdPrefix = rawOptions.rowIdPrefix ?? "gate57b";
+  const decisionScopePrefix = rawOptions.decisionScopePrefix ?? "fx_28pair_weekly_friday_relative_strength_15w";
+  const sourceContextIds = rawOptions.sourceContextIds ?? [
+    "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
+    "docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md",
+  ];
   const signalIds = rawOptions.signalIds && rawOptions.signalIds.length > 0
     ? [...new Set(rawOptions.signalIds)]
     : [
@@ -665,6 +730,14 @@ export async function buildGate57BFridayRelativeStrength15wManifests(
       toWeekExclusive,
       lookbackWeeks,
       closeLookbackMinutes,
+      gateId,
+      hypothesisId,
+      featureBundleId,
+      manifestIdPrefix,
+      signalIdPrefix,
+      rowIdPrefix,
+      decisionScopePrefix,
+      sourceContextIds,
     });
     return [signalId, manifest] as const;
   });

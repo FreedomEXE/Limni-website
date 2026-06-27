@@ -8,22 +8,26 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 57B: friday-strength-15w-relative-lifecycle.
+Gate 57C: frs15-binary-lifecycle-rule-test.
 
-Objective: test a Friday-only, 15-week, currency-isolated relative Strength
-source through Gate 57A0B warehouse aggregation, then decide whether it is a
-better institutional Strength algorithm or role-limited eligibility layer.
+Objective: use Gate 57B FRS15 lifecycle buckets diagnostically, then test
+whether Strength can collapse into a simple forced-28 weekly binary rule:
+`compressed + middle = selected`, `extreme = fade`.
 
-Status: warehouse-only evaluation is complete and stopped. The FRS15 full
-parent selected signal is alive but does not beat the existing Gate 55G/Gate
-56E selected Strength baseline as a broad directional layer. The useful finding
-is lifecycle/eligibility: `compressed_selected` has the strongest ADR Grid
-quality (`ADR 697.5492`, `DD -118.8741`, `R/DD 5.8680`, `PF 1.5518`, `2,611`
-rows), and `no_extreme_selected` keeps nearly all parent ADR while materially
-improving drawdown and PF. The extreme absolute-spread bucket is weak. No raw
-M1 ADR Grid simulation, no open confirmation, no engine/evaluator semantic
-changes, no COT changes, no regimes, no COT+Strength, no risk overlays, no
-MT5/live, and no app refactor work.
+Status: warehouse-only evaluation is complete and stopped. The forced-28 binary
+candidate is mechanically valid (`10,444` rows, `373` weeks, `28` rows/week,
+`0` duplicate week/symbol rows) and improves parent selected quality (`ADR
+1268.1378`, `DD -350.5031`, `R/DD 3.6181`, `PF 1.3035`) versus FRS15 parent
+selected (`ADR 1244.3749`, `DD -691.1957`, `R/DD 1.8003`, `PF 1.2442`).
+However, the required bucket-side diagnostic found a contradiction:
+`middle_fade` beats `middle_selected` (`ADR 643.9703`, `R/DD 2.0418`, `PF
+1.2311` versus `ADR 572.2976`, `R/DD 1.6164`, `PF 1.2028`). Gate 57C therefore
+passes as a diagnostic but does not lock the original binary rule. Durable
+receipt:
+`docs/research/gates/gate57/GATE57C_FRS15_BINARY_LIFECYCLE_RULE_TEST_2026-06-26.md`.
+No raw M1 ADR Grid simulation, no open confirmation, no engine/evaluator
+semantic changes, no COT changes, no regimes, no COT+Strength, no risk overlays,
+no MT5/live, and no app refactor work.
 
 ## Current Ownership Model
 

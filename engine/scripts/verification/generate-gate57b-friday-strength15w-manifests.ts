@@ -13,6 +13,9 @@ import {
   GATE57B_DEFAULT_FROM_WEEK,
   GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE,
   GATE57B_GATE_ID,
+  GATE57C_FEATURE_BUNDLE_ID,
+  GATE57C_GATE_ID,
+  GATE57C_HYPOTHESIS_ID,
   GATE57B_LOOKBACK_WEEKS,
   type Gate57BFrs15ManifestSignalId,
 } from "@engine/signals/strength/fridayRelativeStrength15wManifest";
@@ -26,6 +29,16 @@ type CliOptions = {
   outDir: string;
   receiptPath: string;
   summaryPath: string;
+  signalIds: Gate57BFrs15ManifestSignalId[];
+  gateId: string;
+  hypothesisId: string;
+  featureBundleId: string;
+  manifestIdPrefix: string;
+  signalIdPrefix: string;
+  rowIdPrefix: string;
+  decisionScopePrefix: string;
+  manifestFilePrefix: string;
+  receiptTitle: string;
 };
 
 const DEFAULT_SIGNAL_IDS: Gate57BFrs15ManifestSignalId[] = [
@@ -37,6 +50,19 @@ const DEFAULT_SIGNAL_IDS: Gate57BFrs15ManifestSignalId[] = [
   "no_extreme_selected",
   "persistent_selected",
   "flip_selected",
+];
+
+const GATE57C_SIGNAL_IDS: Gate57BFrs15ManifestSignalId[] = [
+  "compressed_selected",
+  "middle_selected",
+  "extreme_selected",
+  "compressed_fade",
+  "middle_fade",
+  "extreme_fade",
+  "binary_lifecycle_selected_else_extreme_fade",
+  "parent_selected",
+  "parent_fade",
+  "no_extreme_selected",
 ];
 
 function argValue(name: string): string | null {
@@ -56,21 +82,51 @@ function parsePositiveInteger(value: string | null, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
+function parseSignalIds(value: string | null, fallback: Gate57BFrs15ManifestSignalId[]) {
+  if (!value) return fallback;
+  const valid = new Set<Gate57BFrs15ManifestSignalId>([
+    "parent_selected",
+    "parent_fade",
+    "compressed_selected",
+    "middle_selected",
+    "extreme_selected",
+    "compressed_fade",
+    "middle_fade",
+    "extreme_fade",
+    "no_extreme_selected",
+    "persistent_selected",
+    "flip_selected",
+    "binary_lifecycle_selected_else_extreme_fade",
+  ]);
+  const parsed = value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  for (const signalId of parsed) {
+    if (!valid.has(signalId as Gate57BFrs15ManifestSignalId)) {
+      throw new Error(`Unknown Gate 57B/57C FRS15 signal id: ${signalId}`);
+    }
+  }
+  return [...new Set(parsed as Gate57BFrs15ManifestSignalId[])];
+}
+
 function helpText() {
   return `
-Generate Gate 57B Friday-only 15-week relative Strength lifecycle manifests.
+Generate Friday-only 15-week relative Strength lifecycle manifests for Gate 57B or Gate 57C.
 
 Common:
+  --preset=gate57b|gate57c          Default: gate57b
   --out-dir=<path>                  Default: engine/reports/gate57b-friday-strength15w/manifests
   --summary-path=<path>             Default: engine/reports/gate57b-friday-strength15w/manifest-summary.json
   --receipt-path=<path>             Default: docs/research/gates/gate57/receipts/GATE57B_FRIDAY_STRENGTH_15W_MANIFEST_BUILD_2026-06-26.md
+  --signals=<a,b,c>                 Optional signal id allow-list
   --from-week=<iso>                 Default: ${GATE57B_DEFAULT_FROM_WEEK}
   --to-week=<iso>                   Exclusive. Default: ${GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE}
   --lookback-weeks=<n>              Default: ${GATE57B_LOOKBACK_WEEKS}
   --close-lookback-minutes=<n>      Default: 2880
 
-Signals emitted:
+Default Gate 57B signals:
   ${DEFAULT_SIGNAL_IDS.join(", ")}
+
+Default Gate 57C signals:
+  ${GATE57C_SIGNAL_IDS.join(", ")}
 
 This command derives Friday-only frozen decision manifests. It does not score,
 run raw M1 ADR Grid simulation, use market-open confirmation, retune COT,
@@ -83,25 +139,61 @@ function parseCli(): CliOptions {
     console.log(helpText());
     process.exit(0);
   }
+  const preset = argValue("preset") ?? "gate57b";
+  if (preset !== "gate57b" && preset !== "gate57c") {
+    throw new Error(`Unsupported preset: ${preset}`);
+  }
+  const gate57c = preset === "gate57c";
+  const defaultOutDir = gate57c
+    ? path.join("engine", "reports", "gate57c-frs15-binary-lifecycle", "manifests")
+    : path.join("engine", "reports", "gate57b-friday-strength15w", "manifests");
+  const defaultSummaryPath = gate57c
+    ? path.join("engine", "reports", "gate57c-frs15-binary-lifecycle", "manifest-summary.json")
+    : path.join("engine", "reports", "gate57b-friday-strength15w", "manifest-summary.json");
+  const defaultReceiptPath = gate57c
+    ? path.join(
+        "docs",
+        "research",
+        "gates",
+        "gate57",
+        "receipts",
+        "GATE57C_FRS15_BINARY_LIFECYCLE_MANIFEST_BUILD_2026-06-26.md",
+      )
+    : path.join(
+        "docs",
+        "research",
+        "gates",
+        "gate57",
+        "receipts",
+        "GATE57B_FRIDAY_STRENGTH_15W_MANIFEST_BUILD_2026-06-26.md",
+      );
   return {
     fromWeek: argValue("from-week") ?? GATE57B_DEFAULT_FROM_WEEK,
     toWeekExclusive: argValue("to-week") ?? GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE,
     lookbackWeeks: parsePositiveInteger(argValue("lookback-weeks"), GATE57B_LOOKBACK_WEEKS),
     closeLookbackMinutes: parsePositiveInteger(argValue("close-lookback-minutes"), 2880),
-    outDir: argValue("out-dir") ?? path.join("engine", "reports", "gate57b-friday-strength15w", "manifests"),
-    summaryPath: argValue("summary-path") ?? path.join(
-      "engine",
-      "reports",
-      "gate57b-friday-strength15w",
-      "manifest-summary.json",
+    outDir: argValue("out-dir") ?? defaultOutDir,
+    summaryPath: argValue("summary-path") ?? defaultSummaryPath,
+    receiptPath: argValue("receipt-path") ?? defaultReceiptPath,
+    signalIds: parseSignalIds(argValue("signals"), gate57c ? GATE57C_SIGNAL_IDS : DEFAULT_SIGNAL_IDS),
+    gateId: argValue("gate-id") ?? (gate57c ? GATE57C_GATE_ID : GATE57B_GATE_ID),
+    hypothesisId: argValue("hypothesis-id") ?? (gate57c ? GATE57C_HYPOTHESIS_ID : "friday_strength_15w_relative_lifecycle"),
+    featureBundleId: argValue("feature-bundle-id") ?? (
+      gate57c ? GATE57C_FEATURE_BUNDLE_ID : "gate57b_friday_relative_strength_15w_v1"
     ),
-    receiptPath: argValue("receipt-path") ?? path.join(
-      "docs",
-      "research",
-      "gates",
-      "gate57",
-      "receipts",
-      "GATE57B_FRIDAY_STRENGTH_15W_MANIFEST_BUILD_2026-06-26.md",
+    manifestIdPrefix: argValue("manifest-id-prefix") ?? (
+      gate57c ? "gate57c_frs15_binary_lifecycle" : "gate57b_friday_relative_strength_15w"
+    ),
+    signalIdPrefix: argValue("signal-id-prefix") ?? (gate57c ? "gate57c_frs15" : "gate57b_frs15"),
+    rowIdPrefix: argValue("row-id-prefix") ?? (gate57c ? "gate57c" : "gate57b"),
+    decisionScopePrefix: argValue("decision-scope-prefix") ?? (
+      gate57c ? "fx_28pair_weekly_frs15_binary_lifecycle" : "fx_28pair_weekly_friday_relative_strength_15w"
+    ),
+    manifestFilePrefix: argValue("manifest-file-prefix") ?? (
+      gate57c ? "gate57c-frs15-binary-lifecycle" : "gate57b-friday-relative-strength-15w"
+    ),
+    receiptTitle: argValue("receipt-title") ?? (
+      gate57c ? "Gate 57C FRS15 Binary Lifecycle Manifest Build" : "Gate 57B Friday Strength 15W Manifest Build"
     ),
   };
 }
@@ -130,8 +222,8 @@ function dirtyTreeStatus() {
   }
 }
 
-function manifestFileName(signalId: Gate57BFrs15ManifestSignalId) {
-  return `gate57b-friday-relative-strength-15w-${signalId}.manifest.json`;
+function manifestFileName(signalId: Gate57BFrs15ManifestSignalId, prefix: string) {
+  return `${prefix}-${signalId}.manifest.json`;
 }
 
 function renderReceipt(options: {
@@ -155,13 +247,13 @@ function renderReceipt(options: {
 }) {
   const fullParentWeeks = options.source.shape.parent_selected.weeks;
   const lines = [
-    "# Gate 57B Friday Strength 15W Manifest Build",
+    `# ${options.cli.receiptTitle}`,
     "",
     `Generated: ${options.generatedAtUtc}`,
     "",
     "## Result",
     "",
-    `- Gate: ${GATE57B_GATE_ID}`,
+    `- Gate: ${options.cli.gateId}`,
     `- Price bundle ID: \`${GATE55E_PRICE_BUNDLE_ID}\``,
     `- Lookback weeks: \`${options.source.lookbackWeeks}\``,
     `- Friday close lookup: latest 1m bar close at or before Friday freeze within \`${options.source.closeLookbackMinutes}\` minutes`,
@@ -216,11 +308,12 @@ async function main() {
   const dirtyTree = dirtyTreeStatus();
   console.log(
     [
-      "Gate 57B Friday 15W manifest build",
+      cli.receiptTitle,
       `from=${cli.fromWeek}`,
       `toExclusive=${cli.toWeekExclusive}`,
       `lookbackWeeks=${cli.lookbackWeeks}`,
       `closeLookbackMinutes=${cli.closeLookbackMinutes}`,
+      `signals=${cli.signalIds.join(",")}`,
     ].join(" | "),
   );
   const build = await buildGate57BFridayRelativeStrength15wManifests({
@@ -228,7 +321,21 @@ async function main() {
     toWeekExclusive: cli.toWeekExclusive,
     lookbackWeeks: cli.lookbackWeeks,
     closeLookbackMinutes: cli.closeLookbackMinutes,
-    signalIds: DEFAULT_SIGNAL_IDS,
+    signalIds: cli.signalIds,
+    gateId: cli.gateId,
+    hypothesisId: cli.hypothesisId,
+    featureBundleId: cli.featureBundleId,
+    manifestIdPrefix: cli.manifestIdPrefix,
+    signalIdPrefix: cli.signalIdPrefix,
+    rowIdPrefix: cli.rowIdPrefix,
+    decisionScopePrefix: cli.decisionScopePrefix,
+    sourceContextIds: [
+      "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
+      "docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md",
+      ...(cli.gateId === GATE57C_GATE_ID
+        ? ["docs/research/gates/gate57/GATE57B_FRIDAY_STRENGTH_15W_RELATIVE_LIFECYCLE_2026-06-26.md"]
+        : []),
+    ],
   });
 
   await Promise.all([
@@ -247,9 +354,9 @@ async function main() {
     longRows: number;
     shortRows: number;
   }> = [];
-  for (const signalId of DEFAULT_SIGNAL_IDS) {
+  for (const signalId of cli.signalIds) {
     const manifest = build.manifests[signalId];
-    const target = path.join(outDir, manifestFileName(signalId));
+    const target = path.join(outDir, manifestFileName(signalId, cli.manifestFilePrefix));
     const text = `${JSON.stringify(manifest, null, 2)}\n`;
     await writeFile(target, text, "utf8");
     const shape = build.source.shape[signalId];
@@ -267,7 +374,7 @@ async function main() {
 
   const summary = {
     generated_at_utc: new Date().toISOString(),
-    gate_id: GATE57B_GATE_ID,
+    gate_id: cli.gateId,
     price_bundle_id: GATE55E_PRICE_BUNDLE_ID,
     lookback_weeks: build.source.lookbackWeeks,
     close_lookback_minutes: build.source.closeLookbackMinutes,
