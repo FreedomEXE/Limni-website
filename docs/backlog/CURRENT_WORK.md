@@ -8,61 +8,44 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 59: alpha-v1-atom-ledger-contract.
+Gate 60: regime-source-integrity.
 
-Objective: freeze the row-level Alpha v1 atom ledger contract for the current
-forced-28 COT parent + healthy Strength fallback engine, so later Regime work can
-join against a stable 28-pair shadow ledger instead of retuning Strength or
-rewriting the signal layer.
+Objective: verify whether macro source families are clean, point-in-time,
+active, deterministic, and eligible to support a future forced-28 Regime shadow
+signal against the frozen Gate 59 Alpha v1 atom ledger.
 
-Status: complete, stopped, committed, and pushed in `05dc4b7` (`Gate 59: freeze
-alpha v1 atom ledger`). Gate 59 used only existing Gate 58 matrix rows and Gate
-58C Candidate C decision rows. It did not run raw M1 simulation, write app code,
-change COT source logic, change Strength windows/source, add row vetoes, skip
-pair-weeks, add eligibility filters, exclude pairs/calendar periods, introduce
-Regime, risk overlays, execution changes, market-open confirmation, new
-thresholds, new buckets, or parameter searches. Validation:
-`10,444` atom ledger rows, `373` full weeks, `28` symbols per week, `0`
-duplicate matrix week/symbol rows, `0` duplicate Candidate C week/symbol rows,
-`0` missing Candidate C rows, `0` unexpected Candidate C rows, `0` final-side
-mismatch rows, `0` rule-source mismatch rows, `0` missing COT rows, `0` missing
-Strength rows, `0` missing long outcomes, `0` missing short outcomes, `0` price
-bundle mismatches, and `0` warehouse mismatches. Durable report:
-`docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md`.
-Tracked SHA identity:
-`docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.sha256.txt`.
+Status: complete and stopped locally in
+`docs/research/gates/gate60/GATE60_REGIME_SOURCE_INTEGRITY_2026-06-27.md`.
+Not committed or pushed yet.
 
-Verdict: `PASS_ALPHA_V1_ATOM_LEDGER_CONTRACT_FROZEN`. Alpha id:
-`ALPHA_V1_COT_PARENT_STRENGTH_HEALTHY_FALLBACK`. Schema version:
-`gate59_alpha_v1_atom_ledger_v1`. The atom ledger carries lineage, COT atoms,
-Strength atoms, arbitration state, ADR Grid and Weekly Hold long/short/chosen/
-opposite/baseline-delta outcomes, diagnostics, and a reserved null Regime
-placeholder namespace. Reconciliation: final side source counts are `3,067` COT
-rows and `7,377` Strength rows; ADR Grid chosen is `1648.250785`, candidate
-minus COT is `+230.728889`, candidate minus Gate 57E Strength is `+261.969473`;
-Weekly Hold chosen is `534.366308`, candidate minus COT is `+180.396944`, and
-candidate minus Gate 57E Strength is `+132.841546`.
+Verdict:
+`FAIL_FULL_FAMILY_SOURCE_ELIGIBILITY__PASS_RRP_ONLY_WITH_ALPHA_WEEK_ALIGNMENT_BLOCKER`.
 
-Governance: Gate 59 does not upgrade Alpha v1 into a finished trading system.
-Strength remains provisional signal debt; the PF caveat from Gate 58C remains
-real; no silent Strength retuning, removal, or replacement is allowed inside
-Regime, risk, execution, MT5/live, or app gates. Alpha layers force 28;
-risk/portfolio layers may later reduce expression, but the shadow ledger must
-retain all 28 signal outcomes.
+Read: only the `real_rate_pressure_attribution_v1` lane is ACTIVE for
+historical-backtest source reads. BPR remains blocked by Gate 52A source
+ambiguity/quarantine rules; nominal rates and CPI are clean SEALED source
+parents but not standalone ACTIVE families; valuation remains source-only /
+BUILDING with no promotion manifest or aggregate manifests.
 
-Authority nuance for the next agent: Alpha v1 is COT-parented as governance and
-fallback language, but row-level authority is Strength-heavy: `7,377 / 10,444`
-rows (`70.6%`) use Strength and `3,067 / 10,444` rows (`29.4%`) fall back to
-COT. Later Regime gates must test COT-only, Gate 57E Strength-only, Alpha v1
-overall, Alpha v1 Strength-authorized rows, and Alpha v1 COT-fallback rows
-separately before making Alpha v2 arbitration claims.
+Critical blocker: Gate 50 active RRP proof was against the older Gate 44
+`372`-week / `10,416` pair-week control. Exact `week_open_utc` overlap with the
+Gate 59 Alpha v1 ledger is only `357 / 373` weeks, or `9,996 / 10,444` Alpha
+rows. A future source-only gate must prove a deterministic Alpha v1 macro
+join-map or rebuild macro snapshots on the Alpha v1 week identity before any
+Regime shadow signal construction.
 
 ## Next Requested Review
 
-Stop after Gate 59. Do not proceed to Regime source integrity, Regime shadow
-signal construction, risk overlays, execution work, MT5/live, app work, or
-cleanup in the same run. The next permitted research gate is Gate 60: Regime
-source integrity, not Regime strategy arbitration.
+Stop after Gate 60 source-integrity receipt. Do not proceed to Regime shadow
+signal construction, final Regime long/short pair decisions, Alpha v2
+arbitration, risk overlays, execution work, MT5/live, app work, or cleanup in
+the same run.
+
+Next permitted gate: source-only Alpha v1 macro join-map proof. It must use the
+Gate 59 atom ledger denominator (`373` weeks, `10,444` rows, `28` symbols per
+week), do zero P&L, define deterministic macro week mapping, fail closed on
+missing/stale/quarantined/non-ACTIVE rows, and emit join-map/source-content
+hashes before any Regime signal work.
 
 ## Current Ownership Model
 
