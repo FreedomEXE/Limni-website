@@ -28,6 +28,7 @@
     "engine:gate60a:alpha-v1-macro-join-map": "tsx engine/scripts/verification/build-gate60a-alpha-v1-macro-join-map.ts",
     "engine:gate60b:regime-source-foundation": "tsx engine/scripts/verification/build-gate60b-regime-source-foundation.ts",
     "engine:gate60c:regime-source-atom-fill": "tsx engine/scripts/verification/build-gate60c-regime-source-atom-fill.ts",
+    "engine:gate60d:bpr-source-eligibility": "tsx engine/scripts/verification/build-gate60d-bpr-source-eligibility.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
