@@ -8,74 +8,83 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60E: bpr-value-source-contract-rescue.
+Gate 60F: bpr-carry-source-policy.
 
-Objective: investigate the `3,941` missing BPR `netShareOfGross` matrix rows
-against raw CFTC BPR artifacts and the frozen Gate 59 Alpha v1 denominator.
-This gate is BPR-only and source-contract-only.
+Objective: design and evaluate BPR futures-only carry-forward source-state
+policies for truly absent CFTC BPR futures rows while keeping raw BPR source
+facts immutable and visible. This gate is BPR-only and source-policy-only.
 
-Status: complete locally and ready for commit/push review on
+Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Verdict:
-`FAIL_CLOSED_BPR_VALUE_SOURCE_CONTRACT_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE`.
+`PASS_BPR_FUTURES_CARRY_POLICY_SOURCE_ONLY_COMPARISON__NO_REGIME_SIDE`.
 
-Gate 60E command:
-`npm run engine:gate60e:bpr-value-source-contract-rescue`.
+Gate 60F command:
+`npm run engine:gate60f:bpr-carry-source-policy`.
 
 Durable artifacts:
 
 - Report:
-  `docs/research/gates/gate60e/GATE60E_BPR_VALUE_SOURCE_CONTRACT_RESCUE_2026-06-27.md`
-- BPR value source contract v1:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-v1.contract.json`
-- BPR raw artifact value index:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-raw-artifact-value-index.rows.jsonl`
-- BPR source-observation value diagnostic:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-source-observation-value-diagnostic.rows.jsonl`
-- BPR value availability matrix:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-availability-matrix.rows.jsonl`
-- Separate late-2025 BPR publication timing rows:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-publication-timing-separate.rows.jsonl`
-- Fail-closed receipt and unresolved rows:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-fail-closed-receipt.json`
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-unresolved-rows.rows.jsonl`
+  `docs/research/gates/gate60f/GATE60F_BPR_CARRY_SOURCE_POLICY_2026-06-27.md`
+- BPR source policy contract v1:
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-source-policy-v1.contract.json`
+- NZD alias candidate impact rows:
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-nzd-alias-candidate-impact.rows.jsonl`
+- Futures carry policy comparison rows:
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-carry-policy-comparison.rows.jsonl`
+- Futures derived carried-state ledger:
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-derived-carried-state.rows.jsonl`
+- Futures policy fail-closed ledger:
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-policy-fail-closed.rows.jsonl`
 - Summary, query receipt, and SHA identity:
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.summary.json`
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.summary.md`
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.query-receipt.md`
-  `docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.sha256.txt`
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.json`
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.md`
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.query-receipt.md`
+  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.sha256.txt`
 
-Validation: `npm run engine:gate60e:bpr-value-source-contract-rescue` passed;
-targeted ESLint on the Gate 60E verifier passed.
+Validation: `npm run engine:gate60f:bpr-carry-source-policy` passed; targeted
+ESLint on the Gate 60F verifier passed.
 
 Denominator result: Gate 59 Alpha v1 remained `10,444` rows, `373` weeks, and
-`28` symbols/week with `0` duplicate input row keys and `0` duplicate input
-week-symbol rows. Gate 60E emitted `5,968` BPR value matrix rows, `1,472`
-source-observation diagnostic rows, `184` raw artifact index rows, and `0`
-duplicate output row keys.
+`28` symbols/week. Gate 60F evaluated `2,984` BPR futures required source rows
+and kept `2,984` BPR futures/options rows as shadow-only diagnostics with `0`
+duplicate input, futures, shadow, alias, carried-state, or fail-closed row keys.
 
-Source result: BPR remains fail-closed. Gate 60E found `3,941` BPR value-missing
-matrix rows: `2,786` futures/options contract-limitation rows, `1,150` rows
-truly absent from the contracted CFTC BPR futures report, and `5` NZD futures
-rows caused by one currency-label contract error (`CME NEW ZEALAND DOLLAR` vs
-current `NZ DOLLAR`). The `32` late-2025 publication timing source rows remain
-separate from the value-missing rows.
+Source-policy result: BPR v1 candidate direction is futures-only
+(`bpr_futures`). Futures/options remains separate shadow-only
+(`bpr_futures_and_options`). The NZD alias policy has candidate impact only:
+`5` rows for `CME NEW ZEALAND DOLLAR` alias evidence, with no source mutation.
+Carry-forward applies only within the same `cftc_bpr_futures` source contract
+and same currency, never across futures/options, timing-blocked rows, or source
+ambiguity.
+
+Row-count-only carry comparison:
+
+- `no_carry_fail_closed`: `1,805` raw present rows, `5` alias impact rows, `0`
+  carried rows, `1,179` still fail-closed rows, and `32` timing-blocked rows.
+- `carry_last_valid_clean_futures_45d`: `1,805` raw present rows, `5` alias
+  impact rows, `131` carried true-absence rows, `1,048` still fail-closed rows,
+  and `32` timing-blocked rows.
+- `carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d`:
+  `1,805` raw present rows, `5` alias impact rows, `422` carried true-absence
+  rows, `291` stale carried rows, `757` still fail-closed rows, and `32`
+  timing-blocked rows.
 
 Key hashes:
 
-- BPR value source contract hash:
-  `82B166D4595207AB4C5ED48CF515DDF71E86672F9CCFF6A1EDD569AE0C159208`
-- BPR value availability matrix hash:
-  `435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB`
-- BPR fail-closed receipt hash:
-  `6BF23B7D5A3BE508575992F5CA58CEC6C2B87A5A76A409E693612AEBB6E7DEA7`
-- BPR value source content invariant hash:
-  `713C0FB26DFB0DDB51268BED0F11F99CBFAB02ED18241E50CADA6FA5499C605B`
+- BPR source policy contract hash:
+  `3EDA36DB393C8924BA84BD57C1080BA647B6FF4F8FC633CD406B88917CFC2BC6`
+- BPR futures carry comparison hash:
+  `D7F9D23C6B8452DD7ACC5907CE54D11E267B2448DD73EF19F920FF63104C2E40`
+- BPR futures derived carried-state hash:
+  `DAC419527F56BF1CB033DE1FDB4DC1A22185491359300E3E7C3E0C803402501B`
+- BPR source policy content invariant hash:
+  `C64ACACA2BBAD498474BDA92FF4DB0838751CE6FC66CD5EB8968605BF70D0862`
 
 ## Next Requested Review
 
-Stop after Gate 60E. Do not proceed to BPR promotion, Regime atom transforms,
+Stop after Gate 60F. Do not proceed to BPR promotion, Regime atom transforms,
 broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L,
 attribution, Alpha v2, risk overlays, execution work, MT5/live, app work, COT
 changes, Strength changes, Alpha v1 changes, Gate 59 row changes, macro source

@@ -1,0 +1,21 @@
+gate_id Gate 60F: bpr-carry-source-policy
+command npm run engine:gate60f:bpr-carry-source-policy
+generated_at 2026-06-27T15:46:44.029Z
+git_commit 1d99cfa3ef8852879f9c68c0f5400862fca5fdb4
+verdict PASS_BPR_FUTURES_CARRY_POLICY_SOURCE_ONLY_COMPARISON__NO_REGIME_SIDE
+gate59_alpha_ledger_jsonl E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633 docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.rows.jsonl
+gate60e_sha_identity 517A5831D7A65EC5209C6A2E319DA9BC71B91D5D6B6E36703AEAC1554BF68A0D docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-source-contract-rescue.sha256.txt
+gate60e_value_matrix 435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-availability-matrix.rows.jsonl
+gate60e_raw_artifact_value_index B1425CBC78EDCAF6EF76F18DEA9BB4134343DE04D78BB4DD7609520A389684F8 docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-raw-artifact-value-index.rows.jsonl
+gate60e_source_observation_diagnostic B23D562619715F54B511D0EB0EA57CDF9A4B4EFE53014B805B2C70578A901273 docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-source-observation-value-diagnostic.rows.jsonl
+gate60e_unresolved_rows 0149AB8C7F6F5DC27A631F4E2D364CF23A0D92909B2A13087677A43410B6462E docs/research/gates/gate60e/artifacts/gate60e-bpr-value-source-contract-rescue/gate60e-bpr-value-unresolved-rows.rows.jsonl
+bpr_source_policy_contract 3EDA36DB393C8924BA84BD57C1080BA647B6FF4F8FC633CD406B88917CFC2BC6 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-source-policy-v1.contract.json
+bpr_nzd_alias_candidate_impact 68870ECE64F0E0A2F0A34DB3F55CA03667443D8FAF9307E51A1D485386AF93B6 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-nzd-alias-candidate-impact.rows.jsonl
+bpr_futures_carry_policy_comparison D7F9D23C6B8452DD7ACC5907CE54D11E267B2448DD73EF19F920FF63104C2E40 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-carry-policy-comparison.rows.jsonl
+bpr_futures_derived_carried_state DAC419527F56BF1CB033DE1FDB4DC1A22185491359300E3E7C3E0C803402501B docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-derived-carried-state.rows.jsonl
+bpr_futures_policy_fail_closed 2D4621EA10418DB6FA841B00C1F4D691259A1303DAB87E6A1F41B690EE1AA4E5 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-policy-fail-closed.rows.jsonl
+summary_json 72055A90688F5803D81ECC732C6402EFCFD799434DB612A58FA8D47A12068B11 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.json
+summary_md 7C0B99D1C13E9A0EC26BF6503AAEF2BB7B17DA83F8504362FA9A8F4814EED474 docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.md
+query_receipt 9142FBB5AB24E3E56E6A5A2FCADA9BFEF2F727B2B4D95485A842D92C19BF163A docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.query-receipt.md
+report 6704A89755A2C1A2B36EA307C3E26ADCC2ECA3C6E6187550E52B9D479B21A3BD docs/research/gates/gate60f/GATE60F_BPR_CARRY_SOURCE_POLICY_2026-06-27.md
+combined_hash D5CDE618400ACDF1B76FF92466B3462D57B28ADFD0FAF5536F59E04CF50B2486 content
