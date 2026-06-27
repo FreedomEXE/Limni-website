@@ -1,6 +1,6 @@
 # Gate 60B Regime Source Foundation
 
-Generated: 2026-06-27T08:00:38.413Z
+Generated: 2026-06-27T09:26:14.834Z
 
 ## Verdict
 
@@ -23,7 +23,7 @@ The registry separates raw source existence from promotion eligibility:
 
 - Alpha rows: `10,444`
 - Alpha weeks: `373`
-- Expected rows per week: `28`
+- Expected unique symbols per week: `28`
 - RRP shadow mapped rows: `10444 / 10444`
 - Full-family source eligible rows: `0 / 10444`
 
@@ -48,7 +48,7 @@ RRP shadow coverage is not a promoted Regime side. It only proves that the rate/
   "source_content_invariant_hash": "E40E207E27FB3461C66DCE07F30601010DB4CA01AC342AE3EA1530EA91695458",
   "source_rows_jsonl_sha256": "FA6F98660B554E679D174AE3709589CB4E6FB12949387779082CDC39622DCC2B",
   "join_map_hash": "AB85E93DCC62CC900ED48751ACD627DDBC142BB695DD92130BF2E566BE308554",
-  "summary_json_sha256": "2D30D75CCF4D937FAB6218FFF2BADD9B1419ECB1642E362109D5EB591B2037B6"
+  "summary_json_sha256": "BC105454AF2552B0667DB82BDF3BB64BF394352CB322CF2AB0D14FAFA1314627"
 }
 ```
 

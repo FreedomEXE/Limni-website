@@ -60,6 +60,16 @@ export function getPool(): Pool {
   return pool;
 }
 
+export async function closePoolIfInitialized(): Promise<void> {
+  if (poolResetPromise) {
+    await poolResetPromise;
+  }
+  if (!pool) return;
+  const existingPool = pool;
+  pool = null;
+  await existingPool.end();
+}
+
 /**
  * Execute a query and return rows
  */

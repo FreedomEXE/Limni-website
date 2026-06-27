@@ -1,6 +1,6 @@
 # Gate 60B Query/Rebuild Receipt
 
-Generated: 2026-06-27T08:00:38.413Z
+Generated: 2026-06-27T09:26:14.834Z
 
 ## Command
 
@@ -10,9 +10,9 @@ npm run engine:gate60b:regime-source-foundation
 
 ## Runtime
 
-- Git commit: `f8f04fc606cc39b873f4f045e9e0dbe87de16866`
+- Git commit: `627b4a746e7ccf5149225e5217934350934c3d39`
 - Dirty tree status at script start: `dirty`
-- Dirty files: `3`
+- Dirty files: `11`
 
 ## Source Datasets Included
 

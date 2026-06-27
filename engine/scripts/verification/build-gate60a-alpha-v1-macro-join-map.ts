@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { getPool, query } from "@database/db/client";
+import { closePoolIfInitialized, query } from "@database/db/client";
 import { sha256Stable, sha256Text } from "@engine/research/hash";
 
 const GATE_ID = "Gate 60A: alpha-v1-macro-join-map-proof";
@@ -16,7 +16,6 @@ const DEFAULT_REPORT_PATH = "docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_
 const EXPECTED_ROWS = 10_444;
 const EXPECTED_WEEKS = 373;
 const EXPECTED_SYMBOLS_PER_WEEK = 28;
-const EXPECTED_CURRENCIES_PER_PAIR = 2;
 const COMMAND = "npm run engine:gate60a:alpha-v1-macro-join-map";
 
 type SourceKey = "rrp" | "rate_parent" | "cpi_parent" | "bpr" | "valuation";
@@ -538,8 +537,6 @@ function aggregateCurrencyStatus(
   config: SourceConfig,
 ): CurrencySourceStatus {
   const rowCount = rows.length;
-  const coverageRows = rows.map((row) => row.coverage ?? {});
-  const flagRows = rows.map((row) => row.flags ?? {});
   const stale = rows.some((row) => (
     booleanFromJson(row.coverage?.isStale, false) ||
     booleanFromJson(row.coverage?.staleFlag, false) ||
@@ -1263,7 +1260,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await getPool().end().catch(() => {});
+    await closePoolIfInitialized().catch(() => {});
     if (process.exitCode && process.exitCode !== 0) {
       process.exit(process.exitCode);
     }

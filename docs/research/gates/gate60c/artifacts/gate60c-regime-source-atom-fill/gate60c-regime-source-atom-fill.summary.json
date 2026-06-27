@@ -1,0 +1,161 @@
+{
+  "gate_id": "Gate 60C: atomized-regime-source-foundation-fill",
+  "verdict": "PASS_SOURCE_ATOM_FILL_WITH_EXPLICIT_FAIL_CLOSED_ROWS__NO_REGIME_SIDE",
+  "command": "npm run engine:gate60c:regime-source-atom-fill",
+  "denominator": {
+    "input_rows": 10444,
+    "expected_input_rows": 10444,
+    "alpha_weeks": 373,
+    "expected_alpha_weeks": 373,
+    "expected_symbols_per_week": 28,
+    "symbols_per_week_histogram": {
+      "28": 373
+    },
+    "raw_rows_per_week_histogram": {
+      "28": 373
+    },
+    "full_weeks": 373,
+    "duplicate_input_row_keys": 0,
+    "duplicate_input_week_symbol_rows": 0,
+    "output_pair_join_rows": 10444,
+    "dropped_pair_rows": 0,
+    "duplicate_output_pair_row_keys": 0,
+    "currency_week_atom_rows": 23872,
+    "expected_currency_week_atom_rows": 23872,
+    "duplicate_currency_atom_row_keys": 0
+  },
+  "source_registry_version": "gate60c_regime_source_registry_v2",
+  "currency_atom_ledger_version": "gate60c_currency_week_source_atom_ledger_v1",
+  "pair_join_ledger_version": "gate60c_pair_week_source_atom_join_v1",
+  "rrp_formula_version": "rrp_percent_v1__nominal_3m_interbank_minus_cpi_yoy",
+  "valuation_gap_formula_version": null,
+  "atom_coverage": {
+    "report_version": "gate60c_missing_stale_quarantine_source_ambiguity_report_v1",
+    "currency_atom_rows": 23872,
+    "pair_join_rows": 10444,
+    "pair_rows_with_any_fail_closed_atom": 10444,
+    "by_atom": [
+      {
+        "atom_key": "nominal_rate_3m",
+        "source_state": "SEALED",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      },
+      {
+        "atom_key": "cpi_inflation_yoy",
+        "source_state": "SEALED",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      },
+      {
+        "atom_key": "rrp_derived",
+        "source_state": "BUILDING",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      },
+      {
+        "atom_key": "bpr_futures",
+        "source_state": "QUARANTINED",
+        "rows": 2984,
+        "filled_point_in_time_rows": 0,
+        "fail_closed_rows": 2984,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 2984,
+        "source_ambiguous_rows": 2984,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {
+          "gate52a_source_ambiguity_quarantine": 2984
+        }
+      },
+      {
+        "atom_key": "bpr_futures_and_options",
+        "source_state": "QUARANTINED",
+        "rows": 2984,
+        "filled_point_in_time_rows": 0,
+        "fail_closed_rows": 2984,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 2984,
+        "source_ambiguous_rows": 2984,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {
+          "gate52a_source_ambiguity_quarantine": 2984
+        }
+      },
+      {
+        "atom_key": "ppp",
+        "source_state": "BUILDING",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      },
+      {
+        "atom_key": "neer",
+        "source_state": "BUILDING",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      },
+      {
+        "atom_key": "reer",
+        "source_state": "BUILDING",
+        "rows": 2984,
+        "filled_point_in_time_rows": 2984,
+        "fail_closed_rows": 0,
+        "missing_rows": 0,
+        "stale_rows": 0,
+        "quarantined_rows": 0,
+        "source_ambiguous_rows": 0,
+        "formula_missing_rows": 0,
+        "fail_closed_reason_counts": {}
+      }
+    ]
+  },
+  "hashes": {
+    "gate59_alpha_ledger_jsonl_sha256": "E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633",
+    "source_registry_hash": "DADCE5C3036B676236EF8B1B2DB9E64928DF5C087F016553433BB419452ABB08",
+    "currency_week_atom_ledger_hash": "603C225C4919C7D4F3BC38BBD25C2CB5D24A83938142632CF2D16A8046150F27",
+    "pair_week_atom_join_ledger_hash": "167C13FA309FFE74A7C074DFEE4FA97A3AEFBBFDFEF73EDD13A5287925EC6DBD",
+    "source_artifact_hash_map_hash": "22A82BA75C6FAFE3B7AB579878B54C7458D6A71D3A1EEC9FF7616218C49296AB",
+    "raw_observation_hash_map_hash": "928FE19EA51C7A58A12EC30FBBBFBFE775E55E4164BFBCFF39805E5322272F4D",
+    "availability_event_hash_map_hash": "7F4D4FC7B555BC984D724FC8182F03E0FE5BC5381CCC19252E2A48E33FCF6B55",
+    "parent_derived_lineage_map_hash": "2AE483C5811874800381C1DF246BCB3B19E6BA37FF71222593A7A94E5EBEF9F4",
+    "availability_report_hash": "DAEB0CA0820AD7F965DCBB65FF8E1C475EFBA4DCEA933DCDF2EDE50F34F2179F",
+    "source_content_invariant_hash": "82EA24665706EEB6D13773E59EF68411924588F8730732B529F55D12B092FA57"
+  },
+  "stop_line": "No RRP promotion, Regime side, macro LONG/SHORT decisions, support/oppose/fade labels, P&L, attribution, Alpha v2, risk, execution, MT5/live, app work, COT/Strength/Alpha v1/Gate59 mutation, or macro source row mutation."
+}

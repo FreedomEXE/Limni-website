@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { getPool, query } from "@database/db/client";
+import { closePoolIfInitialized, query } from "@database/db/client";
 import { sha256Stable, sha256Text } from "@engine/research/hash";
 
 const GATE_ID = "Gate 60B: regime-source-foundation-parity";
@@ -24,8 +24,6 @@ const RRP_DATASET_ID = "220fd5fd-d017-4db2-bdde-524a3c664c72";
 const BPR_DATASET_ID = "01a3b789-2928-4886-a627-eaf5ae689790";
 const VALUATION_DATASET_ID = "97266ab2-6feb-4962-936b-a47d73c06684";
 
-const RATE_SOURCE_FAMILY_MANIFEST_ID = "rate_3m_market_family_v1";
-const CPI_SOURCE_FAMILY_MANIFEST_ID = "cpi_all_items_family_v1";
 const RRP_FEATURE_BUNDLE_ID = "real_rate_pressure_attribution_v1";
 const RRP_FORMULA_VERSION = "rrp_percent_v1__nominal_3m_interbank_minus_cpi_yoy";
 
@@ -276,15 +274,12 @@ function macroWeekIdFor(weekOpenUtc: string) {
   return `macro_week_${iso(weekOpenUtc).slice(0, 10)}`;
 }
 
-function compareIso(left: string | null, right: string | null) {
-  if (left === right) return 0;
-  if (left === null) return -1;
-  if (right === null) return 1;
-  return left.localeCompare(right);
-}
-
 function uniqueSorted(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => typeof value === "string" && value.length > 0))].sort();
+}
+
+function toRepoRelative(filePath: string) {
+  return path.relative(process.cwd(), path.resolve(process.cwd(), filePath)).replaceAll(path.sep, "/");
 }
 
 function countDuplicates(values: string[]) {
@@ -502,12 +497,22 @@ async function readWeeklySnapshots() {
 
 function denominatorProof(alphaRows: AtomLedgerRow[]) {
   const rowKeys = alphaRows.map((row) => row.row_key);
+  const weekSymbolKeys = alphaRows.map((row) => `${row.week.week_open_utc}|${row.instrument.symbol}`);
   const weeks = uniqueSorted(alphaRows.map((row) => row.week.week_open_utc));
-  const rowsPerWeek = new Map<string, number>();
+  const rawRowsPerWeek = new Map<string, number>();
+  const symbolsPerWeek = new Map<string, Set<string>>();
   for (const row of alphaRows) {
-    rowsPerWeek.set(row.week.week_open_utc, (rowsPerWeek.get(row.week.week_open_utc) ?? 0) + 1);
+    rawRowsPerWeek.set(row.week.week_open_utc, (rawRowsPerWeek.get(row.week.week_open_utc) ?? 0) + 1);
+    const symbols = symbolsPerWeek.get(row.week.week_open_utc) ?? new Set<string>();
+    symbols.add(row.instrument.symbol);
+    symbolsPerWeek.set(row.week.week_open_utc, symbols);
   }
-  const histogram = [...rowsPerWeek.values()].reduce<Record<string, number>>((counts, count) => {
+  const histogram = [...symbolsPerWeek.values()].reduce<Record<string, number>>((counts, symbols) => {
+    const count = symbols.size;
+    counts[String(count)] = (counts[String(count)] ?? 0) + 1;
+    return counts;
+  }, {});
+  const rawRowHistogram = [...rawRowsPerWeek.values()].reduce<Record<string, number>>((counts, count) => {
     counts[String(count)] = (counts[String(count)] ?? 0) + 1;
     return counts;
   }, {});
@@ -517,12 +522,19 @@ function denominatorProof(alphaRows: AtomLedgerRow[]) {
     alpha_weeks: weeks.length,
     expected_alpha_weeks: EXPECTED_WEEKS,
     expected_symbols_per_week: EXPECTED_SYMBOLS_PER_WEEK,
+    symbols_per_week_histogram: histogram,
     rows_per_week_histogram: histogram,
-    full_weeks: [...rowsPerWeek.entries()].filter(([, count]) => count === EXPECTED_SYMBOLS_PER_WEEK).length,
-    non_full_weeks: [...rowsPerWeek.entries()]
-      .filter(([, count]) => count !== EXPECTED_SYMBOLS_PER_WEEK)
-      .map(([week_open_utc, rows]) => ({ week_open_utc, rows })),
+    raw_rows_per_week_histogram: rawRowHistogram,
+    full_weeks: [...symbolsPerWeek.entries()].filter(([, symbols]) => symbols.size === EXPECTED_SYMBOLS_PER_WEEK).length,
+    non_full_weeks: [...symbolsPerWeek.entries()]
+      .filter(([, symbols]) => symbols.size !== EXPECTED_SYMBOLS_PER_WEEK)
+      .map(([week_open_utc, symbols]) => ({
+        week_open_utc,
+        symbol_count: symbols.size,
+        raw_rows: rawRowsPerWeek.get(week_open_utc) ?? 0,
+      })),
     duplicate_input_row_keys: countDuplicates(rowKeys),
+    duplicate_input_week_symbol_rows: countDuplicates(weekSymbolKeys),
   };
 }
 
@@ -638,11 +650,13 @@ function buildRegistry(
 
 function buildParentSnapshots(input: {
   alphaWeeks: string[];
+  expectedCurrencies: string[];
   observations: ObservationRecord[];
   dataset: DatasetRecord | null;
   sourceKey: "rate_parent" | "cpi_parent";
   valueKey: "ratePercent" | "inflationYoYPercent";
 }) {
+  assertSingleParentContractPerCurrency(input.observations, input.expectedCurrencies, input.sourceKey);
   const byContract = new Map<string, ObservationRecord[]>();
   for (const observation of input.observations) {
     const key = observationKey(observation);
@@ -729,6 +743,30 @@ function buildParentSnapshots(input: {
     }
   }
   return snapshots.sort((left, right) => left.row_key.localeCompare(right.row_key));
+}
+
+function assertSingleParentContractPerCurrency(
+  observations: ObservationRecord[],
+  expectedCurrencies: string[],
+  sourceKey: "rate_parent" | "cpi_parent",
+) {
+  const contractsByCurrency = new Map<string, Set<string>>();
+  for (const observation of observations) {
+    const contracts = contractsByCurrency.get(observation.currency) ?? new Set<string>();
+    contracts.add(`${observation.source_family}|${observation.source_id}|${observation.instrument}`);
+    contractsByCurrency.set(observation.currency, contracts);
+  }
+
+  const failures = expectedCurrencies.flatMap((currency) => {
+    const contracts = [...(contractsByCurrency.get(currency) ?? new Set<string>())].sort();
+    if (contracts.length === 1) return [];
+    return [{ currency, contract_count: contracts.length, contracts }];
+  });
+  if (failures.length > 0) {
+    throw new Error(
+      `Gate 60B ${sourceKey} parent source contract invariant failed: ${JSON.stringify(failures, null, 2)}`,
+    );
+  }
 }
 
 function buildRrpSnapshots(input: {
@@ -1049,7 +1087,7 @@ function renderReport(input: {
     "",
     "- Alpha rows: `10,444`",
     "- Alpha weeks: `373`",
-    "- Expected rows per week: `28`",
+    "- Expected unique symbols per week: `28`",
     `- RRP shadow mapped rows: \`${input.coverage.rrp_shadow.mapped_rows} / ${EXPECTED_ROWS}\``,
     `- Full-family source eligible rows: \`0 / ${EXPECTED_ROWS}\``,
     "",
@@ -1098,12 +1136,17 @@ async function main() {
     denominator.input_rows !== EXPECTED_ROWS ||
     denominator.alpha_weeks !== EXPECTED_WEEKS ||
     denominator.full_weeks !== EXPECTED_WEEKS ||
-    denominator.duplicate_input_row_keys !== 0
+    denominator.duplicate_input_row_keys !== 0 ||
+    denominator.duplicate_input_week_symbol_rows !== 0
   ) {
     throw new Error(`Gate 60B denominator invariant failed: ${JSON.stringify(denominator, null, 2)}`);
   }
 
   const alphaWeeks = uniqueSorted(alphaRows.map((row) => row.week.week_open_utc));
+  const alphaCurrencies = uniqueSorted(alphaRows.flatMap((row) => [
+    row.instrument.base_currency,
+    row.instrument.quote_currency,
+  ]));
   const datasets = await readDatasets();
   const manifests = await readManifests();
   const weeklySnapshots = await readWeeklySnapshots();
@@ -1145,6 +1188,7 @@ async function main() {
 
   const rateSnapshots = buildParentSnapshots({
     alphaWeeks,
+    expectedCurrencies: alphaCurrencies,
     observations: rateObservations,
     dataset: datasets.get(RATE_DATASET_ID) ?? null,
     sourceKey: "rate_parent",
@@ -1152,6 +1196,7 @@ async function main() {
   });
   const cpiSnapshots = buildParentSnapshots({
     alphaWeeks,
+    expectedCurrencies: alphaCurrencies,
     observations: cpiObservations,
     dataset: datasets.get(CPI_DATASET_ID) ?? null,
     sourceKey: "cpi_parent",
@@ -1279,15 +1324,15 @@ async function main() {
   const shaText = [
     "# Gate 60B Regime source foundation identity",
     "",
-    `${finalHashes.gate59_alpha_ledger_jsonl_sha256}  ${options.alphaLedgerPath}`,
+    `${finalHashes.gate59_alpha_ledger_jsonl_sha256}  ${toRepoRelative(options.alphaLedgerPath)}`,
     `${finalHashes.source_registry_hash}  source_registry_hash`,
     `${finalHashes.source_content_invariant_hash}  source_content_invariant_hash`,
-    `${finalHashes.source_rows_jsonl_sha256}  ${sourceRowsPath}`,
-    `${finalHashes.join_map_hash}  ${joinRowsPath}`,
-    `${finalHashes.summary_json_sha256}  ${summaryJsonPath}`,
-    `${finalHashes.summary_md_sha256}  ${summaryMdPath}`,
-    `${finalHashes.query_receipt_md_sha256}  ${receiptPath}`,
-    `${finalHashes.report_text_sha256}  ${options.reportPath}.report-text`,
+    `${finalHashes.source_rows_jsonl_sha256}  ${toRepoRelative(sourceRowsPath)}`,
+    `${finalHashes.join_map_hash}  ${toRepoRelative(joinRowsPath)}`,
+    `${finalHashes.summary_json_sha256}  ${toRepoRelative(summaryJsonPath)}`,
+    `${finalHashes.summary_md_sha256}  ${toRepoRelative(summaryMdPath)}`,
+    `${finalHashes.query_receipt_md_sha256}  ${toRepoRelative(receiptPath)}`,
+    `${finalHashes.report_text_sha256}  ${toRepoRelative(options.reportPath)}.report-text`,
     "",
     `combined_hash ${sha256Stable(finalHashes)}`,
     `rebuild_command ${COMMAND}`,
@@ -1321,5 +1366,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await getPool().end().catch(() => {});
+    await closePoolIfInitialized().catch(() => {});
   });

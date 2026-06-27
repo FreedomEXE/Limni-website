@@ -1,6 +1,6 @@
 # Gate 60B Regime Source Foundation Summary
 
-Generated: 2026-06-27T08:00:38.413Z
+Generated: 2026-06-27T09:26:14.834Z
 
 ## Verdict
 
@@ -15,12 +15,19 @@ Generated: 2026-06-27T08:00:38.413Z
   "alpha_weeks": 373,
   "expected_alpha_weeks": 373,
   "expected_symbols_per_week": 28,
+  "symbols_per_week_histogram": {
+    "28": 373
+  },
   "rows_per_week_histogram": {
+    "28": 373
+  },
+  "raw_rows_per_week_histogram": {
     "28": 373
   },
   "full_weeks": 373,
   "non_full_weeks": [],
   "duplicate_input_row_keys": 0,
+  "duplicate_input_week_symbol_rows": 0,
   "output_join_map_rows": 10444,
   "dropped_rows": 0,
   "duplicate_output_row_keys": 0,
@@ -47,6 +54,6 @@ Generated: 2026-06-27T08:00:38.413Z
   "source_content_invariant_hash": "E40E207E27FB3461C66DCE07F30601010DB4CA01AC342AE3EA1530EA91695458",
   "source_rows_jsonl_sha256": "FA6F98660B554E679D174AE3709589CB4E6FB12949387779082CDC39622DCC2B",
   "join_map_hash": "AB85E93DCC62CC900ED48751ACD627DDBC142BB695DD92130BF2E566BE308554",
-  "summary_json_sha256": "2D30D75CCF4D937FAB6218FFF2BADD9B1419ECB1642E362109D5EB591B2037B6"
+  "summary_json_sha256": "BC105454AF2552B0667DB82BDF3BB64BF394352CB322CF2AB0D14FAFA1314627"
 }
 ```

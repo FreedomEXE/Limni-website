@@ -8,12 +8,19 @@
     "alpha_weeks": 373,
     "expected_alpha_weeks": 373,
     "expected_symbols_per_week": 28,
+    "symbols_per_week_histogram": {
+      "28": 373
+    },
     "rows_per_week_histogram": {
+      "28": 373
+    },
+    "raw_rows_per_week_histogram": {
       "28": 373
     },
     "full_weeks": 373,
     "non_full_weeks": [],
     "duplicate_input_row_keys": 0,
+    "duplicate_input_week_symbol_rows": 0,
     "output_join_map_rows": 10444,
     "dropped_rows": 0,
     "duplicate_output_row_keys": 0,
