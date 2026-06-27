@@ -1,0 +1,250 @@
+{
+  "gate_id": "Gate 62: regime-cell-standalone-matrix",
+  "cohorts": [
+    {
+      "cohort_id": "bpr_promotion_eligible_pair_direction",
+      "description": "Rows where Gate 60H marks the BPR pair direction promotion eligible.",
+      "diagnostic_only": true,
+      "rows": 5113,
+      "weeks": 369,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 1860,
+        "QUOTE_CURRENCY": 3253
+      },
+      "adr_grid": {
+        "adr_sum": 665.675935,
+        "adr_mean": 0.130193,
+        "max_drawdown": -292.768688,
+        "r_over_drawdown": 2.273727,
+        "row_pf": 1.136496
+      },
+      "weekly_hold": {
+        "adr_sum": 203.369635,
+        "adr_mean": 0.039775,
+        "max_drawdown": -65.767043,
+        "r_over_drawdown": 3.092273,
+        "row_pf": 1.075481
+      },
+      "degraded_rows": 0,
+      "degradation_reason_counts": {}
+    },
+    {
+      "cohort_id": "bpr_source_direction_eligible",
+      "description": "Rows where Gate 60G source-direction eligibility is true regardless of promotion eligibility.",
+      "diagnostic_only": true,
+      "rows": 8043,
+      "weeks": 370,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 3100,
+        "QUOTE_CURRENCY": 4943
+      },
+      "adr_grid": {
+        "adr_sum": 711.478752,
+        "adr_mean": 0.088459,
+        "max_drawdown": -322.166963,
+        "r_over_drawdown": 2.208416,
+        "row_pf": 1.087523
+      },
+      "weekly_hold": {
+        "adr_sum": 252.135375,
+        "adr_mean": 0.031348,
+        "max_drawdown": -161.138816,
+        "r_over_drawdown": 1.564709,
+        "row_pf": 1.058556
+      },
+      "degraded_rows": 2930,
+      "degradation_reason_counts": {
+        "bpr_pair_direction_promotion_ineligible": 2930,
+        "bpr:base_currency_state_not_promotion_eligible": 1239,
+        "bpr:base:currency_state_carried_stale": 516,
+        "bpr:base:currency_state_timing_blocked_carry": 25,
+        "bpr:base:synthetic_usd_component_quality:carried_stale": 596,
+        "bpr:base:synthetic_usd_component_quality:timing_blocked_carry": 3,
+        "bpr:base:synthetic_usd_partial_component_coverage": 581,
+        "bpr:quote_currency_state_not_promotion_eligible": 2090,
+        "bpr:quote:currency_state_carried_stale": 1216,
+        "bpr:quote:currency_state_timing_blocked_carry": 24,
+        "bpr:quote:synthetic_usd_component_quality:carried_stale": 702,
+        "bpr:quote:synthetic_usd_component_quality:timing_blocked_carry": 4,
+        "bpr:quote:synthetic_usd_partial_component_coverage": 694
+      }
+    },
+    {
+      "cohort_id": "bpr_raw_or_fresh_only_both_sides",
+      "description": "Rows where both BPR currency states are raw_present or carried_fresh.",
+      "diagnostic_only": true,
+      "rows": 4427,
+      "weeks": 369,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 1605,
+        "QUOTE_CURRENCY": 2822
+      },
+      "adr_grid": {
+        "adr_sum": 616.523795,
+        "adr_mean": 0.139264,
+        "max_drawdown": -192.945985,
+        "r_over_drawdown": 3.195318,
+        "row_pf": 1.146453
+      },
+      "weekly_hold": {
+        "adr_sum": 155.958064,
+        "adr_mean": 0.035229,
+        "max_drawdown": -72.909281,
+        "r_over_drawdown": 2.13907,
+        "row_pf": 1.066628
+      },
+      "degraded_rows": 0,
+      "degradation_reason_counts": {}
+    },
+    {
+      "cohort_id": "bpr_excluding_stale_carried",
+      "description": "Rows excluding any carried_stale BPR side.",
+      "diagnostic_only": true,
+      "rows": 8487,
+      "weeks": 373,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 3661,
+        "QUOTE_CURRENCY": 4826
+      },
+      "adr_grid": {
+        "adr_sum": 955.487158,
+        "adr_mean": 0.112582,
+        "max_drawdown": -598.737059,
+        "r_over_drawdown": 1.595838,
+        "row_pf": 1.114246
+      },
+      "weekly_hold": {
+        "adr_sum": 257.734753,
+        "adr_mean": 0.030368,
+        "max_drawdown": -152.176448,
+        "r_over_drawdown": 1.693657,
+        "row_pf": 1.056952
+      },
+      "degraded_rows": 3374,
+      "degradation_reason_counts": {
+        "bpr_pair_direction_promotion_ineligible": 3374,
+        "bpr_pair_source_direction_ineligible": 2096,
+        "bpr:base_currency_state_not_promotion_eligible": 1691,
+        "bpr:base_currency_value_missing": 1037,
+        "bpr:base:currency_state_source_ambiguous": 20,
+        "bpr:base:currency_state_timing_blocked_carry": 25,
+        "bpr:base:currency_state_unresolved_no_prior": 1008,
+        "bpr:base:synthetic_usd_component_quality:carried_stale": 473,
+        "bpr:base:synthetic_usd_component_quality:timing_blocked_carry": 3,
+        "bpr:base:synthetic_usd_partial_component_coverage": 559,
+        "bpr:base:synthetic_usd_value_missing": 9,
+        "bpr:pair_direction_rule:deterministic_unresolved_currency_rank_fallback": 259,
+        "bpr:pair_direction_rule:single_numeric_state_degraded": 1837,
+        "bpr:quote_currency_state_not_promotion_eligible": 2326,
+        "bpr:quote_currency_value_missing": 1318,
+        "bpr:quote:currency_state_source_ambiguous": 10,
+        "bpr:quote:currency_state_timing_blocked_carry": 24,
+        "bpr:quote:currency_state_unresolved_no_prior": 1296,
+        "bpr:quote:synthetic_usd_component_quality:carried_stale": 776,
+        "bpr:quote:synthetic_usd_component_quality:timing_blocked_carry": 4,
+        "bpr:quote:synthetic_usd_partial_component_coverage": 848,
+        "bpr:quote:synthetic_usd_value_missing": 12
+      }
+    },
+    {
+      "cohort_id": "bpr_excluding_synthetic_usd",
+      "description": "Rows excluding any synthetic_usd BPR side.",
+      "diagnostic_only": true,
+      "rows": 7854,
+      "weeks": 373,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 3295,
+        "QUOTE_CURRENCY": 4559
+      },
+      "adr_grid": {
+        "adr_sum": 861.823461,
+        "adr_mean": 0.109731,
+        "max_drawdown": -403.877429,
+        "r_over_drawdown": 2.133874,
+        "row_pf": 1.109272
+      },
+      "weekly_hold": {
+        "adr_sum": 230.363972,
+        "adr_mean": 0.029331,
+        "max_drawdown": -103.495593,
+        "r_over_drawdown": 2.225834,
+        "row_pf": 1.05564
+      },
+      "degraded_rows": 3427,
+      "degradation_reason_counts": {
+        "bpr_pair_direction_promotion_ineligible": 3427,
+        "bpr_pair_source_direction_ineligible": 2045,
+        "bpr:base_currency_state_not_promotion_eligible": 1537,
+        "bpr:base_currency_value_missing": 952,
+        "bpr:base:currency_state_carried_stale": 564,
+        "bpr:base:currency_state_source_ambiguous": 15,
+        "bpr:base:currency_state_timing_blocked_carry": 21,
+        "bpr:base:currency_state_unresolved_no_prior": 928,
+        "bpr:base:synthetic_usd_partial_component_coverage": 9,
+        "bpr:base:synthetic_usd_value_missing": 9,
+        "bpr:pair_direction_rule:deterministic_unresolved_currency_rank_fallback": 259,
+        "bpr:pair_direction_rule:single_numeric_state_degraded": 1786,
+        "bpr:quote_currency_state_not_promotion_eligible": 2555,
+        "bpr:quote_currency_value_missing": 1352,
+        "bpr:quote:currency_state_carried_stale": 1182,
+        "bpr:quote:currency_state_source_ambiguous": 15,
+        "bpr:quote:currency_state_timing_blocked_carry": 21,
+        "bpr:quote:currency_state_unresolved_no_prior": 1325,
+        "bpr:quote:synthetic_usd_partial_component_coverage": 12,
+        "bpr:quote:synthetic_usd_value_missing": 12
+      }
+    },
+    {
+      "cohort_id": "bpr_promotion_ineligible_pair_direction",
+      "description": "Rows where BPR forced-28 direction exists but promotion eligibility is false.",
+      "diagnostic_only": true,
+      "rows": 5331,
+      "weeks": 275,
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 2543,
+        "QUOTE_CURRENCY": 2788
+      },
+      "adr_grid": {
+        "adr_sum": 251.017164,
+        "adr_mean": 0.047086,
+        "max_drawdown": -666.963698,
+        "r_over_drawdown": 0.376358,
+        "row_pf": 1.043677
+      },
+      "weekly_hold": {
+        "adr_sum": 79.471703,
+        "adr_mean": 0.014907,
+        "max_drawdown": -128.149761,
+        "r_over_drawdown": 0.620147,
+        "row_pf": 1.027473
+      },
+      "degraded_rows": 5331,
+      "degradation_reason_counts": {
+        "bpr_pair_direction_promotion_ineligible": 5331,
+        "bpr_pair_source_direction_ineligible": 2401,
+        "bpr:base_currency_state_not_promotion_eligible": 2699,
+        "bpr:base_currency_value_missing": 1190,
+        "bpr:base:currency_state_carried_stale": 668,
+        "bpr:base:currency_state_source_ambiguous": 20,
+        "bpr:base:currency_state_timing_blocked_carry": 25,
+        "bpr:base:currency_state_unresolved_no_prior": 1161,
+        "bpr:base:synthetic_usd_component_quality:carried_stale": 660,
+        "bpr:base:synthetic_usd_component_quality:timing_blocked_carry": 3,
+        "bpr:base:synthetic_usd_partial_component_coverage": 708,
+        "bpr:base:synthetic_usd_value_missing": 9,
+        "bpr:pair_direction_rule:deterministic_unresolved_currency_rank_fallback": 259,
+        "bpr:pair_direction_rule:single_numeric_state_degraded": 2142,
+        "bpr:quote_currency_state_not_promotion_eligible": 3951,
+        "bpr:quote_currency_value_missing": 1470,
+        "bpr:quote:currency_state_carried_stale": 1369,
+        "bpr:quote:currency_state_source_ambiguous": 15,
+        "bpr:quote:currency_state_timing_blocked_carry": 24,
+        "bpr:quote:currency_state_unresolved_no_prior": 1443,
+        "bpr:quote:synthetic_usd_component_quality:carried_stale": 880,
+        "bpr:quote:synthetic_usd_component_quality:timing_blocked_carry": 4,
+        "bpr:quote:synthetic_usd_partial_component_coverage": 944,
+        "bpr:quote:synthetic_usd_value_missing": 12
+      }
+    }
+  ]
+}

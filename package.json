@@ -35,6 +35,7 @@
     "engine:gate60h:bpr-source-direction-eligibility-classes": "tsx engine/scripts/verification/build-gate60h-bpr-source-direction-eligibility-classes.ts",
     "engine:gate61a:brain-architecture-refactor": "tsx engine/scripts/verification/build-gate61a-brain-architecture-refactor.ts",
     "engine:gate61b:universal-cell-atom-readiness": "tsx engine/scripts/verification/build-gate61b-universal-cell-atom-readiness.ts",
+    "engine:gate62:regime-cell-standalone-matrix": "tsx engine/scripts/verification/build-gate62-regime-cell-standalone-matrix.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

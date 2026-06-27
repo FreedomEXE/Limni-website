@@ -8,87 +8,91 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60H: bpr-source-direction-eligibility-classes.
+Gate 62: regime-cell-standalone-matrix.
 
-Objective: lock BPR source-direction eligibility classes after Gate 60G using
-Gate 60G artifacts only. This gate is BPR-only and eligibility-only.
+Objective: run a standalone Regime-cell discovery matrix after Gate 61A Brain
+architecture refactor and Gate 61B universal cell/atom readiness pass.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
-Verdict:
-`PASS_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_LOCKED__GATE60G_ARTIFACTS_ONLY__NO_REGIME_SIDE`.
+Verdicts:
 
-Gate 60H command:
-`npm run engine:gate60h:bpr-source-direction-eligibility-classes`.
+- Gate 61A:
+  `PASS_BRAIN_CELLS_ATOMS_NAMESPACE_LOCKED__BPR_NESTED_UNDER_REGIME__NO_EVIDENCE_MUTATION`
+- Gate 61B:
+  `PASS_UNIVERSAL_CELL_ATOM_READINESS__GATE59_DENOMINATOR_PRESERVED__REGIME_BPR_JOINABLE`
+- Gate 62:
+  `PASS_REGIME_CELL_STANDALONE_MATRIX__FORCED28_PRESERVED__NO_GATE63`
+
+Commands:
+
+- `npm run engine:gate61a:brain-architecture-refactor`
+- `npm run engine:gate61b:universal-cell-atom-readiness`
+- `npm run engine:gate62:regime-cell-standalone-matrix`
 
 Durable artifacts:
 
-- Report:
-  `docs/research/gates/gate60h/GATE60H_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_2026-06-27.md`
-- Eligibility decision table:
-  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-eligibility-decision-table.rows.jsonl`
-  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-eligibility-decision-table.md`
-- Eligibility summary:
-  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility-summary.json`
-- Query receipt and SHA identity:
-  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility.query-receipt.md`
-  `docs/research/gates/gate60h/artifacts/gate60h-bpr-source-direction-eligibility-classes/gate60h-bpr-source-direction-eligibility-classes.sha256.txt`
+- Gate 61A report:
+  `docs/research/gates/gate61a/GATE61A_BRAIN_ARCHITECTURE_REFACTOR_2026-06-27.md`
+- Gate 61A SHA identity:
+  `docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-refactor.sha256.txt`
+- Gate 61B report:
+  `docs/research/gates/gate61b/GATE61B_UNIVERSAL_CELL_ATOM_READINESS_AUDIT_2026-06-27.md`
+- Gate 61B SHA identity:
+  `docs/research/gates/gate61b/artifacts/gate61b-universal-cell-atom-readiness/gate61b-universal-cell-atom-readiness.sha256.txt`
+- Gate 62 report:
+  `docs/research/gates/gate62/GATE62_REGIME_CELL_STANDALONE_MATRIX_2026-06-27.md`
+- Gate 62 summary:
+  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-matrix.summary.json`
+- Gate 62 best-candidates review:
+  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-best-candidates.md`
+- Gate 62 SHA identity:
+  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-standalone-matrix.sha256.txt`
 
-Validation: `npm run engine:gate60h:bpr-source-direction-eligibility-classes`
-passed. Targeted full-config ESLint on the Gate 60H verifier timed out without
-diagnostics, matching the Gate 60G verifier lint behavior. `git diff --check`
-passed with only the existing Windows LF-to-CRLF warning on `package.json`.
+Gate 62 denominator result:
 
-Denominator result: Gate 60G pair rows remained `10,444` rows, `373` weeks, and
-`28` symbols/week. Gate 60H found `0` duplicate pair row keys, `0` neutral
-pair-direction rows, `0` non-`BASE_CURRENCY`/`QUOTE_CURRENCY` rows, `0`
-LONG/SHORT side violations, `0` Regime-side violations, `0` futures/options
-mixing rows, and `0` source mutation rows.
+- `10,444` Gate 59 rows
+- `373` weeks
+- `28` symbols/week
+- `0` duplicate week/symbol rows
+- `23` Regime-only candidates
+- `0` disqualified candidates
+- `0` COT atom usage
+- `0` Strength atom usage
+- `0` source mutation
 
-Eligibility result:
+Gate 62 key result surface:
 
-- Source-direction eligible pair rows: `8,043`
-- Source-direction ineligible pair rows: `2,401`
-- Promotion eligible pair-direction rows: `5,113`
-- Promotion ineligible pair-direction rows: `5,331`
-- `raw_present`: promotion eligible, `1,805` currency-state rows and `12,635`
-  pair-quality occurrences.
-- `carried_fresh`: promotion eligible, `131` currency-state rows and `917`
-  pair-quality occurrences.
-- `carried_stale`: shadow-only, `291` currency-state rows and `2,037`
-  pair-quality occurrences.
-- `synthetic_usd`: source-direction eligible with row-level promotion,
-  `370` currency-state rows and `2,590` pair-quality occurrences; `686`
-  occurrences are promotion eligible and `1,904` are shadow-only.
-- `single_numeric_state_degraded`: shadow-only, `2,142` pair-rule rows.
-- `deterministic_unresolved_currency_rank_fallback`: fail-closed, `259`
-  pair-rule rows.
-- `timing_blocked_carry`: shadow-only, `7` currency-state rows and `49`
-  pair-quality occurrences.
-- `unresolved_no_prior`: fail-closed, `375` currency-state rows and `2,625`
-  pair-quality occurrences.
-- `unresolved_source_ambiguous`: fail-closed, `5` currency-state rows and `35`
-  pair-quality occurrences.
+- Best by ADR Grid R/DD and total ADR: `rrp_derived_inverse`, ADR Grid
+  `2383.621777`, DD `-346.988306`, R/DD `6.869459`, PF `1.259757`,
+  Weekly Hold `688.316096`, `0` degraded rows, `2` negative ADR Grid years.
+- Other high totals: `ppp_inverse` ADR Grid `1930.004196`; `reer_inverse`
+  ADR Grid `1643.629493`; `full_regime_simple_composite_inverse` ADR Grid
+  `1551.056618`; `bpr_plus_valuation_bundle_inverse` ADR Grid `1451.571388`.
+- BPR row-complete matrix candidate remains quality-degraded by governance
+  flags where appropriate; BPR quality cohorts are diagnostic-only and separate
+  from row-complete candidate scoring.
 
 Key hashes:
 
-- Gate 60G pair-direction ledger input hash:
-  `15FCBCD62973A889423A328D5C32D72965EAC584034EE202070B636881CB7939`
-- Gate 60H decision table JSONL hash:
-  `9B271BD1186ADE5602C0393E17DDAA7A6C3DDF30E9416520AF4D191E64F24E8E`
-- Gate 60H summary JSON hash:
-  `D3D7ECF367D0DCC598A818CE230D610CE588CFFC08AB9BF2E919A685DB942DC5`
-- Gate 60H content invariant hash:
-  `9DAD0DFC6165355A0BF95FA3C08C69F47B6C04B298F87AE6F396DCDF9674B13D`
+- Gate 61A content invariant:
+  `9BB3676612549E2A1F0FC4D9FB4BCF03FF578710005E4C426B6C9EA2C135BD0C`
+- Gate 61B content invariant:
+  `638423B7A2CF5DC12C0C61EE853E43BA25CC124BDEC38EEE289B7FD7256436D3`
+- Gate 62 matrix rows JSONL:
+  `8F1E40D2F1E0266D5C4842EFBFD3C98C2DED4E710EAA0640A4E7E21A660B627C`
+- Gate 62 summary JSON:
+  `5CF902E7B9C6D1E79DC20FE89FBE707BA4DEF31EA443F440FF437ED3B26A137A`
+- Gate 62 content invariant:
+  `E89190F2B3D1B8E2C3F2982BFBA928F49CE95611463204DF17452E52436F5D4E`
 
 ## Next Requested Review
 
-Stop after Gate 60H. Do not proceed to BPR promotion, Regime atom transforms,
-broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L,
-attribution, Alpha v2, risk overlays, execution work, MT5/live, app work, COT
-changes, Strength changes, Alpha v1 changes, Gate 59 row changes, macro source
-row changes, or source mutation.
+Stop after Gate 62. Do not proceed to Gate 63, universal all-atom matrix,
+Alpha v2, final Body algorithm, risk layer, execution work, MT5/live, app work,
+COT retuning, Strength retuning, Gate 59 row changes, macro source row changes,
+or source mutation.
 
 ## Current Ownership Model
 
@@ -286,6 +290,20 @@ row changes, or source mutation.
 `docs/research/gates/gate60c/GATE60C_REGIME_SOURCE_ATOM_FILL_2026-06-27.md`
 
 `docs/research/gates/gate60d/GATE60D_BPR_SOURCE_ELIGIBILITY_2026-06-27.md`
+
+`docs/research/gates/gate60e/GATE60E_BPR_VALUE_SOURCE_CONTRACT_RESCUE_2026-06-27.md`
+
+`docs/research/gates/gate60f/GATE60F_BPR_CARRY_SOURCE_POLICY_2026-06-27.md`
+
+`docs/research/gates/gate60g/GATE60G_BPR_FORCED28_SOURCE_DIRECTION_LEDGER_2026-06-27.md`
+
+`docs/research/gates/gate60h/GATE60H_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_2026-06-27.md`
+
+`docs/research/gates/gate61a/GATE61A_BRAIN_ARCHITECTURE_REFACTOR_2026-06-27.md`
+
+`docs/research/gates/gate61b/GATE61B_UNIVERSAL_CELL_ATOM_READINESS_AUDIT_2026-06-27.md`
+
+`docs/research/gates/gate62/GATE62_REGIME_CELL_STANDALONE_MATRIX_2026-06-27.md`
 
 ## Forward Research Command
 
