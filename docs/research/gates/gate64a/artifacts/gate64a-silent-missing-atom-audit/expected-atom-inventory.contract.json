@@ -1,0 +1,685 @@
+{
+  "gate_id": "Gate 64A: silent-missing-atom-audit",
+  "brain_architecture": {
+    "version": "gate61a_brain_cells_atoms_v1",
+    "system": "Brain",
+    "cells": [
+      {
+        "cell_id": "cot",
+        "label": "COT cell",
+        "path": "engine/src/brain/cells/cot",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "cot_side",
+            "label": "locked COT side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_tei_spread",
+            "label": "base-minus-quote COT TEI spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_carry_flags",
+            "label": "COT carry-forward and carry-previous flags",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "cot_lifecycle_state",
+            "label": "COT report lifecycle state",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "strength",
+        "label": "Strength cell",
+        "path": "engine/src/brain/cells/strength",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "strength_gate57e_side",
+            "label": "locked Gate 57E Strength side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_score_spread",
+            "label": "FRS15 base-minus-quote score spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_lifecycle_bucket",
+            "label": "Strength lifecycle bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "strength_phase_bucket",
+            "label": "Strength phase bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "regime",
+        "label": "Regime cell",
+        "path": "engine/src/brain/cells/regime",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "bpr_futures",
+            "label": "BPR futures required source atom",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "bpr_futures_and_options",
+            "label": "BPR futures/options shadow source atom",
+            "status": "shadow",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "shadow_atom"
+          },
+          {
+            "atom_id": "bpr_futures_carried_state",
+            "label": "BPR futures carried source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "bpr_futures_synthetic_usd_state",
+            "label": "BPR synthetic USD source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "nominal_rate_3m",
+            "label": "nominal 3m interbank rate",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cpi_inflation_yoy",
+            "label": "CPI inflation year-over-year",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "rrp_derived",
+            "label": "real-rate-pressure derived atom",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "ppp",
+            "label": "purchasing power parity",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "neer",
+            "label": "nominal effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "reer",
+            "label": "real effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          }
+        ]
+      }
+    ],
+    "body": {
+      "path": "engine/src/brain/body",
+      "status": "reserved_for_later_integrated_forced28_decision_algorithm",
+      "may_reduce_expression_below_28": false
+    },
+    "risk": {
+      "path": "engine/src/brain/risk",
+      "status": "reserved_for_later_permission_layer",
+      "may_reduce_expression_below_28": true
+    },
+    "standing_rule": "Alpha-style cells and Regime-style cells preserve forced-28 weekly pair directions; only the later risk layer may reduce actual trade expression."
+  },
+  "expected_atoms": [
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_side",
+      "label": "locked COT direction side",
+      "atom_class": "direction_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.side"
+      },
+      "matrix_atom_keys": [
+        "cot_side"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_tei_spread",
+      "label": "COT base-minus-quote TEI spread",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.tei_spread"
+      },
+      "matrix_atom_keys": [
+        "cot_tei_spread"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_abs_tei_spread",
+      "label": "COT absolute TEI spread",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.abs_tei_spread"
+      },
+      "matrix_atom_keys": [
+        "cot_abs_tei_spread"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_tei_spread_bucket",
+      "label": "COT TEI spread bucket",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.tei_spread_bucket"
+      },
+      "matrix_atom_keys": [
+        "cot_tei_spread_bucket"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_tie_flag",
+      "label": "COT tie flag",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.tie_flag"
+      },
+      "matrix_atom_keys": [
+        "cot_tie_flag"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_carry_forward_flag",
+      "label": "COT carry-forward flag",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.carry_forward_flag"
+      },
+      "matrix_atom_keys": [
+        "cot_carry_forward_flag"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_carry_previous_flag",
+      "label": "COT carry-previous flag",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.carry_previous_flag"
+      },
+      "matrix_atom_keys": [
+        "cot_carry_previous_flag"
+      ]
+    },
+    {
+      "cell_id": "cot",
+      "atom_id": "cot_lifecycle_state",
+      "label": "COT report lifecycle state",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "cot_atoms.lifecycle_state"
+      },
+      "matrix_atom_keys": [
+        "cot_lifecycle_state"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57e_side",
+      "label": "locked Gate 57E Strength side",
+      "atom_class": "direction_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57e_side"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57e_side"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_parent_side",
+      "label": "Strength parent side",
+      "atom_class": "direction_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.parent_side"
+      },
+      "matrix_atom_keys": [
+        "strength_parent_side"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_score_spread",
+      "label": "Strength base-minus-quote score spread",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.score_spread"
+      },
+      "matrix_atom_keys": [
+        "strength_score_spread"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_abs_score_spread",
+      "label": "Strength absolute score spread",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.abs_score_spread"
+      },
+      "matrix_atom_keys": [
+        "strength_abs_score_spread"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_score_spread_bucket",
+      "label": "Strength score spread bucket",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.score_spread_bucket"
+      },
+      "matrix_atom_keys": [
+        "strength_score_spread_bucket"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_lifecycle_bucket",
+      "label": "Strength lifecycle bucket",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.lifecycle_bucket"
+      },
+      "matrix_atom_keys": [
+        "strength_lifecycle_bucket"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_phase_bucket",
+      "label": "Strength phase bucket",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.phase_bucket"
+      },
+      "matrix_atom_keys": [
+        "strength_phase_bucket"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_lifecycle_phase_key",
+      "label": "Strength lifecycle/phase key",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.lifecycle_phase_key"
+      },
+      "matrix_atom_keys": [
+        "strength_lifecycle_phase_key"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57c_side",
+      "label": "Strength Gate 57C rollback side",
+      "atom_class": "direction_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57c_side"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57c_side"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57c_action_label",
+      "label": "Strength Gate 57C selected/fade label",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57c_action_label"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57c_action_label"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57d_side",
+      "label": "Strength Gate 57D rollback side",
+      "atom_class": "direction_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57d_side"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57d_side"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57d_action_label",
+      "label": "Strength Gate 57D selected/fade label",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57d_action_label"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57d_action_label"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "atom_id": "strength_gate57e_action_label",
+      "label": "Strength Gate 57E selected/fade label",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 59 Alpha v1 atom ledger",
+      "emitted_probe": {
+        "kind": "alpha_path",
+        "path": "strength_atoms.gate57e_action_label"
+      },
+      "matrix_atom_keys": [
+        "strength_gate57e_action_label"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "bpr_futures",
+      "label": "BPR futures required source atom",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "bpr_futures"
+      },
+      "matrix_atom_keys": [
+        "bpr"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "bpr_futures_and_options",
+      "label": "BPR futures/options shadow source atom",
+      "atom_class": "shadow_only_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "bpr_futures_and_options"
+      },
+      "matrix_atom_keys": [
+        "bpr"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "bpr_futures_carried_state",
+      "label": "BPR futures carried source-quality state",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60G BPR pair-direction ledger",
+      "emitted_probe": {
+        "kind": "bpr_pair_field",
+        "field": "base_source_quality"
+      },
+      "matrix_atom_keys": [
+        "bpr"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "bpr_futures_synthetic_usd_state",
+      "label": "BPR synthetic USD source-quality state",
+      "atom_class": "source_quality_atom",
+      "expected_scope": "pair_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60G BPR pair-direction ledger",
+      "emitted_probe": {
+        "kind": "bpr_pair_field",
+        "field": "quote_source_quality"
+      },
+      "matrix_atom_keys": [
+        "bpr"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "nominal_rate_3m",
+      "label": "nominal 3m interbank rate",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "nominal_rate_3m"
+      },
+      "matrix_atom_keys": [
+        "nominal_rate_3m"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "cpi_inflation_yoy",
+      "label": "CPI year-over-year inflation",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "cpi_inflation_yoy"
+      },
+      "matrix_atom_keys": [
+        "cpi_inflation_yoy"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "rrp_derived",
+      "label": "real-rate pressure derived atom",
+      "atom_class": "derived_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "rrp_derived"
+      },
+      "matrix_atom_keys": [
+        "rrp_derived"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "ppp",
+      "label": "purchasing power parity raw valuation atom",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "ppp"
+      },
+      "matrix_atom_keys": [
+        "ppp"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "neer",
+      "label": "nominal effective exchange rate raw valuation atom",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "neer"
+      },
+      "matrix_atom_keys": [
+        "neer"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "reer",
+      "label": "real effective exchange rate raw valuation atom",
+      "atom_class": "raw_source_atom",
+      "expected_scope": "currency_week",
+      "required_before_body": true,
+      "expected_source": "Gate 60C currency-week source atom ledger",
+      "emitted_probe": {
+        "kind": "gate60c_atom",
+        "atom_key": "reer"
+      },
+      "matrix_atom_keys": [
+        "reer"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "atom_id": "valuation_gap",
+      "label": "valuation gap derived Regime atom",
+      "atom_class": "fail_closed_not_versioned_atom",
+      "expected_scope": "conceptual",
+      "required_before_body": true,
+      "expected_source": "Gate 60C derived valuation contract",
+      "emitted_probe": {
+        "kind": "conceptual_only",
+        "reason": "valuation_gap_formula_not_versioned"
+      },
+      "matrix_atom_keys": [
+        "valuation_gap"
+      ],
+      "fail_closed_reason": "valuation_gap_formula_not_versioned"
+    }
+  ]
+}

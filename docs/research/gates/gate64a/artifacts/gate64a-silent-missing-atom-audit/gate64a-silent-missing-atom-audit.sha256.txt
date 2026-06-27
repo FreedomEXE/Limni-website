@@ -1,0 +1,12 @@
+gate_id Gate 64A: silent-missing-atom-audit
+command npm run engine:gate64a:silent-missing-atom-audit
+generated_at 2026-06-27T20:57:44.324Z
+git_commit a6c7dc38e3967f38f30f604d813a5538d3e92b58
+verdict PASS_SILENT_MISSING_ATOM_AUDIT__VALUATION_GAP_REQUIRED_FOR_GATE64B__NO_OTHER_REQUIRED_MISSING
+expected_inventory D399CBDF8C0C265B4407B401BCF926F85683A49A5DF2E0F362A98ACE0BF0B9DA docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/expected-atom-inventory.contract.json
+emitted_map 73F85572FACAE6D37FB4A44423DB8DF6B772677F84E83F78874C434EF59F937D docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/emitted-vs-expected-atom-map.json
+missing_report A48868A63CF4342DFC7D275F1FC1232C399D2F3D85C7768A180487E1A775FD1D docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/missing-atom-report.json
+matrix_visibility C87829E13D8DC8016960BEA359E2C9C19323179F0E2F971984221647B5ABB465 docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/matrix-visibility-report.json
+summary_json C0D561490E22DDFCD2F12B0DF1AA9543FA60395EDCA3E0E2563DBCF025B527D2 docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.summary.json
+report AFEFB51CE33468A55F2BE3BE25FE5B2A728F9AF9F936014EF0A6CA4F8988955E docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md
+content_invariant D17E9E176CF1BCD6C243B39B80E060066507CEDFF8DE82C2FFFFE2961CDA9429 content
