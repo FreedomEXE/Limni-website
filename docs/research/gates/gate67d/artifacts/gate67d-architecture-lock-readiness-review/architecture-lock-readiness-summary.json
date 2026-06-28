@@ -1,0 +1,108 @@
+{
+  "gate_id": "Gate 67D: architecture-lock-readiness-review",
+  "command": "npm run engine:gate67d:architecture-lock-readiness-review",
+  "generated_at": "2026-06-28T02:53:38.316Z",
+  "git_commit": "320c328f918f089b80877bf4d8691076d0608f77",
+  "readiness_verdict": "READY_TO_LOCK_BRAIN_CELLS_ATOMS_ARCHITECTURE_AND_OPEN_EXITS_RISK_PREP",
+  "best_candidate_review": {
+    "best_adr_grid_rdd_candidate": {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01"
+    },
+    "best_adr_grid_pf_candidate": {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01"
+    },
+    "best_zero_negative_year_candidate": {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2276.283276,
+        "adr_mean": 0.217951,
+        "max_drawdown": -275.03638,
+        "r_over_drawdown": 8.276299,
+        "row_pf": 1.242893
+      },
+      "weekly_hold": {
+        "adr_sum": 732.900462,
+        "adr_mean": 0.070174,
+        "max_drawdown": -126.241709,
+        "r_over_drawdown": 5.805533,
+        "row_pf": 1.136683
+      },
+      "degraded_row_count": 1813,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 13.038684,
+        "weekly_hold_adr": 159.647828
+      },
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23"
+    },
+    "good_enough_to_become_default_in_next_gate": true,
+    "genuinely_new_candidate_count": 2
+  },
+  "blockers": [],
+  "recommended_next_gate": "Gate 68: Final forced-28 algorithm lock and exit/risk preparation",
+  "validation": {
+    "active_architecture_brain_cells_atoms": true,
+    "deprecated_layer_active_remaining_count": 0,
+    "final_algorithm_remains_unnamed": true,
+    "exactly_three_candidates_tested": true,
+    "forced28_preserved": true,
+    "final_promotion_started": false,
+    "exits_risk_started": false
+  },
+  "artifacts": {
+    "readinessSummary": "docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/architecture-lock-readiness-summary.json",
+    "blockersJson": "docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/architecture-lock-blockers.json",
+    "recommendedNextGate": "docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/recommended-next-gate.md",
+    "crossGateHashManifest": "docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/gate67d-cross-gate-hash-manifest.txt",
+    "shaIdentity": "docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/gate67d-sha256.txt",
+    "report": "docs/research/gates/gate67d/GATE67D_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md"
+  }
+}

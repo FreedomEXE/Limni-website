@@ -1,0 +1,6 @@
+gate_id Gate 67D: architecture-lock-readiness-review
+generated_at 2026-06-28T02:53:38.316Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+gate66b_contract docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/brain-architecture-v3.contract.json
+gate66d_active_search docs/research/gates/gate66d/artifacts/gate66d-architecture-terminology-verification/final-active-search-report.json
+gate67c_summary docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/gate67c-summary.json
