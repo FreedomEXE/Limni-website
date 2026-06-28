@@ -1,0 +1,34 @@
+{
+  "gate_id": "Gate 69C: exit-risk-interface-and-no-drift",
+  "contract_version": "gate69_exit_risk_consumption_contract_v0",
+  "allowed_consumers_after_future_gate": [
+    "exits",
+    "risk",
+    "portfolio expression"
+  ],
+  "allowed_inputs": [
+    "final forced-28 decision ledger rows",
+    "Candidate C shadow/canary ledger rows",
+    "reason codes",
+    "warning/fallback/veto flags",
+    "cell roles and quality states",
+    "capsule and ledger hashes"
+  ],
+  "forbidden_inputs_for_brain_mutation": [
+    "P&L attribution",
+    "future returns",
+    "portfolio drawdown",
+    "execution fill quality",
+    "live broker outcomes"
+  ],
+  "forbidden_consumer_actions": [
+    "change Brain decisions",
+    "drop pairs from Brain truth",
+    "rewrite final ledger",
+    "promote shadow canary silently",
+    "learn new weights"
+  ],
+  "risk_layer_may_reduce_actual_trade_expression_later": true,
+  "shadow_ledger_must_retain_all_28_signal_outcomes": true,
+  "brain_forced28_truth_mutable_by_risk": false
+}

@@ -1,0 +1,108 @@
+{
+  "gate_id": "Gate 69D: review-packet-completeness",
+  "checked_path_count": 25,
+  "missing_path_count": 0,
+  "missing_paths": [],
+  "checks": [
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/GATE69A_FINAL_FORCED28_LOCK_CONTRACT_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/candidate-c-shadow-canary-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/final-forced28-lock-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/gate69a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/gate69a-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/lock-decision-memo.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/lock-evidence.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/GATE69B_FINAL_FORCED28_LEDGER_REPLAY_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/candidate-c-shadow-canary-ledger.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-decision-ledger.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-ledger.manifest.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/gate69b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/gate69b-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/replay-determinism-proof.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/GATE69C_EXIT_RISK_INTERFACE_AND_NO_DRIFT_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/exit-risk-consumption-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/final-forced28-brain-output-interface.schema.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/forward-exit-risk-prep-handoff-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/gate69c-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/gate69c-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/no-drift-lock-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate69a\\artifacts\\gate69a-final-forced28-lock-contract\\gate69a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate69b\\artifacts\\gate69b-final-forced28-ledger-replay\\gate69b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate69c\\artifacts\\gate69c-exit-risk-interface-and-no-drift\\gate69c-sha256.txt",
+      "exists": true
+    }
+  ]
+}

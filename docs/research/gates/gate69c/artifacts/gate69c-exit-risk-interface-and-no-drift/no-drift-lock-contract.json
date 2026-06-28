@@ -1,0 +1,31 @@
+{
+  "gate_id": "Gate 69C: exit-risk-interface-and-no-drift",
+  "contract_version": "gate69_no_drift_lock_contract_v0",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "shadow_ledger_hash": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "immutable_surfaces": [
+    "Candidate B default lock contract",
+    "Candidate C shadow/canary contract",
+    "final forced-28 decision ledger",
+    "shadow canary ledger",
+    "Gate 68 frozen capsule binding"
+  ],
+  "append_only_surfaces": [
+    "future weekly Brain decisions",
+    "future shadow canary decisions",
+    "future closed-week observations",
+    "drift alerts"
+  ],
+  "forbidden_mutations": [
+    "historical ledger rewrite",
+    "silent learning",
+    "rolling retraining",
+    "source mutation",
+    "COT retuning",
+    "Strength retuning",
+    "Regime retuning",
+    "risk mutation of Brain truth"
+  ],
+  "any_change_requires_future_versioned_research_gate": true
+}

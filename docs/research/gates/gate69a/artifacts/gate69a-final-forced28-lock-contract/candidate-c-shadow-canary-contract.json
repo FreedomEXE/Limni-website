@@ -1,0 +1,38 @@
+{
+  "gate_id": "Gate 69A: final-forced28-lock-contract",
+  "contract_version": "gate69_shadow_canary_contract_v0",
+  "shadow_canary_id": "gate69_shadow_candidate_c_canary",
+  "shadow_candidate_id": "candidate_c_scenario_memory_guarded",
+  "shadow_role": "robustness comparator and zero-negative-year canary",
+  "default_decision_mutation_allowed": false,
+  "risk_or_execution_permission_allowed": false,
+  "future_use_requires_explicit_gate": true,
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "candidate_c_metrics": {
+    "candidate_id": "candidate_c_scenario_memory_guarded",
+    "family": "final_forced28_candidate",
+    "adr_grid": {
+      "adr_sum": 2276.283276,
+      "adr_mean": 0.217951,
+      "max_drawdown": -275.03638,
+      "r_over_drawdown": 8.276299,
+      "row_pf": 1.242893
+    },
+    "weekly_hold": {
+      "adr_sum": 732.900462,
+      "adr_mean": 0.070174,
+      "max_drawdown": -126.241709,
+      "r_over_drawdown": 5.805533,
+      "row_pf": 1.136683
+    },
+    "degraded_row_count": 1813,
+    "negative_adr_grid_years": 0,
+    "worst_adr_grid_year": {
+      "year": 2019,
+      "adr_grid_adr": 13.038684,
+      "weekly_hold_adr": 159.647828
+    },
+    "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23",
+    "mode_counts": null
+  }
+}

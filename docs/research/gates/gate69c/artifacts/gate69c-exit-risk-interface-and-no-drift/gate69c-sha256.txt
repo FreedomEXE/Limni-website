@@ -1,0 +1,10 @@
+gate_id Gate 69C: exit-risk-interface-and-no-drift
+command npm run engine:gate69c:exit-risk-interface-and-no-drift
+generated_at 2026-06-28T06:37:15.210Z
+git_commit 5caad98b226f45b063fe201c13700a940e905531
+brain_output_interface_schema A8017624FD946ACE3AA3E6F5631E6AA1DD21A57DAC4B024D4ACEEEADA1AF8BA5 docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/final-forced28-brain-output-interface.schema.json
+exit_risk_consumption_contract 68525436883433FE775B02CD285DE5B1CDD650C2B340C75CE11A0536615142CC docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/exit-risk-consumption-contract.json
+no_drift_lock_contract 69AFEBBAAA0C42533C6273EEBAFF3951BA66BAA1556FE011B6F88516311F6F52 docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/no-drift-lock-contract.json
+forward_handoff_contract AAF33227F93A5E2131FC15CFA74115B423D7F954AA3373F7FE7FC5FB142343A3 docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/forward-exit-risk-prep-handoff-contract.json
+summary_json 3D17A2018BA25C466AD8759A04005109378EA3646A083C5609A319FE040230C1 docs/research/gates/gate69c/artifacts/gate69c-exit-risk-interface-and-no-drift/gate69c-summary.json
+report 3080D6CE98E48798B89B237460DF6B5D092F457A01997528E87FC2426C3E543E docs/research/gates/gate69c/GATE69C_EXIT_RISK_INTERFACE_AND_NO_DRIFT_2026-06-28.md

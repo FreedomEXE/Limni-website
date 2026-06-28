@@ -1,0 +1,9 @@
+gate_id Gate 69D: review-packet-completeness
+command npm run engine:gate69d:review-packet-completeness
+generated_at 2026-06-28T06:37:23.293Z
+git_commit 5caad98b226f45b063fe201c13700a940e905531
+repo_visible_artifact_check 243E501BEB90A3CED817CDA27CE94E0C388365591155D38E3BF53EB0BF975D35 docs/research/gates/gate69d/artifacts/gate69d-review-packet-completeness/repo-visible-artifact-check.json
+pr_update_summary 56166FF05F7A6F6B06A3278EEE1583FC3FBD74BF48B5107E0213C015D685DDF3 docs/research/gates/gate69d/artifacts/gate69d-review-packet-completeness/pr-update-summary.json
+recovery_state_summary C4E5215CE108DEFBAF6C718CA9909494FDE2C852FAF6FA48AE44FBBA9EB04FA8 docs/research/gates/gate69d/artifacts/gate69d-review-packet-completeness/recovery-state-summary.json
+summary_json 991E46D1E26E2BF4B7E1C68FD77E061D8FB20FE4C98D3BE1F0E19CBC397C3AF6 docs/research/gates/gate69d/artifacts/gate69d-review-packet-completeness/gate69d-summary.json
+report CBD10ED8178BB8F694020122FA0649ED9E2500C0CF9B9DFC3B4D84815889955D docs/research/gates/gate69d/GATE69D_REVIEW_PACKET_COMPLETENESS_2026-06-28.md

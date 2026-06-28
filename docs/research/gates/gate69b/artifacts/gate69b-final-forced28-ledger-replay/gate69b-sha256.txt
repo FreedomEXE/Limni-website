@@ -1,0 +1,10 @@
+gate_id Gate 69B: final-forced28-ledger-replay
+command npm run engine:gate69b:final-forced28-ledger-replay
+generated_at 2026-06-28T06:37:07.675Z
+git_commit 5caad98b226f45b063fe201c13700a940e905531
+final_ledger_rows 92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03 docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-decision-ledger.rows.jsonl
+shadow_ledger_rows B21018FB5B5394277EB1C4A503BBC509E63EDDED90B1757BE63088515DFDE91E docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/candidate-c-shadow-canary-ledger.rows.jsonl
+replay_proof 49E374530E56DD2156DE4FF053AE00F4089E7D1A86AF94AAB89DB9C746EEC9E8 docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/replay-determinism-proof.json
+final_ledger_manifest E0CE9A9ED2F150254DA4D59D6006673ED6E890EF30C1A33C6AB3C272DCF14E32 docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-ledger.manifest.json
+summary_json 8D0518C6589D4A00C0FEB7DA572B230AB5837145A60A9333FBE1B686C68B049D docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/gate69b-summary.json
+report DEED0EF6090B25816408224A472F308D7F05FB1D6CDCAD25D7E45DF29A713F01 docs/research/gates/gate69b/GATE69B_FINAL_FORCED28_LEDGER_REPLAY_2026-06-28.md
