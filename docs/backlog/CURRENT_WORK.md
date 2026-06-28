@@ -15,7 +15,7 @@ Gate 65F, remove the deprecated architecture term from active surfaces, lock the
 Brain -> Cells -> Atoms v3 contract, preserve historical Gate 60-65 receipts,
 and stop after the terminology verification packet.
 
-Status: active on
+Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
@@ -26,8 +26,10 @@ Sub-gate verdicts:
   `PASS_DEPRECATED_ARCHITECTURE_TERM_INVENTORY__ACTIVE_CHANGES_SEPARATED_FROM_IMMUTABLE_HISTORY`
 - Gate 66B:
   `PASS_BRAIN_ARCHITECTURE_CONTRACT_V3__BRAIN_CELLS_ATOMS_ONLY__FINAL_ALGORITHM_UNNAMED`
-- Gate 66C: pending active reference migration verification.
-- Gate 66D: pending final terminology verification packet.
+- Gate 66C:
+  `PASS_ACTIVE_REFERENCE_MIGRATION__NO_DEPRECATED_ACTIVE_LAYER__HISTORY_SUPERSEDED_NOT_REWRITTEN`
+- Gate 66D:
+  `PASS_DEPRECATED_ARCHITECTURE_TERM_REMOVED_FROM_ACTIVE_SURFACE__BRAIN_CELLS_ATOMS_V3_LOCKED__FINAL_ALGORITHM_UNNAMED`
 
 Commands:
 
@@ -46,6 +48,16 @@ Durable artifacts:
   `docs/research/gates/gate66b/GATE66B_BRAIN_ARCHITECTURE_CONTRACT_V3_NO_DEPRECATED_LAYER_2026-06-27.md`
 - Gate 66B v3 contract:
   `docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/brain-architecture-v3.contract.json`
+- Gate 66C report:
+  `docs/research/gates/gate66c/GATE66C_ACTIVE_REFERENCE_MIGRATION_NO_DEPRECATED_LAYER_2026-06-27.md`
+- Gate 66C supersession manifest:
+  `docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/deprecated-term-supersession-manifest.md`
+- Gate 66D report:
+  `docs/research/gates/gate66d/GATE66D_ARCHITECTURE_TERMINOLOGY_VERIFICATION_2026-06-27.md`
+- Gate 66D final active search:
+  `docs/research/gates/gate66d/artifacts/gate66d-architecture-terminology-verification/final-active-search-report.json`
+- Gate 66D next gate recommendation:
+  `docs/research/gates/gate66d/artifacts/gate66d-architecture-terminology-verification/next-gate-recommendation.md`
 
 Key findings:
 
@@ -64,6 +76,8 @@ Validation passed:
 
 - Gate 66A command
 - Gate 66B command
+- Gate 66C command
+- Gate 66D command
 
 ## Next Requested Review
 

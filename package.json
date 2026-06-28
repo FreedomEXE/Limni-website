@@ -49,6 +49,7 @@
     "engine:gate66a:deprecated-architecture-term-inventory": "tsx engine/scripts/verification/build-gate66a-deprecated-architecture-term-inventory.ts",
     "engine:gate66b:brain-architecture-contract-v3": "tsx engine/scripts/verification/build-gate66b-brain-architecture-contract-v3.ts",
     "engine:gate66c:active-reference-migration": "tsx engine/scripts/verification/build-gate66c-active-reference-migration.ts",
+    "engine:gate66d:architecture-terminology-verification": "tsx engine/scripts/verification/build-gate66d-architecture-terminology-verification.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
