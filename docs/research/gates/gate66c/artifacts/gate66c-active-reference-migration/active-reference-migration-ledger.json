@@ -1,0 +1,37 @@
+{
+  "gate_id": "Gate 66C: active-reference-migration",
+  "changes": [
+    {
+      "path": "engine/src/brain/architecture.ts",
+      "change": "Active contract now exposes Brain -> Cells -> Atoms v3; final algorithm remains unnamed."
+    },
+    {
+      "path": "engine/src/brain/README.md",
+      "change": "Active architecture prose migrated to final forced-28 algorithm and Risk expression boundary."
+    },
+    {
+      "path": "engine/src/brain/body/*",
+      "change": "Deprecated active placeholder namespace removed; no active imports remained."
+    },
+    {
+      "path": "engine/scripts/verification/gate65-utils.ts",
+      "change": "Active policy helper key migrated to allowed_final_algorithm_use with compatibility reader for old artifacts."
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65*.ts",
+      "change": "Active Gate 65 builder language migrated to neutral final forced-28 algorithm wording."
+    },
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "change": "Current active checklist migrated to Gate 66 terminology."
+    },
+    {
+      "path": "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+      "change": "Hot recovery state migrated to Gate 66 terminology."
+    },
+    {
+      "path": "PR #2 body/title",
+      "change": "Marked for update after Gate 66D final verification."
+    }
+  ]
+}

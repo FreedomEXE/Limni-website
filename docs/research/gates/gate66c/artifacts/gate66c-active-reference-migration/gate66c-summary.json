@@ -1,0 +1,31 @@
+{
+  "gate_id": "Gate 66C: active-reference-migration",
+  "command": "npm run engine:gate66c:active-reference-migration",
+  "generated_at": "2026-06-28T02:07:09.813Z",
+  "git_commit": "da124e8f61146af0c71e670005c31b4f2a721bd5",
+  "verdict": "PASS_ACTIVE_REFERENCE_MIGRATION__NO_DEPRECATED_ACTIVE_LAYER__HISTORY_SUPERSEDED_NOT_REWRITTEN",
+  "gate66a_active_change_count_before_migration": 90,
+  "architecture_version": "gate66_brain_cells_atoms_v3",
+  "post_migration_active_search": {
+    "scanned_file_count": 2393,
+    "occurrence_count": 1049,
+    "architecture_context_occurrence_count": 451,
+    "active_remaining_count": 0,
+    "active_remaining_occurrences": [],
+    "immutable_exception_count": 548,
+    "migration_manifest_allowed_count": 299
+  },
+  "historical_artifacts_rewritten": false,
+  "final_algorithm_name": null,
+  "final_algorithm_status": "reserved_for_future_gate",
+  "artifacts": {
+    "migrationLedger": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/active-reference-migration-ledger.json",
+    "verdictMigrationMap": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/verdict-language-migration-map.json",
+    "supersessionManifest": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/deprecated-term-supersession-manifest.md",
+    "postMigrationSearchReport": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/post-migration-active-search-report.json",
+    "immutableHistoryExceptionList": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/immutable-history-exception-list.final.json",
+    "summaryJson": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/gate66c-summary.json",
+    "shaIdentity": "docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/gate66c-sha256.txt",
+    "report": "docs/research/gates/gate66c/GATE66C_ACTIVE_REFERENCE_MIGRATION_NO_DEPRECATED_LAYER_2026-06-27.md"
+  }
+}

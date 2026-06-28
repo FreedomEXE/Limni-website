@@ -71,7 +71,7 @@ function renderReport(summary: Record<string, unknown>) {
     "## Scope",
     "",
     "- Emits atom policy roles only.",
-    "- No final Body direction is emitted.",
+    "- No final forced-28 algorithm direction is emitted.",
     "- No outcome fields are used for policy-role assignment.",
     "- Forced-28 pair-week denominator is preserved.",
     "",
@@ -102,7 +102,7 @@ function renderReport(summary: Record<string, unknown>) {
     "",
     "## Stop Line",
     "",
-    "Gate 65C stops at policy ledger diagnostics. Body design, Alpha v2, risk, execution, app/runtime, and optimization remain closed.",
+    "Gate 65C stops at policy ledger diagnostics. Final forced-28 algorithm design, Alpha v2, risk, execution, app/runtime, and optimization remain closed.",
     "",
   ].join("\n");
 }
@@ -132,7 +132,7 @@ async function main() {
     required_policy_atoms: REQUIRED_POLICY_ATOMS,
     required_policy_atom_count: REQUIRED_POLICY_ATOMS.length,
     role_counts: countBy(policyRows, (row) => row.policy_role),
-    allowed_body_use_counts: countBy(policyRows, (row) => row.allowed_body_use),
+    allowed_final_algorithm_use_counts: countBy(policyRows, (row) => row.allowed_final_algorithm_use),
     role_counts_by_atom: roleCountsByAtom,
     role_counts_by_cell: Object.entries(countBy(policyRows, (row) => `${row.cell_id}|${row.policy_role}`)).map(([key, rows]) => {
       const [cell_id, policy_role] = key.split("|");
@@ -170,9 +170,9 @@ async function main() {
       "Gate 60C raw PPP/NEER/REER/RRP point-in-time atom rows",
     ],
     no_outcome_fields_used_for_policy_assignment: true,
-    body_direction_emitted: false,
+    final_algorithm_direction_emitted: false,
     policy_roles: ["follow", "fade", "confirm_only", "contradiction_warning", "tie_breaker", "context_only", "source_quality_warning", "abstain_from_vote", "fail_closed", "blocked"],
-    allowed_body_use: ["direct_vote", "confirm_only", "tie_breaker", "context_only", "quality_gate", "blocked"],
+    allowed_final_algorithm_use: ["direct_vote", "confirm_only", "tie_breaker", "context_only", "quality_gate", "blocked"],
     required_policy_atoms: REQUIRED_POLICY_ATOMS,
   };
   const pass = denominator.forced28_preserved && missingRequiredAtoms.length === 0 && policyRows.length === EXPECTED_ROWS * REQUIRED_POLICY_ATOMS.length;
@@ -190,7 +190,7 @@ async function main() {
     command: COMMAND,
     generated_at: new Date().toISOString(),
     git_commit: gitCommit(),
-    verdict: pass ? "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK" : "FAIL_ATOM_POLICY_LEDGER_V0_BOUNDARY_OR_DENOMINATOR",
+    verdict: pass ? "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_FINAL_ALGORITHM_DIRECTION__NO_OUTCOME_POLICY_LEAK" : "FAIL_ATOM_POLICY_LEDGER_V0_BOUNDARY_OR_DENOMINATOR",
     denominator,
     policy_row_count: policyRows.length,
     required_policy_atoms: REQUIRED_POLICY_ATOMS,
@@ -199,7 +199,7 @@ async function main() {
     validation: {
       forced28_pair_week_denominator_preserved: denominator.forced28_preserved,
       every_required_policy_atom_has_rows: missingRequiredAtoms.length === 0,
-      body_direction_emitted: false,
+      final_algorithm_direction_emitted: false,
       outcome_data_used_for_policy_assignment: false,
       source_mutation_rows: 0,
     },

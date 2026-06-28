@@ -18,6 +18,7 @@ import {
   ScenarioMemoryRow,
   compactCandidate,
   directionFromSide,
+  finalAlgorithmUse,
   gitCommit,
   loadAlphaRows,
   loadGate64cRows,
@@ -115,7 +116,7 @@ function renderReport(summary: Record<string, unknown>, rows: CandidateSummary[]
     "- Discovery-only unified Brain router matrix.",
     "- Forced-28 rows preserved; no pair/date exclusions.",
     "- Router families are fixed and predeclared.",
-    "- No final Body lock, Alpha v2 promotion, risk, learned weights, or threshold optimization.",
+    "- No final forced-28 algorithm lock, Alpha v2 promotion, risk, learned weights, or threshold optimization.",
     "",
     "## Best Router Candidates By ADR Grid R/DD",
     "",
@@ -142,7 +143,7 @@ function renderReport(summary: Record<string, unknown>, rows: CandidateSummary[]
     "",
     "## Stop Line",
     "",
-    "Gate 65E stops at discovery-only router evidence. It does not emit final Body decisions or promote Alpha v2.",
+    "Gate 65E stops at discovery-only router evidence. It does not emit final forced-28 algorithm decisions or promote Alpha v2.",
     "",
   ].join("\n");
 }
@@ -154,7 +155,7 @@ function bestCandidatesMarkdown(rows: CandidateSummary[]) {
     ["Best Zero-Negative-Year", [...rows].filter((row) => row.negative_adr_grid_years === 0).sort((left, right) => (right.adr_grid.r_over_drawdown ?? -999) - (left.adr_grid.r_over_drawdown ?? -999))],
     ["Best Weekly Hold PF", [...rows].sort((left, right) => (right.weekly_hold.row_pf ?? -999) - (left.weekly_hold.row_pf ?? -999))],
   ];
-  const lines = ["# Gate 65E Brain Router Best Candidates", "", "Discovery-only. No Body lock, Alpha v2 promotion, risk, execution, app/runtime, or optimized thresholds.", ""];
+  const lines = ["# Gate 65E Brain Router Best Candidates", "", "Discovery-only. No final forced-28 algorithm lock, Alpha v2 promotion, risk, execution, app/runtime, or optimized thresholds.", ""];
   for (const [title, candidates] of sections) {
     lines.push(`## ${title}`, "", "| Rank | Candidate | ADR | DD | R/DD | PF | Weekly Hold | WH PF | Degraded | Negative Years |", "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|");
     candidates.slice(0, 10).forEach((row, index) => {
@@ -197,9 +198,15 @@ async function main() {
   const bpr = (row: AlphaLedgerRow) => sourceDirection(row, "bpr_direction_quality", rrp(row));
   const valuationReer = (row: AlphaLedgerRow) => sourceDirection(row, "valuation_gap_reer_deviation_inverse", rrp(row));
   const valuationRelative = (row: AlphaLedgerRow) => sourceDirection(row, "valuation_gap_neer_reer_relative_inverse", rrp(row));
-  const policyAllowsDirectVote = (row: AlphaLedgerRow, atomId: string) => policy(row, atomId)?.allowed_body_use === "direct_vote";
+  const policyAllowsDirectVote = (row: AlphaLedgerRow, atomId: string) => {
+    const policyRow = policy(row, atomId);
+    return policyRow ? finalAlgorithmUse(policyRow) === "direct_vote" : false;
+  };
   const valuationRelativeExtreme = (row: AlphaLedgerRow) => policy(row, "valuation_gap_neer_reer_relative_inverse")?.policy_role === "follow";
-  const cotHighConfidence = (row: AlphaLedgerRow) => policy(row, "cot_side")?.allowed_body_use === "direct_vote";
+  const cotHighConfidence = (row: AlphaLedgerRow) => {
+    const policyRow = policy(row, "cot_side");
+    return policyRow ? finalAlgorithmUse(policyRow) === "direct_vote" : false;
+  };
 
   const candidates: Array<{ contract: CandidateContract; directionFor: (row: AlphaLedgerRow) => Decision }> = [
     {
@@ -435,7 +442,7 @@ async function main() {
     command: COMMAND,
     generated_at: new Date().toISOString(),
     git_commit: gitCommit(),
-    verdict: pass ? "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY" : "FAIL_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_BOUNDARY_OR_DENOMINATOR",
+    verdict: pass ? "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_FINAL_ALGORITHM" : "FAIL_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_BOUNDARY_OR_DENOMINATOR",
     candidate_count: routerRows.length,
     validation: {
       forced28_preserved: routerRows.every((row) => row.forced28_row_count === EXPECTED_ROWS),

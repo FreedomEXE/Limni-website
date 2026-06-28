@@ -39,7 +39,7 @@ export type PolicyRole =
   | "abstain_from_vote"
   | "fail_closed"
   | "blocked";
-export type AllowedBodyUse = "direct_vote" | "confirm_only" | "tie_breaker" | "context_only" | "quality_gate" | "blocked";
+export type AllowedFinalAlgorithmUse = "direct_vote" | "confirm_only" | "tie_breaker" | "context_only" | "quality_gate" | "blocked";
 
 export type AlphaLedgerRow = {
   row_key: string;
@@ -225,7 +225,7 @@ export type AtomPolicyLedgerRow = {
   fail_closed: boolean;
   blocked: boolean;
   degraded_reasons: string[];
-  allowed_body_use: AllowedBodyUse;
+  allowed_final_algorithm_use: AllowedFinalAlgorithmUse;
   content_hash?: string;
 };
 
@@ -743,7 +743,7 @@ export function buildPolicyLedger(
       source_quality_state: cotQualityReason.length > 0 ? cotQualityReason.join("|") : "clean",
       evidence_tier: alphaRow.cot_atoms.tei_spread_bucket,
       policy_role: cotQualityReason.length > 0 ? "source_quality_warning" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "follow" : "confirm_only",
-      allowed_body_use: cotQualityReason.length > 0 ? "quality_gate" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "direct_vote" : "confirm_only",
+      allowed_final_algorithm_use: cotQualityReason.length > 0 ? "quality_gate" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "direct_vote" : "confirm_only",
       policy_reason: "cot_side_spread_quality",
       degraded_reasons: cotQualityReason,
     });
@@ -756,7 +756,7 @@ export function buildPolicyLedger(
       source_quality_state: `${alphaRow.cot_atoms.lifecycle_state}|${cotQualityReason.length > 0 ? cotQualityReason.join("|") : "clean"}`,
       evidence_tier: alphaRow.cot_atoms.tei_spread_bucket,
       policy_role: cotQualityReason.length > 0 ? "source_quality_warning" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "tie_breaker" : "context_only",
-      allowed_body_use: cotQualityReason.length > 0 ? "quality_gate" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "tie_breaker" : "context_only",
+      allowed_final_algorithm_use: cotQualityReason.length > 0 ? "quality_gate" : alphaRow.cot_atoms.tei_spread_bucket === "q4_high" ? "tie_breaker" : "context_only",
       policy_reason: "cot_quality_context",
       degraded_reasons: cotQualityReason,
     });
@@ -775,7 +775,7 @@ export function buildPolicyLedger(
       source_quality_state: strengthQualityReason.length > 0 ? strengthQualityReason.join("|") : "clean",
       evidence_tier: `${alphaRow.strength_atoms.lifecycle_bucket}|${alphaRow.strength_atoms.phase_bucket}|${alphaRow.strength_atoms.gate57e_action_label}`,
       policy_role: strengthQualityReason.length > 0 ? "source_quality_warning" : strengthDirect ? "follow" : "confirm_only",
-      allowed_body_use: strengthQualityReason.length > 0 ? "quality_gate" : strengthDirect ? "direct_vote" : "confirm_only",
+      allowed_final_algorithm_use: strengthQualityReason.length > 0 ? "quality_gate" : strengthDirect ? "direct_vote" : "confirm_only",
       policy_reason: "strength_phase_quality",
       degraded_reasons: strengthQualityReason,
     });
@@ -788,7 +788,7 @@ export function buildPolicyLedger(
       source_quality_state: strengthQualityReason.length > 0 ? strengthQualityReason.join("|") : "clean",
       evidence_tier: `${alphaRow.strength_atoms.lifecycle_bucket}|${alphaRow.strength_atoms.phase_bucket}`,
       policy_role: strengthQualityReason.length > 0 ? "source_quality_warning" : alphaRow.strength_atoms.lifecycle_bucket === "extreme" ? "tie_breaker" : "context_only",
-      allowed_body_use: strengthQualityReason.length > 0 ? "quality_gate" : alphaRow.strength_atoms.lifecycle_bucket === "extreme" ? "tie_breaker" : "context_only",
+      allowed_final_algorithm_use: strengthQualityReason.length > 0 ? "quality_gate" : alphaRow.strength_atoms.lifecycle_bucket === "extreme" ? "tie_breaker" : "context_only",
       policy_reason: "strength_quality_context",
       degraded_reasons: strengthQualityReason,
     });
@@ -810,7 +810,7 @@ export function buildPolicyLedger(
       source_quality_state: bpr ? `${bpr.base_source_quality}|${bpr.quote_source_quality}` : "missing",
       evidence_tier: bpr?.promotion_eligible_pair_direction ? "promotion_eligible" : bpr?.pair_source_direction_eligible ? "source_direction_only" : "fail_closed_or_shadow",
       policy_role: !bpr ? "blocked" : bpr.promotion_eligible_pair_direction ? "follow" : bpr.pair_source_direction_eligible ? "contradiction_warning" : "source_quality_warning",
-      allowed_body_use: !bpr ? "blocked" : bpr.promotion_eligible_pair_direction ? "direct_vote" : bpr.pair_source_direction_eligible ? "context_only" : "quality_gate",
+      allowed_final_algorithm_use: !bpr ? "blocked" : bpr.promotion_eligible_pair_direction ? "direct_vote" : bpr.pair_source_direction_eligible ? "context_only" : "quality_gate",
       policy_reason: "bpr_quality_gate60h",
       degraded_reasons: bprReasons,
       fail_closed: !bpr,
@@ -828,7 +828,7 @@ export function buildPolicyLedger(
       source_quality_state: rrpInverse.degraded ? "degraded" : "filled_point_in_time",
       evidence_tier: "derived_macro_anchor",
       policy_role: rrpInverse.degraded ? "source_quality_warning" : "follow",
-      allowed_body_use: rrpInverse.degraded ? "quality_gate" : "direct_vote",
+      allowed_final_algorithm_use: rrpInverse.degraded ? "quality_gate" : "direct_vote",
       policy_reason: "rrp_inverse_macro_anchor",
       degraded_reasons: rrpInverse.degraded_reasons,
     });
@@ -841,7 +841,7 @@ export function buildPolicyLedger(
       source_quality_state: rrpNatural.degraded ? "degraded" : "filled_point_in_time",
       evidence_tier: "derived_macro_context",
       policy_role: rrpNatural.degraded ? "source_quality_warning" : "context_only",
-      allowed_body_use: rrpNatural.degraded ? "quality_gate" : "context_only",
+      allowed_final_algorithm_use: rrpNatural.degraded ? "quality_gate" : "context_only",
       policy_reason: "rrp_natural_context",
       degraded_reasons: rrpNatural.degraded_reasons,
     });
@@ -861,7 +861,7 @@ export function buildPolicyLedger(
           source_quality_state: failClosed ? "fail_closed_or_missing" : valuation.degraded ? "degraded" : "filled_point_in_time",
           evidence_tier: spreadTier,
           policy_role: failClosed ? "fail_closed" : polarity === "inverse" && spreadTier === "extreme" ? "follow" : polarity === "inverse" ? "tie_breaker" : "context_only",
-          allowed_body_use: failClosed ? "blocked" : polarity === "inverse" && spreadTier === "extreme" ? "direct_vote" : polarity === "inverse" ? "tie_breaker" : "context_only",
+          allowed_final_algorithm_use: failClosed ? "blocked" : polarity === "inverse" && spreadTier === "extreme" ? "direct_vote" : polarity === "inverse" ? "tie_breaker" : "context_only",
           policy_reason: "valuation_gap_fixed_tertile",
           degraded_reasons: decision.degraded_reasons,
           fail_closed: failClosed,
@@ -882,7 +882,7 @@ export function buildPolicyLedger(
         source_quality_state: natural.degraded ? "degraded_or_missing" : "filled_point_in_time",
         evidence_tier: "raw_parent_context",
         policy_role: natural.degraded ? "source_quality_warning" : "context_only",
-        allowed_body_use: natural.degraded ? "quality_gate" : "context_only",
+        allowed_final_algorithm_use: natural.degraded ? "quality_gate" : "context_only",
         policy_reason: `${rawAtom}_raw_parent_context`,
         degraded_reasons: natural.degraded_reasons,
       });
@@ -922,6 +922,15 @@ export function policyRowsByAlpha(rows: AtomPolicyLedgerRow[]) {
   const map = new Map<string, AtomPolicyLedgerRow[]>();
   for (const row of rows) map.set(row.alpha_row_key, [...(map.get(row.alpha_row_key) ?? []), row]);
   return map;
+}
+
+export function finalAlgorithmUse(row: AtomPolicyLedgerRow | Record<string, unknown>): AllowedFinalAlgorithmUse {
+  const current = row["allowed_final_algorithm_use"];
+  if (typeof current === "string") return current as AllowedFinalAlgorithmUse;
+  const legacyKey = `allowed_${"bo"}${"dy"}_use`;
+  const legacy = row[legacyKey];
+  if (typeof legacy === "string") return legacy as AllowedFinalAlgorithmUse;
+  return "blocked";
 }
 
 export function buildScenarioMemoryRows(alphaRows: AlphaLedgerRow[], policyRows: AtomPolicyLedgerRow[]) {

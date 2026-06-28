@@ -8,112 +8,71 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 65F: brain-architecture-readiness-review.
+Gate 66D: architecture-terminology-verification.
 
-Objective: run the bounded Gate 65A-65F Brain policy investigation after Gate
-64C, synchronize the Brain atom contract with valuation_gap, collapse Gate 64C
-decision signatures and PF surfaces, emit atom policy/scenario-memory ledgers,
-run discovery-only unified Brain-router candidates, and stop with a human
-readiness packet.
+Objective: run Gate 66A-66D architecture terminology and contract hygiene after
+Gate 65F, remove the deprecated architecture term from active surfaces, lock the
+Brain -> Cells -> Atoms v3 contract, preserve historical Gate 60-65 receipts,
+and stop after the terminology verification packet.
 
-Status: complete and ready for review on
+Status: active on
 `codex/gate50-macro-source-promotion-proof`.
 
-Readiness verdict: `READY_FOR_BODY_DESIGN_REVIEW`.
+Architecture version: `gate66_brain_cells_atoms_v3`.
 
 Sub-gate verdicts:
 
-- Gate 65A:
-  `PASS_BRAIN_ATOM_CONTRACT_V2_SYNC__VALUATION_GAP_VISIBLE__FAIL_CLOSED_VARIANTS_EXPLICIT__FORCED28_UNCHANGED`
-- Gate 65B:
-  `PASS_DECISION_SIGNATURE_COLLAPSE_AND_PF_SURFACE__NO_PROMOTION`
-- Gate 65C:
-  `PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK`
-- Gate 65D:
-  `PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED`
-- Gate 65E:
-  `PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY`
-- Gate 65F:
-  `PASS_BRAIN_ARCHITECTURE_READINESS_REVIEW_PACKET__STOP_AFTER_GATE65F`
+- Gate 66A:
+  `PASS_DEPRECATED_ARCHITECTURE_TERM_INVENTORY__ACTIVE_CHANGES_SEPARATED_FROM_IMMUTABLE_HISTORY`
+- Gate 66B:
+  `PASS_BRAIN_ARCHITECTURE_CONTRACT_V3__BRAIN_CELLS_ATOMS_ONLY__FINAL_ALGORITHM_UNNAMED`
+- Gate 66C: pending active reference migration verification.
+- Gate 66D: pending final terminology verification packet.
 
 Commands:
 
-- `npm run engine:gate65a:brain-atom-contract-v2-sync`
-- `npm run engine:gate65b:decision-signature-pf-surface`
-- `npm run engine:gate65c:atom-policy-ledger-v0`
-- `npm run engine:gate65d:scenario-memory-ledger-v0`
-- `npm run engine:gate65e:unified-brain-router-discovery-v0`
-- `npm run engine:gate65f:brain-architecture-readiness-review`
+- `npm run engine:gate66a:deprecated-architecture-term-inventory`
+- `npm run engine:gate66b:brain-architecture-contract-v3`
+- `npm run engine:gate66c:active-reference-migration`
+- `npm run engine:gate66d:architecture-terminology-verification`
 
 Durable artifacts:
 
-- Gate 65A report:
-  `docs/research/gates/gate65a/GATE65A_BRAIN_ATOM_CONTRACT_V2_SYNC_2026-06-27.md`
-- Gate 65B report:
-  `docs/research/gates/gate65b/GATE65B_DECISION_SIGNATURE_PF_SURFACE_2026-06-27.md`
-- Gate 65C report:
-  `docs/research/gates/gate65c/GATE65C_ATOM_POLICY_LEDGER_V0_2026-06-27.md`
-- Gate 65C policy ledger:
-  `docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-ledger.rows.jsonl`
-- Gate 65D report:
-  `docs/research/gates/gate65d/GATE65D_SCENARIO_MEMORY_LEDGER_V0_2026-06-27.md`
-- Gate 65D scenario ledger:
-  `docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-memory.rows.jsonl`
-- Gate 65E report:
-  `docs/research/gates/gate65e/GATE65E_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_2026-06-27.md`
-- Gate 65E router matrix:
-  `docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-matrix.rows.jsonl`
-- Gate 65E best candidates:
-  `docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-best-candidates.md`
-- Gate 65F report:
-  `docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md`
-- Gate 65F cross-gate hash manifest:
-  `docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-cross-gate-hash-manifest.txt`
+- Gate 66A report:
+  `docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md`
+- Gate 66A occurrence ledger:
+  `docs/research/gates/gate66a/artifacts/gate66a-deprecated-architecture-term-inventory/deprecated-term-occurrence-ledger.rows.jsonl`
+- Gate 66B report:
+  `docs/research/gates/gate66b/GATE66B_BRAIN_ARCHITECTURE_CONTRACT_V3_NO_DEPRECATED_LAYER_2026-06-27.md`
+- Gate 66B v3 contract:
+  `docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/brain-architecture-v3.contract.json`
 
 Key findings:
 
-- valuation_gap is now Brain-contract visible as Regime derived atoms:
-  `valuation_gap_reer_deviation` and
-  `valuation_gap_neer_reer_relative`.
-- Gate 64B fail-closed variants remain explicit fail-closed contract entries:
-  `valuation_gap_ppp_spot` and
-  `valuation_gap_composite_ppp_neer_reer`.
-- Gate 65B mapped `26` Gate 64C candidates to `25` decision signatures; `1`
-  duplicate/equivalent signature group was identified.
-- Gate 65B top ADR Grid PF remained
-  `valuation_gap_relative_inverse_extreme_else_rrp_inverse` with PF
-  `1.264195`; robust PF remained
-  `rrp_inverse_when_agrees_valuation_reer_else_alpha`, the zero-negative-year
-  reference.
-- Gate 65E best ADR Grid R/DD router:
-  `macro_anchor_crowding_warning_rrp_cot_extreme`, ADR Grid `2341.080708`,
-  DD `-241.508971`, R/DD `9.693556`, PF `1.25407`, Weekly Hold
-  `638.603176`, WH R/DD `5.468441`, `1` negative ADR Grid year.
-- Gate 65E highest PF router:
-  `scenario_memory_confirmation_router_cell_agreement_support112`, ADR Grid
-  `2640.245739`, DD `-347.238105`, R/DD `7.60356`, PF `1.294048`, Weekly
-  Hold `746.687556`, WH R/DD `8.56217`, `1` negative ADR Grid year, with
-  robustness caveat due `4,880` degraded/warning rows.
-- Gate 65E best zero-negative-year router:
-  `valuation_confirmation_router_rrp_reer_else_alpha`, ADR Grid `2168.117445`,
-  R/DD `6.101189`, PF `1.231009`, Weekly Hold `831.585556`, WH R/DD
-  `6.711349`, `0` degraded rows, `0` negative ADR Grid years.
-- Gate 65E found `5` router signatures genuinely new versus Gate 64C and `4`
-  router signatures matching Gate 64C signatures.
+- Active architecture is now Brain -> Cells -> Atoms.
+- Current cells remain COT, Strength, and Regime.
+- BPR remains inside Regime.
+- valuation_gap remains inside Regime.
+- The final forced-28 decision algorithm remains unnamed.
+- Risk remains a later portfolio expression/permission layer and cannot mutate
+  Brain forced-28 decision truth.
+- Historical Gate 60-65 reports/artifacts are immutable historical references
+  and are superseded by the Gate 66 deprecation/supersession manifest instead
+  of rewritten.
 
 Validation passed:
 
-- all six Gate 65 commands
-- `npx tsc --noEmit --pretty false --project tsconfig.json`
-- targeted Gate 65 ESLint
+- Gate 66A command
+- Gate 66B command
 
 ## Next Requested Review
 
-Stop after Gate 65F. Do not proceed to final Body design, Alpha v2 promotion,
-risk, exits, execution, MT5/live, app/runtime work, source mutation, COT
-retuning, Strength retuning, broad Brain source consolidation, optimized
-threshold search, learned weights, pair exclusions, or date exclusions unless
-Freedom explicitly opens that scope.
+Stop after Gate 66D. Do not proceed to final forced-28 algorithm design, naming
+the final algorithm, Alpha v2 promotion, risk, exits, execution, MT5/live,
+app/runtime work, source mutation, COT retuning, Strength retuning, Regime
+retuning, broad source consolidation, optimized threshold search, learned
+weights, pair exclusions, or date exclusions unless Freedom explicitly opens
+that scope.
 
 ## Current Ownership Model
 

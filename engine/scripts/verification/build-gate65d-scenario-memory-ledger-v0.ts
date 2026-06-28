@@ -72,7 +72,7 @@ function renderReport(summary: Record<string, unknown>, groupSummary: Record<str
     "- Descriptive memory ledger only.",
     "- Fingerprints are built from point-in-time atom and policy state fields.",
     "- Outcomes are used only in retrospective group summaries.",
-    "- No Body direction, hidden optimized group, or final decision is emitted.",
+    "- No final forced-28 algorithm direction, hidden optimized group, or final decision is emitted.",
     "",
     "## Group Summary Samples",
     "",
@@ -102,7 +102,7 @@ function renderReport(summary: Record<string, unknown>, groupSummary: Record<str
     "",
     "## Stop Line",
     "",
-    "Gate 65D stops at descriptive scenario-memory evidence. It does not open Body design, Alpha v2, risk, execution, or optimization.",
+    "Gate 65D stops at descriptive scenario-memory evidence. It does not open final forced-28 algorithm design, Alpha v2, risk, execution, or optimization.",
     "",
   ].join("\n");
 }
@@ -168,7 +168,7 @@ async function main() {
     grouping_keys: GROUPING_KEYS,
     outcomes_used_only_for_retrospective_group_summaries: true,
     optimized_groups_created: false,
-    body_direction_emitted: false,
+    final_algorithm_direction_emitted: false,
   };
   const denominator = denominatorSummary(alphaRows);
   const pass = denominator.forced28_preserved && scenarioRows.length === EXPECTED_ROWS && policyRows.length > EXPECTED_ROWS;
@@ -187,7 +187,7 @@ async function main() {
     command: COMMAND,
     generated_at: new Date().toISOString(),
     git_commit: gitCommit(),
-    verdict: pass ? "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED" : "FAIL_SCENARIO_MEMORY_LEDGER_V0_BOUNDARY_OR_DENOMINATOR",
+    verdict: pass ? "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_FINAL_ALGORITHM_DIRECTION__LOW_SUPPORT_FLAGGED" : "FAIL_SCENARIO_MEMORY_LEDGER_V0_BOUNDARY_OR_DENOMINATOR",
     denominator,
     scenario_rows: scenarioRows.length,
     group_counts: Object.fromEntries(Object.entries(groupSummary).map(([key, rows]) => [key, rows.length])),
@@ -197,7 +197,7 @@ async function main() {
       fingerprints_point_in_time_or_calendar_only: true,
       outcomes_used_only_for_retrospective_scoring_summaries: true,
       optimized_groups_created: false,
-      body_direction_emitted: false,
+      final_algorithm_direction_emitted: false,
       forced28_preserved: denominator.forced28_preserved,
       low_support_groups_explicitly_flagged: true,
     },

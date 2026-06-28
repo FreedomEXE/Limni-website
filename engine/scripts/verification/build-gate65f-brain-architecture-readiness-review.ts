@@ -64,7 +64,7 @@ function renderReport(summary: Record<string, unknown>, routerRows: CandidateSum
     "## Scope",
     "",
     "- Consolidates Gate 65A through Gate 65E.",
-    "- Does not start Body design.",
+    "- Does not start final forced-28 algorithm design.",
     "- Does not promote Alpha v2.",
     "- Does not open risk, execution, MT5/live, app/runtime, source mutation, retuning, or optimization.",
     "",
@@ -78,16 +78,16 @@ function renderReport(summary: Record<string, unknown>, routerRows: CandidateSum
     "",
     renderTable(bestRows, ["label", "candidate", "detail"]),
     "",
-    "## Blockers Before Body",
+    "## Blockers Before Final Algorithm",
     "",
     "```json",
-    JSON.stringify(summary.blockers_before_body, null, 2),
+    JSON.stringify(summary.blockers_before_final_algorithm, null, 2),
     "```",
     "",
     "## Interpretation",
     "",
-    "- `READY_FOR_BODY_DESIGN_REVIEW` means the evidence packet is ready for Freedom to decide whether to open a later Body design gate.",
-    "- It is not a Body design, not Alpha v2, and not a router promotion.",
+    "- `READY_FOR_FINAL_FORCED28_ALGORITHM_DESIGN_REVIEW` means the evidence packet is ready for Freedom to decide whether to open a later final forced-28 algorithm design gate.",
+    "- It is not final forced-28 algorithm design, not Alpha v2, and not a router promotion.",
     `- Router rows reviewed: \`${routerRows.length}\`.`,
     "",
     "## Required Next Human Decision",
@@ -106,7 +106,7 @@ function renderReport(summary: Record<string, unknown>, routerRows: CandidateSum
     "",
     "## Stop Line",
     "",
-    "Stop after Gate 65F. Do not proceed to final Body design, Alpha v2 promotion, risk, exits, execution, MT5/live, app/runtime work, source mutation, COT/Strength retuning, broad Brain source consolidation, optimized threshold search, learned weights, pair exclusions, or date exclusions.",
+    "Stop after Gate 65F. Do not proceed to final forced-28 algorithm design, Alpha v2 promotion, risk, exits, execution, MT5/live, app/runtime work, source mutation, COT/Strength retuning, broad Brain source consolidation, optimized threshold search, learned weights, pair exclusions, or date exclusions.",
     "",
   ].join("\n");
 }
@@ -143,33 +143,33 @@ async function main() {
     ...(gatePasses ? [] : [{ blocker_id: "gate65_verdict_failure", severity: "hard", detail: "At least one Gate 65 sub-gate failed." }]),
     ...(valuationVisible ? [] : [{ blocker_id: "valuation_gap_not_contract_visible", severity: "hard", detail: "Gate 65A did not prove valuation_gap contract visibility." }]),
     {
-      blocker_id: "body_design_not_open",
+      blocker_id: "final_algorithm_design_not_open",
       severity: "expected_stop_line",
-      detail: "Freedom has not opened Body design; Gate 65F is review-only.",
+      detail: "Freedom has not opened final forced-28 algorithm design; Gate 65F is review-only.",
     },
     {
       blocker_id: "scenario_memory_requires_human_review",
       severity: "review",
-      detail: "Scenario memory is descriptive and retrospective; Freedom must decide whether it is useful enough for a Body design gate.",
+      detail: "Scenario memory is descriptive and retrospective; Freedom must decide whether it is useful enough for a final forced-28 algorithm design gate.",
     },
   ];
   const hardBlockers = blockers.filter((blocker) => blocker.severity === "hard");
   const readinessVerdict = hardBlockers.length > 0
     ? "BLOCKED_REQUIRES_EVIDENCE_REPAIR"
     : newRouterSignatures > 0
-      ? "READY_FOR_BODY_DESIGN_REVIEW"
+      ? "READY_FOR_FINAL_FORCED28_ALGORITHM_DESIGN_REVIEW"
       : "NOT_READY_REQUIRES_MORE_ARCHITECTURE_DIAGNOSTICS";
   const recommendedNextGate =
-    readinessVerdict === "READY_FOR_BODY_DESIGN_REVIEW"
+    readinessVerdict === "READY_FOR_FINAL_FORCED28_ALGORITHM_DESIGN_REVIEW"
       ? {
-          gate: "Gate 66: Body design review preflight",
-          decision: "Open only if Freedom accepts Gate 65F evidence and chooses a router family to design around.",
+          gate: "Gate 67: Final forced-28 algorithm design preflight",
+          decision: "Open only if Freedom accepts Gate 65F evidence and chooses whether a router family is ready for design review.",
           frozen_areas: ["Alpha v2 promotion", "risk/execution/live/app work", "source mutation", "optimized threshold search", "pair/date exclusions"],
         }
       : {
           gate: "Gate 66: Brain architecture diagnostic repair",
-          decision: "Repair the blocker before any Body design.",
-          frozen_areas: ["Body design", "Alpha v2 promotion", "risk/execution/live/app work"],
+          decision: "Repair the blocker before any final forced-28 algorithm design.",
+          frozen_areas: ["final forced-28 algorithm design", "Alpha v2 promotion", "risk/execution/live/app work"],
         };
   const crossGateEntries = [
     { label: "gate65a_summary", path: path.join(options.gate65aDir, "gate65a-summary.json") },
@@ -222,9 +222,9 @@ async function main() {
           ? "scenario memory adds grouped descriptive reliability/caveat surfaces, but remains retrospective and review-only"
           : "scenario memory did not materially expand beyond known candidate behavior",
     },
-    blockers_before_body: blockers,
+    blockers_before_final_algorithm: blockers,
     required_next_human_decision: [
-      "open Body design gate",
+      "open final forced-28 algorithm design gate",
       "run more architecture diagnostics",
       "repair atom policy/scenario memory",
       "stop",
@@ -241,7 +241,7 @@ async function main() {
   await writeJson(path.join(artifactDir, "gate65f-blockers.json"), {
     gate_id: GATE_ID,
     readiness_verdict: readinessVerdict,
-    blockers_before_body: blockers,
+    blockers_before_final_algorithm: blockers,
   });
   await writeText(
     path.join(artifactDir, "gate65f-recommended-next-gate.md"),
@@ -254,7 +254,7 @@ async function main() {
       "",
       recommendedNextGate.decision,
       "",
-      "Frozen areas remain: Body design until explicitly opened, Alpha v2, risk, exits, execution, MT5/live, app/runtime, source mutation, retuning, broad source consolidation, optimized thresholds, learned weights, pair exclusions, and date exclusions.",
+      "Frozen areas remain: final forced-28 algorithm design until explicitly opened, Alpha v2, risk, exits, execution, MT5/live, app/runtime, source mutation, retuning, broad source consolidation, optimized thresholds, learned weights, pair exclusions, and date exclusions.",
       "",
     ].join("\n"),
   );
