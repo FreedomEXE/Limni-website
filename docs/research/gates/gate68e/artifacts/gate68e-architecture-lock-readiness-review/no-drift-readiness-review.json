@@ -1,0 +1,8 @@
+{
+  "gate_id": "Gate 68E: architecture-lock-readiness-review",
+  "forward_receipt_usable": true,
+  "drift_monitor_alert_only": true,
+  "can_change_decisions": false,
+  "can_update_rules": false,
+  "can_select_better_candidate": false
+}

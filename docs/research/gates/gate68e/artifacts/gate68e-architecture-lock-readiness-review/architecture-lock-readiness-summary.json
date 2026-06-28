@@ -1,0 +1,208 @@
+{
+  "gate_id": "Gate 68E: architecture-lock-readiness-review",
+  "command": "npm run engine:gate68e:architecture-lock-readiness-review",
+  "generated_at": "2026-06-28T04:50:10.920Z",
+  "git_commit": "9e3b8d7f6c5b155bc8678efec98fc8a6a4e64f4f",
+  "verdict": "PASS_ARCHITECTURE_LOCK_READINESS_REVIEW__CLEAR_VERDICT_NO_RISK_EXITS_LEARNING_STARTED",
+  "readiness_verdict": "NOT_READY_LOCK_CANDIDATE_B_REFERENCE_AND_CARRY_C_SHADOW",
+  "best_candidate_review": {
+    "best_adr_grid_rdd": {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01",
+      "mode_counts": null
+    },
+    "best_adr_grid_pf": {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01",
+      "mode_counts": null
+    },
+    "best_zero_negative_years": {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2276.283276,
+        "adr_mean": 0.217951,
+        "max_drawdown": -275.03638,
+        "r_over_drawdown": 8.276299,
+        "row_pf": 1.242893
+      },
+      "weekly_hold": {
+        "adr_sum": 732.900462,
+        "adr_mean": 0.070174,
+        "max_drawdown": -126.241709,
+        "r_over_drawdown": 5.805533,
+        "row_pf": 1.136683
+      },
+      "degraded_row_count": 1813,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 13.038684,
+        "weekly_hold_adr": 159.647828
+      },
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23",
+      "mode_counts": null
+    },
+    "best_weekly_hold": {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "family": "brain_mode_selector",
+      "adr_grid": {
+        "adr_sum": 2235.61899,
+        "adr_mean": 0.214058,
+        "max_drawdown": -388.935048,
+        "r_over_drawdown": 5.748052,
+        "row_pf": 1.239439
+      },
+      "weekly_hold": {
+        "adr_sum": 846.072114,
+        "adr_mean": 0.08101,
+        "max_drawdown": -116.320546,
+        "r_over_drawdown": 7.273626,
+        "row_pf": 1.159472
+      },
+      "degraded_row_count": 7864,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -3.699695,
+        "weekly_hold_adr": 198.47955
+      },
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "mode_counts": {
+        "CONSERVATIVE": 6762,
+        "NORMAL": 2811,
+        "PROTECTION": 871
+      }
+    },
+    "candidate_d": {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "family": "brain_mode_selector",
+      "adr_grid": {
+        "adr_sum": 2235.61899,
+        "adr_mean": 0.214058,
+        "max_drawdown": -388.935048,
+        "r_over_drawdown": 5.748052,
+        "row_pf": 1.239439
+      },
+      "weekly_hold": {
+        "adr_sum": 846.072114,
+        "adr_mean": 0.08101,
+        "max_drawdown": -116.320546,
+        "r_over_drawdown": 7.273626,
+        "row_pf": 1.159472
+      },
+      "degraded_row_count": 7864,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -3.699695,
+        "weekly_hold_adr": 198.47955
+      },
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "mode_counts": {
+        "CONSERVATIVE": 6762,
+        "NORMAL": 2811,
+        "PROTECTION": 871
+      }
+    }
+  },
+  "mode_selector_lock_recommendation": {
+    "candidate_d_accepted_for_next_lock_gate": false,
+    "recommended_default_lock_target": "candidate_b_macro_anchor_with_cot_warning",
+    "recommended_shadow_or_canary": "candidate_c_scenario_memory_guarded",
+    "rationale": "Candidate D is trackable and genuinely new, but it is weaker than Candidate B on ADR Grid R/DD and does not preserve Candidate C zero-negative-year behavior.",
+    "candidate_d_mode_counts": {
+      "CONSERVATIVE": 6762,
+      "NORMAL": 2811,
+      "PROTECTION": 871
+    },
+    "candidate_d_signature_collapse": {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": null,
+      "genuinely_new_vs_gate64_65_67": true
+    }
+  },
+  "blockers": [
+    {
+      "severity": "soft",
+      "blocker": "candidate_d_weaker_than_candidate_b_on_adr_grid_rdd",
+      "evidence": "{\"adr_grid_adr_delta\":-105.461718,\"adr_grid_rdd_delta\":-3.945504,\"adr_grid_pf_delta\":-0.014631,\"weekly_hold_adr_delta\":207.468938,\"weekly_hold_rdd_delta\":1.805185,\"weekly_hold_pf_delta\":0.041413,\"negative_adr_grid_year_delta\":0}"
+    },
+    {
+      "severity": "soft",
+      "blocker": "candidate_d_does_not_preserve_candidate_c_zero_negative_years",
+      "evidence": "{\"candidate_d_negative_years\":1,\"candidate_c_negative_years\":0}"
+    }
+  ],
+  "recommended_next_gate": "Gate 69: Mode selector repair / fallback lock",
+  "validation": {
+    "gates_68a_through_68d_passed": true,
+    "clear_readiness_verdict": true,
+    "candidate_d_accepted_or_rejected_clearly": true,
+    "frozen_reference_capsule_complete": true,
+    "no_drift_contract_complete": true,
+    "forward_weekly_receipt_usable": true,
+    "adaptive_learning_started": false,
+    "exits_risk_started": false,
+    "hard_blocker_count": 0,
+    "soft_blocker_count": 2
+  },
+  "artifacts": {
+    "readinessSummary": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/architecture-lock-readiness-summary.json",
+    "modeSelectorLockRecommendation": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/mode-selector-lock-recommendation.json",
+    "blockersJson": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/architecture-lock-blockers.json",
+    "frozenCapsuleReview": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/frozen-reference-capsule-review.json",
+    "noDriftReadinessReview": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/no-drift-readiness-review.json",
+    "recommendedNextGate": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/recommended-next-gate.md",
+    "crossGateHashManifest": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/gate68e-cross-gate-hash-manifest.txt",
+    "shaIdentity": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/gate68e-sha256.txt",
+    "report": "docs/research/gates/gate68e/GATE68E_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md"
+  }
+}

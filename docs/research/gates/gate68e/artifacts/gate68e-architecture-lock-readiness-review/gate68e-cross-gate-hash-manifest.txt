@@ -1,0 +1,7 @@
+gate_id Gate 68E: architecture-lock-readiness-review
+generated_at 2026-06-28T04:50:10.920Z
+git_commit 9e3b8d7f6c5b155bc8678efec98fc8a6a4e64f4f
+DF8BC5912D051589C4A338AE7957CDBAA9368A3FD9D745560AE563C08773605C docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-sha256.txt
+64466348EA2EBF55BCFE8FDE1DBEE80123845771E9DC8F46C47EDABB7F76C236 docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/gate68b-sha256.txt
+B0F6745B5162613211CAE98108B0BBAB5A75FA6443EDF44EDD2EB9571BF83FE2 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-sha256.txt
+7069698605CE80542846E9781877CEECB3B8A85D8561D00C8CFBA57644517F01 docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-sha256.txt

@@ -1,0 +1,15 @@
+{
+  "gate_id": "Gate 68E: architecture-lock-readiness-review",
+  "blockers": [
+    {
+      "severity": "soft",
+      "blocker": "candidate_d_weaker_than_candidate_b_on_adr_grid_rdd",
+      "evidence": "{\"adr_grid_adr_delta\":-105.461718,\"adr_grid_rdd_delta\":-3.945504,\"adr_grid_pf_delta\":-0.014631,\"weekly_hold_adr_delta\":207.468938,\"weekly_hold_rdd_delta\":1.805185,\"weekly_hold_pf_delta\":0.041413,\"negative_adr_grid_year_delta\":0}"
+    },
+    {
+      "severity": "soft",
+      "blocker": "candidate_d_does_not_preserve_candidate_c_zero_negative_years",
+      "evidence": "{\"candidate_d_negative_years\":1,\"candidate_c_negative_years\":0}"
+    }
+  ]
+}
