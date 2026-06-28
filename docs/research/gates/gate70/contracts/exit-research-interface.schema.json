@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "limni.poseidon.gate70.exit_research_interface.v1",
+  "title": "Gate 70 Exit Research Interface Contract",
+  "description": "Frozen contract for later exit research consuming locked Candidate B forced-28 Brain truth without mutating directions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "gate",
+    "input_schema",
+    "output_schema",
+    "immutability_rules"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "gate70_exit_research_interface_v1"
+    },
+    "gate": {
+      "const": "Gate 70: Exit/Risk Interface Preflight"
+    },
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "week_identifier",
+        "pair",
+        "candidate_b_direction",
+        "signal_ledger_hash",
+        "signal_source_gate",
+        "entry_timestamp_candidate",
+        "entry_price_source",
+        "allowed_price_path_data_identity",
+        "spread_slippage_assumptions",
+        "exit_rule_version",
+        "risk_prefilter_state"
+      ],
+      "properties": {
+        "week_identifier": {
+          "type": "string",
+          "description": "Canonical week key/open timestamp used by the locked Candidate B ledger."
+        },
+        "pair": {
+          "type": "string",
+          "pattern": "^[A-Z]{6}$"
+        },
+        "candidate_b_direction": {
+          "type": "string",
+          "description": "Direction copied from Candidate B. Must not be recomputed or relabeled."
+        },
+        "signal_ledger_hash": {
+          "const": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390"
+        },
+        "signal_source_gate": {
+          "const": "Gate 69 locked Candidate B forced-28 ledger"
+        },
+        "entry_timestamp_candidate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Candidate entry timestamp proposed by an exit/entry lifecycle rule; not a signal rewrite."
+        },
+        "entry_price_source": {
+          "type": "string",
+          "description": "Identifier for the price source used for entry pricing."
+        },
+        "allowed_price_path_data_identity": {
+          "type": "string",
+          "description": "Frozen price/path data identity allowed for exit research."
+        },
+        "spread_slippage_assumptions": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "Declared spread/slippage assumptions, if any. Null only when no assumptions are present."
+        },
+        "exit_rule_version": {
+          "type": "string",
+          "description": "Versioned exit rule under test; may not modify signal truth."
+        },
+        "risk_prefilter_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "Optional risk/expression metadata only; never a direction mutation or pair-week deletion."
+        }
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "week_identifier",
+        "pair",
+        "candidate_b_direction",
+        "entry_eligibility",
+        "entry_timestamp",
+        "entry_price",
+        "exit_timestamp",
+        "exit_price",
+        "exit_rule_used",
+        "stop_rule_used",
+        "take_profit_rule_used",
+        "trailing_rule_used",
+        "account_reset_behavior",
+        "re_entry_behavior",
+        "result_pnl",
+        "drawdown_adverse_excursion",
+        "favorable_excursion",
+        "reason_code",
+        "deterministic_run_id",
+        "config_hash",
+        "input_ledger_hash",
+        "output_ledger_hash"
+      ],
+      "properties": {
+        "week_identifier": {
+          "type": "string"
+        },
+        "pair": {
+          "type": "string",
+          "pattern": "^[A-Z]{6}$"
+        },
+        "candidate_b_direction": {
+          "type": "string"
+        },
+        "entry_eligibility": {
+          "type": "string",
+          "enum": [
+            "eligible",
+            "ineligible",
+            "delayed",
+            "skipped_by_risk_metadata"
+          ]
+        },
+        "entry_timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "entry_price": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "exit_timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exit_price": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "exit_rule_used": {
+          "type": "string"
+        },
+        "stop_rule_used": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "take_profit_rule_used": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trailing_rule_used": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "account_reset_behavior": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "re_entry_behavior": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result_pnl": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "drawdown_adverse_excursion": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "favorable_excursion": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "deterministic_run_id": {
+          "type": "string"
+        },
+        "config_hash": {
+          "type": "string"
+        },
+        "input_ledger_hash": {
+          "const": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390"
+        },
+        "output_ledger_hash": {
+          "type": "string"
+        }
+      }
+    },
+    "immutability_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_b_direction_mutation_allowed",
+        "candidate_b_row_drop_allowed",
+        "candidate_c_default_promotion_allowed",
+        "exit_outcome_leakage_allowed"
+      ],
+      "properties": {
+        "candidate_b_direction_mutation_allowed": {
+          "const": false
+        },
+        "candidate_b_row_drop_allowed": {
+          "const": false
+        },
+        "candidate_c_default_promotion_allowed": {
+          "const": false
+        },
+        "exit_outcome_leakage_allowed": {
+          "const": false
+        }
+      }
+    }
+  }
+}
