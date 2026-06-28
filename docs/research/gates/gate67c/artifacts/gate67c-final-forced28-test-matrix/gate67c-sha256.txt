@@ -1,0 +1,14 @@
+gate_id Gate 67C: final-forced28-test-matrix
+command npm run engine:gate67c:final-forced28-test-matrix
+generated_at 2026-06-28T02:53:27.988Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+matrix_rows 968DA2A989047B74CACE2E3260C8398CFE59D12B6EED2D9732F4EA404B1B3433 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-test-matrix.rows.jsonl
+test_summary 8DDCBFDBCE23154F9FEE8DDFB9BF43BADBC29C586A38C28CC3F1FA9C9D02E169 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-test-summary.json
+best_candidate_review 9ABED1DF6FE8060BD5A04004146CF42E3F8485ECC8E3023D1D97F400FEE8C877 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-best-candidate-review.md
+year_diagnostics E783E4F643B3110CEB2D85D5DB5761DB7A5B9019B9EBF2D58E4BC13AC901B8AF docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-year-by-year-diagnostics.json
+policy_participation 9C087D8D8090923E807D7F53E677D0239A09D7AB48F28F7278BC49C57911DA27 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-policy-participation.json
+reason_code_diagnostics C81EEDDF7C81CFBFE264AEC8A96A30E60F9E165E5601CE21EA62B3F3CE6B541C docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-reason-code-diagnostics.json
+signature_collapse 453D68B84ED10AFBE10E59101BFAC493101E8709175CF1AF88C16AC7DED09D89 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-signature-collapse.json
+comparison_vs_gate64_65 0D62D7B99C1F6884A9C3ABFE3A87C79ECF460946DB1F9CC8987338AC69939C9A docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-comparison-vs-gate64-65.json
+summary_json 8DDCBFDBCE23154F9FEE8DDFB9BF43BADBC29C586A38C28CC3F1FA9C9D02E169 docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/gate67c-summary.json
+report 98A9CC6A9490F73B4C88DC5FA965606A51774C5BF3C0CD04DEC82C3BC8C8DE7C docs/research/gates/gate67c/GATE67C_FINAL_FORCED28_TEST_MATRIX_2026-06-28.md
