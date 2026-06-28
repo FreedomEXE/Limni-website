@@ -7,9 +7,11 @@ atoms.
 - Strength cell: FRS15 Strength atoms and ledgers.
 - Regime cell: macro Regime atoms and ledgers. BPR lives here, not as its own
   top-level cell.
-- Body: reserved for the later integrated forced-28 decision algorithm.
-- Risk: reserved for the later permission layer that may reduce actual trade
-  expression below forced-28.
+- The final forced-28 decision algorithm is unnamed and reserved for a future
+  gate.
+- Risk is a later portfolio expression layer. It may reduce actual trade
+  expression below forced-28, but it may not mutate Brain forced-28 decision
+  truth.
 
 Gate 61A adds this namespace as a source-layout contract only. Historical
 research evidence under `docs/research/gates/` remains immutable.

@@ -1,0 +1,10 @@
+gate_id Gate 66B: brain-architecture-contract-v3
+command npm run engine:gate66b:brain-architecture-contract-v3
+generated_at 2026-06-28T01:55:37.225Z
+git_commit 840662fc9d4fd32a87714621226e510253e213cf
+contract_json AC1F0409ECADFF4B0E44FBB802C8008B60AA377B69A40DE85C73F80A823E039A docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/brain-architecture-v3.contract.json
+diff_json 2CCDA2E02DA1CF294FA730097135EC471939BFD607D580960CAD0F649A346DBE docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/architecture-v2-to-v3-diff.json
+active_source_change_ledger 2AA77953082900551F4B6DD7E82C497E00422D0711A8BFFD460EDCEFB16CDBDB docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/active-source-change-ledger.json
+removed_or_renamed_paths B134F774AED18F4B70710A2D26E8DDDC973DB829A55091E84AF86B884DB66349 docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/removed-or-renamed-paths.json
+summary_json A776AC8D1B48219B0144C2B6E8F41651A830A3632D7224BF0E94C82ADE5EFA64 docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/gate66b-summary.json
+report 62343E26637F646EE1ABAE61FE272F1B6514A169910F6CDDE0CF3CD3A09FFE85 docs/research/gates/gate66b/GATE66B_BRAIN_ARCHITECTURE_CONTRACT_V3_NO_DEPRECATED_LAYER_2026-06-27.md

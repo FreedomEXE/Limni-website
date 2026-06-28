@@ -1,4 +1,4 @@
-export const BRAIN_ARCHITECTURE_VERSION = "gate65a_brain_atom_contract_v2";
+export const BRAIN_ARCHITECTURE_VERSION = "gate66_brain_cells_atoms_v3";
 
 export type BrainCellId = "cot" | "strength" | "regime";
 export type BrainAtomStatus = "locked" | "building" | "shadow" | "sealed_parent" | "fail_closed" | "reserved";
@@ -26,6 +26,33 @@ export type BrainCellContract = {
   path: string;
   forced_28_required: true;
   atoms: BrainAtomContract[];
+};
+
+export type FinalAlgorithmStatus = "reserved_for_future_gate";
+
+export type BrainArchitectureContract = {
+  version: typeof BRAIN_ARCHITECTURE_VERSION;
+  architecture_version: typeof BRAIN_ARCHITECTURE_VERSION;
+  system: "Brain";
+  hierarchy: "Brain -> Cells -> Atoms";
+  cells: BrainCellContract[];
+  deprecated_terms_removed_from_active_contracts: true;
+  final_algorithm_name: null;
+  final_algorithm_status: FinalAlgorithmStatus;
+  final_algorithm_placeholder: "unnamed_final_forced28_algorithm";
+  forced28_decision_required: true;
+  forced28_decision_truth: {
+    status: "reserved_for_future_gate";
+    final_algorithm_started: false;
+    final_algorithm_named: false;
+  };
+  risk: {
+    path: "engine/src/brain/risk";
+    status: "reserved_for_later_portfolio_expression_layer";
+    risk_may_reduce_expression_later: true;
+    risk_may_mutate_forced28_decision_truth: false;
+  };
+  standing_rule: string;
 };
 
 export const COT_CELL_ATOMS: BrainAtomContract[] = [
@@ -257,23 +284,31 @@ export const BRAIN_CELLS: BrainCellContract[] = [
   },
 ];
 
-export const BRAIN_ARCHITECTURE = {
+export const BRAIN_ARCHITECTURE: BrainArchitectureContract = {
   version: BRAIN_ARCHITECTURE_VERSION,
+  architecture_version: BRAIN_ARCHITECTURE_VERSION,
   system: "Brain",
+  hierarchy: "Brain -> Cells -> Atoms",
   cells: BRAIN_CELLS,
-  body: {
-    path: "engine/src/brain/body",
-    status: "reserved_for_later_integrated_forced28_decision_algorithm",
-    may_reduce_expression_below_28: false,
+  deprecated_terms_removed_from_active_contracts: true,
+  final_algorithm_name: null,
+  final_algorithm_status: "reserved_for_future_gate",
+  final_algorithm_placeholder: "unnamed_final_forced28_algorithm",
+  forced28_decision_required: true,
+  forced28_decision_truth: {
+    status: "reserved_for_future_gate",
+    final_algorithm_started: false,
+    final_algorithm_named: false,
   },
   risk: {
     path: "engine/src/brain/risk",
-    status: "reserved_for_later_permission_layer",
-    may_reduce_expression_below_28: true,
+    status: "reserved_for_later_portfolio_expression_layer",
+    risk_may_reduce_expression_later: true,
+    risk_may_mutate_forced28_decision_truth: false,
   },
   standing_rule:
-    "Alpha-style cells and Regime-style cells preserve forced-28 weekly pair directions; only the later risk layer may reduce actual trade expression.",
-} as const;
+    "Brain cells preserve forced-28 weekly pair decision truth; only a later risk/portfolio layer may reduce actual trade expression, and it may not mutate forced-28 decision truth.",
+};
 
 export function getBrainCell(cellId: BrainCellId) {
   return BRAIN_CELLS.find((cell) => cell.cell_id === cellId);

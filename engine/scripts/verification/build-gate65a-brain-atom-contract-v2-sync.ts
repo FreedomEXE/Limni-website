@@ -42,6 +42,8 @@ type Gate61aSummary = {
     version: string;
     cells: Array<{ cell_id: string; atoms: Array<{ atom_id: string }> }>;
     body?: Record<string, unknown>;
+    final_algorithm_status?: string;
+    final_algorithm_name?: string | null;
     risk?: Record<string, unknown>;
   };
 };
@@ -79,7 +81,8 @@ function renderReport(summary: Record<string, unknown>, contractRows: Array<Reco
     "- Gate 64B valuation-gap emitted formulas are now contract-visible Regime derived atoms.",
     "- Gate 64B fail-closed valuation-gap variants remain explicit fail-closed formula entries.",
     "- No historical Gate 59-64 artifacts were rewritten.",
-    "- Body remains reserved and Risk remains a later portfolio permission layer.",
+    "- The final forced-28 decision algorithm remains unnamed and reserved for a future gate.",
+    "- Risk remains a later portfolio permission/expression layer.",
     "",
     "## Regime Contract Surface",
     "",
@@ -110,7 +113,7 @@ function renderReport(summary: Record<string, unknown>, contractRows: Array<Reco
     "",
     "## Stop Line",
     "",
-    "Gate 65A stops at contract sync. It does not start Body design, Alpha v2, risk, execution, app/runtime work, source mutation, or optimization.",
+    "Gate 65A stops at contract sync. It does not start final forced-28 algorithm design, Alpha v2, risk, execution, app/runtime work, source mutation, or optimization.",
     "",
   ].join("\n");
 }
@@ -146,9 +149,15 @@ async function main() {
     return atom?.atom_class === "fail_closed" && atom.status === "fail_closed";
   });
   const denominator = denominatorSummary(alphaRows);
-  const bodyReserved = BRAIN_ARCHITECTURE.body.status.includes("reserved") && BRAIN_ARCHITECTURE.body.may_reduce_expression_below_28 === false;
-  const riskReserved = BRAIN_ARCHITECTURE.risk.status.includes("reserved") && BRAIN_ARCHITECTURE.risk.may_reduce_expression_below_28 === true;
-  const pass = emittedVisible && failClosedVisible && denominator.forced28_preserved && bodyReserved && riskReserved && removedAtoms.length === 0;
+  const finalAlgorithmReserved =
+    BRAIN_ARCHITECTURE.final_algorithm_name === null &&
+    BRAIN_ARCHITECTURE.final_algorithm_status === "reserved_for_future_gate" &&
+    BRAIN_ARCHITECTURE.forced28_decision_truth.final_algorithm_started === false;
+  const riskReserved =
+    BRAIN_ARCHITECTURE.risk.status.includes("reserved") &&
+    BRAIN_ARCHITECTURE.risk.risk_may_reduce_expression_later === true &&
+    BRAIN_ARCHITECTURE.risk.risk_may_mutate_forced28_decision_truth === false;
+  const pass = emittedVisible && failClosedVisible && denominator.forced28_preserved && finalAlgorithmReserved && riskReserved && removedAtoms.length === 0;
 
   const artifacts = {
     contractJson: toRepoRelative(path.join(artifactDir, "brain-atom-contract-v2.json")),
@@ -165,7 +174,12 @@ async function main() {
     added_atoms: addedAtoms,
     removed_atoms: removedAtoms,
     changed_boundary: {
-      body: { previous: gate61aSummary.architecture?.body ?? null, current: BRAIN_ARCHITECTURE.body },
+      deprecated_intermediate_layer: { previous: gate61aSummary.architecture?.body ?? null, current: null },
+      final_algorithm: {
+        previous_status: gate61aSummary.architecture?.final_algorithm_status ?? null,
+        current_status: BRAIN_ARCHITECTURE.final_algorithm_status,
+        current_name: BRAIN_ARCHITECTURE.final_algorithm_name,
+      },
       risk: { previous: gate61aSummary.architecture?.risk ?? null, current: BRAIN_ARCHITECTURE.risk },
     },
   };
@@ -182,7 +196,7 @@ async function main() {
     gate64c_denominator: gate64cSummary["denominator"],
     contract_denominator: denominator,
     historical_evidence_rewritten: false,
-    body_started: false,
+    final_algorithm_started: false,
     risk_started: false,
     alpha_v2_started: false,
   };
@@ -200,11 +214,11 @@ async function main() {
       emitted_valuation_gap_formulas_visible: emittedVisible,
       fail_closed_valuation_gap_variants_visible: failClosedVisible,
       removed_gate61a_atoms: removedAtoms,
-      body_reserved: bodyReserved,
+      final_algorithm_reserved: finalAlgorithmReserved,
       risk_reserved: riskReserved,
       forced28_preserved: denominator.forced28_preserved,
       historical_evidence_rewritten: false,
-      body_started: false,
+      final_algorithm_started: false,
       risk_started: false,
       alpha_v2_started: false,
     },
