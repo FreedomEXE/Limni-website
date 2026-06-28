@@ -58,6 +58,7 @@
     "engine:gate68a:brain-mode-selector-contract": "tsx engine/scripts/verification/build-gate68a-brain-mode-selector-contract.ts",
     "engine:gate68b:brain-mode-selector-test-matrix": "tsx engine/scripts/verification/build-gate68b-brain-mode-selector-test-matrix.ts",
     "engine:gate68c:frozen-seven-year-reference-capsule": "tsx engine/scripts/verification/build-gate68c-frozen-seven-year-reference-capsule.ts",
+    "engine:gate68d:forward-decision-receipt-and-drift-monitor": "tsx engine/scripts/verification/build-gate68d-forward-decision-receipt-and-drift-monitor.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

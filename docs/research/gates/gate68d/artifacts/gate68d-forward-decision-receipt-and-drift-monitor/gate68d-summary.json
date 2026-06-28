@@ -1,0 +1,32 @@
+{
+  "gate_id": "Gate 68D: forward-decision-receipt-and-drift-monitor",
+  "command": "npm run engine:gate68d:forward-decision-receipt-and-drift-monitor",
+  "generated_at": "2026-06-28T04:48:04.363Z",
+  "git_commit": "710c02c79261e44a5f066513a2b258aea2d2840d",
+  "verdict": "PASS_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR__ALERT_ONLY_APPEND_ONLY_NO_LEARNING",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "validation": {
+    "gate68c_passed": true,
+    "future_weekly_receipt_schema_complete": true,
+    "receipt_has_decision_hash": true,
+    "receipt_has_versioning": true,
+    "drift_monitor_alert_only": true,
+    "drift_monitor_can_change_decisions": false,
+    "drift_monitor_can_update_rules": false,
+    "drift_monitor_can_select_better_candidate": false,
+    "forward_ledger_append_only": true,
+    "risk_exits_execution_fields_mixed_into_brain_truth": false,
+    "adaptive_learning_started": false
+  },
+  "artifacts": {
+    "decisionReceiptSchema": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-weekly-decision-receipt.schema.json",
+    "outcomeObservationSchema": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-outcome-observation.schema.json",
+    "driftMonitorContract": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-contract.json",
+    "driftThresholds": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-thresholds-predeclared.json",
+    "replayContract": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/no-drift-replay-contract.json",
+    "appendOnlyContract": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-ledger-append-only-contract.json",
+    "summaryJson": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-summary.json",
+    "shaIdentity": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-sha256.txt",
+    "report": "docs/research/gates/gate68d/GATE68D_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR_CONTRACT_2026-06-28.md"
+  }
+}

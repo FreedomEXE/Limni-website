@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate 68D Forward Outcome Observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_open_utc",
+    "symbol",
+    "decision_hash",
+    "outcome_surface",
+    "observed_after_close",
+    "observation_hash",
+    "frozen_reference_capsule_id"
+  ],
+  "properties": {
+    "week_open_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome_surface": {
+      "enum": [
+        "ADR_GRID",
+        "WEEKLY_HOLD"
+      ]
+    },
+    "observed_after_close": {
+      "const": true
+    },
+    "adr_value": {
+      "type": "number"
+    },
+    "observation_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "frozen_reference_capsule_id": {
+      "const": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D"
+    }
+  }
+}
