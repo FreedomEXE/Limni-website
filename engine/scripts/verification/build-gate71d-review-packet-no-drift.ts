@@ -13,9 +13,11 @@ import {
 const GATE_ID = "Gate 71D: review-packet-no-drift";
 const COMMAND = "npm run engine:gate71d:review-packet-no-drift";
 const DEFAULT_REPORT_PATH = `docs/research/gates/gate71d/GATE71D_REVIEW_PACKET_NO_DRIFT_${GATE71_DATE}.md`;
+const DEFAULT_GATE71BM_DIR = "docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse";
 
 const REQUIRED_COMMANDS = [
   "engine:gate71a:exit-testing-protocol-freeze",
+  "engine:gate71bm:exit-path-materialization-warehouse",
   "engine:gate71b:basket-adr-path-diagnostics",
   "engine:gate71c:exit-baseline-matrix",
   "engine:gate71d:review-packet-no-drift",
@@ -23,6 +25,7 @@ const REQUIRED_COMMANDS = [
 
 const REPORT_PATHS = [
   `docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_${GATE71_DATE}.md`,
+  `docs/research/gates/gate71b/GATE71B_M_EXIT_PATH_MATERIALIZATION_WAREHOUSE_${GATE71_DATE}.md`,
   `docs/research/gates/gate71b/GATE71B_BASKET_ADR_PATH_DIAGNOSTICS_${GATE71_DATE}.md`,
   `docs/research/gates/gate71c/GATE71C_EXIT_BASELINE_MATRIX_${GATE71_DATE}.md`,
 ];
@@ -76,8 +79,9 @@ function renderReport(summary: Record<string, unknown>) {
     "",
     "## Scope",
     "",
-    "- Verifies Gate 71A-C artifacts are repo-visible locally.",
+    "- Verifies Gate 71A, Gate 71B-M, Gate 71B, and Gate 71C artifacts are repo-visible locally.",
     "- Verifies Gate 71 package commands exist.",
+    "- Confirms exit policies replayed from a frozen basket path warehouse instead of rebuilding raw M1 paths.",
     "- Confirms Candidate B was not mutated and all 28 signal rows stayed preserved.",
     "- Confirms no risk filters, pair-specific exits, regime-specific exits, fair-value pruning, source mutation, MT5/live/runtime work, Alpha v2 promotion, or exit promotion slipped in.",
     "",
@@ -116,6 +120,7 @@ async function main() {
   const currentWorkPointsToGate71D = currentWorkText.includes("Gate 71D: review-packet-no-drift");
   const shaManifests = [
     path.join(DEFAULT_GATE71A_DIR, "gate71a-sha256.txt"),
+    path.join(DEFAULT_GATE71BM_DIR, "gate71bm-sha256.txt"),
     path.join(DEFAULT_GATE71B_DIR, "gate71b-sha256.txt"),
     path.join(DEFAULT_GATE71C_DIR, "gate71c-sha256.txt"),
   ];
@@ -138,14 +143,19 @@ async function main() {
   );
   const missingArtifacts = artifactChecks.filter((row) => !row.exists);
   const gate71a = await readJson<Gate71Summary>(path.join(DEFAULT_GATE71A_DIR, "gate71a-summary.json"));
+  const gate71bm = await readJson<Gate71Summary>(path.join(DEFAULT_GATE71BM_DIR, "gate71bm-summary.json"));
   const gate71b = await readJson<Gate71Summary>(path.join(DEFAULT_GATE71B_DIR, "gate71b-summary.json"));
   const gate71c = await readJson<Gate71Summary>(path.join(DEFAULT_GATE71C_DIR, "gate71c-summary.json"));
   const noDriftAssertion = {
     gate_id: GATE_ID,
     candidate_b_mutated: false,
-    all_28_signal_rows_preserved: gate71a.validation.candidate_b_forced28_preserved === true && gate71b.validation.candidate_b_forced28_preserved === true && gate71c.validation.candidate_b_forced28_preserved === true,
+    all_28_signal_rows_preserved:
+      gate71a.validation.candidate_b_forced28_preserved === true &&
+      gate71bm.validation.candidate_b_forced28_preserved === true &&
+      gate71b.validation.candidate_b_forced28_preserved === true &&
+      gate71c.validation.candidate_b_forced28_preserved === true,
     candidate_c_shadow_only: gate71a.validation.candidate_c_shadow_only === true,
-    risk_filters_slipped_in: gate71b.validation.risk_filters_started === true || gate71c.validation.risk_filters_started === true,
+    risk_filters_slipped_in: gate71bm.validation.risk_filters_started === true || gate71b.validation.risk_filters_started === true || gate71c.validation.risk_filters_started === true,
     pair_specific_exits_slipped_in: gate71c.validation.pair_specific_exits_executed === true,
     regime_specific_exits_slipped_in: gate71c.validation.regime_specific_exits_executed === true,
     fair_value_pruning_slipped_in: false,
@@ -153,7 +163,10 @@ async function main() {
     mt5_live_runtime_work_slipped_in: false,
     alpha_v2_promotion_slipped_in: false,
     exit_promotion_performed: gate71c.validation.exit_promotion_performed === true,
-    legacy_adr_grid_foundation_used: gate71b.validation.legacy_adr_grid_used_as_foundation === true || gate71c.validation.legacy_adr_grid_used_as_foundation === true,
+    legacy_adr_grid_foundation_used: gate71bm.validation.legacy_adr_grid_used_as_foundation === true || gate71b.validation.legacy_adr_grid_used_as_foundation === true || gate71c.validation.legacy_adr_grid_used_as_foundation === true,
+    basket_path_warehouse_materialized: gate71bm.verdict.startsWith("PASS_") && gate71bm.validation.weeks_materialized === 373,
+    exit_policy_replay_from_frozen_warehouse: gate71c.validation.exit_policy_replay_from_frozen_warehouse === true,
+    raw_m1_rebuild_performed_during_replay: gate71b.validation.raw_m1_rebuild_performed === true || gate71c.validation.raw_m1_rebuild_performed === true,
   };
   const repoVisibleArtifactCheck = {
     gate_id: GATE_ID,
@@ -170,6 +183,7 @@ async function main() {
     live_pr_update_performed_by_script: false,
     reason: "PR body is updated after final commit and push so the final head SHA is live truth.",
     gate71a_verdict: gate71a.verdict,
+    gate71bm_verdict: gate71bm.verdict,
     gate71b_verdict: gate71b.verdict,
     gate71c_verdict: gate71c.verdict,
   };
@@ -181,6 +195,7 @@ async function main() {
   };
   const pass =
     gate71a.verdict.startsWith("PASS_") &&
+    gate71bm.verdict.startsWith("PASS_") &&
     gate71b.verdict.startsWith("PASS_") &&
     gate71c.verdict.startsWith("PASS_") &&
     missingCommands.length === 0 &&
@@ -192,7 +207,10 @@ async function main() {
     noDriftAssertion.pair_specific_exits_slipped_in === false &&
     noDriftAssertion.regime_specific_exits_slipped_in === false &&
     noDriftAssertion.exit_promotion_performed === false &&
-    noDriftAssertion.legacy_adr_grid_foundation_used === false;
+    noDriftAssertion.legacy_adr_grid_foundation_used === false &&
+    noDriftAssertion.basket_path_warehouse_materialized === true &&
+    noDriftAssertion.exit_policy_replay_from_frozen_warehouse === true &&
+    noDriftAssertion.raw_m1_rebuild_performed_during_replay === false;
   const artifacts = {
     repoVisibleArtifactCheck: toRepoRelative(path.join(artifactDir, "repo-visible-artifact-check.json")),
     noDriftAssertion: toRepoRelative(path.join(artifactDir, "gate71-no-drift-assertion.json")),
@@ -210,6 +228,7 @@ async function main() {
     verdict: pass ? "PASS_GATE71D_REVIEW_PACKET_NO_DRIFT__EXIT_TEST_PACKET_VISIBLE_NO_PROMOTION" : "FAIL_GATE71D_REVIEW_PACKET_NO_DRIFT",
     validation: {
       gate71a_passed: gate71a.verdict.startsWith("PASS_"),
+      gate71bm_passed: gate71bm.verdict.startsWith("PASS_"),
       gate71b_passed: gate71b.verdict.startsWith("PASS_"),
       gate71c_passed: gate71c.verdict.startsWith("PASS_"),
       required_commands_present: missingCommands.length === 0,

@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 71D: review-packet-no-drift",
+  "pr_number": 2,
+  "repository": "FreedomEXE/Limni-website",
+  "local_packet_ready_for_pr_update": true,
+  "live_pr_update_performed_by_script": false,
+  "reason": "PR body is updated after final commit and push so the final head SHA is live truth.",
+  "gate71a_verdict": "PASS_GATE71A_EXIT_TESTING_PROTOCOL_FREEZE__CLEAN_BASKET_PATH_REQUIRED",
+  "gate71bm_verdict": "PASS_GATE71BM_EXIT_PATH_MATERIALIZATION_WAREHOUSE__FROZEN_PATH_READY_FOR_REPLAY",
+  "gate71b_verdict": "PASS_GATE71B_BASKET_ADR_PATH_DIAGNOSTICS__CLEAN_PATH_LEDGER_BUILT",
+  "gate71c_verdict": "PASS_GATE71C_EXIT_BASELINE_MATRIX__PREDECLARED_BASKET_RULES_SCORED"
+}

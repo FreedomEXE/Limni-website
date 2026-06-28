@@ -1,0 +1,27 @@
+{
+  "gate_id": "Gate 71B: basket-adr-path-diagnostics",
+  "weeks": 373,
+  "positive_hit_rates": {
+    "plus_025": 0.981233,
+    "plus_050": 0.965147,
+    "plus_075": 0.9437,
+    "plus_100": 0.927614,
+    "plus_125": 0.911528,
+    "plus_150": 0.887399,
+    "plus_200": 0.855228
+  },
+  "adverse_hit_rates": {
+    "minus_050": 0.932976,
+    "minus_100": 0.898123,
+    "minus_150": 0.871314,
+    "minus_200": 0.841823,
+    "minus_300": 0.769437
+  },
+  "profit_before_drawdown_rate": 0.723861,
+  "drawdown_before_profit_rate": 0.276139,
+  "average_peak_to_friday_giveback_adr": 9.104318,
+  "max_mfe_adr": 65.312854,
+  "min_mae_adr": -41.478023,
+  "missing_price_weeks": 0,
+  "default_adr_weeks": 10
+}

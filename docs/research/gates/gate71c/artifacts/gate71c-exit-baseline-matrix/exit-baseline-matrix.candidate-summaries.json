@@ -1,0 +1,3789 @@
+[
+  {
+    "rule_id": "CONTROL_WEEKLY_HOLD",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_WEEKLY_HOLD",
+      "family": "control",
+      "control": "weekly_hold"
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 638.115398,
+    "average_adr_per_week": 1.710765,
+    "median_adr_per_week": 0.209155,
+    "profitable_weeks": 194,
+    "losing_weeks": 179,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.520107,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -137.015716,
+    "max_drawdown_adr": -116.795153,
+    "return_to_drawdown": 5.463543,
+    "profit_factor_adr": 1.414187,
+    "average_winning_week_adr": 11.230724,
+    "average_losing_week_adr": -8.606956,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 0,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-05-10T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -29.008056
+      },
+      {
+        "week_open_utc": "2025-10-05T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -26.157993
+      },
+      {
+        "week_open_utc": "2023-06-18T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -24.995894
+      },
+      {
+        "week_open_utc": "2019-11-04T00:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -24.858985
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 108.759261,
+        "profitable_week_rate": 0.578947,
+        "worst_week_adr": -24.858985
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 74.599782,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -29.008056
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 190.335583,
+        "profitable_week_rate": 0.653846,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 57.417709,
+        "profitable_week_rate": 0.519231,
+        "worst_week_adr": -21.126692
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 154.576098,
+        "profitable_week_rate": 0.557692,
+        "worst_week_adr": -24.995894
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 50.006061,
+        "profitable_week_rate": 0.45283,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 25.398044,
+        "profitable_week_rate": 0.461538,
+        "worst_week_adr": -26.157993
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -22.97714,
+        "profitable_week_rate": 0.363636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "CONTROL_LEGACY_ADR_GRID",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_LEGACY_ADR_GRID",
+      "family": "control",
+      "control": "legacy_adr_grid"
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 2341.080708,
+    "average_adr_per_week": 6.276356,
+    "median_adr_per_week": 12.881572,
+    "profitable_weeks": 255,
+    "losing_weeks": 118,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.683646,
+    "worst_week_adr": -184.530498,
+    "worst_5_week_adr_sum": -611.927143,
+    "max_drawdown_adr": -241.508971,
+    "return_to_drawdown": 9.693556,
+    "profit_factor_adr": 1.662295,
+    "average_winning_week_adr": 23.042669,
+    "average_losing_week_adr": -29.955932,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 0.986595,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2022-02-28T00:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -184.530498
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -116.764371
+      },
+      {
+        "week_open_utc": "2026-01-19T00:00:00.000Z",
+        "year": 2026,
+        "exit_adr": -112.11278
+      },
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -110.69907
+      },
+      {
+        "week_open_utc": "2024-09-15T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -87.820424
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -127.613437,
+        "profitable_week_rate": 0.526316,
+        "worst_week_adr": -78.269451
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 241.241847,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -116.764371
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 710.408163,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -110.69907
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 258.845476,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -184.530498
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 488.703929,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -76.937276
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 38.489928,
+        "profitable_week_rate": 0.566038,
+        "worst_week_adr": -87.820424
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 725.766561,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -33.124779
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 5.238241,
+        "profitable_week_rate": 0.590909,
+        "worst_week_adr": -112.11278
+      }
+    ]
+  },
+  {
+    "rule_id": "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE",
+      "family": "control",
+      "control": "pair_silo_1adr_unavailable"
+    },
+    "weeks": 0,
+    "unavailable_weeks": 373,
+    "total_adr": 0,
+    "average_adr_per_week": 0,
+    "median_adr_per_week": 0,
+    "profitable_weeks": 0,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0,
+    "worst_week_adr": 0,
+    "worst_5_week_adr_sum": 0,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [],
+    "annual": []
+  },
+  {
+    "rule_id": "GLOBAL_TP_025_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_025_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 26.114195,
+    "average_adr_per_week": 0.070011,
+    "median_adr_per_week": 0.32212,
+    "profitable_weeks": 366,
+    "losing_weeks": 7,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.981233,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -93.996146,
+    "max_drawdown_adr": -44.726851,
+    "return_to_drawdown": 0.583859,
+    "profit_factor_adr": 1.248545,
+    "average_winning_week_adr": 0.358422,
+    "average_losing_week_adr": -15.009752,
+    "closed_before_friday_rate": 0.981233,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      },
+      {
+        "week_open_utc": "2026-05-31T23:00:00.000Z",
+        "year": 2026,
+        "exit_adr": -12.299427
+      },
+      {
+        "week_open_utc": "2024-10-13T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -11.04103
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -5.278171,
+        "profitable_week_rate": 0.973684,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -3.126782,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -20.966252
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -23.528996,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 14.613237,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 19.70437,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.252088
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 8.085547,
+        "profitable_week_rate": 0.981132,
+        "worst_week_adr": -11.04103
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 20.22681,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.250294
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -4.58182,
+        "profitable_week_rate": 0.954545,
+        "worst_week_adr": -12.299427
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 28.884403,
+    "average_adr_per_week": 0.077438,
+    "median_adr_per_week": 0.553724,
+    "profitable_weeks": 360,
+    "losing_weeks": 13,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.965147,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -109.818287,
+    "max_drawdown_adr": -63.75333,
+    "return_to_drawdown": 0.453065,
+    "profit_factor_adr": 1.155507,
+    "average_winning_week_adr": 0.596188,
+    "average_losing_week_adr": -14.287941,
+    "closed_before_friday_rate": 0.965147,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      },
+      {
+        "week_open_utc": "2025-02-17T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -15.303075
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 3.15595,
+        "profitable_week_rate": 0.973684,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -26.891924,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -21.87136,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 28.072322,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 26.458005,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -4.55314
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 21.089664,
+        "profitable_week_rate": 0.981132,
+        "worst_week_adr": -11.04103
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 14.300659,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -15.428913,
+        "profitable_week_rate": 0.909091,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.75
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 30.946525,
+    "average_adr_per_week": 0.082967,
+    "median_adr_per_week": 0.808762,
+    "profitable_weeks": 352,
+    "losing_weeks": 21,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.9437,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -55.911196,
+    "return_to_drawdown": 0.553494,
+    "profit_factor_adr": 1.115259,
+    "average_winning_week_adr": 0.850685,
+    "average_losing_week_adr": -12.785465,
+    "closed_before_friday_rate": 0.9437,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 13.935175,
+        "profitable_week_rate": 0.973684,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -25.478762,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -10.033061,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 40.316639,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 26.976495,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -11.568799,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 11.260882,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -14.462044,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 64.607761,
+    "average_adr_per_week": 0.173211,
+    "median_adr_per_week": 1.065414,
+    "profitable_weeks": 346,
+    "losing_weeks": 27,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.927614,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -67.982351,
+    "return_to_drawdown": 0.950361,
+    "profit_factor_adr": 1.200892,
+    "average_winning_week_adr": 1.116219,
+    "average_losing_week_adr": -11.911256,
+    "closed_before_friday_rate": 0.927614,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 5.846181,
+        "profitable_week_rate": 0.947368,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -36.510077,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 1.908836,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 50.595552,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -2.365406
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 41.895122,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -2.651822,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 12.701033,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -9.177064,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 79.591558,
+    "average_adr_per_week": 0.213382,
+    "median_adr_per_week": 1.310631,
+    "profitable_weeks": 340,
+    "losing_weeks": 33,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.911528,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -120.198431,
+    "max_drawdown_adr": -74.934821,
+    "return_to_drawdown": 1.062144,
+    "profit_factor_adr": 1.205903,
+    "average_winning_week_adr": 1.370999,
+    "average_losing_week_adr": -11.713574,
+    "closed_before_friday_rate": 0.911528,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2024-01-01T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -18.960749
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 16.919983,
+        "profitable_week_rate": 0.947368,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -26.117492,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -2.457554,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 40.047138,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -16.183608
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 53.613015,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -8.849003,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 18.950792,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.515321,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_150_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_150_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 51.407492,
+    "average_adr_per_week": 0.137822,
+    "median_adr_per_week": 1.560897,
+    "profitable_weeks": 332,
+    "losing_weeks": 41,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.89008,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -120.198431,
+    "max_drawdown_adr": -77.136236,
+    "return_to_drawdown": 0.666451,
+    "profit_factor_adr": 1.106061,
+    "average_winning_week_adr": 1.61477,
+    "average_losing_week_adr": -11.821854,
+    "closed_before_friday_rate": 0.887399,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2024-01-01T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -18.960749
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -7.103499,
+        "profitable_week_rate": 0.894737,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -13.890504,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 8.779816,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 51.453764,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -16.183608
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 25.223452,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -14.239625
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -35.600633,
+        "profitable_week_rate": 0.849057,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 30.998231,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -8.453135,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_200_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_200_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 76.803474,
+    "average_adr_per_week": 0.205907,
+    "median_adr_per_week": 2.059144,
+    "profitable_weeks": 320,
+    "losing_weeks": 53,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.857909,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -127.556115,
+    "max_drawdown_adr": -61.158905,
+    "return_to_drawdown": 1.255802,
+    "profit_factor_adr": 1.127927,
+    "average_winning_week_adr": 2.116164,
+    "average_losing_week_adr": -11.327717,
+    "closed_before_friday_rate": 0.855228,
+    "stopped_out_rate": 0,
+    "negative_years": 2,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2025-10-05T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -26.157993
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2022-10-30T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -21.126692
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -0.060725,
+        "profitable_week_rate": 0.868421,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 1.048388,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 14.301565,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 20.539922,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -21.126692
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 42.467179,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -14.239625
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -12.350514,
+        "profitable_week_rate": 0.849057,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 10.652047,
+        "profitable_week_rate": 0.807692,
+        "worst_week_adr": -26.157993
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 0.205612,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 34.075536,
+    "average_adr_per_week": 0.091355,
+    "median_adr_per_week": 0.527877,
+    "profitable_weeks": 263,
+    "losing_weeks": 110,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.705094,
+    "worst_week_adr": -1.6753,
+    "worst_5_week_adr_sum": -7.352468,
+    "max_drawdown_adr": -8.181849,
+    "return_to_drawdown": 4.164772,
+    "profit_factor_adr": 1.282822,
+    "average_winning_week_adr": 0.58768,
+    "average_losing_week_adr": -1.095311,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.294906,
+    "negative_years": 2,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2025-04-06T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.6753
+      },
+      {
+        "week_open_utc": "2025-11-10T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.452183
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.421638
+      },
+      {
+        "week_open_utc": "2025-08-17T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.417054
+      },
+      {
+        "week_open_utc": "2020-12-21T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.386293
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -0.104325,
+        "profitable_week_rate": 0.657895,
+        "worst_week_adr": -1.421638
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 7.258032,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -1.386293
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -0.829614,
+        "profitable_week_rate": 0.634615,
+        "worst_week_adr": -1.369782
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 8.554916,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -1.31035
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 5.706627,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -1.382805
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 5.218161,
+        "profitable_week_rate": 0.698113,
+        "worst_week_adr": -1.165926
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 5.151059,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -1.6753
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 3.12068,
+        "profitable_week_rate": 0.727273,
+        "worst_week_adr": -1.061271
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 29.643782,
+    "average_adr_per_week": 0.079474,
+    "median_adr_per_week": 0.535233,
+    "profitable_weeks": 285,
+    "losing_weeks": 88,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.764075,
+    "worst_week_adr": -2.201675,
+    "worst_5_week_adr_sum": -9.3551,
+    "max_drawdown_adr": -10.723587,
+    "return_to_drawdown": 2.764353,
+    "profit_factor_adr": 1.213234,
+    "average_winning_week_adr": 0.591803,
+    "average_losing_week_adr": -1.579775,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.235925,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2023-07-30T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -2.201675
+      },
+      {
+        "week_open_utc": "2023-03-19T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -1.866567
+      },
+      {
+        "week_open_utc": "2022-06-05T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -1.819133
+      },
+      {
+        "week_open_utc": "2020-10-04T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.750322
+      },
+      {
+        "week_open_utc": "2021-06-20T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -1.717403
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -3.859331,
+        "profitable_week_rate": 0.684211,
+        "worst_week_adr": -1.657466
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 6.993663,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -1.750322
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 2.570803,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -1.717403
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 6.305538,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -1.819133
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 0.378622,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -2.201675
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 8.595905,
+        "profitable_week_rate": 0.792453,
+        "worst_week_adr": -1.681797
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 6.3493,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -1.6753
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 2.309282,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -1.530396
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 31.070777,
+    "average_adr_per_week": 0.0833,
+    "median_adr_per_week": 0.53904,
+    "profitable_weeks": 302,
+    "losing_weeks": 71,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.809651,
+    "worst_week_adr": -2.329995,
+    "worst_5_week_adr_sum": -11.465658,
+    "max_drawdown_adr": -11.79483,
+    "return_to_drawdown": 2.634271,
+    "profit_factor_adr": 1.209672,
+    "average_winning_week_adr": 0.59357,
+    "average_losing_week_adr": -2.087144,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.190349,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2025-09-21T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -2.329995
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.316113
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -2.28903
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.268157
+      },
+      {
+        "week_open_utc": "2023-12-18T00:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -2.262363
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -5.322493,
+        "profitable_week_rate": 0.736842,
+        "worst_week_adr": -2.316113
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 6.803524,
+        "profitable_week_rate": 0.826923,
+        "worst_week_adr": -2.28903
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -1.545631,
+        "profitable_week_rate": 0.769231,
+        "worst_week_adr": -2.200882
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 12.259253,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -2.125777
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 1.694797,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -2.262363
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 11.273011,
+        "profitable_week_rate": 0.849057,
+        "worst_week_adr": -2.177429
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 6.259015,
+        "profitable_week_rate": 0.826923,
+        "worst_week_adr": -2.329995
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -0.350699,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -2.17159
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 35.267736,
+    "average_adr_per_week": 0.094552,
+    "median_adr_per_week": 0.769519,
+    "profitable_weeks": 229,
+    "losing_weeks": 144,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.613941,
+    "worst_week_adr": -1.6753,
+    "worst_5_week_adr_sum": -7.493758,
+    "max_drawdown_adr": -12.928701,
+    "return_to_drawdown": 2.727864,
+    "profit_factor_adr": 1.223831,
+    "average_winning_week_adr": 0.84206,
+    "average_losing_week_adr": -1.094195,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.386059,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2025-04-06T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.6753
+      },
+      {
+        "week_open_utc": "2020-08-16T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.527583
+      },
+      {
+        "week_open_utc": "2025-11-10T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.452183
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.421638
+      },
+      {
+        "week_open_utc": "2025-08-17T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.417054
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 1.2573,
+        "profitable_week_rate": 0.578947,
+        "worst_week_adr": -1.421638
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 3.965118,
+        "profitable_week_rate": 0.615385,
+        "worst_week_adr": -1.527583
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -4.112141,
+        "profitable_week_rate": 0.519231,
+        "worst_week_adr": -1.369782
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 10.9342,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -1.31035
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 4.329729,
+        "profitable_week_rate": 0.615385,
+        "worst_week_adr": -1.382805
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 2.745286,
+        "profitable_week_rate": 0.566038,
+        "worst_week_adr": -1.169893
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 9.23159,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -1.6753
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 6.916654,
+        "profitable_week_rate": 0.727273,
+        "worst_week_adr": -1.061271
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 38.634204,
+    "average_adr_per_week": 0.103577,
+    "median_adr_per_week": 0.779759,
+    "profitable_weeks": 259,
+    "losing_weeks": 114,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.69437,
+    "worst_week_adr": -2.201675,
+    "worst_5_week_adr_sum": -9.727232,
+    "max_drawdown_adr": -12.475172,
+    "return_to_drawdown": 3.096887,
+    "profit_factor_adr": 1.214473,
+    "average_winning_week_adr": 0.84467,
+    "average_losing_week_adr": -1.580133,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.30563,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2023-07-30T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -2.201675
+      },
+      {
+        "week_open_utc": "2020-05-24T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.973551
+      },
+      {
+        "week_open_utc": "2023-03-19T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -1.866567
+      },
+      {
+        "week_open_utc": "2021-11-22T00:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -1.866306
+      },
+      {
+        "week_open_utc": "2022-06-05T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -1.819133
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 0.889502,
+        "profitable_week_rate": 0.657895,
+        "worst_week_adr": -1.657466
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 6.186298,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -1.973551
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -0.17709,
+        "profitable_week_rate": 0.653846,
+        "worst_week_adr": -1.866306
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 7.070492,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -1.819133
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 1.6998,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -2.201675
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 4.207688,
+        "profitable_week_rate": 0.660377,
+        "worst_week_adr": -1.681797
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 12.39095,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -1.694417
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 6.366564,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -1.530396
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 37.985231,
+    "average_adr_per_week": 0.101837,
+    "median_adr_per_week": 0.784902,
+    "profitable_weeks": 280,
+    "losing_weeks": 93,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.75067,
+    "worst_week_adr": -4.901387,
+    "worst_5_week_adr_sum": -16.155607,
+    "max_drawdown_adr": -14.373809,
+    "return_to_drawdown": 2.64267,
+    "profit_factor_adr": 1.19134,
+    "average_winning_week_adr": 0.844668,
+    "average_losing_week_adr": -2.134643,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.24933,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -4.901387
+      },
+      {
+        "week_open_utc": "2025-05-11T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -4.319082
+      },
+      {
+        "week_open_utc": "2025-09-21T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -2.329995
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.316113
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -2.28903
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 2.878951,
+        "profitable_week_rate": 0.736842,
+        "worst_week_adr": -2.316113
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 7.667418,
+        "profitable_week_rate": 0.769231,
+        "worst_week_adr": -2.28903
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -3.383716,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -2.200882
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 8.627442,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -4.901387
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 5.436905,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -2.262363
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 3.600751,
+        "profitable_week_rate": 0.716981,
+        "worst_week_adr": -2.259626
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 9.450897,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -4.319082
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 3.706583,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -2.17159
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 62.393758,
+    "average_adr_per_week": 0.167275,
+    "median_adr_per_week": 1.012914,
+    "profitable_weeks": 213,
+    "losing_weeks": 160,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.571046,
+    "worst_week_adr": -1.6753,
+    "worst_5_week_adr_sum": -7.493758,
+    "max_drawdown_adr": -10.8533,
+    "return_to_drawdown": 5.748828,
+    "profit_factor_adr": 1.358131,
+    "average_winning_week_adr": 1.110864,
+    "average_losing_week_adr": -1.088877,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.428954,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2025-04-06T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.6753
+      },
+      {
+        "week_open_utc": "2020-08-16T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.527583
+      },
+      {
+        "week_open_utc": "2025-11-10T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.452183
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.421638
+      },
+      {
+        "week_open_utc": "2025-08-17T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.417054
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 3.859171,
+        "profitable_week_rate": 0.552632,
+        "worst_week_adr": -1.421638
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 5.022645,
+        "profitable_week_rate": 0.538462,
+        "worst_week_adr": -1.527583
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 2.663681,
+        "profitable_week_rate": 0.519231,
+        "worst_week_adr": -1.369782
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 18.023556,
+        "profitable_week_rate": 0.653846,
+        "worst_week_adr": -1.31035
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 10.102253,
+        "profitable_week_rate": 0.576923,
+        "worst_week_adr": -1.382805
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 2.214866,
+        "profitable_week_rate": 0.509434,
+        "worst_week_adr": -1.169893
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 9.086827,
+        "profitable_week_rate": 0.576923,
+        "worst_week_adr": -1.6753
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 11.420759,
+        "profitable_week_rate": 0.727273,
+        "worst_week_adr": -1.061271
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 67.710103,
+    "average_adr_per_week": 0.181528,
+    "median_adr_per_week": 1.022525,
+    "profitable_weeks": 244,
+    "losing_weeks": 129,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.654155,
+    "worst_week_adr": -2.201675,
+    "worst_5_week_adr_sum": -9.727232,
+    "max_drawdown_adr": -14.722885,
+    "return_to_drawdown": 4.59897,
+    "profit_factor_adr": 1.332169,
+    "average_winning_week_adr": 1.112919,
+    "average_losing_week_adr": -1.580172,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.345845,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2023-07-30T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -2.201675
+      },
+      {
+        "week_open_utc": "2020-05-24T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.973551
+      },
+      {
+        "week_open_utc": "2023-03-19T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -1.866567
+      },
+      {
+        "week_open_utc": "2021-11-22T00:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -1.866306
+      },
+      {
+        "week_open_utc": "2022-06-05T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -1.819133
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 3.542072,
+        "profitable_week_rate": 0.631579,
+        "worst_week_adr": -1.818411
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 10.426077,
+        "profitable_week_rate": 0.653846,
+        "worst_week_adr": -1.973551
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 5.944106,
+        "profitable_week_rate": 0.634615,
+        "worst_week_adr": -1.866306
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 13.813377,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -1.819133
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 12.630481,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -2.201675
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -0.14032,
+        "profitable_week_rate": 0.584906,
+        "worst_week_adr": -1.681797
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 10.356576,
+        "profitable_week_rate": 0.653846,
+        "worst_week_adr": -1.694417
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 11.137734,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -1.530396
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 67.70162,
+    "average_adr_per_week": 0.181506,
+    "median_adr_per_week": 1.031427,
+    "profitable_weeks": 266,
+    "losing_weeks": 107,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.713137,
+    "worst_week_adr": -4.901387,
+    "worst_5_week_adr_sum": -16.284932,
+    "max_drawdown_adr": -12.874594,
+    "return_to_drawdown": 5.258544,
+    "profit_factor_adr": 1.29686,
+    "average_winning_week_adr": 1.111881,
+    "average_losing_week_adr": -2.131391,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.286863,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -4.901387
+      },
+      {
+        "week_open_utc": "2025-05-11T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -4.319082
+      },
+      {
+        "week_open_utc": "2024-06-09T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -2.418355
+      },
+      {
+        "week_open_utc": "2025-09-21T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -2.329995
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.316113
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 5.797899,
+        "profitable_week_rate": 0.710526,
+        "worst_week_adr": -2.316113
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 14.243715,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -2.28903
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 2.714888,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -2.200882
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 16.054718,
+        "profitable_week_rate": 0.769231,
+        "worst_week_adr": -4.901387
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 14.010198,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -2.262363
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 1.042609,
+        "profitable_week_rate": 0.660377,
+        "worst_week_adr": -2.418355
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 5.35984,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -4.319082
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 8.477753,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -2.17159
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 52.394071,
+    "average_adr_per_week": 0.140467,
+    "median_adr_per_week": 1.251469,
+    "profitable_weeks": 188,
+    "losing_weeks": 185,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.504021,
+    "worst_week_adr": -1.6753,
+    "worst_5_week_adr_sum": -7.493758,
+    "max_drawdown_adr": -16.002772,
+    "return_to_drawdown": 3.274062,
+    "profit_factor_adr": 1.259454,
+    "average_winning_week_adr": 1.35284,
+    "average_losing_week_adr": -1.091566,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.495979,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2025-04-06T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.6753
+      },
+      {
+        "week_open_utc": "2020-08-16T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.527583
+      },
+      {
+        "week_open_utc": "2025-11-10T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.452183
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.421638
+      },
+      {
+        "week_open_utc": "2025-08-17T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -1.417054
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 7.366695,
+        "profitable_week_rate": 0.526316,
+        "worst_week_adr": -1.421638
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 6.96797,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.527583
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -6.117513,
+        "profitable_week_rate": 0.403846,
+        "worst_week_adr": -1.369782
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 16.970745,
+        "profitable_week_rate": 0.576923,
+        "worst_week_adr": -1.31035
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 8.438573,
+        "profitable_week_rate": 0.519231,
+        "worst_week_adr": -1.382805
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 4.49725,
+        "profitable_week_rate": 0.471698,
+        "worst_week_adr": -1.23117
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 5.966365,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.6753
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 8.303986,
+        "profitable_week_rate": 0.590909,
+        "worst_week_adr": -1.145975
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 51.917942,
+    "average_adr_per_week": 0.13919,
+    "median_adr_per_week": 1.265575,
+    "profitable_weeks": 221,
+    "losing_weeks": 152,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.592493,
+    "worst_week_adr": -7.863581,
+    "worst_5_week_adr_sum": -15.77168,
+    "max_drawdown_adr": -18.318829,
+    "return_to_drawdown": 2.83413,
+    "profit_factor_adr": 1.21024,
+    "average_winning_week_adr": 1.352327,
+    "average_losing_week_adr": -1.624647,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.407507,
+    "negative_years": 2,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -7.863581
+      },
+      {
+        "week_open_utc": "2023-07-30T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -2.201675
+      },
+      {
+        "week_open_utc": "2020-05-24T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -1.973551
+      },
+      {
+        "week_open_utc": "2023-03-19T23:00:00.000Z",
+        "year": 2023,
+        "exit_adr": -1.866567
+      },
+      {
+        "week_open_utc": "2021-11-22T00:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -1.866306
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 7.392385,
+        "profitable_week_rate": 0.605263,
+        "worst_week_adr": -1.818411
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 12.623867,
+        "profitable_week_rate": 0.615385,
+        "worst_week_adr": -1.973551
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -1.611149,
+        "profitable_week_rate": 0.538462,
+        "worst_week_adr": -1.866306
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 8.31027,
+        "profitable_week_rate": 0.596154,
+        "worst_week_adr": -1.831912
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 13.742494,
+        "profitable_week_rate": 0.634615,
+        "worst_week_adr": -2.201675
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -4.242474,
+        "profitable_week_rate": 0.54717,
+        "worst_week_adr": -7.863581
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 9.114142,
+        "profitable_week_rate": 0.596154,
+        "worst_week_adr": -1.694417
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 6.588407,
+        "profitable_week_rate": 0.636364,
+        "worst_week_adr": -1.739805
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 57.047944,
+    "average_adr_per_week": 0.152944,
+    "median_adr_per_week": 1.27573,
+    "profitable_weeks": 246,
+    "losing_weeks": 127,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.659517,
+    "worst_week_adr": -7.863581,
+    "worst_5_week_adr_sum": -22.002386,
+    "max_drawdown_adr": -21.467223,
+    "return_to_drawdown": 2.657444,
+    "profit_factor_adr": 1.206687,
+    "average_winning_week_adr": 1.3539,
+    "average_losing_week_adr": -2.173319,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.340483,
+    "negative_years": 2,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -7.863581
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "year": 2022,
+        "exit_adr": -4.901387
+      },
+      {
+        "week_open_utc": "2025-05-11T23:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -4.319082
+      },
+      {
+        "week_open_utc": "2021-07-18T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -2.499981
+      },
+      {
+        "week_open_utc": "2024-06-09T23:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -2.418355
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 9.680224,
+        "profitable_week_rate": 0.684211,
+        "worst_week_adr": -2.316113
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 19.898496,
+        "profitable_week_rate": 0.711538,
+        "worst_week_adr": -2.28903
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -3.363916,
+        "profitable_week_rate": 0.596154,
+        "worst_week_adr": -2.499981
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 12.939079,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -4.901387
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 15.467045,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -2.262363
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -2.73232,
+        "profitable_week_rate": 0.622642,
+        "worst_week_adr": -7.863581
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 2.547665,
+        "profitable_week_rate": 0.634615,
+        "worst_week_adr": -4.319082
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": 2.611671,
+        "profitable_week_rate": 0.636364,
+        "worst_week_adr": -2.17159
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A050_F010",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A050_F010",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.5,
+      "floor_adr": 0.1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 235.98133,
+    "average_adr_per_week": 0.632658,
+    "median_adr_per_week": 0.042834,
+    "profitable_weeks": 263,
+    "losing_weeks": 110,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.705094,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -109.818287,
+    "max_drawdown_adr": -41.857627,
+    "return_to_drawdown": 5.637714,
+    "profit_factor_adr": 2.193563,
+    "average_winning_week_adr": 1.649023,
+    "average_losing_week_adr": -1.797379,
+    "closed_before_friday_rate": 0.906166,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      },
+      {
+        "week_open_utc": "2025-02-17T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -15.303075
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -18.20907,
+        "profitable_week_rate": 0.526316,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 31.020107,
+        "profitable_week_rate": 0.673077,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 55.427703,
+        "profitable_week_rate": 0.692308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 26.509567,
+        "profitable_week_rate": 0.75,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 75.276874,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -4.55314
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 90.330875,
+        "profitable_week_rate": 0.698113,
+        "worst_week_adr": -11.04103
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -11.728227,
+        "profitable_week_rate": 0.730769,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.646499,
+        "profitable_week_rate": 0.590909,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A050_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A050_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.5,
+      "floor_adr": 0.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 99.115575,
+    "average_adr_per_week": 0.265725,
+    "median_adr_per_week": 0.194853,
+    "profitable_weeks": 329,
+    "losing_weeks": 44,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.882038,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -109.818287,
+    "max_drawdown_adr": -40.409655,
+    "return_to_drawdown": 2.45277,
+    "profit_factor_adr": 1.51877,
+    "average_winning_week_adr": 0.88199,
+    "average_losing_week_adr": -4.34225,
+    "closed_before_friday_rate": 0.932976,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      },
+      {
+        "week_open_utc": "2025-02-17T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -15.303075
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -12.887473,
+        "profitable_week_rate": 0.789474,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 11.127236,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 35.366928,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 19.01304,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 66.219448,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -4.55314
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 8.615572,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -11.04103
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -4.400321,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -23.938855,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A075_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.75,
+      "floor_adr": 0.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 173.491049,
+    "average_adr_per_week": 0.465123,
+    "median_adr_per_week": 0.190957,
+    "profitable_weeks": 325,
+    "losing_weeks": 48,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.871314,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -39.228258,
+    "return_to_drawdown": 4.422604,
+    "profit_factor_adr": 1.634438,
+    "average_winning_week_adr": 1.375222,
+    "average_losing_week_adr": -5.697001,
+    "closed_before_friday_rate": 0.882038,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -12.738376,
+        "profitable_week_rate": 0.789474,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 19.68281,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 41.717364,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 61.380528,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 77.657336,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 17.478135,
+        "profitable_week_rate": 0.886792,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -19.087868,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.59888,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A075_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.75,
+      "floor_adr": 0.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 90.364402,
+    "average_adr_per_week": 0.242264,
+    "median_adr_per_week": 0.439019,
+    "profitable_weeks": 343,
+    "losing_weeks": 30,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.919571,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -71.673597,
+    "return_to_drawdown": 1.260777,
+    "profit_factor_adr": 1.334297,
+    "average_winning_week_adr": 1.051533,
+    "average_losing_week_adr": -9.010386,
+    "closed_before_friday_rate": 0.908847,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -3.854551,
+        "profitable_week_rate": 0.894737,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 14.935162,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 47.75955,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 40.203323,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 62.052339,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -37.23547,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -11.555736,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -21.940215,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A100_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A100_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1,
+      "floor_adr": 0.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 157.731091,
+    "average_adr_per_week": 0.422872,
+    "median_adr_per_week": 0.185271,
+    "profitable_weeks": 320,
+    "losing_weeks": 53,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.857909,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -52.900238,
+    "return_to_drawdown": 2.981671,
+    "profit_factor_adr": 1.483738,
+    "average_winning_week_adr": 1.51187,
+    "average_losing_week_adr": -6.152213,
+    "closed_before_friday_rate": 0.86059,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -28.091577,
+        "profitable_week_rate": 0.789474,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 33.720776,
+        "profitable_week_rate": 0.846154,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 41.38613,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 58.528497,
+        "profitable_week_rate": 0.846154,
+        "worst_week_adr": -2.365406
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 76.870378,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 17.632842,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -29.921895,
+        "profitable_week_rate": 0.788462,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.39406,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A100_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A100_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1,
+      "floor_adr": 0.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 138.502086,
+    "average_adr_per_week": 0.371319,
+    "median_adr_per_week": 0.438415,
+    "profitable_weeks": 337,
+    "losing_weeks": 36,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.903485,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -63.015945,
+    "return_to_drawdown": 2.19789,
+    "profit_factor_adr": 1.428262,
+    "average_winning_week_adr": 1.370644,
+    "average_losing_week_adr": -8.983466,
+    "closed_before_friday_rate": 0.876676,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -19.935935,
+        "profitable_week_rate": 0.868421,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 27.922366,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 47.471839,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 56.59206,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -2.365406
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 88.525525,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -17.995876,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -22.453698,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -21.624195,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A125_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A125_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1.25,
+      "floor_adr": 0.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 151.365425,
+    "average_adr_per_week": 0.405805,
+    "median_adr_per_week": 0.428142,
+    "profitable_weeks": 334,
+    "losing_weeks": 39,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.895442,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -120.198431,
+    "max_drawdown_adr": -60.642998,
+    "return_to_drawdown": 2.496008,
+    "profit_factor_adr": 1.390536,
+    "average_winning_week_adr": 1.613619,
+    "average_losing_week_adr": -9.938038,
+    "closed_before_friday_rate": 0.844504,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2024-01-01T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -18.960749
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -19.657138,
+        "profitable_week_rate": 0.894737,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 28.124364,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 39.20398,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 48.230908,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -16.183608
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 95.787497,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 9.799193,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -20.684236,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -29.439143,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A150_F075",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A150_F075",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1.5,
+      "floor_adr": 0.75
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 126.51565,
+    "average_adr_per_week": 0.339184,
+    "median_adr_per_week": 0.673941,
+    "profitable_weeks": 330,
+    "losing_weeks": 43,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.884718,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -120.198431,
+    "max_drawdown_adr": -83.334076,
+    "return_to_drawdown": 1.518174,
+    "profit_factor_adr": 1.260818,
+    "average_winning_week_adr": 1.8533,
+    "average_losing_week_adr": -11.280775,
+    "closed_before_friday_rate": 0.825737,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2024-01-01T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -18.960749
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": -43.127651,
+        "profitable_week_rate": 0.842105,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": 38.084064,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 47.401331,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 40.609088,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -16.183608
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 52.235953,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -14.239625
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 30.401223,
+        "profitable_week_rate": 0.849057,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": -13.81553,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -25.272828,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A050_F025_T100",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A050_F025_T100",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.5,
+      "floor_adr": 0.25,
+      "hard_tp_adr": 1
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 26.091533,
+    "average_adr_per_week": 0.06995,
+    "median_adr_per_week": 0.241356,
+    "profitable_weeks": 340,
+    "losing_weeks": 33,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.911528,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -109.818287,
+    "max_drawdown_adr": -60.356394,
+    "return_to_drawdown": 0.432291,
+    "profit_factor_adr": 1.138128,
+    "average_winning_week_adr": 0.632309,
+    "average_losing_week_adr": -5.724047,
+    "closed_before_friday_rate": 0.965147,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      },
+      {
+        "week_open_utc": "2025-02-17T00:00:00.000Z",
+        "year": 2025,
+        "exit_adr": -15.303075
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 2.747939,
+        "profitable_week_rate": 0.947368,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -26.657011,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -19.02956,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 30.025061,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 26.280953,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -4.55314
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": 19.947429,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -11.04103
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 8.141625,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -15.364903,
+        "profitable_week_rate": 0.818182,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A075_F025_T125",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A075_F025_T125",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.75,
+      "floor_adr": 0.25,
+      "hard_tp_adr": 1.25
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 44.653837,
+    "average_adr_per_week": 0.119715,
+    "median_adr_per_week": 1.260218,
+    "profitable_weeks": 339,
+    "losing_weeks": 34,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.908847,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -50.581983,
+    "return_to_drawdown": 0.882801,
+    "profit_factor_adr": 1.165177,
+    "average_winning_week_adr": 0.929186,
+    "average_losing_week_adr": -7.951179,
+    "closed_before_friday_rate": 0.9437,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 14.168039,
+        "profitable_week_rate": 0.894737,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -20.851383,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -4.943987,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 44.366527,
+        "profitable_week_rate": 0.961538,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 29.257432,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -13.26686,
+        "profitable_week_rate": 0.90566,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 8.365511,
+        "profitable_week_rate": 0.903846,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.441442,
+        "profitable_week_rate": 0.772727,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A075_F050_T150",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A075_F050_T150",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.75,
+      "floor_adr": 0.5,
+      "hard_tp_adr": 1.5
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 29.350747,
+    "average_adr_per_week": 0.078688,
+    "median_adr_per_week": 0.477208,
+    "profitable_weeks": 348,
+    "losing_weeks": 25,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.932976,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -55.077447,
+    "return_to_drawdown": 0.5329,
+    "profit_factor_adr": 1.108993,
+    "average_winning_week_adr": 0.858162,
+    "average_losing_week_adr": -10.771583,
+    "closed_before_friday_rate": 0.941019,
+    "stopped_out_rate": 0,
+    "negative_years": 4,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 13.777768,
+        "profitable_week_rate": 0.947368,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -23.671745,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": -5.475517,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 41.518747,
+        "profitable_week_rate": 0.980769,
+        "worst_week_adr": -2.193518
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 24.612481,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -15.539671,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 6.584754,
+        "profitable_week_rate": 0.923077,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -12.45607,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A100_F050_T200",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A100_F050_T200",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 1,
+      "floor_adr": 0.5,
+      "hard_tp_adr": 2
+    },
+    "weeks": 373,
+    "unavailable_weeks": 0,
+    "total_adr": 45.849583,
+    "average_adr_per_week": 0.122921,
+    "median_adr_per_week": 0.47325,
+    "profitable_weeks": 341,
+    "losing_weeks": 32,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.914209,
+    "worst_week_adr": -31.994788,
+    "worst_5_week_adr_sum": -118.932331,
+    "max_drawdown_adr": -67.51491,
+    "return_to_drawdown": 0.679103,
+    "profit_factor_adr": 1.14221,
+    "average_winning_week_adr": 1.079933,
+    "average_losing_week_adr": -10.075236,
+    "closed_before_friday_rate": 0.924933,
+    "stopped_out_rate": 0,
+    "negative_years": 3,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2021-08-15T23:00:00.000Z",
+        "year": 2021,
+        "exit_adr": -31.994788
+      },
+      {
+        "week_open_utc": "2024-01-15T00:00:00.000Z",
+        "year": 2024,
+        "exit_adr": -24.417119
+      },
+      {
+        "week_open_utc": "2020-02-10T00:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -23.859523
+      },
+      {
+        "week_open_utc": "2020-09-06T23:00:00.000Z",
+        "year": 2020,
+        "exit_adr": -20.966252
+      },
+      {
+        "week_open_utc": "2019-07-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -17.694649
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 38,
+        "total_adr": 4.36596,
+        "profitable_week_rate": 0.921053,
+        "worst_week_adr": -17.694649
+      },
+      {
+        "year": 2020,
+        "weeks": 52,
+        "total_adr": -34.625395,
+        "profitable_week_rate": 0.884615,
+        "worst_week_adr": -23.859523
+      },
+      {
+        "year": 2021,
+        "weeks": 52,
+        "total_adr": 5.549511,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -31.994788
+      },
+      {
+        "year": 2022,
+        "weeks": 52,
+        "total_adr": 40.877679,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -2.365406
+      },
+      {
+        "year": 2023,
+        "weeks": 52,
+        "total_adr": 41.343305,
+        "profitable_week_rate": 0.942308,
+        "worst_week_adr": -11.000875
+      },
+      {
+        "year": 2024,
+        "weeks": 53,
+        "total_adr": -12.33562,
+        "profitable_week_rate": 0.924528,
+        "worst_week_adr": -24.417119
+      },
+      {
+        "year": 2025,
+        "weeks": 52,
+        "total_adr": 7.339281,
+        "profitable_week_rate": 0.865385,
+        "worst_week_adr": -15.303075
+      },
+      {
+        "year": 2026,
+        "weeks": 22,
+        "total_adr": -6.665138,
+        "profitable_week_rate": 0.863636,
+        "worst_week_adr": -14.925813
+      }
+    ]
+  }
+]

@@ -8,13 +8,16 @@ import { getExecutionWeekWindow } from "@engine/evaluation/executionPriceWindows
 import { getAdrPct, getTargetAdrPct, loadWeeklyAdrMap, type AdrMap } from "@engine/price/adrLookup";
 import { localM1WarehouseExists, openLocalM1Warehouse } from "@engine/price/localM1Warehouse";
 import {
-  RESEARCH_DECISION_EVALUATOR_PARAMS,
-  RESEARCH_DECISION_EVALUATOR_VERSION,
-  RESEARCH_DECISION_PATH_CONTRACT_ID,
   loadResearchDecisionWeekScoringContext,
   scoreResearchDecisionPairPathOutcome,
   type ResearchDecisionPathResolution,
 } from "@engine/research/decisionManifestEvaluator";
+import {
+  buildBasketPathWarehouseConfig,
+  buildBasketPathWarehouseManifestId,
+  readBasketPathWarehouseWeek,
+  type BasketPathWarehouseConfig,
+} from "@engine/research/basketPathWarehouse";
 import { sha256Stable } from "@engine/research/hash";
 
 import { countBy, readJson, readJsonl, round } from "./gate65-utils";
@@ -36,6 +39,7 @@ export const DEFAULT_GATE71D_DIR = "docs/research/gates/gate71d/artifacts/gate71
 export const GATE71_PRICE_BUNDLE_ID = "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953";
 export const GATE71_PATH_RESOLUTION: ResearchDecisionPathResolution = "1m";
 export const GATE71_ASSET_CLASS = "fx";
+export const GATE71_BASKET_PATH_POINT_CONTRACT_ID = "gate71_candidate_b_clean_basket_path_points_v1";
 export const GATE71_EXPECTED_ROWS = 10_444;
 export const GATE71_EXPECTED_WEEKS = 373;
 export const GATE71_EXPECTED_SYMBOLS_PER_WEEK = 28;
@@ -239,15 +243,17 @@ export async function preloadGate71AdrMaps(options: {
   const bySymbol = new Map<string, Array<{ openMs: number; high: number; low: number; open: number }>>();
   for (const row of rows) {
     const symbol = row.symbol.toUpperCase();
-    bySymbol.set(symbol, [
-      ...(bySymbol.get(symbol) ?? []),
-      {
-        openMs: new Date(row.bar_open_utc).getTime(),
-        high: Number(row.high_price),
-        low: Number(row.low_price),
-        open: Number(row.open_price),
-      },
-    ]);
+    let symbolRows = bySymbol.get(symbol);
+    if (!symbolRows) {
+      symbolRows = [];
+      bySymbol.set(symbol, symbolRows);
+    }
+    symbolRows.push({
+      openMs: new Date(row.bar_open_utc).getTime(),
+      high: Number(row.high_price),
+      low: Number(row.low_price),
+      open: Number(row.open_price),
+    });
   }
   const maps = new Map<string, AdrMap>();
   for (const week of weeks) {
@@ -297,7 +303,12 @@ export function validateCandidateBRows(rows: CandidateBDecisionRow[]) {
 export function groupCandidateBRowsByWeek(rows: CandidateBDecisionRow[]) {
   const map = new Map<string, CandidateBDecisionRow[]>();
   for (const row of rows) {
-    map.set(row.week_open_utc, [...(map.get(row.week_open_utc) ?? []), row]);
+    let weekRows = map.get(row.week_open_utc);
+    if (!weekRows) {
+      weekRows = [];
+      map.set(row.week_open_utc, weekRows);
+    }
+    weekRows.push(row);
   }
   return [...map.entries()].sort(([left], [right]) => left.localeCompare(right));
 }
@@ -432,13 +443,15 @@ async function buildCandidateBWeeklyBasketPathFromLocalM1(options: {
   const rowsBySymbol = new Map<string, Array<LocalM1CloseRow & { closeMs: number }>>();
   for (const row of rawRows) {
     const symbol = row.symbol.toUpperCase();
-    rowsBySymbol.set(symbol, [
-      ...(rowsBySymbol.get(symbol) ?? []),
-      {
-        ...row,
-        closeMs: Date.parse(row.bar_close_utc),
-      },
-    ]);
+    let symbolRows = rowsBySymbol.get(symbol);
+    if (!symbolRows) {
+      symbolRows = [];
+      rowsBySymbol.set(symbol, symbolRows);
+    }
+    symbolRows.push({
+      ...row,
+      closeMs: Date.parse(row.bar_close_utc),
+    });
   }
   const adrMap = options.adrMap ?? await loadWeeklyAdrMap(options.weekOpenUtc, GATE71_PRICE_BUNDLE_ID);
   const pairInputs = options.rows.map((row) => {
@@ -658,6 +671,46 @@ export async function buildCandidateBWeeklyBasketPath(options: {
     diagnostic,
     points: options.includePoints === false ? [] : points,
     legacyAdrGridControl,
+  };
+}
+
+export function buildGate71BasketPathWarehouseConfig(options: {
+  rows: CandidateBDecisionRow[];
+  weeks: string[];
+  candidateBLedgerHash: string;
+  entryExposureModelId: string;
+}): BasketPathWarehouseConfig {
+  return buildBasketPathWarehouseConfig({
+    pointContractId: GATE71_BASKET_PATH_POINT_CONTRACT_ID,
+    priceBundleId: GATE71_PRICE_BUNDLE_ID,
+    assetClass: GATE71_ASSET_CLASS,
+    pathResolution: GATE71_PATH_RESOLUTION,
+    candidateId: LOCKED_DEFAULT_CANDIDATE_ID,
+    lockedAlgorithmId: LOCKED_FINAL_ALGORITHM_ID,
+    candidateBLedgerHash: options.candidateBLedgerHash,
+    entryExposureModelId: options.entryExposureModelId,
+    adrTargetPct: getTargetAdrPct(),
+    symbols: options.rows.map((row) => row.symbol),
+    weeks: options.weeks,
+  });
+}
+
+export function buildGate71BasketPathWarehouseManifestId(config: BasketPathWarehouseConfig) {
+  return buildBasketPathWarehouseManifestId(config);
+}
+
+export async function buildCandidateBWeeklyBasketPathFromWarehouse(options: {
+  manifestId: string;
+  weekOpenUtc: string;
+}): Promise<BuiltBasketPath> {
+  const week = await readBasketPathWarehouseWeek({
+    manifestId: options.manifestId,
+    weekOpenUtc: options.weekOpenUtc,
+  });
+  return {
+    diagnostic: week.diagnostic as BasketPathDiagnosticRow,
+    points: week.points,
+    legacyAdrGridControl: emptyLegacyAdrGridControl(),
   };
 }
 

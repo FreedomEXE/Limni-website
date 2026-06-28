@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { getPool } from "@database/db/client";
 import { clearRuntimeCacheByPrefix } from "@engine/cache/runtimeCache";
+import { assertBasketPathWarehouseReady } from "@engine/research/basketPathWarehouse";
 
 import { fileHash, gitCommit, parseArgMap, toRepoRelative, writeJson, writeJsonl, writeShaManifest, writeText } from "./gate65-utils";
 import {
@@ -13,6 +14,9 @@ import {
   GATE71_DATE,
   GATE71_EXIT_MATRIX,
   GATE71_EXPECTED_WEEKS,
+  buildCandidateBWeeklyBasketPathFromWarehouse,
+  buildGate71BasketPathWarehouseConfig,
+  buildGate71BasketPathWarehouseManifestId,
   buildCandidateBWeeklyBasketPath,
   evaluateExitRule,
   groupCandidateBRowsByWeek,
@@ -37,6 +41,8 @@ type Gate71bSummary = {
     legacy_adr_grid_used_as_foundation: boolean;
     exit_selection_started: boolean;
     risk_filters_started: boolean;
+    basket_path_warehouse_id?: string | null;
+    raw_m1_rebuild_performed?: boolean;
   };
 };
 
@@ -49,6 +55,8 @@ function parseOptions() {
     gate71aDir: args.get("--gate71a-dir") ?? DEFAULT_GATE71A_DIR,
     gate71bDir: args.get("--gate71b-dir") ?? DEFAULT_GATE71B_DIR,
     candidateBLedgerPath: args.get("--candidate-b-ledger") ?? DEFAULT_CANDIDATE_B_LEDGER_PATH,
+    basketPathWarehouseId: args.get("--basket-path-warehouse-id"),
+    allowRawPathBuild: process.argv.includes("--allow-raw-path-build"),
     maxWeeks: maxWeeksRaw ? Number(maxWeeksRaw) : null,
     logProgress: process.argv.includes("--log-progress"),
   };
@@ -67,6 +75,7 @@ function renderReport(summary: Record<string, unknown>) {
     "## Scope",
     "",
     "- Executes the predeclared basket-exit matrix against the clean Gate 71A/71B basket path.",
+    "- Replays exit policies from the Gate 71B-M frozen basket path warehouse by default.",
     "- Keeps legacy ADR Grid as a control only.",
     "- Excludes time-based profit capture and pure peak trailing from first-pass execution unless later diagnostics justify them.",
     "- Does not promote an exit, apply risk filters, prune pairs, or mutate Candidate B.",
@@ -114,12 +123,31 @@ async function main() {
   const denominator = validateCandidateBRows(rows);
   const candidateBLedgerHash = await fileHash(options.candidateBLedgerPath);
   const weeks = groupCandidateBRowsByWeek(rows).slice(0, options.maxWeeks ?? undefined);
-  const adrMaps = await preloadGate71AdrMaps({
-    weeks: weeks.map(([weekOpenUtc]) => weekOpenUtc),
-    symbols: rows.map((row) => row.symbol),
+  const selectedWeekIds = weeks.map(([weekOpenUtc]) => weekOpenUtc);
+  const basketWarehouseConfig = buildGate71BasketPathWarehouseConfig({
+    rows,
+    weeks: selectedWeekIds,
+    candidateBLedgerHash,
+    entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
   });
+  const basketPathWarehouseId = options.basketPathWarehouseId
+    ?? gate71b.validation.basket_path_warehouse_id
+    ?? buildGate71BasketPathWarehouseManifestId(basketWarehouseConfig);
+  if (!options.allowRawPathBuild) {
+    await assertBasketPathWarehouseReady({
+      manifestId: basketPathWarehouseId,
+      expectedWeeks: selectedWeekIds,
+      config: basketWarehouseConfig,
+    });
+  }
+  const adrMaps = options.allowRawPathBuild
+    ? await preloadGate71AdrMaps({
+        weeks: selectedWeekIds,
+        symbols: rows.map((row) => row.symbol),
+      })
+    : new Map();
   const legacyControls = await loadLegacyAdrGridControlsByWeek({
-    rows: weeks.flatMap(([_week, weekRows]) => weekRows),
+    rows: weeks.flatMap(([, weekRows]) => weekRows),
   });
   const weeklyRows: Array<Record<string, unknown> & {
     rule_id: string;
@@ -133,15 +161,20 @@ async function main() {
   const startedAt = Date.now();
 
   for (const [index, [weekOpenUtc, weekRows]] of weeks.entries()) {
-    const built = await buildCandidateBWeeklyBasketPath({
-      weekOpenUtc,
-      rows: weekRows,
-      candidateBLedgerHash,
-      entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
-      includePoints: true,
-      includeLegacyAdrGridControl: false,
-      adrMap: adrMaps.get(weekOpenUtc),
-    });
+    const built = options.allowRawPathBuild
+      ? await buildCandidateBWeeklyBasketPath({
+          weekOpenUtc,
+          rows: weekRows,
+          candidateBLedgerHash,
+          entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
+          includePoints: true,
+          includeLegacyAdrGridControl: false,
+          adrMap: adrMaps.get(weekOpenUtc),
+        })
+      : await buildCandidateBWeeklyBasketPathFromWarehouse({
+          manifestId: basketPathWarehouseId,
+          weekOpenUtc,
+        });
     built.legacyAdrGridControl = legacyControls.controls.get(weekOpenUtc) ?? built.legacyAdrGridControl;
     for (const rule of GATE71_EXIT_MATRIX) {
       const result = evaluateExitRule(rule, built);
@@ -163,10 +196,12 @@ async function main() {
       });
     }
     if (options.logProgress) {
-      console.log(`gate71c week=${index + 1}/${weeks.length} ${weekOpenUtc.slice(0, 10)} rules=${GATE71_EXIT_MATRIX.length}`);
+      console.log(`gate71c ${options.allowRawPathBuild ? "rawWeek" : "warehouseWeek"}=${index + 1}/${weeks.length} ${weekOpenUtc.slice(0, 10)} rules=${GATE71_EXIT_MATRIX.length}`);
     }
-    clearRuntimeCacheByPrefix("pathBarLoader");
-    clearRuntimeCacheByPrefix("pathBarTimelines");
+    if (options.allowRawPathBuild) {
+      clearRuntimeCacheByPrefix("pathBarLoader");
+      clearRuntimeCacheByPrefix("pathBarTimelines");
+    }
   }
 
   const summaries = GATE71_EXIT_MATRIX.map((rule) => ({
@@ -227,6 +262,7 @@ async function main() {
     gate71b.validation.legacy_adr_grid_used_as_foundation === false &&
     gate71b.validation.exit_selection_started === false &&
     gate71b.validation.risk_filters_started === false &&
+    options.allowRawPathBuild === false &&
     denominator.forced28_preserved &&
     weeks.length === (options.maxWeeks ?? GATE71_EXPECTED_WEEKS) &&
     weeklyRows.length === weeks.length * GATE71_EXIT_MATRIX.length;
@@ -241,6 +277,9 @@ async function main() {
       gate71b_passed: gate71b.verdict.startsWith("PASS_"),
       candidate_b_forced28_preserved: denominator.forced28_preserved,
       clean_basket_path_used: true,
+      basket_path_warehouse_id: basketPathWarehouseId,
+      exit_policy_replay_from_frozen_warehouse: !options.allowRawPathBuild,
+      raw_m1_rebuild_performed: options.allowRawPathBuild,
       legacy_adr_grid_used_as_foundation: false,
       legacy_adr_grid_control_only: true,
       rules_scored: GATE71_EXIT_MATRIX.length,

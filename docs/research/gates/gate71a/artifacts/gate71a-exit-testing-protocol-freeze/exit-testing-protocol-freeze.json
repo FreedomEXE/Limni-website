@@ -1,0 +1,38 @@
+{
+  "gate_id": "Gate 71A: exit-testing-protocol-freeze",
+  "protocol_version": "gate71_candidate_b_basket_exit_testing_protocol_v1",
+  "objective": "maximize profitable-week rate subject to no tail-risk degradation, no total-ADR collapse, and no year/regime concentration",
+  "candidate_b_input": {
+    "locked_algorithm_id": "gate69_locked_unnamed_forced28_candidate_b_default",
+    "default_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+    "candidate_b_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+    "candidate_b_ledger_file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03",
+    "source_path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-decision-ledger.rows.jsonl",
+    "immutable_directional_truth": true,
+    "forced28_preserved": true
+  },
+  "candidate_c_shadow": {
+    "shadow_candidate_id": "candidate_c_scenario_memory_guarded",
+    "shadow_ledger_hash": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+    "monitoring_only": true,
+    "can_promote_or_override": false
+  },
+  "adr_normalization": {
+    "target_adr_pct": 1,
+    "account_mapping": "1 ADR = 1 percent account profit under the current ADR-normalized research convention",
+    "pair_contribution_formula": "directed_raw_return_pct / pair_week_adr_pct"
+  },
+  "price_path": {
+    "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "path_resolution": "1m",
+    "execution_window": "engine/src/evaluation/executionPriceWindows.ts",
+    "entry_timestamp": "first loaded path bar open in the execution window",
+    "close_timestamp": "Friday 11:00 America/New_York execution cutoff",
+    "threshold_crossing_semantics": "closed-bar/timestamped 1m mark crossing; no intrabar interpolation"
+  },
+  "artifact_policy": {
+    "weekly_diagnostics_store_compact_metrics": true,
+    "full_minute_path_not_written_by_default": true,
+    "reason": "Full 373-week x 1m basket path is regenerated deterministically for matrix execution to avoid a large review artifact."
+  }
+}

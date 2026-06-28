@@ -1,10 +1,10 @@
 gate_id Gate 71A: exit-testing-protocol-freeze
 command npm run engine:gate71a:exit-testing-protocol-freeze
-generated_at 2026-06-28T20:55:44.448Z
-git_commit f1903a478c07afff3453cff0c080d568ae2b5b24
+generated_at 2026-06-28T23:20:53.575Z
+git_commit d7db6a677eeb46dbf044b23160dd83bd07764384
 protocol_freeze D80AB33725E78A67DC2231DDAF6198936F0D2F15C70D353D66CA46831A9FDFFE docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/exit-testing-protocol-freeze.json
 entry_exposure_model FC856BCED986247B65F637615A4C3E3111CFC5B8C37577A131D66B5252020EF9 docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/clean-entry-exposure-model.json
 legacy_grid_coupling_audit 2A10FA7340A4BBBD7ADC00CD4E9BAFD2B268269ECFCFC466EB64F89170BC1939 docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/legacy-adr-grid-coupling-audit.json
 ranking_promotion_criteria 626F0DAA9F509FB427729F1D1EDC0DAD5E74FBC95A7550D72B65BECB5102B6CB docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/ranking-and-promotion-criteria.json
-summary_json 6CA62AA53E4F249600CA6EB8B8CBEFAB9B6F22CD1F94BCA13FB22FEBC3936464 docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-summary.json
-report 0C0F33BEE41A052AF36C52693922A243C2B98B1E740E612EF6EDF1C2D0DA2AE6 docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md
+summary_json 80CB83B3D3BDB850B6D203F0F5C4AC16D7B14529DA7AAE3B9AC8E5EC5C9A2B91 docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-summary.json
+report AB6555E623D37FB6E2DC9FC7176E39C3469F35C8F001588B8D404717EC3159FE docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md

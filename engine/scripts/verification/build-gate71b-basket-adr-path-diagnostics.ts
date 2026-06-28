@@ -3,6 +3,10 @@ import path from "node:path";
 
 import { getPool } from "@database/db/client";
 import { clearRuntimeCacheByPrefix } from "@engine/cache/runtimeCache";
+import {
+  assertBasketPathWarehouseReady,
+  readBasketPathWarehouseDiagnostics,
+} from "@engine/research/basketPathWarehouse";
 
 import { fileHash, gitCommit, parseArgMap, toRepoRelative, writeJson, writeJsonl, writeShaManifest, writeText } from "./gate65-utils";
 import {
@@ -13,7 +17,10 @@ import {
   GATE71_DATE,
   GATE71_EXPECTED_WEEKS,
   POSITIVE_THRESHOLDS_ADR,
+  buildGate71BasketPathWarehouseConfig,
+  buildGate71BasketPathWarehouseManifestId,
   buildCandidateBWeeklyBasketPath,
+  type BasketPathDiagnosticRow,
   groupCandidateBRowsByWeek,
   loadCandidateBRows,
   loadGate71aSummary,
@@ -33,6 +40,8 @@ function parseOptions() {
     reportPath: args.get("--report-path") ?? DEFAULT_REPORT_PATH,
     gate71aDir: args.get("--gate71a-dir") ?? DEFAULT_GATE71A_DIR,
     candidateBLedgerPath: args.get("--candidate-b-ledger") ?? DEFAULT_CANDIDATE_B_LEDGER_PATH,
+    basketPathWarehouseId: args.get("--basket-path-warehouse-id"),
+    allowRawPathBuild: process.argv.includes("--allow-raw-path-build"),
     maxWeeks: maxWeeksRaw ? Number(maxWeeksRaw) : null,
     logProgress: process.argv.includes("--log-progress"),
   };
@@ -51,8 +60,9 @@ function renderReport(summary: Record<string, unknown>) {
     "## Scope",
     "",
     "- Builds the non-selective Candidate B weekly basket ADR path diagnostic ledger.",
+    "- Reads Gate 71B-M materialized basket paths by default; raw M1 rebuild requires an explicit diagnostic flag.",
     "- Uses the Gate 71A clean weekly basket-hold exposure model, not legacy ADR Grid.",
-    "- Records compact MFE/MAE/threshold/giveback diagnostics; full minute paths are regenerated deterministically for matrix scoring.",
+    "- Records compact MFE/MAE/threshold/giveback diagnostics for exit replay.",
     "- Does not select exits, apply risk filters, prune pairs, or mutate Candidate B.",
     "",
     "## Validation",
@@ -102,29 +112,62 @@ async function main() {
     ? (await fileHash(options.candidateBLedgerPath)).toUpperCase()
     : await fileHash(options.candidateBLedgerPath);
   const weeks = groupCandidateBRowsByWeek(rows).slice(0, options.maxWeeks ?? undefined);
-  const adrMaps = await preloadGate71AdrMaps({
-    weeks: weeks.map(([weekOpenUtc]) => weekOpenUtc),
-    symbols: rows.map((row) => row.symbol),
+  const selectedWeekIds = weeks.map(([weekOpenUtc]) => weekOpenUtc);
+  const basketWarehouseConfig = buildGate71BasketPathWarehouseConfig({
+    rows,
+    weeks: selectedWeekIds,
+    candidateBLedgerHash,
+    entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
   });
-  const diagnosticRows = [];
+  const basketPathWarehouseId = options.basketPathWarehouseId ?? buildGate71BasketPathWarehouseManifestId(basketWarehouseConfig);
+  const diagnosticRows: BasketPathDiagnosticRow[] = [];
+  let pathMaterializationSource = "basket_path_warehouse";
+  let basketPathWarehouseHash: string | null = null;
   const startedAt = Date.now();
 
-  for (const [index, [weekOpenUtc, weekRows]] of weeks.entries()) {
-    const built = await buildCandidateBWeeklyBasketPath({
-      weekOpenUtc,
-      rows: weekRows,
-      candidateBLedgerHash,
-      entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
-      includePoints: false,
-      includeLegacyAdrGridControl: false,
-      adrMap: adrMaps.get(weekOpenUtc),
+  if (options.allowRawPathBuild) {
+    pathMaterializationSource = "raw_m1_diagnostic_rebuild";
+    const adrMaps = await preloadGate71AdrMaps({
+      weeks: selectedWeekIds,
+      symbols: rows.map((row) => row.symbol),
     });
-    diagnosticRows.push(built.diagnostic);
-    if (options.logProgress) {
-      console.log(`gate71b week=${index + 1}/${weeks.length} ${weekOpenUtc.slice(0, 10)} close=${built.diagnostic.friday_close_adr}`);
+    for (const [index, [weekOpenUtc, weekRows]] of weeks.entries()) {
+      const built = await buildCandidateBWeeklyBasketPath({
+        weekOpenUtc,
+        rows: weekRows,
+        candidateBLedgerHash,
+        entryExposureModelId: gate71a.protocol.clean_entry_exposure_model_id,
+        includePoints: false,
+        includeLegacyAdrGridControl: false,
+        adrMap: adrMaps.get(weekOpenUtc),
+      });
+      diagnosticRows.push(built.diagnostic);
+      if (options.logProgress) {
+        console.log(`gate71b week=${index + 1}/${weeks.length} ${weekOpenUtc.slice(0, 10)} close=${built.diagnostic.friday_close_adr}`);
+      }
+      clearRuntimeCacheByPrefix("pathBarLoader");
+      clearRuntimeCacheByPrefix("pathBarTimelines");
     }
-    clearRuntimeCacheByPrefix("pathBarLoader");
-    clearRuntimeCacheByPrefix("pathBarTimelines");
+  } else {
+    const warehouseReady = await assertBasketPathWarehouseReady({
+      manifestId: basketPathWarehouseId,
+      expectedWeeks: selectedWeekIds,
+      config: basketWarehouseConfig,
+    });
+    basketPathWarehouseHash = warehouseReady.manifest.warehouse_hash;
+    const warehouseRows = await readBasketPathWarehouseDiagnostics({
+      manifestId: basketPathWarehouseId,
+      weeks: selectedWeekIds,
+    });
+    const byWeek = new Map(warehouseRows.map((row) => [row.week_open_utc, row.diagnostic as BasketPathDiagnosticRow]));
+    for (const [index, [weekOpenUtc]] of weeks.entries()) {
+      const diagnostic = byWeek.get(weekOpenUtc);
+      if (!diagnostic) throw new Error(`Missing Gate 71B-M basket path diagnostic for ${weekOpenUtc}`);
+      diagnosticRows.push(diagnostic);
+      if (options.logProgress) {
+        console.log(`gate71b warehouseWeek=${index + 1}/${weeks.length} ${weekOpenUtc.slice(0, 10)} close=${diagnostic.friday_close_adr}`);
+      }
+    }
   }
 
   const thresholdSummary = {
@@ -182,6 +225,10 @@ async function main() {
       all_weeks_have_28_rows: diagnosticRows.every((row) => row.decision_rows === 28),
       missing_price_weeks: thresholdSummary.missing_price_weeks,
       default_adr_weeks: thresholdSummary.default_adr_weeks,
+      path_materialization_source: pathMaterializationSource,
+      basket_path_warehouse_id: options.allowRawPathBuild ? null : basketPathWarehouseId,
+      basket_path_warehouse_hash: basketPathWarehouseHash,
+      raw_m1_rebuild_performed: options.allowRawPathBuild,
       exit_selection_started: false,
       risk_filters_started: false,
       brain_truth_mutated: false,
