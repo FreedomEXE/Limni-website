@@ -1,0 +1,10 @@
+Gate 70 canonical packet SHA-256 checksums
+generated_at 2026-06-28
+scope canonical Gate 70 receipt and frozen interface contracts only
+note this checksum file is not self-included
+
+19F792CBC158DA6E5B89518F28BB35E99E35B3AAA9237FE30727649D188E28DF  docs/research/gates/gate70/GATE70_EXIT_RISK_INTERFACE_PREFLIGHT_2026-06-28.md
+EE7D07B4DFE710BB46BCA71BAA2F77526B74737CC0770A3E68A17DBF9226E079  docs/research/gates/gate70/contracts/exit-research-interface.schema.json
+D3F1763F39E85533A07BBFD8A050590F332806D1BC77404B03BD26CDF67316B3  docs/research/gates/gate70/contracts/risk-research-interface.schema.json
+D92E0C5ECE140D4B2CAD2838E38DCCCB9EB243DECE16B250B14DE83ED12C554A  docs/research/gates/gate70/contracts/weekly-decision-to-trade-bridge.md
+45CB31EB67572E93FC578E323243472179B14C7DB16668E817C8439C85017779  docs/research/gates/gate70/contracts/forbidden-behavior-register.md
