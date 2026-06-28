@@ -1,0 +1,565 @@
+{
+  "gate_id": "Gate 66A: deprecated-architecture-term-inventory",
+  "classification_summary": {
+    "active_architecture_contract": 5,
+    "active_source_code": 265,
+    "current_gate65_review_packet": 29,
+    "current_recovery_doc": 22,
+    "historical_immutable_artifact": 332,
+    "historical_verdict_or_hash_bound_receipt": 187,
+    "migration_manifest_allowed": 275
+  },
+  "occurrence_count": 1115,
+  "architecture_context_occurrence_count": 520,
+  "active_change_count": 90,
+  "immutable_exception_count": 548,
+  "paths_with_deprecated_term": [
+    "engine/src/brain/body/arbitration/index.ts",
+    "engine/src/brain/body/contracts/index.ts",
+    "engine/src/brain/body/ledgers/index.ts"
+  ],
+  "json_keys_with_deprecated_term": [
+    {
+      "path": "app/releases/v2/screenshots/containment-2026-06-06/route-api-proof.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/after-playwright-evidence.json",
+      "key": "summaryBodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/after-playwright-evidence.json",
+      "key": "basketBodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/current-playwright-evidence.json",
+      "key": "summaryBodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/current-playwright-evidence.json",
+      "key": "basketBodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/weekly-hold-switch-evidence.json",
+      "key": "bodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/performance-selected-truth-2026-06-08/weekly-hold-switch-final-evidence.json",
+      "key": "bodyExcerpt",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/selected-ledger-metrics-2026-06-09/visual-inspection-clean14-promotion-2026-06-09.json",
+      "key": "bodyDateHits",
+      "count": 5
+    },
+    {
+      "path": "app/releases/v2/screenshots/selected-ledger-metrics-2026-06-09/visual-inspection-clean14-promotion-2026-06-09.json",
+      "key": "bodySample",
+      "count": 5
+    },
+    {
+      "path": "app/releases/v2/screenshots/selected-ledger-metrics-2026-06-09/visual-inspection-performance-settled-2026-06-09.json",
+      "key": "bodySample",
+      "count": 2
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/dashboard-cron-lifecycle-final-evidence.json",
+      "key": "bodyLength",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/dashboard-cron-lifecycle-final-evidence.json",
+      "key": "bodyPreview",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/performance-cron-lifecycle-final-evidence.json",
+      "key": "bodyLength",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/performance-cron-lifecycle-final-evidence.json",
+      "key": "bodyPreview",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/performance-cron-lifecycle-june8-selected-evidence.json",
+      "key": "bodyLength",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/status-cron-lifecycle-final-evidence.json",
+      "key": "bodyLength",
+      "count": 1
+    },
+    {
+      "path": "app/releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/status-cron-lifecycle-final-evidence.json",
+      "key": "bodyPreview",
+      "count": 1
+    },
+    {
+      "path": "archive/app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-20260622.json",
+      "key": "sanitizedBody",
+      "count": 2
+    },
+    {
+      "path": "archive/app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-det1-20260622.json",
+      "key": "sanitizedBody",
+      "count": 2
+    },
+    {
+      "path": "archive/app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-det2-20260622.json",
+      "key": "sanitizedBody",
+      "count": 2
+    },
+    {
+      "path": "archive/app/research/scalp_bot/grid_small.py",
+      "key": "displacement_min_body_pips",
+      "count": 2
+    },
+    {
+      "path": "archive/app/research/scalp_bot/run.py",
+      "key": "displacement_min_body_pips",
+      "count": 1
+    },
+    {
+      "path": "automation/mt5/Experts/LimniBasketEA.mq5",
+      "key": ", keyStart + 1);\n    if(keyEnd < 0)\n      break;\n    string key = StringSubstr(body, keyStart + 1, keyEnd - keyStart - 1);\n    int colon = StringFind(body, ",
+      "count": 1
+    },
+    {
+      "path": "automation/sentiment-scraper/package-lock.json",
+      "key": "node_modules/body-parser",
+      "count": 1
+    },
+    {
+      "path": "automation/sentiment-scraper/package-lock.json",
+      "key": "raw-body",
+      "count": 1
+    },
+    {
+      "path": "automation/sentiment-scraper/package-lock.json",
+      "key": "body-parser",
+      "count": 1
+    },
+    {
+      "path": "automation/sentiment-scraper/package-lock.json",
+      "key": "node_modules/raw-body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-summary.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate61b/artifacts/gate61b-universal-cell-atom-readiness/universal-cell-atom-inventory.contract.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate63/GATE63_UNIVERSAL_ATOM_MATRIX_2026-06-27.md",
+      "key": "body_algorithm_started",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-candidate-contracts.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.summary.json",
+      "key": "body_algorithm_started",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md",
+      "key": "required_before_body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md",
+      "key": "required_before_body_decision",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/emitted-vs-expected-atom-map.json",
+      "key": "required_before_body",
+      "count": 32
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/emitted-vs-expected-atom-map.json",
+      "key": "required_before_body_decision",
+      "count": 32
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/expected-atom-inventory.contract.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/expected-atom-inventory.contract.json",
+      "key": "required_before_body",
+      "count": 32
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/missing-atom-report.json",
+      "key": "required_before_body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/missing-atom-report.json",
+      "key": "required_before_body_decision",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64c/GATE64C_FULL_ATOM_MATRIX_REFRESH_2026-06-27.md",
+      "key": "body_algorithm_started",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-candidate-contracts.json",
+      "key": "body",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-summary.json",
+      "key": "body_algorithm_started",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate65a/GATE65A_BRAIN_ATOM_CONTRACT_V2_SYNC_2026-06-27.md",
+      "key": "body_reserved",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate65a/GATE65A_BRAIN_ATOM_CONTRACT_V2_SYNC_2026-06-27.md",
+      "key": "body_started",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate65c/GATE65C_ATOM_POLICY_LEDGER_V0_2026-06-27.md",
+      "key": "body_direction_emitted",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-ledger.rows.jsonl",
+      "key": "allowed_body_use",
+      "count": 146216
+    },
+    {
+      "path": "docs/research/gates/gate65d/GATE65D_SCENARIO_MEMORY_LEDGER_V0_2026-06-27.md",
+      "key": "body_direction_emitted",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate63-universal-atom-matrix.ts",
+      "key": "PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate64c-full-atom-matrix-refresh.ts",
+      "key": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65c-atom-policy-ledger-v0.ts",
+      "key": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65d-scenario-memory-ledger-v0.ts",
+      "key": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65e-unified-brain-router-discovery-v0.ts",
+      "key": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY",
+      "count": 1
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
+      "key": "READY_FOR_BODY_DESIGN_REVIEW",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "key": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "key": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED",
+      "count": 1
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "key": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY",
+      "count": 1
+    }
+  ],
+  "verdict_strings_with_deprecated_term": [
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "line": 22,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "line": 31,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "line": 33,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "line": 35,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate63/GATE63_UNIVERSAL_ATOM_MATRIX_2026-06-27.md",
+      "line": 7,
+      "verdict": "PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.sha256.txt",
+      "line": 5,
+      "verdict": "PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.summary.json",
+      "line": 6,
+      "verdict": "PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate64c/GATE64C_FULL_ATOM_MATRIX_REFRESH_2026-06-27.md",
+      "line": 7,
+      "verdict": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-sha256.txt",
+      "line": 5,
+      "verdict": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-summary.json",
+      "line": 6,
+      "verdict": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate65c/GATE65C_ATOM_POLICY_LEDGER_V0_2026-06-27.md",
+      "line": 7,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/research/gates/gate65d/GATE65D_SCENARIO_MEMORY_LEDGER_V0_2026-06-27.md",
+      "line": 7,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/research/gates/gate65e/GATE65E_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_2026-06-27.md",
+      "line": 7,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md",
+      "line": 7,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md",
+      "line": 22,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md",
+      "line": 23,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md",
+      "line": 24,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md",
+      "line": 56,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-recommended-next-gate.md",
+      "line": 3,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate63-universal-atom-matrix.ts",
+      "line": 1566,
+      "verdict": "PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate64c-full-atom-matrix-refresh.ts",
+      "line": 927,
+      "verdict": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65c-atom-policy-ledger-v0.ts",
+      "line": 193,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65d-scenario-memory-ledger-v0.ts",
+      "line": 190,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65e-unified-brain-router-discovery-v0.ts",
+      "line": 438,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
+      "line": 89,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
+      "line": 160,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
+      "line": 163,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 33,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 34,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 35,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 36,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 37,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 46,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 47,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 48,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 49,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 50,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 65,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 69,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 75,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 78,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 79,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 80,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 81,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 91,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md",
+      "line": 92,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "engine/scripts/verification/gate66-utils.ts",
+      "line": 20,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    },
+    {
+      "path": "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+      "line": 40,
+      "verdict": "PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK"
+    },
+    {
+      "path": "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+      "line": 43,
+      "verdict": "PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED"
+    },
+    {
+      "path": "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+      "line": 46,
+      "verdict": "PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY"
+    },
+    {
+      "path": "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+      "line": 51,
+      "verdict": "READY_FOR_BODY_DESIGN_REVIEW"
+    }
+  ]
+}

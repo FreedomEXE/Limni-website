@@ -46,6 +46,7 @@
     "engine:gate65d:scenario-memory-ledger-v0": "tsx engine/scripts/verification/build-gate65d-scenario-memory-ledger-v0.ts",
     "engine:gate65e:unified-brain-router-discovery-v0": "tsx engine/scripts/verification/build-gate65e-unified-brain-router-discovery-v0.ts",
     "engine:gate65f:brain-architecture-readiness-review": "tsx engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
+    "engine:gate66a:deprecated-architecture-term-inventory": "tsx engine/scripts/verification/build-gate66a-deprecated-architecture-term-inventory.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
