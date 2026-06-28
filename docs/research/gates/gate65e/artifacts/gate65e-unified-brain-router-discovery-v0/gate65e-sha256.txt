@@ -1,0 +1,14 @@
+gate_id Gate 65E: unified-brain-router-discovery-v0
+command npm run engine:gate65e:unified-brain-router-discovery-v0
+generated_at 2026-06-28T00:52:03.768Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+candidate_contracts 87733CDDD47D2426ED0DA836C33988598787B974CA5B0C554813DDE0C0718FEE docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-candidate-contracts.json
+matrix_rows C7636925AD528DB8754A69918C2F55AF4551848607FD18E34DAA3A6F61E0C91F docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-matrix.rows.jsonl
+router_summary 1ABBD8CD627DA0A61BCD069549526F73D250108BB0DCB730863A5572A573AA10 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-summary.json
+best_candidates 4E812B7B86518A4D07E27E234494407B78DB77BCE0864CDBF8822B68045891F2 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-best-candidates.md
+pf_rankings E81C0714A7740B9D0ED8403F956BB5B465409C4E04C27E7E5CA8DBC11D186A20 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-pf-rankings.json
+year_diagnostics F442DAECF25AE5A6E430008524454F889D0EA6140DC8683F2CE8C65F3BF4B8E3 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-year-by-year-diagnostics.json
+policy_participation 19D444CC2237A9ED38562B99CF51587E2BB9B67FB326F86B496EE82E25E810FD docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-policy-participation.json
+scenario_exposure 14F050A680AD931A5297B1D7865E7D865B6453D1B684342CCE3009FCCE919A03 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-scenario-memory-exposure.json
+signature_collapse DAF2DD238268D4B77DA84F80567A22209011FCC8C265D0F8357C55936308FBAD docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-signature-collapse.json
+report 53C27F8E3D7F734193F73ECB335691F3612BAA6A2C7FBEE65266F9264F48E830 docs/research/gates/gate65e/GATE65E_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_2026-06-27.md
