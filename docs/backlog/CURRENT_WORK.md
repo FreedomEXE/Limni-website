@@ -8,134 +8,112 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 64C: full-atom-matrix-refresh.
+Gate 65F: brain-architecture-readiness-review.
 
-Objective: close the missing Regime atom gap before Body design by auditing
-silent missing atoms, locking supportable valuation_gap atoms from existing
-point-in-time valuation sources, and refreshing the full discovery-only atom
-matrix with valuation_gap included.
+Objective: run the bounded Gate 65A-65F Brain policy investigation after Gate
+64C, synchronize the Brain atom contract with valuation_gap, collapse Gate 64C
+decision signatures and PF surfaces, emit atom policy/scenario-memory ledgers,
+run discovery-only unified Brain-router candidates, and stop with a human
+readiness packet.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
-Verdict:
+Readiness verdict: `READY_FOR_BODY_DESIGN_REVIEW`.
 
-- Gate 64A:
-  `PASS_SILENT_MISSING_ATOM_AUDIT__VALUATION_GAP_REQUIRED_FOR_GATE64B__NO_OTHER_REQUIRED_MISSING`
-- Gate 64B:
-  `PASS_VALUATION_GAP_ATOM_LOCK__TWO_FORMULAS_EMITTED__PPP_SPOT_AND_COMPOSITE_FAIL_CLOSED`
-- Gate 64C:
-  `PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY`
+Sub-gate verdicts:
+
+- Gate 65A:
+  `PASS_BRAIN_ATOM_CONTRACT_V2_SYNC__VALUATION_GAP_VISIBLE__FAIL_CLOSED_VARIANTS_EXPLICIT__FORCED28_UNCHANGED`
+- Gate 65B:
+  `PASS_DECISION_SIGNATURE_COLLAPSE_AND_PF_SURFACE__NO_PROMOTION`
+- Gate 65C:
+  `PASS_ATOM_POLICY_LEDGER_V0__FORCED28_PRESERVED__NO_BODY_DIRECTION__NO_OUTCOME_POLICY_LEAK`
+- Gate 65D:
+  `PASS_SCENARIO_MEMORY_LEDGER_V0__DESCRIPTIVE_ONLY__NO_BODY_DIRECTION__LOW_SUPPORT_FLAGGED`
+- Gate 65E:
+  `PASS_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0__FORCED28_PRESERVED__DISCOVERY_ONLY_NO_BODY`
+- Gate 65F:
+  `PASS_BRAIN_ARCHITECTURE_READINESS_REVIEW_PACKET__STOP_AFTER_GATE65F`
 
 Commands:
 
-- `npm run engine:gate64a:silent-missing-atom-audit`
-- `npm run engine:gate64b:valuation-gap-atom-lock`
-- `npm run engine:gate64c:full-atom-matrix-refresh`
+- `npm run engine:gate65a:brain-atom-contract-v2-sync`
+- `npm run engine:gate65b:decision-signature-pf-surface`
+- `npm run engine:gate65c:atom-policy-ledger-v0`
+- `npm run engine:gate65d:scenario-memory-ledger-v0`
+- `npm run engine:gate65e:unified-brain-router-discovery-v0`
+- `npm run engine:gate65f:brain-architecture-readiness-review`
 
 Durable artifacts:
 
-- Gate 64A report:
-  `docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md`
-- Gate 64A summary:
-  `docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.summary.json`
-- Gate 64A SHA identity:
-  `docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.sha256.txt`
-- Gate 64B report:
-  `docs/research/gates/gate64b/GATE64B_VALUATION_GAP_ATOM_LOCK_2026-06-27.md`
-- Gate 64B summary:
-  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/gate64b-valuation-gap-atom-lock.summary.json`
-- Gate 64B pair atom ledger:
-  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-pair-atom-ledger.rows.jsonl`
-- Gate 64B SHA identity:
-  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/gate64b-valuation-gap-atom-lock.sha256.txt`
-- Gate 64C report:
-  `docs/research/gates/gate64c/GATE64C_FULL_ATOM_MATRIX_REFRESH_2026-06-27.md`
-- Gate 64C summary:
-  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-summary.json`
-- Gate 64C best-candidates review:
-  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-best-candidates.md`
-- Gate 64C SHA identity:
-  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-sha256.txt`
+- Gate 65A report:
+  `docs/research/gates/gate65a/GATE65A_BRAIN_ATOM_CONTRACT_V2_SYNC_2026-06-27.md`
+- Gate 65B report:
+  `docs/research/gates/gate65b/GATE65B_DECISION_SIGNATURE_PF_SURFACE_2026-06-27.md`
+- Gate 65C report:
+  `docs/research/gates/gate65c/GATE65C_ATOM_POLICY_LEDGER_V0_2026-06-27.md`
+- Gate 65C policy ledger:
+  `docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-ledger.rows.jsonl`
+- Gate 65D report:
+  `docs/research/gates/gate65d/GATE65D_SCENARIO_MEMORY_LEDGER_V0_2026-06-27.md`
+- Gate 65D scenario ledger:
+  `docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-memory.rows.jsonl`
+- Gate 65E report:
+  `docs/research/gates/gate65e/GATE65E_UNIFIED_BRAIN_ROUTER_DISCOVERY_V0_2026-06-27.md`
+- Gate 65E router matrix:
+  `docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-matrix.rows.jsonl`
+- Gate 65E best candidates:
+  `docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-best-candidates.md`
+- Gate 65F report:
+  `docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md`
+- Gate 65F cross-gate hash manifest:
+  `docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-cross-gate-hash-manifest.txt`
 
-Gate 64A denominator and result:
+Key findings:
 
-- Expected atom inventory: `32` atoms.
-- Required missing atom: `valuation_gap`.
-- No other required missing atoms.
-- Existing direct Regime atom surface remains BPR, rates, CPI, RRP, PPP, NEER,
-  and REER families.
+- valuation_gap is now Brain-contract visible as Regime derived atoms:
+  `valuation_gap_reer_deviation` and
+  `valuation_gap_neer_reer_relative`.
+- Gate 64B fail-closed variants remain explicit fail-closed contract entries:
+  `valuation_gap_ppp_spot` and
+  `valuation_gap_composite_ppp_neer_reer`.
+- Gate 65B mapped `26` Gate 64C candidates to `25` decision signatures; `1`
+  duplicate/equivalent signature group was identified.
+- Gate 65B top ADR Grid PF remained
+  `valuation_gap_relative_inverse_extreme_else_rrp_inverse` with PF
+  `1.264195`; robust PF remained
+  `rrp_inverse_when_agrees_valuation_reer_else_alpha`, the zero-negative-year
+  reference.
+- Gate 65E best ADR Grid R/DD router:
+  `macro_anchor_crowding_warning_rrp_cot_extreme`, ADR Grid `2341.080708`,
+  DD `-241.508971`, R/DD `9.693556`, PF `1.25407`, Weekly Hold
+  `638.603176`, WH R/DD `5.468441`, `1` negative ADR Grid year.
+- Gate 65E highest PF router:
+  `scenario_memory_confirmation_router_cell_agreement_support112`, ADR Grid
+  `2640.245739`, DD `-347.238105`, R/DD `7.60356`, PF `1.294048`, Weekly
+  Hold `746.687556`, WH R/DD `8.56217`, `1` negative ADR Grid year, with
+  robustness caveat due `4,880` degraded/warning rows.
+- Gate 65E best zero-negative-year router:
+  `valuation_confirmation_router_rrp_reer_else_alpha`, ADR Grid `2168.117445`,
+  R/DD `6.101189`, PF `1.231009`, Weekly Hold `831.585556`, WH R/DD
+  `6.711349`, `0` degraded rows, `0` negative ADR Grid years.
+- Gate 65E found `5` router signatures genuinely new versus Gate 64C and `4`
+  router signatures matching Gate 64C signatures.
 
-Gate 64B valuation_gap lock:
+Validation passed:
 
-- Emitted formula `valuation_gap_reer_deviation_v1`:
-  `reer_broad_index_2020_100 - 100`.
-- Emitted formula `valuation_gap_neer_reer_relative_v1`:
-  `reer_broad_index_2020_100 - neer_broad_index_2020_100`.
-- Fail-closed formula `valuation_gap_ppp_spot`:
-  `missing_hash_bound_point_in_time_spot_or_fair_value_input`.
-- Fail-closed formula `valuation_gap_composite_ppp_neer_reer`:
-  `ppp_xdc_per_usd_not_comparable_with_neer_reer_indices_without_versioned_normalization`.
-- Output shape: `5,968` currency rows, `20,888` pair rows, `0` degraded pair
-  rows.
-
-Gate 64C refreshed matrix:
-
-- `10,444` Gate 59 rows.
-- `373` weeks.
-- `28` symbols/week.
-- `26` predeclared discovery candidates.
-- `20,888` valuation_gap pair rows.
-- `0` duplicate week/symbol rows.
-- `0` disqualified candidates.
-- `0` source mutation rows.
-- `0` Body algorithm or Alpha v2 promotion started.
-
-Gate 64C key result surface:
-
-- Best by ADR Grid R/DD and best valuation-gap enhanced result:
-  `valuation_gap_relative_inverse_extreme_else_rrp_inverse`, ADR Grid
-  `2422.437808`, DD `-271.139895`, R/DD `8.934273`, PF `1.264195`,
-  Weekly Hold `620.140634`, WH DD `-157.534342`, WH R/DD `3.936543`,
-  `0` degraded rows, `3` negative ADR Grid years.
-- Gate 63 comparison reference:
-  `cot_strength_bpr_rrp_inverse_majority_tie_rrp`, ADR Grid `1871.434177`,
-  DD `-223.784751`, R/DD `8.362653`, PF `1.192983`, Weekly Hold
-  `654.974192`, `5,331` degraded rows, `2` negative ADR Grid years.
-- Strong non-degraded continuity result:
-  `gate63_cot_strength_rrp_inverse_majority`, ADR Grid `1938.481292`, DD
-  `-258.36132`, R/DD `7.502986`, Weekly Hold `634.471586`, `0` degraded rows,
-  `1` negative ADR Grid year.
-- Strong zero-negative-year candidate:
-  `rrp_inverse_when_agrees_valuation_reer_else_alpha`, ADR Grid `2168.117445`,
-  R/DD `6.101189`, Weekly Hold `831.585556`, `0` degraded rows, `0` negative
-  ADR Grid years.
-
-Key hashes:
-
-- Gate 64A summary JSON:
-  `A93599E3B473A42D2A72C84AED8F27C8D45826342DCD8EC35B2ACB5660D02ABF`
-- Gate 64A content invariant:
-  `D17E9E176CF1BCD6C243B39B80E060066507CEDFF8DE82C2FFFFE2961CDA9429`
-- Gate 64B pair atom ledger:
-  `01F4316895524AA8277769692E6685FF548C24457175AE9B00430845C56C4936`
-- Gate 64B summary JSON:
-  `A83E28ED13E9ADDB1045DA03CD5397D9DDF56BA95175C2A9A60563D650AD2E66`
-- Gate 64B content invariant:
-  `8894CCBC6CB7F38A70933C81E0602E085290FB16571D0203F0338F663FC888FC`
-- Gate 64C matrix rows JSONL:
-  `7FEB4A51863B82B2E8FA9CAF9A4F3DFEBC8D195AF4769B740A197517671694F3`
-- Gate 64C summary JSON:
-  `BA8B2E3C6ABA85EA5D482D8EB215C28B2EE16142ACBA69E8F94DCE42D7714E20`
-- Gate 64C content invariant:
-  `0182CB079732532EA01C6D35F587C58EB549F60F20AF1B94038931F2DEE2266A`
+- all six Gate 65 commands
+- `npx tsc --noEmit --pretty false --project tsconfig.json`
+- targeted Gate 65 ESLint
 
 ## Next Requested Review
 
-Stop after Gate 64C. Do not proceed to Body design, Alpha v2, risk, exits,
-execution, MT5/live, app/runtime work, source mutation, COT retuning, Strength
-retuning, broad Brain source refactor, or optimization unless Freedom explicitly
-opens the next gate.
+Stop after Gate 65F. Do not proceed to final Body design, Alpha v2 promotion,
+risk, exits, execution, MT5/live, app/runtime work, source mutation, COT
+retuning, Strength retuning, broad Brain source consolidation, optimized
+threshold search, learned weights, pair exclusions, or date exclusions unless
+Freedom explicitly opens that scope.
 
 ## Current Ownership Model
 

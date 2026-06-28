@@ -1,0 +1,9 @@
+gate_id Gate 65F: brain-architecture-readiness-review
+command npm run engine:gate65f:brain-architecture-readiness-review
+generated_at 2026-06-28T00:52:07.633Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+readiness_summary 2E39D15202D787FAEF37B8E5B742975FB8D6FE44AD80FE7F2BFB65B1A0F7AB20 docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-readiness-summary.json
+blockers FC81ED47414595DE46C88B6AB7A38626083C4809A2472EDA725C9DAB249D53C3 docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-blockers.json
+recommended_next_gate 00EBF48B8B10F69268C615B8F4958E7571DD4F18EB33C21F26B1A9515EDFAC57 docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-recommended-next-gate.md
+cross_gate_hash_manifest 8D2841ABA6C7EF23FAEEAE286C5325381072B423382271F8CEB73FDC23B8C945 docs/research/gates/gate65f/artifacts/gate65f-brain-architecture-readiness-review/gate65f-cross-gate-hash-manifest.txt
+report EA72915448BD178A28EEB7BE4B7169474049C1270A1F87192A83C23C9E9788F8 docs/research/gates/gate65f/GATE65F_BRAIN_ARCHITECTURE_READINESS_REVIEW_2026-06-27.md

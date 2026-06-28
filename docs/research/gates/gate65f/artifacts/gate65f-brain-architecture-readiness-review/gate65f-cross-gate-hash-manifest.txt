@@ -1,0 +1,14 @@
+gate_id Gate 65F: brain-architecture-readiness-review
+command npm run engine:gate65f:brain-architecture-readiness-review
+generated_at 2026-06-28T00:52:07.394Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+gate65a_summary 13FF56C195A96D48C2E9D0A5A342B2C31D01298030517545AB8524145C5E522E docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/gate65a-summary.json
+gate65a_sha 695A367C451191B94D21D6DFE75A1657B88AE201860321B5E8A4F6B0A3191ABF docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/gate65a-sha256.txt
+gate65b_summary F2A4C0B02B8961DF173D2341995F9CA1FEB7C9C46247B8EE2DD98A338B01C701 docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/gate65b-summary.json
+gate65b_sha BA86EB65039F50A6F1E1647E36342E7C04B3640EC939A8D52B5048BDBE57507D docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/gate65b-sha256.txt
+gate65c_summary 64EDAC505AA110CC697CA3768687DAEA12E6E25ED3F4D9B3BC26C8F7776864E2 docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/gate65c-summary.json
+gate65c_sha F44303035960268D8D963335F0B9C02C3BCD9A83FA0D08CF7DA82C9554F653D4 docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/gate65c-sha256.txt
+gate65d_summary 0E13E4F94A6BBB87D1C8A455B7250189C53ECDF4484620310A03C18952CB1E9B docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/gate65d-summary.json
+gate65d_sha 02683F5B8FB8515937B24130A971535C7A3271F5E1D6C689F6B0A08B014FEBAE docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/gate65d-sha256.txt
+gate65e_summary 1ABBD8CD627DA0A61BCD069549526F73D250108BB0DCB730863A5572A573AA10 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/brain-router-summary.json
+gate65e_sha EB988E7D46FA53907CFBD909EE2DF2CD272DD18A42C9E879B95E143F002F2665 docs/research/gates/gate65e/artifacts/gate65e-unified-brain-router-discovery-v0/gate65e-sha256.txt
