@@ -56,6 +56,7 @@
     "engine:gate67d:architecture-lock-readiness-review": "tsx engine/scripts/verification/build-gate67d-architecture-lock-readiness-review.ts",
     "engine:gate67e:review-packet-completeness": "tsx engine/scripts/verification/build-gate67e-review-packet-completeness.ts",
     "engine:gate68a:brain-mode-selector-contract": "tsx engine/scripts/verification/build-gate68a-brain-mode-selector-contract.ts",
+    "engine:gate68b:brain-mode-selector-test-matrix": "tsx engine/scripts/verification/build-gate68b-brain-mode-selector-test-matrix.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

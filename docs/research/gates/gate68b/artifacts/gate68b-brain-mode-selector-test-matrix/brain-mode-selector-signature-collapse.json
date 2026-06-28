@@ -1,0 +1,39 @@
+{
+  "gate_id": "Gate 68B: brain-mode-selector-test-matrix",
+  "entries": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "decision_signature_sha256": "5FD8968F883A461671D7EAAC78B71BF8A3045F594267F2926A48290BC1FF827A",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": "candidate_a_macro_anchor_conservative",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": "macro_anchor_crowding_warning_rrp_cot_extreme",
+      "equivalent_gate67_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": "candidate_c_scenario_memory_guarded",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": null,
+      "genuinely_new_vs_gate64_65_67": true
+    }
+  ],
+  "candidate_d_genuinely_new_vs_gate64_65_67": true,
+  "candidate_d_equivalent_gate67_candidate_id": null
+}
