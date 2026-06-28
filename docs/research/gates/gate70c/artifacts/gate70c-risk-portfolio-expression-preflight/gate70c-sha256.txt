@@ -1,0 +1,9 @@
+gate_id Gate 70C: risk-portfolio-expression-preflight
+command npm run engine:gate70c:risk-portfolio-expression-preflight
+generated_at 2026-06-28T18:14:25.986Z
+git_commit 461cea86054c1047b0d47a805a9a01ca01a4b0ef
+risk_expression_input_schema 35874B4E6E4BFCCBF204A7D37FBEEFF1039CADDEE634811E6541F718E1DAB839 docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/risk-expression-input.schema.json
+risk_expression_output_schema 2F6E2E4801F743C5D9CB3459CD4F2EBAFE63B055534F11D70401969746107315 docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/risk-expression-output.schema.json
+portfolio_expression_boundary 566B53EDD90BC9FEDFC972B49C4171D1F6E3646FA29C318BE788BD0E9F0A7117 docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/portfolio-expression-boundary.json
+summary_json 12DCD3ED0A05C79F9869BEC74C74CC2474858502A0339C5A487C23D93C537DC3 docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/gate70c-summary.json
+report 368CD06EDCE4884656A79F82305333715D5A5538A7D1884D3FDCE17867CE405C docs/research/gates/gate70c/GATE70C_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT_2026-06-28.md

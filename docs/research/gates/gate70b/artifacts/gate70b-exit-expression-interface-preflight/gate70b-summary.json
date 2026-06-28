@@ -1,0 +1,25 @@
+{
+  "gate_id": "Gate 70B: exit-expression-interface-preflight",
+  "command": "npm run engine:gate70b:exit-expression-interface-preflight",
+  "generated_at": "2026-06-28T18:13:59.581Z",
+  "git_commit": "461cea86054c1047b0d47a805a9a01ca01a4b0ef",
+  "verdict": "PASS_EXIT_EXPRESSION_INTERFACE_PREFLIGHT__MANAGEMENT_ONLY_NO_DIRECTION_MUTATION",
+  "validation": {
+    "gate70a_passed": true,
+    "candidate_b_read_only": true,
+    "exit_layer_may_change_trade_management": true,
+    "exit_layer_may_change_weekly_signal_truth": false,
+    "exit_layer_may_drop_brain_rows": false,
+    "exit_policy_scoring_started": false,
+    "optimized_threshold_search_started": false,
+    "live_execution_started": false
+  },
+  "artifacts": {
+    "exitInputSchema": "docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-input.schema.json",
+    "exitOutputSchema": "docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-output.schema.json",
+    "exitResearchBoundary": "docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-research-boundary.json",
+    "summaryJson": "docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/gate70b-summary.json",
+    "shaIdentity": "docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/gate70b-sha256.txt",
+    "report": "docs/research/gates/gate70b/GATE70B_EXIT_EXPRESSION_INTERFACE_PREFLIGHT_2026-06-28.md"
+  }
+}

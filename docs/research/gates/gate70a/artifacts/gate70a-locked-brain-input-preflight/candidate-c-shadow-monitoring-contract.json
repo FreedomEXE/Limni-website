@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 70A: locked-brain-input-preflight",
+  "contract_version": "gate70_candidate_c_shadow_monitoring_contract_v0",
+  "shadow_canary_id": "gate69_shadow_candidate_c_canary",
+  "candidate_id": "candidate_c_scenario_memory_guarded",
+  "monitoring_only": true,
+  "mutable_by_exit_layer": false,
+  "mutable_by_risk_layer": false,
+  "can_override_candidate_b": false,
+  "can_block_candidate_b_expression_without_future_gate": false,
+  "forced28_rows": 10444,
+  "semantic_ledger_hash": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "file_sha256": "B21018FB5B5394277EB1C4A503BBC509E63EDDED90B1757BE63088515DFDE91E",
+  "source_path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/candidate-c-shadow-canary-ledger.rows.jsonl",
+  "allowed_future_use": [
+    "robustness comparison",
+    "canary alerts",
+    "post-close monitoring"
+  ],
+  "forbidden_future_use_without_gate": [
+    "default promotion",
+    "silent risk veto",
+    "live execution control",
+    "direction rewrite"
+  ]
+}

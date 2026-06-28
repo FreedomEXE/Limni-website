@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 70A: locked-brain-input-preflight",
+  "command": "npm run engine:gate70a:locked-brain-input-preflight",
+  "generated_at": "2026-06-28T18:13:32.495Z",
+  "git_commit": "461cea86054c1047b0d47a805a9a01ca01a4b0ef",
+  "verdict": "PASS_LOCKED_BRAIN_INPUT_PREFLIGHT__B_READONLY_C_MONITORING_ONLY",
+  "validation": {
+    "gate69_inputs_passed": true,
+    "final_ledger_file_hash_matches_gate69": true,
+    "shadow_ledger_file_hash_matches_gate69": true,
+    "candidate_b_read_only": true,
+    "candidate_c_monitoring_only": true,
+    "exits_started": false,
+    "risk_started": false,
+    "mt5_live_started": false,
+    "learning_started": false
+  },
+  "artifacts": {
+    "candidateBInputContract": "docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/candidate-b-readonly-input-contract.json",
+    "candidateCMonitoringContract": "docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/candidate-c-shadow-monitoring-contract.json",
+    "inputHashBinding": "docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/locked-input-hash-binding.json",
+    "summaryJson": "docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/gate70a-summary.json",
+    "shaIdentity": "docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/gate70a-sha256.txt",
+    "report": "docs/research/gates/gate70a/GATE70A_LOCKED_BRAIN_INPUT_PREFLIGHT_2026-06-28.md"
+  }
+}

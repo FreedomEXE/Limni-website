@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate 70B Exit Expression Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_open_utc",
+    "symbol",
+    "decision_hash",
+    "final_direction",
+    "final_side",
+    "exit_expression_id",
+    "exit_contract_version",
+    "trade_management_events",
+    "brain_direction_mutated",
+    "brain_ledger_row_dropped",
+    "output_hash"
+  ],
+  "properties": {
+    "week_open_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "final_direction": {
+      "enum": [
+        "BASE_CURRENCY",
+        "QUOTE_CURRENCY"
+      ]
+    },
+    "final_side": {
+      "enum": [
+        "LONG",
+        "SHORT"
+      ]
+    },
+    "exit_expression_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exit_contract_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trade_management_events": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "brain_direction_mutated": {
+      "const": false
+    },
+    "brain_ledger_row_dropped": {
+      "const": false
+    },
+    "output_hash": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -8,37 +8,50 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 69D: review-packet-completeness.
+Gate 70D: review-packet-completeness.
 
-Objective: lock the simpler final forced-28 architecture after Gate 68 proved
-that the smarter Candidate D mode selector did not improve enough to justify the
-added complexity.
+Objective: define the exit/risk consumption boundary for the locked Candidate B
+forced-28 Brain output without mutating Brain truth or starting exit/risk
+optimization.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Gate 69 scope:
+Gate 70 scope:
 
-- Lock Candidate B, `candidate_b_macro_anchor_with_cot_warning`, as the default
-  unnamed final forced-28 algorithm.
-- Carry Candidate C, `candidate_c_scenario_memory_guarded`, as a frozen
-  shadow/canary robustness comparator.
-- Emit the final frozen forced-28 decision ledger.
-- Bind the final and shadow ledgers to the Gate 68 frozen reference capsule:
-  `gate68c_frozen_reference_capsule_C8DC7E99DE640C2D`.
-- Prove replay determinism and no-drift rules.
-- Define the exact Brain output interface exits/risk may consume later.
-- Stop before exits/risk implementation.
+- Candidate B final ledger is read-only directional truth.
+- Candidate C shadow ledger is monitoring-only.
+- Exit layer may change trade management/expression later, not weekly signal
+  truth.
+- Risk/portfolio layer may reduce actual trade expression later, not rewrite
+  Brain direction.
+- MT5/live remains closed.
+- Learning remains append-only and alert-only.
+- Stop before exit scoring, risk pruning, P&L attribution, execution, MT5/live,
+  app/runtime work, or Alpha v2.
 
-Gate 69 commands:
+Gate 70 commands:
 
-- `npm run engine:gate69a:final-forced28-lock-contract`
-- `npm run engine:gate69b:final-forced28-ledger-replay`
-- `npm run engine:gate69c:exit-risk-interface-and-no-drift`
-- `npm run engine:gate69d:review-packet-completeness`
+- `npm run engine:gate70a:locked-brain-input-preflight`
+- `npm run engine:gate70b:exit-expression-interface-preflight`
+- `npm run engine:gate70c:risk-portfolio-expression-preflight`
+- `npm run engine:gate70d:review-packet-completeness`
 
-Gate 69 current expected verdicts:
+Gate 70 current expected verdicts:
+
+- Gate 70A:
+  `PASS_LOCKED_BRAIN_INPUT_PREFLIGHT__B_READONLY_C_MONITORING_ONLY`
+- Gate 70B:
+  `PASS_EXIT_EXPRESSION_INTERFACE_PREFLIGHT__MANAGEMENT_ONLY_NO_DIRECTION_MUTATION`
+- Gate 70C:
+  `PASS_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT__MAY_REDUCE_EXPRESSION_NOT_BRAIN_TRUTH`
+- Gate 70D:
+  `PASS_GATE70_REVIEW_PACKET_COMPLETENESS__INTERFACE_PREFLIGHT_ARTIFACTS_VISIBLE`
+
+## Gate 69 Reference
+
+Gate 69D is complete and remains the lock reference:
 
 - Gate 69A:
   `PASS_FINAL_FORCED28_LOCK_CONTRACT__CANDIDATE_B_DEFAULT_CANDIDATE_C_SHADOW_NO_SELECTOR`
@@ -49,42 +62,31 @@ Gate 69 current expected verdicts:
 - Gate 69D:
   `PASS_GATE69_REVIEW_PACKET_COMPLETENESS__LOCK_LEDGER_INTERFACE_ARTIFACTS_VISIBLE`
 
-## Gate 68 Reference
+Gate 69 locked state:
 
-Gate 68F is complete and remains the immediate reference:
+- Locked algorithm id: `gate69_locked_unnamed_forced28_candidate_b_default`.
+- Final algorithm name: `null`.
+- Default candidate: `candidate_b_macro_anchor_with_cot_warning`.
+- Shadow/canary candidate: `candidate_c_scenario_memory_guarded`.
+- Rejected lock target: `candidate_d_brain_mode_selector`.
+- No Candidate E or additional router was added.
+- Final Candidate B ledger hash:
+  `5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390`.
+- Candidate C shadow ledger hash:
+  `DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720`.
 
-- Gate 68A:
-  `PASS_BRAIN_MODE_SELECTOR_CONTRACT__ONE_SELECTOR_THREE_MODES_NO_OUTCOME_INPUTS`
-- Gate 68B:
-  `PASS_BRAIN_MODE_SELECTOR_TEST_MATRIX__EXACTLY_FOUR_CANDIDATES__FORCED28_PRESERVED__NO_PROMOTION`
-- Gate 68C:
-  `PASS_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE__HASH_BOUND_APPEND_ONLY_NO_DRIFT`
-- Gate 68D:
-  `PASS_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR__ALERT_ONLY_APPEND_ONLY_NO_LEARNING`
-- Gate 68E:
-  `PASS_ARCHITECTURE_LOCK_READINESS_REVIEW__CLEAR_VERDICT_NO_RISK_EXITS_LEARNING_STARTED`
-- Gate 68F:
-  `PASS_REVIEW_PACKET_COMPLETENESS__GATE68_ARTIFACTS_REPO_VISIBLE__COMMANDS_PRESENT`
+Gate 68 capsule reference:
 
-Gate 68 key findings:
-
-- Candidate D = one deterministic Brain Mode Selector:
-  NORMAL -> Candidate B, PROTECTION -> Candidate C, CONSERVATIVE -> Candidate A.
-- Candidate D is genuinely new versus Gate 64/65/67, but weaker than Candidate
-  B on ADR Grid R/DD and does not preserve Candidate C zero-negative-year
-  behavior.
-- Candidate B remains the recommended default lock target.
-- Candidate C remains the recommended shadow/canary.
-- Frozen capsule:
-  `gate68c_frozen_reference_capsule_C8DC7E99DE640C2D`.
+- Capsule ID: `gate68c_frozen_reference_capsule_C8DC7E99DE640C2D`.
 - Capsule SHA:
   `C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3`.
 
 ## Stop Boundary
 
-Stop after Gate 69D unless Freedom explicitly opens the next gate.
+Stop after Gate 70D unless Freedom explicitly opens the next gate.
 
-Do not proceed to final algorithm naming/branding, Alpha v2 promotion, risk
+Do not proceed to Gate 71 exit layer research matrix, Gate 72 risk/portfolio
+expression matrix, final algorithm naming/branding, Alpha v2 promotion, risk
 overlays, exits, execution, MT5/live, app/runtime work, source mutation, COT
 retuning, Strength retuning, Regime retuning, broad source consolidation,
 optimized threshold search, learned weights, pair/date exclusions, P&L
@@ -107,13 +109,13 @@ all 28 signal outcomes.
 
 ## Active Gate Docs
 
-`docs/research/gates/gate69a/GATE69A_FINAL_FORCED28_LOCK_CONTRACT_2026-06-28.md`
+`docs/research/gates/gate70a/GATE70A_LOCKED_BRAIN_INPUT_PREFLIGHT_2026-06-28.md`
 
-`docs/research/gates/gate69b/GATE69B_FINAL_FORCED28_LEDGER_REPLAY_2026-06-28.md`
+`docs/research/gates/gate70b/GATE70B_EXIT_EXPRESSION_INTERFACE_PREFLIGHT_2026-06-28.md`
 
-`docs/research/gates/gate69c/GATE69C_EXIT_RISK_INTERFACE_AND_NO_DRIFT_2026-06-28.md`
+`docs/research/gates/gate70c/GATE70C_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT_2026-06-28.md`
 
-`docs/research/gates/gate69d/GATE69D_REVIEW_PACKET_COMPLETENESS_2026-06-28.md`
+`docs/research/gates/gate70d/GATE70D_REVIEW_PACKET_COMPLETENESS_2026-06-28.md`
 
 ## Forward Research Command
 

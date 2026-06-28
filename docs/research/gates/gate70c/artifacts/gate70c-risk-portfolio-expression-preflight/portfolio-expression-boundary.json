@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 70C: risk-portfolio-expression-preflight",
+  "contract_version": "gate70_portfolio_expression_boundary_v0",
+  "allowed_future_research_after_explicit_gate": [
+    "trade expression permission",
+    "portfolio-level exposure pruning",
+    "risk budget comparison",
+    "correlation or concentration controls",
+    "drawdown-aware expression reduction"
+  ],
+  "forbidden_in_gate70": [
+    "risk matrix scoring",
+    "portfolio pruning run",
+    "position sizing",
+    "P&L attribution",
+    "execution routing",
+    "live trading"
+  ],
+  "risk_may_reduce_actual_trade_expression_later": true,
+  "risk_may_mutate_brain_truth": false,
+  "risk_may_remove_rows_from_shadow_ledger": false,
+  "candidate_c_shadow_monitoring_only": true,
+  "alpha_and_regime_layers_remain_forced28": true,
+  "mt5_live_closed": true,
+  "learning_append_only_alert_only": true
+}

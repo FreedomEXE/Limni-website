@@ -1,0 +1,31 @@
+{
+  "gate_id": "Gate 70B: exit-expression-interface-preflight",
+  "contract_version": "gate70_exit_expression_boundary_v0",
+  "allowed_future_research_after_explicit_gate": [
+    "exit timing",
+    "hold duration",
+    "trade management event rules",
+    "post-entry/post-open expression choices",
+    "exit-policy comparison against locked Candidate B inputs"
+  ],
+  "forbidden_in_gate70": [
+    "exit policy scoring",
+    "threshold optimization",
+    "parameter search",
+    "candidate selection",
+    "live execution",
+    "risk sizing"
+  ],
+  "forbidden_always_without_new_direction_gate": [
+    "weekly direction rewrite",
+    "Candidate B mutation",
+    "Candidate C promotion",
+    "Candidate D reopen",
+    "Candidate E creation"
+  ],
+  "exit_layer_may_change_trade_management": true,
+  "exit_layer_may_change_weekly_signal_truth": false,
+  "exit_layer_may_drop_brain_rows": false,
+  "output_must_reference_input_decision_hash": true,
+  "output_must_retain_forced28_shadow_trace": true
+}

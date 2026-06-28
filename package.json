@@ -65,6 +65,10 @@
     "engine:gate69b:final-forced28-ledger-replay": "tsx engine/scripts/verification/build-gate69b-final-forced28-ledger-replay.ts",
     "engine:gate69c:exit-risk-interface-and-no-drift": "tsx engine/scripts/verification/build-gate69c-exit-risk-interface-and-no-drift.ts",
     "engine:gate69d:review-packet-completeness": "tsx engine/scripts/verification/build-gate69d-review-packet-completeness.ts",
+    "engine:gate70a:locked-brain-input-preflight": "tsx engine/scripts/verification/build-gate70a-locked-brain-input-preflight.ts",
+    "engine:gate70b:exit-expression-interface-preflight": "tsx engine/scripts/verification/build-gate70b-exit-expression-interface-preflight.ts",
+    "engine:gate70c:risk-portfolio-expression-preflight": "tsx engine/scripts/verification/build-gate70c-risk-portfolio-expression-preflight.ts",
+    "engine:gate70d:review-packet-completeness": "tsx engine/scripts/verification/build-gate70d-review-packet-completeness.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

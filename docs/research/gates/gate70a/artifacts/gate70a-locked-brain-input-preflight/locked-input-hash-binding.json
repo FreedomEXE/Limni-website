@@ -1,0 +1,27 @@
+{
+  "gate_id": "Gate 70A: locked-brain-input-preflight",
+  "gate69_verdicts": {
+    "gate69a": "PASS_FINAL_FORCED28_LOCK_CONTRACT__CANDIDATE_B_DEFAULT_CANDIDATE_C_SHADOW_NO_SELECTOR",
+    "gate69b": "PASS_FINAL_FORCED28_LEDGER_REPLAY__B_DEFAULT_C_SHADOW_BOUND_TO_GATE68_CAPSULE",
+    "gate69c": "PASS_EXIT_RISK_INTERFACE_AND_NO_DRIFT__BRAIN_FORCED28_OUTPUT_ONLY_RISK_MUTATION_FORBIDDEN",
+    "gate69d": "PASS_GATE69_REVIEW_PACKET_COMPLETENESS__LOCK_LEDGER_INTERFACE_ARTIFACTS_VISIBLE"
+  },
+  "final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "final_ledger_file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03",
+  "shadow_ledger_hash": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "shadow_ledger_file_sha256": "B21018FB5B5394277EB1C4A503BBC509E63EDDED90B1757BE63088515DFDE91E",
+  "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+  "replay_deterministic": true,
+  "no_mutation_assertions": {
+    "brain_truth_mutable_by_exits": false,
+    "brain_truth_mutable_by_risk": false,
+    "candidate_b_direction_mutable": false,
+    "candidate_c_shadow_can_promote_itself": false,
+    "candidate_d_reopen_allowed": false,
+    "candidate_e_allowed": false,
+    "learning_allowed": false,
+    "source_retuning_allowed": false,
+    "mt5_live_allowed": false
+  }
+}

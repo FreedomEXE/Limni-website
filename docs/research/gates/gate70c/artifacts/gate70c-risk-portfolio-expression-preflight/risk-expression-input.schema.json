@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate 70C Risk / Portfolio Expression Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_open_utc",
+    "symbol",
+    "decision_hash",
+    "locked_algorithm_id",
+    "final_direction",
+    "final_side",
+    "forced28_brain_truth",
+    "shadow_canary_id"
+  ],
+  "properties": {
+    "week_open_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locked_algorithm_id": {
+      "const": "gate69_locked_unnamed_forced28_candidate_b_default"
+    },
+    "final_direction": {
+      "enum": [
+        "BASE_CURRENCY",
+        "QUOTE_CURRENCY"
+      ]
+    },
+    "final_side": {
+      "enum": [
+        "LONG",
+        "SHORT"
+      ]
+    },
+    "forced28_brain_truth": {
+      "const": true
+    },
+    "shadow_canary_id": {
+      "const": "gate69_shadow_candidate_c_canary"
+    }
+  }
+}
