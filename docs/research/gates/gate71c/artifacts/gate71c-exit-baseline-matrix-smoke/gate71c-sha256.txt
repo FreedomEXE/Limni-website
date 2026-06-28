@@ -1,0 +1,9 @@
+gate_id Gate 71C: exit-baseline-matrix
+command npm run engine:gate71c:exit-baseline-matrix
+generated_at 2026-06-28T20:17:46.478Z
+git_commit f1903a478c07afff3453cff0c080d568ae2b5b24
+predeclared_matrix B93637942593C83B1987E94375694193F8D0B055D1968F438564099CAE434E95 docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix-smoke/predeclared-exit-baseline-matrix.json
+weekly_matrix_rows 376FC67E62009C83132908EB9FDA0DA864E9AAD53EAC1B42BA4E092A62DD7D4A docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix-smoke/exit-baseline-matrix.weekly.rows.jsonl
+candidate_summaries 36793D0A07DB5E6686EA4A6031F11A012259A2793F14D2045D0A174142A809FC docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix-smoke/exit-baseline-matrix.candidate-summaries.json
+summary_json B4A5D6AC8AC032899621D9FF89392294C5E3FC4617645D95A3DF475966B6BB00 docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix-smoke/gate71c-summary.json
+report E84AAE23E3C3469C76AD57D20BB62CD1136FC0BC902E555DAB85054643755170 docs/research/gates/gate71c/GATE71C_EXIT_BASELINE_MATRIX_SMOKE_2026-06-28.md

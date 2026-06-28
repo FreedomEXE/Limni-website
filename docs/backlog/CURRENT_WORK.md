@@ -8,37 +8,55 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 70D: review-packet-completeness.
+Gate 71B: basket-adr-path-diagnostics runtime blocker.
 
-Objective: define the exit/risk consumption boundary for the locked Candidate B
-forced-28 Brain output without mutating Brain truth or starting exit/risk
-optimization.
+Objective: materialize the full Candidate B clean basket ADR path diagnostics
+before running the first full exit baseline matrix.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Gate 70 scope:
+Gate 71 current state:
 
-- Candidate B final ledger is read-only directional truth.
-- Candidate C shadow ledger is monitoring-only.
-- Exit layer may change trade management/expression later, not weekly signal
-  truth.
-- Risk/portfolio layer may reduce actual trade expression later, not rewrite
-  Brain direction.
-- MT5/live remains closed.
-- Learning remains append-only and alert-only.
-- Stop before exit scoring, risk pruning, P&L attribution, execution, MT5/live,
-  app/runtime work, or Alpha v2.
+- Candidate B final ledger remains read-only directional truth.
+- Candidate C shadow ledger remains monitoring-only.
+- Gate 71A froze the exit-testing protocol before diagnostics or scoring.
+- Gate 71A classified legacy ADR Grid as coupled entry+exit behavior; it is a
+  control only, not the foundation for basket path diagnostics.
+- Gate 71B and Gate 71C scripts exist and passed two-week smoke runs.
+- Full Gate 71B 373-week 1m path diagnostics are blocked by runtime /
+  materialization performance.
+- Gate 71C full matrix and Gate 71D review packet are not complete until the
+  full Gate 71B path ledger exists.
+- Legacy ADR Grid is a coupled entry+exit control only.
+- Stop before exit promotion, risk pruning, pair-specific exits,
+  regime-specific exits, fair-value pruning, P&L attribution, execution,
+  MT5/live, app/runtime work, or Alpha v2.
 
-Gate 70 commands:
+Gate 71 commands:
 
-- `npm run engine:gate70a:locked-brain-input-preflight`
-- `npm run engine:gate70b:exit-expression-interface-preflight`
-- `npm run engine:gate70c:risk-portfolio-expression-preflight`
-- `npm run engine:gate70d:review-packet-completeness`
+- `npm run engine:gate71a:exit-testing-protocol-freeze`
+- `npm run engine:gate71b:basket-adr-path-diagnostics`
+- `npm run engine:gate71c:exit-baseline-matrix`
+- `npm run engine:gate71d:review-packet-no-drift`
 
-Gate 70 current expected verdicts:
+Gate 71 current verdicts:
+
+- Gate 71A:
+  `PASS_GATE71A_EXIT_TESTING_PROTOCOL_FREEZE__CLEAN_BASKET_PATH_REQUIRED`
+- Gate 71B full run:
+  `BLOCKED_GATE71B_FULL_1M_PATH_DIAGNOSTICS__NEEDS_BATCH_OR_WAREHOUSE_MATERIALIZATION`
+- Gate 71B smoke:
+  `PASS_GATE71B_BASKET_ADR_PATH_DIAGNOSTICS__CLEAN_PATH_LEDGER_BUILT`
+- Gate 71C smoke:
+  `PASS_GATE71C_EXIT_BASELINE_MATRIX__PREDECLARED_BASKET_RULES_SCORED`
+- Gate 71D:
+  not run; requires full Gate 71B and Gate 71C artifacts.
+
+## Gate 70 Reference
+
+Gate 70D is complete and remains the exit/risk interface lock:
 
 - Gate 70A:
   `PASS_LOCKED_BRAIN_INPUT_PREFLIGHT__B_READONLY_C_MONITORING_ONLY`
@@ -83,14 +101,17 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 70D unless Freedom explicitly opens the next gate.
+Stop at the Gate 71B runtime/materialization blocker unless Freedom explicitly
+opens the batch/warehouse materialization fix or chooses to downgrade the path
+resolution/proof standard.
 
-Do not proceed to Gate 71 exit layer research matrix, Gate 72 risk/portfolio
-expression matrix, final algorithm naming/branding, Alpha v2 promotion, risk
-overlays, exits, execution, MT5/live, app/runtime work, source mutation, COT
-retuning, Strength retuning, Regime retuning, broad source consolidation,
-optimized threshold search, learned weights, pair/date exclusions, P&L
-attribution, or live trading unless Freedom explicitly opens that scope.
+Do not proceed to Gate 72 risk/portfolio expression matrix, final exit
+promotion, final algorithm naming/branding, Alpha v2 promotion, risk overlays,
+pair-specific exits, regime-specific exits, fair-value pruning, execution,
+MT5/live, app/runtime work, source mutation, COT retuning, Strength retuning,
+Regime retuning, broad source consolidation, optimized threshold search,
+learned weights, pair/date exclusions, P&L attribution, or live trading unless
+Freedom explicitly opens that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -109,13 +130,13 @@ all 28 signal outcomes.
 
 ## Active Gate Docs
 
-`docs/research/gates/gate70a/GATE70A_LOCKED_BRAIN_INPUT_PREFLIGHT_2026-06-28.md`
+`docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md`
 
-`docs/research/gates/gate70b/GATE70B_EXIT_EXPRESSION_INTERFACE_PREFLIGHT_2026-06-28.md`
+`docs/research/gates/gate71b/GATE71B_BASKET_ADR_PATH_DIAGNOSTICS_RUNTIME_BLOCKER_2026-06-28.md`
 
-`docs/research/gates/gate70c/GATE70C_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT_2026-06-28.md`
+`docs/research/gates/gate71b/GATE71B_BASKET_ADR_PATH_DIAGNOSTICS_SMOKE_FAST_2026-06-28.md`
 
-`docs/research/gates/gate70d/GATE70D_REVIEW_PACKET_COMPLETENESS_2026-06-28.md`
+`docs/research/gates/gate71c/GATE71C_EXIT_BASELINE_MATRIX_SMOKE_2026-06-28.md`
 
 ## Forward Research Command
 

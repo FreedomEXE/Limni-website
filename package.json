@@ -69,6 +69,10 @@
     "engine:gate70b:exit-expression-interface-preflight": "tsx engine/scripts/verification/build-gate70b-exit-expression-interface-preflight.ts",
     "engine:gate70c:risk-portfolio-expression-preflight": "tsx engine/scripts/verification/build-gate70c-risk-portfolio-expression-preflight.ts",
     "engine:gate70d:review-packet-completeness": "tsx engine/scripts/verification/build-gate70d-review-packet-completeness.ts",
+    "engine:gate71a:exit-testing-protocol-freeze": "tsx engine/scripts/verification/build-gate71a-exit-testing-protocol-freeze.ts",
+    "engine:gate71b:basket-adr-path-diagnostics": "tsx engine/scripts/verification/build-gate71b-basket-adr-path-diagnostics.ts",
+    "engine:gate71c:exit-baseline-matrix": "tsx engine/scripts/verification/build-gate71c-exit-baseline-matrix.ts",
+    "engine:gate71d:review-packet-no-drift": "tsx engine/scripts/verification/build-gate71d-review-packet-no-drift.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
