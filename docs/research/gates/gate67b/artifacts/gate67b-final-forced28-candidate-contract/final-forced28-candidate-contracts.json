@@ -1,0 +1,97 @@
+{
+  "gate_id": "Gate 67B: final-forced28-candidate-contract",
+  "final_algorithm_name": null,
+  "candidates": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "family": "final_forced28_candidate",
+      "label": "Candidate A - Macro Anchor Conservative",
+      "candidate_label": "Candidate A - Macro Anchor Conservative",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "rrp_derived_inverse",
+        "valuation_gap_reer_deviation_inverse",
+        "cot_side",
+        "strength_side",
+        "alpha_v1_final_side"
+      ],
+      "source_cells": [
+        "regime",
+        "cot",
+        "strength"
+      ],
+      "transform_version": "gate67_candidate_a_macro_anchor_conservative_v0",
+      "tie_rule": "Fixed Brain arbitration fallback order; no optimized thresholds, learned weights, pair exclusions, or date exclusions.",
+      "dependency_rule": "Use RRP only when valuation_gap confirms; otherwise fallback to Alpha continuity. COT can warning-veto only in high-confidence contradiction; Strength confirms but cannot override.",
+      "complexity": 4,
+      "discovery_only": true,
+      "final_algorithm_name": null,
+      "final_algorithm_status": "candidate_test_only_unnamed",
+      "no_optimized_thresholds": true,
+      "no_learned_weights": true,
+      "no_pair_or_date_exclusions": true,
+      "no_final_promotion": true
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "label": "Candidate B - Macro Anchor with COT Warning",
+      "candidate_label": "Candidate B - Macro Anchor with COT Warning",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "rrp_derived_inverse",
+        "valuation_gap_reer_deviation_inverse",
+        "cot_side",
+        "strength_side",
+        "alpha_v1_final_side"
+      ],
+      "source_cells": [
+        "regime",
+        "cot",
+        "strength"
+      ],
+      "transform_version": "gate67_candidate_b_macro_anchor_with_cot_warning_v0",
+      "tie_rule": "Fixed Brain arbitration fallback order; no optimized thresholds, learned weights, pair exclusions, or date exclusions.",
+      "dependency_rule": "RRP is anchor. High-confidence COT crowding contradiction falls back to Alpha continuity. Strength confirms timing; valuation confirms macro but does not override alone.",
+      "complexity": 3,
+      "discovery_only": true,
+      "final_algorithm_name": null,
+      "final_algorithm_status": "candidate_test_only_unnamed",
+      "no_optimized_thresholds": true,
+      "no_learned_weights": true,
+      "no_pair_or_date_exclusions": true,
+      "no_final_promotion": true
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "family": "final_forced28_candidate",
+      "label": "Candidate C - Scenario-Memory Guarded",
+      "candidate_label": "Candidate C - Scenario-Memory Guarded",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "rrp_derived_inverse",
+        "valuation_gap_reer_deviation_inverse",
+        "cot_side",
+        "strength_side",
+        "scenario_memory",
+        "alpha_v1_final_side"
+      ],
+      "source_cells": [
+        "regime",
+        "cot",
+        "strength"
+      ],
+      "transform_version": "gate67_candidate_c_scenario_memory_guarded_v0",
+      "tie_rule": "Fixed Brain arbitration fallback order; no optimized thresholds, learned weights, pair exclusions, or date exclusions.",
+      "dependency_rule": "RRP/valuation anchor with COT and Strength confirm/warn. Scenario memory can enable veto/fallback only for high-support, multi-year, non-concentrated groups; it cannot directly choose a new direction.",
+      "complexity": 5,
+      "discovery_only": true,
+      "final_algorithm_name": null,
+      "final_algorithm_status": "candidate_test_only_unnamed",
+      "no_optimized_thresholds": true,
+      "no_learned_weights": true,
+      "no_pair_or_date_exclusions": true,
+      "no_final_promotion": true
+    }
+  ]
+}
