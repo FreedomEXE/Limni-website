@@ -8,85 +8,99 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 66D: architecture-terminology-verification.
+Gate 67E: review-packet-completeness.
 
-Objective: run Gate 66A-66D architecture terminology and contract hygiene after
-Gate 65F, remove the deprecated architecture term from active surfaces, lock the
-Brain -> Cells -> Atoms v3 contract, preserve historical Gate 60-65 receipts,
-and stop after the terminology verification packet.
+Objective: continue from the locked Gate 66 Brain -> Cells -> Atoms v3
+architecture into a corrected Gate 67 final forced-28 preflight packet:
+cell opinion packets, exactly three unnamed candidate contracts, a fixed
+three-candidate forced-28 test matrix, readiness review, and review-packet
+completeness proof.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Sub-gate verdicts:
+Gate 67 verdicts:
 
-- Gate 66A:
-  `PASS_DEPRECATED_ARCHITECTURE_TERM_INVENTORY__ACTIVE_CHANGES_SEPARATED_FROM_IMMUTABLE_HISTORY`
-- Gate 66B:
-  `PASS_BRAIN_ARCHITECTURE_CONTRACT_V3__BRAIN_CELLS_ATOMS_ONLY__FINAL_ALGORITHM_UNNAMED`
-- Gate 66C:
-  `PASS_ACTIVE_REFERENCE_MIGRATION__NO_DEPRECATED_ACTIVE_LAYER__HISTORY_SUPERSEDED_NOT_REWRITTEN`
-- Gate 66D:
-  `PASS_DEPRECATED_ARCHITECTURE_TERM_REMOVED_FROM_ACTIVE_SURFACE__BRAIN_CELLS_ATOMS_V3_LOCKED__FINAL_ALGORITHM_UNNAMED`
+- Gate 67A:
+  `PASS_CELL_OPINION_PACKET_CONTRACT__THREE_CELLS_FORCED28_JOINABLE__NO_FINAL_ALGORITHM_DIRECTION`
+- Gate 67B:
+  `PASS_FINAL_FORCED28_CANDIDATE_CONTRACT__EXACTLY_THREE_UNNAMED_SIMPLE_CANDIDATES`
+- Gate 67C:
+  `PASS_FINAL_FORCED28_TEST_MATRIX__EXACTLY_THREE_CANDIDATES__FORCED28_PRESERVED__NO_PROMOTION`
+- Gate 67D:
+  `READY_TO_LOCK_BRAIN_CELLS_ATOMS_ARCHITECTURE_AND_OPEN_EXITS_RISK_PREP`
+- Gate 67E:
+  `PASS_REVIEW_PACKET_COMPLETENESS__ARTIFACTS_REPO_VISIBLE__COMMANDS_PRESENT`
 
 Commands:
 
-- `npm run engine:gate66a:deprecated-architecture-term-inventory`
-- `npm run engine:gate66b:brain-architecture-contract-v3`
-- `npm run engine:gate66c:active-reference-migration`
-- `npm run engine:gate66d:architecture-terminology-verification`
+- `npm run engine:gate67a:cell-opinion-packet-contract`
+- `npm run engine:gate67b:final-forced28-candidate-contract`
+- `npm run engine:gate67c:final-forced28-test-matrix`
+- `npm run engine:gate67d:architecture-lock-readiness-review`
+- `npm run engine:gate67e:review-packet-completeness`
 
 Durable artifacts:
 
-- Gate 66A report:
-  `docs/research/gates/gate66a/GATE66A_DEPRECATED_ARCHITECTURE_TERM_INVENTORY_2026-06-27.md`
-- Gate 66A occurrence ledger:
-  `docs/research/gates/gate66a/artifacts/gate66a-deprecated-architecture-term-inventory/deprecated-term-occurrence-ledger.rows.jsonl`
-- Gate 66B report:
-  `docs/research/gates/gate66b/GATE66B_BRAIN_ARCHITECTURE_CONTRACT_V3_NO_DEPRECATED_LAYER_2026-06-27.md`
-- Gate 66B v3 contract:
-  `docs/research/gates/gate66b/artifacts/gate66b-brain-architecture-contract-v3/brain-architecture-v3.contract.json`
-- Gate 66C report:
-  `docs/research/gates/gate66c/GATE66C_ACTIVE_REFERENCE_MIGRATION_NO_DEPRECATED_LAYER_2026-06-27.md`
-- Gate 66C supersession manifest:
-  `docs/research/gates/gate66c/artifacts/gate66c-active-reference-migration/deprecated-term-supersession-manifest.md`
-- Gate 66D report:
-  `docs/research/gates/gate66d/GATE66D_ARCHITECTURE_TERMINOLOGY_VERIFICATION_2026-06-27.md`
-- Gate 66D final active search:
-  `docs/research/gates/gate66d/artifacts/gate66d-architecture-terminology-verification/final-active-search-report.json`
-- Gate 66D next gate recommendation:
-  `docs/research/gates/gate66d/artifacts/gate66d-architecture-terminology-verification/next-gate-recommendation.md`
+- Gate 67A report:
+  `docs/research/gates/gate67a/GATE67A_CELL_OPINION_PACKET_CONTRACT_2026-06-28.md`
+- Gate 67A opinion ledger:
+  `docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-ledger.rows.jsonl`
+- Gate 67B report:
+  `docs/research/gates/gate67b/GATE67B_FINAL_FORCED28_CANDIDATE_CONTRACT_2026-06-28.md`
+- Gate 67B candidate contracts:
+  `docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-candidate-contracts.json`
+- Gate 67C report:
+  `docs/research/gates/gate67c/GATE67C_FINAL_FORCED28_TEST_MATRIX_2026-06-28.md`
+- Gate 67C test matrix:
+  `docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-test-matrix.rows.jsonl`
+- Gate 67D report:
+  `docs/research/gates/gate67d/GATE67D_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md`
+- Gate 67D readiness summary:
+  `docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/architecture-lock-readiness-summary.json`
+- Gate 67E report:
+  `docs/research/gates/gate67e/GATE67E_REVIEW_PACKET_COMPLETENESS_2026-06-28.md`
 
 Key findings:
 
-- Active architecture is now Brain -> Cells -> Atoms.
-- Current cells remain COT, Strength, and Regime.
-- BPR remains inside Regime.
-- valuation_gap remains inside Regime.
-- The final forced-28 decision algorithm remains unnamed.
-- Risk remains a later portfolio expression/permission layer and cannot mutate
-  Brain forced-28 decision truth.
-- Historical Gate 60-65 reports/artifacts are immutable historical references
-  and are superseded by the Gate 66 deprecation/supersession manifest instead
-  of rewritten.
+- Active architecture remains Brain -> Cells -> Atoms.
+- Deprecated architecture term active remaining count remains `0`.
+- The final forced-28 algorithm remains unnamed.
+- Gate 67A emitted `31,332` cell opinion packets: COT, Strength, and Regime
+  for all `10,444` pair-weeks.
+- Gate 67B defined exactly three candidates.
+- Gate 67C scored exactly those three candidates and preserved `10,444` rows,
+  `373` weeks, `28` pairs/week, and zero duplicate pair-weeks per candidate.
+- Best ADR Grid R/DD and PF: `candidate_b_macro_anchor_with_cot_warning`
+  with ADR Grid `2341.080708`, DD `-241.508971`, R/DD `9.693556`, and PF
+  `1.25407`.
+- Best zero-negative-year and best Weekly Hold candidate:
+  `candidate_c_scenario_memory_guarded` with ADR Grid `2276.283276`, DD
+  `-275.03638`, R/DD `8.276299`, PF `1.242893`, and `0` negative ADR Grid
+  years.
+- Two of the three Gate 67 candidate signatures are new versus Gate 64/65.
+- Readiness review found no hard blockers, but did not lock, name, or promote a
+  final algorithm.
 
 Validation passed:
 
-- Gate 66A command
-- Gate 66B command
-- Gate 66C command
-- Gate 66D command
+- Gate 67A command
+- Gate 67B command
+- Gate 67C command
+- Gate 67D command
+- Gate 67E command
+- `npx tsc --noEmit --pretty false --project tsconfig.json`
+- targeted Gate 67 ESLint
 
 ## Next Requested Review
 
-Stop after Gate 66D. Do not proceed to final forced-28 algorithm design, naming
-the final algorithm, Alpha v2 promotion, risk, exits, execution, MT5/live,
-app/runtime work, source mutation, COT retuning, Strength retuning, Regime
-retuning, broad source consolidation, optimized threshold search, learned
-weights, pair exclusions, or date exclusions unless Freedom explicitly opens
-that scope.
+Stop after Gate 67E. Do not proceed to final algorithm naming/branding, Alpha v2
+promotion, risk overlays, exits, execution, MT5/live, app/runtime work, source
+mutation, COT retuning, Strength retuning, Regime retuning, broad source
+consolidation, optimized threshold search, learned weights, pair exclusions, or
+date exclusions unless Freedom explicitly opens that scope.
 
 ## Current Ownership Model
 
