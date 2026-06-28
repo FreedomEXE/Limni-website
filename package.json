@@ -40,6 +40,12 @@
     "engine:gate64a:silent-missing-atom-audit": "tsx engine/scripts/verification/build-gate64a-silent-missing-atom-audit.ts",
     "engine:gate64b:valuation-gap-atom-lock": "tsx engine/scripts/verification/build-gate64b-valuation-gap-atom-lock.ts",
     "engine:gate64c:full-atom-matrix-refresh": "tsx engine/scripts/verification/build-gate64c-full-atom-matrix-refresh.ts",
+    "engine:gate65a:brain-atom-contract-v2-sync": "tsx engine/scripts/verification/build-gate65a-brain-atom-contract-v2-sync.ts",
+    "engine:gate65b:decision-signature-pf-surface": "tsx engine/scripts/verification/build-gate65b-decision-signature-pf-surface.ts",
+    "engine:gate65c:atom-policy-ledger-v0": "tsx engine/scripts/verification/build-gate65c-atom-policy-ledger-v0.ts",
+    "engine:gate65d:scenario-memory-ledger-v0": "tsx engine/scripts/verification/build-gate65d-scenario-memory-ledger-v0.ts",
+    "engine:gate65e:unified-brain-router-discovery-v0": "tsx engine/scripts/verification/build-gate65e-unified-brain-router-discovery-v0.ts",
+    "engine:gate65f:brain-architecture-readiness-review": "tsx engine/scripts/verification/build-gate65f-brain-architecture-readiness-review.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

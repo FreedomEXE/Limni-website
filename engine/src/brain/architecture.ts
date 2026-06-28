@@ -1,13 +1,22 @@
-export const BRAIN_ARCHITECTURE_VERSION = "gate61a_brain_cells_atoms_v1";
+export const BRAIN_ARCHITECTURE_VERSION = "gate65a_brain_atom_contract_v2";
 
 export type BrainCellId = "cot" | "strength" | "regime";
-export type BrainAtomStatus = "locked" | "building" | "shadow" | "sealed_parent" | "reserved";
+export type BrainAtomStatus = "locked" | "building" | "shadow" | "sealed_parent" | "fail_closed" | "reserved";
+export type BrainAtomClass =
+  | "direction_signal"
+  | "context_signal"
+  | "source_quality"
+  | "derived_signal"
+  | "shadow_only"
+  | "fail_closed"
+  | "reserved";
 
 export type BrainAtomContract = {
   atom_id: string;
   label: string;
   status: BrainAtomStatus;
   source_gate: string;
+  atom_class: BrainAtomClass;
   forced_28_role: "signal_atom" | "source_quality_atom" | "shadow_atom" | "diagnostic_atom";
 };
 
@@ -25,6 +34,7 @@ export const COT_CELL_ATOMS: BrainAtomContract[] = [
     label: "locked COT side",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "direction_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -32,6 +42,7 @@ export const COT_CELL_ATOMS: BrainAtomContract[] = [
     label: "base-minus-quote COT TEI spread",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "direction_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -39,6 +50,7 @@ export const COT_CELL_ATOMS: BrainAtomContract[] = [
     label: "COT carry-forward and carry-previous flags",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
   {
@@ -46,6 +58,7 @@ export const COT_CELL_ATOMS: BrainAtomContract[] = [
     label: "COT report lifecycle state",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
 ];
@@ -56,6 +69,7 @@ export const STRENGTH_CELL_ATOMS: BrainAtomContract[] = [
     label: "locked Gate 57E Strength side",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "direction_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -63,6 +77,7 @@ export const STRENGTH_CELL_ATOMS: BrainAtomContract[] = [
     label: "FRS15 base-minus-quote score spread",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "direction_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -70,6 +85,7 @@ export const STRENGTH_CELL_ATOMS: BrainAtomContract[] = [
     label: "Strength lifecycle bucket",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
   {
@@ -77,6 +93,7 @@ export const STRENGTH_CELL_ATOMS: BrainAtomContract[] = [
     label: "Strength phase bucket",
     status: "locked",
     source_gate: "Gate 59",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
 ];
@@ -87,6 +104,7 @@ export const REGIME_BPR_ATOMS: BrainAtomContract[] = [
     label: "BPR futures required source atom",
     status: "building",
     source_gate: "Gate 60G",
+    atom_class: "direction_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -94,6 +112,7 @@ export const REGIME_BPR_ATOMS: BrainAtomContract[] = [
     label: "BPR futures/options shadow source atom",
     status: "shadow",
     source_gate: "Gate 60G",
+    atom_class: "shadow_only",
     forced_28_role: "shadow_atom",
   },
   {
@@ -101,6 +120,7 @@ export const REGIME_BPR_ATOMS: BrainAtomContract[] = [
     label: "BPR futures carried source state",
     status: "building",
     source_gate: "Gate 60G",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
   {
@@ -108,6 +128,7 @@ export const REGIME_BPR_ATOMS: BrainAtomContract[] = [
     label: "BPR synthetic USD source state",
     status: "building",
     source_gate: "Gate 60G",
+    atom_class: "source_quality",
     forced_28_role: "source_quality_atom",
   },
 ];
@@ -118,6 +139,7 @@ export const REGIME_RATE_ATOMS: BrainAtomContract[] = [
     label: "nominal 3m interbank rate",
     status: "sealed_parent",
     source_gate: "Gate 60C",
+    atom_class: "context_signal",
     forced_28_role: "signal_atom",
   },
 ];
@@ -128,6 +150,7 @@ export const REGIME_INFLATION_ATOMS: BrainAtomContract[] = [
     label: "CPI inflation year-over-year",
     status: "sealed_parent",
     source_gate: "Gate 60C",
+    atom_class: "context_signal",
     forced_28_role: "signal_atom",
   },
 ];
@@ -138,6 +161,7 @@ export const REGIME_RRP_ATOMS: BrainAtomContract[] = [
     label: "real-rate-pressure derived atom",
     status: "building",
     source_gate: "Gate 60C",
+    atom_class: "derived_signal",
     forced_28_role: "signal_atom",
   },
 ];
@@ -148,6 +172,7 @@ export const REGIME_VALUATION_ATOMS: BrainAtomContract[] = [
     label: "purchasing power parity",
     status: "building",
     source_gate: "Gate 60C",
+    atom_class: "context_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -155,6 +180,7 @@ export const REGIME_VALUATION_ATOMS: BrainAtomContract[] = [
     label: "nominal effective exchange rate",
     status: "building",
     source_gate: "Gate 60C",
+    atom_class: "context_signal",
     forced_28_role: "signal_atom",
   },
   {
@@ -162,7 +188,40 @@ export const REGIME_VALUATION_ATOMS: BrainAtomContract[] = [
     label: "real effective exchange rate",
     status: "building",
     source_gate: "Gate 60C",
+    atom_class: "context_signal",
     forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_reer_deviation",
+    label: "valuation gap from REER deviation versus 2020=100",
+    status: "building",
+    source_gate: "Gate 64B",
+    atom_class: "derived_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_neer_reer_relative",
+    label: "valuation gap from REER minus NEER relative index spread",
+    status: "building",
+    source_gate: "Gate 64B",
+    atom_class: "derived_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_ppp_spot",
+    label: "PPP versus spot valuation gap",
+    status: "fail_closed",
+    source_gate: "Gate 64B",
+    atom_class: "fail_closed",
+    forced_28_role: "diagnostic_atom",
+  },
+  {
+    atom_id: "valuation_gap_composite_ppp_neer_reer",
+    label: "composite PPP, NEER, and REER valuation gap",
+    status: "fail_closed",
+    source_gate: "Gate 64B",
+    atom_class: "fail_closed",
+    forced_28_role: "diagnostic_atom",
   },
 ];
 
