@@ -1,0 +1,228 @@
+{
+  "gate_id": "Gate 68F: review-packet-completeness",
+  "checked_path_count": 55,
+  "missing_path_count": 0,
+  "missing_paths": [],
+  "checks": [
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/GATE68A_BRAIN_MODE_SELECTOR_CONTRACT_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-mode-map.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-reason-code-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-rules.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/GATE68B_BRAIN_MODE_SELECTOR_TEST_MATRIX_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-best-candidate-review.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-comparison-vs-gate64-67.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-mode-diagnostics.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-policy-participation.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-reason-code-diagnostics.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-signature-collapse.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-matrix.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-year-by-year-diagnostics.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/gate68b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/gate68b-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/GATE68C_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-mode-distribution.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-no-drift-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-performance-envelope.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reason-code-distribution.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.hash-manifest.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.manifest.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-decision-ledger.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-reference-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/GATE68D_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR_CONTRACT_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-thresholds-predeclared.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-ledger-append-only-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-outcome-observation.schema.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-weekly-decision-receipt.schema.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/no-drift-replay-contract.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/GATE68E_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/architecture-lock-blockers.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/architecture-lock-readiness-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/frozen-reference-capsule-review.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/gate68e-cross-gate-hash-manifest.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/gate68e-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/gate68e-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/mode-selector-lock-recommendation.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/no-drift-readiness-review.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate68e/artifacts/gate68e-architecture-lock-readiness-review/recommended-next-gate.md",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate68a\\artifacts\\gate68a-brain-mode-selector-contract\\gate68a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate68b\\artifacts\\gate68b-brain-mode-selector-test-matrix\\gate68b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate68c\\artifacts\\gate68c-frozen-seven-year-reference-capsule\\gate68c-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate68d\\artifacts\\gate68d-forward-decision-receipt-and-drift-monitor\\gate68d-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate68e\\artifacts\\gate68e-architecture-lock-readiness-review\\gate68e-sha256.txt",
+      "exists": true
+    }
+  ]
+}

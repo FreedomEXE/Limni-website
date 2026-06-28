@@ -8,20 +8,64 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 67E: review-packet-completeness.
+Gate 68F: review-packet-completeness.
 
-Objective: continue from the locked Gate 66 Brain -> Cells -> Atoms v3
-architecture into a corrected Gate 67 final forced-28 preflight packet:
-cell opinion packets, exactly three unnamed candidate contracts, a fixed
-three-candidate forced-28 test matrix, readiness review, and review-packet
-completeness proof.
+Objective: package Gate 68 after defining and testing a deterministic Brain
+Mode Selector, freezing the seven-year reference capsule, defining append-only
+forward receipts/drift monitoring, and completing architecture readiness review.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Gate 67 verdicts:
+Gate 68 current state:
+
+- Gate 68A:
+  `PASS_BRAIN_MODE_SELECTOR_CONTRACT__ONE_SELECTOR_THREE_MODES_NO_OUTCOME_INPUTS`
+- Gate 68B:
+  `PASS_BRAIN_MODE_SELECTOR_TEST_MATRIX__EXACTLY_FOUR_CANDIDATES__FORCED28_PRESERVED__NO_PROMOTION`
+- Gate 68C:
+  `PASS_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE__HASH_BOUND_APPEND_ONLY_NO_DRIFT`
+- Gate 68D:
+  `PASS_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR__ALERT_ONLY_APPEND_ONLY_NO_LEARNING`
+- Gate 68E:
+  `PASS_ARCHITECTURE_LOCK_READINESS_REVIEW__CLEAR_VERDICT_NO_RISK_EXITS_LEARNING_STARTED`
+- Gate 68F:
+  `PASS_REVIEW_PACKET_COMPLETENESS__GATE68_ARTIFACTS_REPO_VISIBLE__COMMANDS_PRESENT`
+
+Gate 68 readiness verdict:
+`NOT_READY_LOCK_CANDIDATE_B_REFERENCE_AND_CARRY_C_SHADOW`.
+
+Gate 68 commands:
+
+- `npm run engine:gate68a:brain-mode-selector-contract`
+- `npm run engine:gate68b:brain-mode-selector-test-matrix`
+- `npm run engine:gate68c:frozen-seven-year-reference-capsule`
+- `npm run engine:gate68d:forward-decision-receipt-and-drift-monitor`
+- `npm run engine:gate68e:architecture-lock-readiness-review`
+- `npm run engine:gate68f:review-packet-completeness`
+
+Gate 68 key findings:
+
+- Candidate D = one deterministic Brain Mode Selector:
+  NORMAL -> Candidate B, PROTECTION -> Candidate C, CONSERVATIVE -> Candidate A.
+- Candidate D mode counts: CONSERVATIVE `6,762`, NORMAL `2,811`,
+  PROTECTION `871`.
+- Candidate D is genuinely new versus Gate 64/65/67, but weaker than Candidate
+  B on ADR Grid R/DD and does not preserve Candidate C zero-negative-year
+  behavior.
+- Candidate D metrics: ADR Grid `2235.61899`, DD `-388.935048`, R/DD
+  `5.748052`, PF `1.239439`; Weekly Hold `846.072114`, DD `-116.320546`,
+  R/DD `7.273626`, PF `1.159472`; negative ADR Grid years `1`.
+- Frozen capsule:
+  `gate68c_frozen_reference_capsule_C8DC7E99DE640C2D`.
+- Capsule SHA:
+  `C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3`.
+- Gate 68E recommends Candidate B as default lock target and Candidate C as
+  shadow/canary. Candidate D is rejected for next lock readiness.
+
+Historical Gate 67 verdicts:
 
 - Gate 67A:
   `PASS_CELL_OPINION_PACKET_CONTRACT__THREE_CELLS_FORCED28_JOINABLE__NO_FINAL_ALGORITHM_DIRECTION`
@@ -96,11 +140,13 @@ Validation passed:
 
 ## Next Requested Review
 
-Stop after Gate 67E. Do not proceed to final algorithm naming/branding, Alpha v2
-promotion, risk overlays, exits, execution, MT5/live, app/runtime work, source
-mutation, COT retuning, Strength retuning, Regime retuning, broad source
-consolidation, optimized threshold search, learned weights, pair exclusions, or
-date exclusions unless Freedom explicitly opens that scope.
+Stop after Gate 68F. Do not proceed to final architecture lock, final algorithm
+naming/branding, adaptive learning, rolling retraining, Alpha v2 promotion,
+exits, risk layer, risk overlays, basket construction, sizing, P&L attribution,
+execution, MT5/live, app/runtime, source mutation, COT retuning, Strength
+retuning, Regime retuning, optimized threshold search, learned weights, pair
+exclusions, date exclusions, or live trading unless Freedom explicitly opens
+that scope.
 
 ## Current Ownership Model
 
@@ -281,37 +327,17 @@ date exclusions unless Freedom explicitly opens that scope.
 
 ## Active Gate Doc
 
-`docs/research/gates/gate58/GATE58_COT_STRENGTH_FORENSIC_MATRIX_2026-06-27.md`
+`docs/research/gates/gate68a/GATE68A_BRAIN_MODE_SELECTOR_CONTRACT_2026-06-28.md`
 
-`docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md`
+`docs/research/gates/gate68b/GATE68B_BRAIN_MODE_SELECTOR_TEST_MATRIX_2026-06-28.md`
 
-`docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`
+`docs/research/gates/gate68c/GATE68C_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE_2026-06-28.md`
 
-`docs/research/gates/gate59/GATE59_ALPHA_V1_ATOM_LEDGER_CONTRACT_2026-06-27.md`
+`docs/research/gates/gate68d/GATE68D_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR_CONTRACT_2026-06-28.md`
 
-`docs/research/gates/gate60/GATE60_REGIME_SOURCE_INTEGRITY_2026-06-27.md`
+`docs/research/gates/gate68e/GATE68E_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md`
 
-`docs/research/gates/gate60a/GATE60A_ALPHA_V1_MACRO_JOIN_MAP_PROOF_2026-06-27.md`
-
-`docs/research/gates/gate60b/GATE60B_REGIME_SOURCE_FOUNDATION_2026-06-27.md`
-
-`docs/research/gates/gate60c/GATE60C_REGIME_SOURCE_ATOM_FILL_2026-06-27.md`
-
-`docs/research/gates/gate60d/GATE60D_BPR_SOURCE_ELIGIBILITY_2026-06-27.md`
-
-`docs/research/gates/gate60e/GATE60E_BPR_VALUE_SOURCE_CONTRACT_RESCUE_2026-06-27.md`
-
-`docs/research/gates/gate60f/GATE60F_BPR_CARRY_SOURCE_POLICY_2026-06-27.md`
-
-`docs/research/gates/gate60g/GATE60G_BPR_FORCED28_SOURCE_DIRECTION_LEDGER_2026-06-27.md`
-
-`docs/research/gates/gate60h/GATE60H_BPR_SOURCE_DIRECTION_ELIGIBILITY_CLASSES_2026-06-27.md`
-
-`docs/research/gates/gate61a/GATE61A_BRAIN_ARCHITECTURE_REFACTOR_2026-06-27.md`
-
-`docs/research/gates/gate61b/GATE61B_UNIVERSAL_CELL_ATOM_READINESS_AUDIT_2026-06-27.md`
-
-`docs/research/gates/gate62/GATE62_REGIME_CELL_STANDALONE_MATRIX_2026-06-27.md`
+`docs/research/gates/gate68f/GATE68F_REVIEW_PACKET_COMPLETENESS_2026-06-28.md`
 
 ## Forward Research Command
 

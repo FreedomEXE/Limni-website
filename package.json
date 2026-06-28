@@ -60,6 +60,7 @@
     "engine:gate68c:frozen-seven-year-reference-capsule": "tsx engine/scripts/verification/build-gate68c-frozen-seven-year-reference-capsule.ts",
     "engine:gate68d:forward-decision-receipt-and-drift-monitor": "tsx engine/scripts/verification/build-gate68d-forward-decision-receipt-and-drift-monitor.ts",
     "engine:gate68e:architecture-lock-readiness-review": "tsx engine/scripts/verification/build-gate68e-architecture-lock-readiness-review.ts",
+    "engine:gate68f:review-packet-completeness": "tsx engine/scripts/verification/build-gate68f-review-packet-completeness.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
