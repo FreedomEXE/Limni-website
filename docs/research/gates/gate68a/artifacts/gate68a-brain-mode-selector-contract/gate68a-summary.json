@@ -1,0 +1,29 @@
+{
+  "gate_id": "Gate 68A: brain-mode-selector-contract",
+  "command": "npm run engine:gate68a:brain-mode-selector-contract",
+  "generated_at": "2026-06-28T04:40:24.158Z",
+  "git_commit": "f0cf4f358a56865c68a17097f36d886ca7a0f8d5",
+  "verdict": "PASS_BRAIN_MODE_SELECTOR_CONTRACT__ONE_SELECTOR_THREE_MODES_NO_OUTCOME_INPUTS",
+  "selector_id": "candidate_d_brain_mode_selector",
+  "validation": {
+    "exactly_one_combined_selector": true,
+    "mode_count": 3,
+    "allowed_modes_only": true,
+    "references_candidate_a_b_c_as_mode_behaviors": true,
+    "outcome_fields_used_for_mode_selection": false,
+    "optimized_thresholds": false,
+    "learned_weights": false,
+    "pair_exclusions": 0,
+    "date_exclusions": 0,
+    "final_algorithm_named_or_promoted": false
+  },
+  "artifacts": {
+    "contractJson": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-contract.json",
+    "rulesMarkdown": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-rules.md",
+    "modeMapJson": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-mode-map.json",
+    "reasonCodeContract": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-reason-code-contract.json",
+    "summaryJson": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-summary.json",
+    "shaIdentity": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-sha256.txt",
+    "report": "docs/research/gates/gate68a/GATE68A_BRAIN_MODE_SELECTOR_CONTRACT_2026-06-28.md"
+  }
+}
