@@ -1,0 +1,119 @@
+{
+  "gate_id": "Gate 68C: frozen-seven-year-reference-capsule",
+  "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "candidate_metrics": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2184.300854,
+        "adr_mean": 0.209144,
+        "max_drawdown": -369.470056,
+        "r_over_drawdown": 5.911983,
+        "row_pf": 1.233289
+      },
+      "weekly_hold": {
+        "adr_sum": 787.143516,
+        "adr_mean": 0.075368,
+        "max_drawdown": -137.228044,
+        "r_over_drawdown": 5.736025,
+        "row_pf": 1.147545
+      },
+      "degraded_row_count": 691,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2026,
+        "adr_grid_adr": 25.568882,
+        "weekly_hold_adr": -26.504398
+      },
+      "decision_signature_sha256": "5FD8968F883A461671D7EAAC78B71BF8A3045F594267F2926A48290BC1FF827A",
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01",
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2276.283276,
+        "adr_mean": 0.217951,
+        "max_drawdown": -275.03638,
+        "r_over_drawdown": 8.276299,
+        "row_pf": 1.242893
+      },
+      "weekly_hold": {
+        "adr_sum": 732.900462,
+        "adr_mean": 0.070174,
+        "max_drawdown": -126.241709,
+        "r_over_drawdown": 5.805533,
+        "row_pf": 1.136683
+      },
+      "degraded_row_count": 1813,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 13.038684,
+        "weekly_hold_adr": 159.647828
+      },
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23",
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "family": "brain_mode_selector",
+      "adr_grid": {
+        "adr_sum": 2235.61899,
+        "adr_mean": 0.214058,
+        "max_drawdown": -388.935048,
+        "r_over_drawdown": 5.748052,
+        "row_pf": 1.239439
+      },
+      "weekly_hold": {
+        "adr_sum": 846.072114,
+        "adr_mean": 0.08101,
+        "max_drawdown": -116.320546,
+        "r_over_drawdown": 7.273626,
+        "row_pf": 1.159472
+      },
+      "degraded_row_count": 7864,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -3.699695,
+        "weekly_hold_adr": 198.47955
+      },
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "mode_counts": {
+        "CONSERVATIVE": 6762,
+        "NORMAL": 2811,
+        "PROTECTION": 871
+      }
+    }
+  ],
+  "candidate_d_pre_readiness_status": "candidate_d_mixed_or_not_ready_pending_gate68e_review"
+}

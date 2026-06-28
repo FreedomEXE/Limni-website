@@ -1,0 +1,9 @@
+{
+  "gate_id": "Gate 68C: frozen-seven-year-reference-capsule",
+  "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "candidate_d_mode_counts": {
+    "CONSERVATIVE": 6762,
+    "NORMAL": 2811,
+    "PROTECTION": 871
+  }
+}

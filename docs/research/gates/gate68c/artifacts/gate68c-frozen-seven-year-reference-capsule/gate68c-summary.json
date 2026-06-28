@@ -1,0 +1,38 @@
+{
+  "gate_id": "Gate 68C: frozen-seven-year-reference-capsule",
+  "command": "npm run engine:gate68c:frozen-seven-year-reference-capsule",
+  "generated_at": "2026-06-28T04:45:37.363Z",
+  "git_commit": "5ac9280189eb536207b115398c671dd3f9952598",
+  "verdict": "PASS_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE__HASH_BOUND_APPEND_ONLY_NO_DRIFT",
+  "capsule": {
+    "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+    "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+    "decision_ledger_hash": "C33A7B81DC8FDD3D1048F1AF7EB2F7A8350B189506E4215E12EF78B705403D9A",
+    "outcome_scoring_hash": "38961DF0C194E9765619F3753F7975795838A9182DE37632403332BD02A4C0D2"
+  },
+  "validation": {
+    "gate68b_passed": true,
+    "frozen_reference_capsule_complete": true,
+    "decision_ledger_rows": 41776,
+    "expected_decision_ledger_rows": 41776,
+    "final_algorithm_name": null,
+    "no_drift_contract_explicit": true,
+    "future_observations_append_only": true,
+    "adaptive_learning_started": false,
+    "rolling_retraining_started": false,
+    "historical_reference_mutable": false
+  },
+  "artifacts": {
+    "manifestJson": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.manifest.json",
+    "hashManifest": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.hash-manifest.txt",
+    "decisionLedgerRows": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-decision-ledger.rows.jsonl",
+    "referenceSummary": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-reference-summary.json",
+    "performanceEnvelope": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-performance-envelope.json",
+    "modeDistribution": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-mode-distribution.json",
+    "reasonCodeDistribution": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reason-code-distribution.json",
+    "noDriftContract": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-no-drift-contract.json",
+    "summaryJson": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-summary.json",
+    "shaIdentity": "docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-sha256.txt",
+    "report": "docs/research/gates/gate68c/GATE68C_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE_2026-06-28.md"
+  }
+}
