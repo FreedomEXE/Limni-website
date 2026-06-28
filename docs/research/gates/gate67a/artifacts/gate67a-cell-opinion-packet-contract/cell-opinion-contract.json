@@ -1,0 +1,33 @@
+{
+  "gate_id": "Gate 67A: cell-opinion-packet-contract",
+  "contract_version": "gate67a_cell_opinion_packet_contract_v0",
+  "required_rows_per_cell": 10444,
+  "required_cells": [
+    "cot",
+    "strength",
+    "regime"
+  ],
+  "row_shape": {
+    "row_key": "string",
+    "week_open_utc": "ISO string",
+    "symbol": "FX pair",
+    "cell_id": "cot | strength | regime",
+    "primary_direction": "BASE_CURRENCY | QUOTE_CURRENCY | ABSTAIN",
+    "role": "ANCHOR | CONFIRM | WARNING | TIE_BREAKER | CONTEXT | ABSTAIN",
+    "confidence": "LOW | MEDIUM | HIGH",
+    "quality_state": "CLEAN | CAUTION | DEGRADED | FAIL_CLOSED",
+    "direct_vote_allowed": "boolean",
+    "warning_active": "boolean",
+    "confirmation_target": "optional string",
+    "source_atom_ids": "string[]",
+    "reason_codes": "string[]",
+    "content_hash": "stable sha256"
+  },
+  "assignment_inputs": [
+    "Gate 65C atom policy ledger roles and allowed final algorithm use",
+    "Gate 65D scenario memory fingerprint binding for context only",
+    "Gate 59 Alpha v1 pair-week denominator"
+  ],
+  "outcome_fields_used_for_opinion_assignment": false,
+  "final_algorithm_direction_emitted": false
+}

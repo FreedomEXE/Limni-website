@@ -1,0 +1,508 @@
+{
+  "total_rows": 31332,
+  "expected_rows": 31332,
+  "rows_by_cell": {
+    "cot": 10444,
+    "regime": 10444,
+    "strength": 10444
+  },
+  "role_counts_by_cell": [
+    {
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 1204
+    },
+    {
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 7460
+    },
+    {
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 1780
+    },
+    {
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 7576
+    },
+    {
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 2868
+    },
+    {
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 4944
+    },
+    {
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 3198
+    },
+    {
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 2274
+    },
+    {
+      "cell_id": "strength",
+      "role": "WARNING",
+      "rows": 28
+    }
+  ],
+  "quality_counts_by_cell": [
+    {
+      "cell_id": "cot",
+      "quality_state": "CLEAN",
+      "rows": 9956
+    },
+    {
+      "cell_id": "cot",
+      "quality_state": "DEGRADED",
+      "rows": 488
+    },
+    {
+      "cell_id": "regime",
+      "quality_state": "CLEAN",
+      "rows": 5113
+    },
+    {
+      "cell_id": "regime",
+      "quality_state": "DEGRADED",
+      "rows": 5331
+    },
+    {
+      "cell_id": "strength",
+      "quality_state": "CLEAN",
+      "rows": 10416
+    },
+    {
+      "cell_id": "strength",
+      "quality_state": "DEGRADED",
+      "rows": 28
+    }
+  ],
+  "year_counts_by_cell_role": [
+    {
+      "year": 2019,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 192
+    },
+    {
+      "year": 2019,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 812
+    },
+    {
+      "year": 2019,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 60
+    },
+    {
+      "year": 2019,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 864
+    },
+    {
+      "year": 2019,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 200
+    },
+    {
+      "year": 2019,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 504
+    },
+    {
+      "year": 2019,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 296
+    },
+    {
+      "year": 2019,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 236
+    },
+    {
+      "year": 2019,
+      "cell_id": "strength",
+      "role": "WARNING",
+      "rows": 28
+    },
+    {
+      "year": 2020,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 244
+    },
+    {
+      "year": 2020,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 1051
+    },
+    {
+      "year": 2020,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 161
+    },
+    {
+      "year": 2020,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 1139
+    },
+    {
+      "year": 2020,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 317
+    },
+    {
+      "year": 2020,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 760
+    },
+    {
+      "year": 2020,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 387
+    },
+    {
+      "year": 2020,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 309
+    },
+    {
+      "year": 2021,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 139
+    },
+    {
+      "year": 2021,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 1163
+    },
+    {
+      "year": 2021,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 154
+    },
+    {
+      "year": 2021,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 659
+    },
+    {
+      "year": 2021,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 797
+    },
+    {
+      "year": 2021,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 633
+    },
+    {
+      "year": 2021,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 445
+    },
+    {
+      "year": 2021,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 378
+    },
+    {
+      "year": 2022,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 72
+    },
+    {
+      "year": 2022,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 1144
+    },
+    {
+      "year": 2022,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 240
+    },
+    {
+      "year": 2022,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 799
+    },
+    {
+      "year": 2022,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 657
+    },
+    {
+      "year": 2022,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 648
+    },
+    {
+      "year": 2022,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 441
+    },
+    {
+      "year": 2022,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 367
+    },
+    {
+      "year": 2023,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 166
+    },
+    {
+      "year": 2023,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 1100
+    },
+    {
+      "year": 2023,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 190
+    },
+    {
+      "year": 2023,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 1007
+    },
+    {
+      "year": 2023,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 449
+    },
+    {
+      "year": 2023,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 684
+    },
+    {
+      "year": 2023,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 461
+    },
+    {
+      "year": 2023,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 311
+    },
+    {
+      "year": 2024,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 300
+    },
+    {
+      "year": 2024,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 932
+    },
+    {
+      "year": 2024,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 252
+    },
+    {
+      "year": 2024,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 1206
+    },
+    {
+      "year": 2024,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 278
+    },
+    {
+      "year": 2024,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 755
+    },
+    {
+      "year": 2024,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 469
+    },
+    {
+      "year": 2024,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 260
+    },
+    {
+      "year": 2025,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 4
+    },
+    {
+      "year": 2025,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 829
+    },
+    {
+      "year": 2025,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 623
+    },
+    {
+      "year": 2025,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 1374
+    },
+    {
+      "year": 2025,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 82
+    },
+    {
+      "year": 2025,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 633
+    },
+    {
+      "year": 2025,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 513
+    },
+    {
+      "year": 2025,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 310
+    },
+    {
+      "year": 2026,
+      "cell_id": "cot",
+      "role": "CONFIRM",
+      "rows": 87
+    },
+    {
+      "year": 2026,
+      "cell_id": "cot",
+      "role": "CONTEXT",
+      "rows": 429
+    },
+    {
+      "year": 2026,
+      "cell_id": "cot",
+      "role": "WARNING",
+      "rows": 100
+    },
+    {
+      "year": 2026,
+      "cell_id": "regime",
+      "role": "ANCHOR",
+      "rows": 528
+    },
+    {
+      "year": 2026,
+      "cell_id": "regime",
+      "role": "CONTEXT",
+      "rows": 88
+    },
+    {
+      "year": 2026,
+      "cell_id": "strength",
+      "role": "CONFIRM",
+      "rows": 327
+    },
+    {
+      "year": 2026,
+      "cell_id": "strength",
+      "role": "CONTEXT",
+      "rows": 186
+    },
+    {
+      "year": 2026,
+      "cell_id": "strength",
+      "role": "TIE_BREAKER",
+      "rows": 103
+    }
+  ],
+  "direct_vote_allowed_by_cell": [
+    {
+      "cell_id": "cot",
+      "rows": 2496
+    },
+    {
+      "cell_id": "regime",
+      "rows": 10444
+    },
+    {
+      "cell_id": "strength",
+      "rows": 4344
+    }
+  ],
+  "warning_active_by_cell": [
+    {
+      "cell_id": "cot",
+      "rows": 1780
+    },
+    {
+      "cell_id": "regime",
+      "rows": 5331
+    },
+    {
+      "cell_id": "strength",
+      "rows": 28
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+gate_id Gate 67A: cell-opinion-packet-contract
+command npm run engine:gate67a:cell-opinion-packet-contract
+generated_at 2026-06-28T02:52:58.261Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+contract_json 7C7A99C3E8432932D8F1072CE25FC59B10E1C2B917FEFF7B200AD6DFBE25D15C docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-contract.json
+ledger_rows 570ACF742F5E601D99F43ED40F62C5B9E7DFA19571CB9BAF800CFD1E917C4F50 docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-ledger.rows.jsonl
+summary_json 3A7BE8170095A3DB2A136532C373F7E7219EF7681205DA2DAFA9D76B22AB61EE docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-summary.json
+quality_summary C5A8A759685B9D871851D7AF45F494CD803B8E7B4CDE9DDC22D016A1CA28FBAE docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-quality-summary.json
+year_summary 4FE56D84E7D6EF5DDEC21F3D27BD7411483A09E027293E57E9B063840E7888E8 docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-year-summary.json
+gate_summary 33D646A9772D01E726D92E762C205366BCB0B49C4A59CFA052263B222F3E2D9F docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/gate67a-summary.json
+report 487CC2F2F2C1FE4E47D8C027711848BE55AAF766141D02D8E0C5E4B05C6B6451 docs/research/gates/gate67a/GATE67A_CELL_OPINION_PACKET_CONTRACT_2026-06-28.md

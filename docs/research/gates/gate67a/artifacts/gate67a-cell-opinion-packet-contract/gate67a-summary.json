@@ -1,0 +1,42 @@
+{
+  "gate_id": "Gate 67A: cell-opinion-packet-contract",
+  "command": "npm run engine:gate67a:cell-opinion-packet-contract",
+  "generated_at": "2026-06-28T02:52:57.624Z",
+  "git_commit": "320c328f918f089b80877bf4d8691076d0608f77",
+  "verdict": "PASS_CELL_OPINION_PACKET_CONTRACT__THREE_CELLS_FORCED28_JOINABLE__NO_FINAL_ALGORITHM_DIRECTION",
+  "row_count": 31332,
+  "expected_row_count": 31332,
+  "rows_per_alpha_histogram": {
+    "3": 10444
+  },
+  "missing_cell_rows": [],
+  "duplicate_opinion_rows": 0,
+  "validation": {
+    "alpha_denominator": {
+      "rows": 10444,
+      "expected_rows": 10444,
+      "weeks": 373,
+      "expected_weeks": 373,
+      "expected_symbols_per_week": 28,
+      "full_weeks": 373,
+      "duplicate_week_symbol_rows": 0,
+      "forced28_preserved": true
+    },
+    "expected_symbols_per_week": 28,
+    "one_packet_per_cell_per_pair_week": true,
+    "every_cell_has_expected_rows": true,
+    "duplicate_opinion_rows": 0,
+    "outcome_fields_used_for_opinion_assignment": false,
+    "final_algorithm_direction_emitted": false
+  },
+  "artifacts": {
+    "contractJson": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-contract.json",
+    "ledgerRows": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-ledger.rows.jsonl",
+    "summaryJson": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-summary.json",
+    "qualitySummary": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-quality-summary.json",
+    "yearSummary": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-year-summary.json",
+    "gateSummary": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/gate67a-summary.json",
+    "shaIdentity": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/gate67a-sha256.txt",
+    "report": "docs/research/gates/gate67a/GATE67A_CELL_OPINION_PACKET_CONTRACT_2026-06-28.md"
+  }
+}

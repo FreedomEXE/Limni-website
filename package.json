@@ -50,6 +50,11 @@
     "engine:gate66b:brain-architecture-contract-v3": "tsx engine/scripts/verification/build-gate66b-brain-architecture-contract-v3.ts",
     "engine:gate66c:active-reference-migration": "tsx engine/scripts/verification/build-gate66c-active-reference-migration.ts",
     "engine:gate66d:architecture-terminology-verification": "tsx engine/scripts/verification/build-gate66d-architecture-terminology-verification.ts",
+    "engine:gate67a:cell-opinion-packet-contract": "tsx engine/scripts/verification/build-gate67a-cell-opinion-packet-contract.ts",
+    "engine:gate67b:final-forced28-candidate-contract": "tsx engine/scripts/verification/build-gate67b-final-forced28-candidate-contract.ts",
+    "engine:gate67c:final-forced28-test-matrix": "tsx engine/scripts/verification/build-gate67c-final-forced28-test-matrix.ts",
+    "engine:gate67d:architecture-lock-readiness-review": "tsx engine/scripts/verification/build-gate67d-architecture-lock-readiness-review.ts",
+    "engine:gate67e:review-packet-completeness": "tsx engine/scripts/verification/build-gate67e-review-packet-completeness.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
