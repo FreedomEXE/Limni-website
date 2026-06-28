@@ -1,0 +1,11 @@
+gate_id Gate 65D: scenario-memory-ledger-v0
+command npm run engine:gate65d:scenario-memory-ledger-v0
+generated_at 2026-06-28T00:51:49.313Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+scenario_memory_rows B7532EB857411506B749F884C47246579332DAF88DFD993E00FA35C8B40095E0 docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-memory.rows.jsonl
+scenario_group_summary 96CBD6118796A640167C98157D9798307B673D5348BEAEB34768FA42C9BF919B docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-group-summary.json
+scenario_policy_outcome_summary 6CEA79DBF5669CA2253976C75BB38C11C1660539A675F91A3B60EF193A847AB9 docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-policy-outcome-summary.json
+low_support_scenario_report CAEF1C041A7CDA693C37CB4418673B260E9378296F158D65AF654D84042BA15F docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/low-support-scenario-report.json
+scenario_memory_contract 8BD14CC93BFBFFBE3F5C02B645F61FCEAAC8CB628BBC594865290BC6CF80FE63 docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/scenario-memory-contract.json
+summary_json 0E13E4F94A6BBB87D1C8A455B7250189C53ECDF4484620310A03C18952CB1E9B docs/research/gates/gate65d/artifacts/gate65d-scenario-memory-ledger-v0/gate65d-summary.json
+report 01438D7F411B663BBE2C0E12E563F3DBCCA11D53BDF6A02D4D4423C5DD84C00B docs/research/gates/gate65d/GATE65D_SCENARIO_MEMORY_LEDGER_V0_2026-06-27.md
