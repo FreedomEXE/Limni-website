@@ -80,6 +80,7 @@
     "engine:gate72d:review-packet-no-promotion": "tsx engine/scripts/verification/build-gate72d-review-packet-no-promotion.ts",
     "engine:gate73a:weekly-basket-path-anatomy": "tsx engine/scripts/verification/build-gate73a-weekly-basket-path-anatomy.ts",
     "engine:gate73b:trade-leg-anatomy-preflight": "tsx engine/scripts/verification/build-gate73b-trade-leg-anatomy-preflight.ts",
+    "engine:gate73c:direction-continuation-lifecycle": "tsx engine/scripts/verification/build-gate73c-direction-continuation-lifecycle.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

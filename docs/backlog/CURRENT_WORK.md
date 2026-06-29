@@ -8,11 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 73B:
-candidate-b-trade-leg-anatomy-and-runner-preserving-exit-design-preflight.
+Latest completed gate: Gate 73C:
+candidate-b-direction-continuation-lifecycle-diagnostic.
 
-Objective completed: test Candidate B final trade-leg composition from existing
-warehouses and bind the trade-leg path timing gap before any dynamic exit work.
+Objective completed: test whether Candidate B same-direction pair continuations
+are strong enough to justify a carry-until-flip lifecycle baseline review, using
+current warehouses only.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -22,6 +23,23 @@ Gate 73 current state:
 
 - Candidate B final ledger remains read-only directional truth.
 - Candidate C shadow ledger remains monitoring-only.
+- Gate 73C used locked Candidate B directions and existing pair-week
+  weekly-hold outcomes only; it did not run dynamic intrawEEK exits, rebuild raw
+  M1, mutate Candidate B, start risk, or promote a lifecycle.
+- Gate 73C produced `930` pair-direction streaks across `10,444` pair-week rows.
+- Gate 73C key limitation: gross carry-until-flip equals weekly forced close
+  under the existing weekly outcome warehouse by construction. Current evidence
+  proves lifecycle persistence and cost sensitivity, not continuous raw-price
+  carry behavior.
+- Gate 73C cost finding: standard-cost carry-until-flip saves `190.28` ADR
+  through `0.910954` modeled turnover reduction; standard PF improves from
+  `1.261308` weekly forced close to `1.400007` carry-until-flip.
+- Gate 73C persistence finding: 5+ week direction streaks contain `9,454`
+  pair-weeks, total `610.982752` ADR, and PF `1.950676`; 1-week streaks are
+  negative at `-31.565262` ADR.
+- Gate 73C recommendation: next named decision boundary is Gate 73D,
+  continuation verdict and baseline decision preflight. Do not promote
+  carry-until-flip from Gate 73C.
 - Gate 73B used existing materialized warehouses only: Gate 57 pair-week
   outcomes, Gate 71B-M basket path warehouse, Gate 71B diagnostics, Gate 72
   matrix rows, and Gate 73A path classes.
@@ -57,6 +75,7 @@ Gate 73 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
+- `npm run engine:gate73c:direction-continuation-lifecycle`
 
 Gate 73 current verdicts:
 
@@ -64,6 +83,8 @@ Gate 73 current verdicts:
   `PASS_GATE73A_WEEKLY_BASKET_PATH_ANATOMY__RIGHT_TAIL_AND_GIVEBACK_PROFILE_VISIBLE`
 - Gate 73B:
   `PASS_GATE73B_TRADE_LEG_COMPOSITION_PREFLIGHT__FINAL_COMPOSITION_VISIBLE_PATH_TIMING_GAP_BOUND`
+- Gate 73C:
+  `PASS_GATE73C_DIRECTION_CONTINUATION_LIFECYCLE__PERSISTENCE_AND_COST_SENSITIVITY_VISIBLE`
 
 Gate 72 reference:
 
@@ -141,16 +162,16 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 73A unless Freedom explicitly opens the next gate.
+Stop after Gate 73C unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 73B runner-preserving profit-protection design, Gate 74
-risk/portfolio expression matrix, final exit promotion, final algorithm
-naming/branding, Alpha v2 promotion, risk overlays, pair-specific exits,
-regime-specific exits, fair-value pruning, execution, MT5/live, app/runtime
-work, source mutation, COT retuning, Strength retuning, Regime retuning, broad
-source consolidation, optimized threshold search, learned weights, pair/date
-exclusions, P&L attribution, or live trading unless Freedom explicitly opens
-that scope.
+Do not proceed to Gate 73D continuation verdict/baseline decision preflight,
+Gate 74 risk/portfolio expression matrix, final exit promotion, final algorithm
+naming/branding, Alpha v2 promotion, risk overlays, dynamic intrawEEK exits,
+pair-specific exits, regime-specific exits, fair-value pruning, execution,
+MT5/live, app/runtime work, source mutation, COT retuning, Strength retuning,
+Regime retuning, broad source consolidation, optimized threshold search, learned
+weights, pair/date exclusions, P&L attribution, or live trading unless Freedom
+explicitly opens that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -168,6 +189,10 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate73c/GATE73C_DIRECTION_CONTINUATION_LIFECYCLE_2026-06-29.md`
+
+`docs/research/gates/gate73b/GATE73B_TRADE_LEG_ANATOMY_PREFLIGHT_2026-06-29.md`
 
 `docs/research/gates/gate73a/GATE73A_WEEKLY_BASKET_PATH_ANATOMY_2026-06-29.md`
 

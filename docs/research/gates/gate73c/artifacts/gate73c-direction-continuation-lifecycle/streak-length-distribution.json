@@ -1,0 +1,57 @@
+[
+  {
+    "streak_length_bucket": "1",
+    "streaks": 252,
+    "total_weeks": 252,
+    "average_streak_length": 1,
+    "average_adr": -0.125259,
+    "median_adr": -0.194325,
+    "total_adr": -31.565262,
+    "profit_factor_adr": 0.789389,
+    "contribution_to_total_adr": -0.049429
+  },
+  {
+    "streak_length_bucket": "2",
+    "streaks": 131,
+    "total_weeks": 262,
+    "average_streak_length": 2,
+    "average_adr": -0.001383,
+    "median_adr": -0.006404,
+    "total_adr": -0.181216,
+    "profit_factor_adr": 0.998135,
+    "contribution_to_total_adr": -0.000284
+  },
+  {
+    "streak_length_bucket": "3",
+    "streaks": 80,
+    "total_weeks": 240,
+    "average_streak_length": 3,
+    "average_adr": 0.438754,
+    "median_adr": 0.122036,
+    "total_adr": 35.100356,
+    "profit_factor_adr": 1.686457,
+    "contribution_to_total_adr": 0.054964
+  },
+  {
+    "streak_length_bucket": "4",
+    "streaks": 59,
+    "total_weeks": 236,
+    "average_streak_length": 4,
+    "average_adr": 0.411297,
+    "median_adr": 0.301782,
+    "total_adr": 24.266546,
+    "profit_factor_adr": 1.551863,
+    "contribution_to_total_adr": 0.037999
+  },
+  {
+    "streak_length_bucket": "5_plus",
+    "streaks": 408,
+    "total_weeks": 9454,
+    "average_streak_length": 23.171569,
+    "average_adr": 1.497507,
+    "median_adr": 1.416952,
+    "total_adr": 610.982752,
+    "profit_factor_adr": 1.950676,
+    "contribution_to_total_adr": 0.956749
+  }
+]
