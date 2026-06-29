@@ -1,0 +1,1174 @@
+{
+  "top_weeks": 20,
+  "average_positive_trades": 21.4,
+  "average_negative_trades": 6.6,
+  "average_top1_trade_contribution_adr": 4.450351,
+  "average_top3_trade_contribution_adr": 11.721271,
+  "average_top5_trade_contribution_adr": 18.041191,
+  "average_bottom5_trade_drag_adr": -8.085449,
+  "average_top1_share_of_week_adr": 0.133582,
+  "average_top3_share_of_week_adr": 0.350605,
+  "average_top5_share_of_week_adr": 0.537663,
+  "rows": [
+    {
+      "week_open_utc": "2024-07-28T23:00:00.000Z",
+      "weekly_hold_adr": 61.050611,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 5.509822,
+      "top3_trade_contribution_adr": 15.332984,
+      "top5_trade_contribution_adr": 24.090182,
+      "bottom5_trade_drag_adr": -9.171934,
+      "average_loser_drag_adr": -1.834387,
+      "top1_share_of_week_adr": 0.09025,
+      "top3_share_of_week_adr": 0.251152,
+      "top5_share_of_week_adr": 0.394594,
+      "top_pairs": [
+        {
+          "pair": "GBPCHF",
+          "adr": 5.509822
+        },
+        {
+          "pair": "GBPJPY",
+          "adr": 5.029561
+        },
+        {
+          "pair": "CADCHF",
+          "adr": 4.793601
+        },
+        {
+          "pair": "EURCHF",
+          "adr": 4.386556
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 4.370642
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "AUDNZD",
+          "adr": -4.584653
+        },
+        {
+          "pair": "NZDCAD",
+          "adr": -2.63554
+        },
+        {
+          "pair": "EURNZD",
+          "adr": -1.318244
+        },
+        {
+          "pair": "USDCAD",
+          "adr": -0.537074
+        },
+        {
+          "pair": "GBPAUD",
+          "adr": -0.096423
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2020-05-31T23:00:00.000Z",
+      "weekly_hold_adr": 60.561576,
+      "positive_trades": 22,
+      "negative_trades": 6,
+      "top1_trade_contribution_adr": 5.854538,
+      "top3_trade_contribution_adr": 16.168555,
+      "top5_trade_contribution_adr": 26.04038,
+      "bottom5_trade_drag_adr": -14.815304,
+      "average_loser_drag_adr": -2.522177,
+      "top1_share_of_week_adr": 0.096671,
+      "top3_share_of_week_adr": 0.266977,
+      "top5_share_of_week_adr": 0.429982,
+      "top_pairs": [
+        {
+          "pair": "NZDJPY",
+          "adr": 5.854538
+        },
+        {
+          "pair": "AUDJPY",
+          "adr": 5.222029
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 5.091988
+        },
+        {
+          "pair": "EURJPY",
+          "adr": 4.99951
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 4.872315
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "GBPJPY",
+          "adr": -5.251286
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -3.933157
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -2.591009
+        },
+        {
+          "pair": "EURGBP",
+          "adr": -1.795211
+        },
+        {
+          "pair": "EURCAD",
+          "adr": -1.244641
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2024-07-21T23:00:00.000Z",
+      "weekly_hold_adr": 46.494142,
+      "positive_trades": 22,
+      "negative_trades": 6,
+      "top1_trade_contribution_adr": 4.569493,
+      "top3_trade_contribution_adr": 13.374589,
+      "top5_trade_contribution_adr": 21.274529,
+      "bottom5_trade_drag_adr": -12.410947,
+      "average_loser_drag_adr": -2.189499,
+      "top1_share_of_week_adr": 0.098281,
+      "top3_share_of_week_adr": 0.287662,
+      "top5_share_of_week_adr": 0.457574,
+      "top_pairs": [
+        {
+          "pair": "AUDJPY",
+          "adr": 4.569493
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": 4.432116
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": 4.37298
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 3.975818
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 3.924122
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "GBPAUD",
+          "adr": -3.084113
+        },
+        {
+          "pair": "USDCAD",
+          "adr": -2.869093
+        },
+        {
+          "pair": "NZDUSD",
+          "adr": -2.798193
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": -2.581161
+        },
+        {
+          "pair": "EURUSD",
+          "adr": -1.078387
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2025-03-30T23:00:00.000Z",
+      "weekly_hold_adr": 43.245397,
+      "positive_trades": 19,
+      "negative_trades": 9,
+      "top1_trade_contribution_adr": 8.551017,
+      "top3_trade_contribution_adr": 20.989463,
+      "top5_trade_contribution_adr": 31.855265,
+      "bottom5_trade_drag_adr": -26.134904,
+      "average_loser_drag_adr": -3.312271,
+      "top1_share_of_week_adr": 0.197732,
+      "top3_share_of_week_adr": 0.485357,
+      "top5_share_of_week_adr": 0.736616,
+      "top_pairs": [
+        {
+          "pair": "AUDCHF",
+          "adr": 8.551017
+        },
+        {
+          "pair": "AUDCAD",
+          "adr": 6.665745
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 5.772701
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": 5.55783
+        },
+        {
+          "pair": "GBPCHF",
+          "adr": 5.307972
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURAUD",
+          "adr": -8.320839
+        },
+        {
+          "pair": "GBPAUD",
+          "adr": -5.848527
+        },
+        {
+          "pair": "AUDJPY",
+          "adr": -5.619684
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": -3.903211
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": -2.442643
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2024-04-28T23:00:00.000Z",
+      "weekly_hold_adr": 38.158862,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 3.647336,
+      "top3_trade_contribution_adr": 9.580487,
+      "top5_trade_contribution_adr": 14.871193,
+      "bottom5_trade_drag_adr": -1.866504,
+      "average_loser_drag_adr": -0.373301,
+      "top1_share_of_week_adr": 0.095583,
+      "top3_share_of_week_adr": 0.251068,
+      "top5_share_of_week_adr": 0.389718,
+      "top_pairs": [
+        {
+          "pair": "USDJPY",
+          "adr": 3.647336
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 3.212545
+        },
+        {
+          "pair": "EURJPY",
+          "adr": 2.720606
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": 2.664079
+        },
+        {
+          "pair": "GBPJPY",
+          "adr": 2.626627
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURNZD",
+          "adr": -1.008745
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": -0.438904
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": -0.199558
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -0.16992
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": -0.049377
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2024-07-14T23:00:00.000Z",
+      "weekly_hold_adr": 37.761267,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 4.417805,
+      "top3_trade_contribution_adr": 11.676785,
+      "top5_trade_contribution_adr": 17.331024,
+      "bottom5_trade_drag_adr": -6.05555,
+      "average_loser_drag_adr": -1.21111,
+      "top1_share_of_week_adr": 0.116993,
+      "top3_share_of_week_adr": 0.309227,
+      "top5_share_of_week_adr": 0.458963,
+      "top_pairs": [
+        {
+          "pair": "AUDCHF",
+          "adr": 4.417805
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 3.874081
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 3.384899
+        },
+        {
+          "pair": "CADCHF",
+          "adr": 2.914545
+        },
+        {
+          "pair": "GBPCHF",
+          "adr": 2.739694
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "GBPAUD",
+          "adr": -1.782751
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": -1.708007
+        },
+        {
+          "pair": "USDCAD",
+          "adr": -1.65724
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -0.522004
+        },
+        {
+          "pair": "GBPCAD",
+          "adr": -0.385548
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2025-10-12T23:00:00.000Z",
+      "weekly_hold_adr": 35.288622,
+      "positive_trades": 24,
+      "negative_trades": 4,
+      "top1_trade_contribution_adr": 3.661763,
+      "top3_trade_contribution_adr": 8.520617,
+      "top5_trade_contribution_adr": 13.054061,
+      "bottom5_trade_drag_adr": -1.688634,
+      "average_loser_drag_adr": -0.46201,
+      "top1_share_of_week_adr": 0.103766,
+      "top3_share_of_week_adr": 0.241455,
+      "top5_share_of_week_adr": 0.369923,
+      "top_pairs": [
+        {
+          "pair": "CADCHF",
+          "adr": 3.661763
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": 2.44426
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 2.414594
+        },
+        {
+          "pair": "EURCAD",
+          "adr": 2.294187
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 2.239257
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "USDCAD",
+          "adr": -1.06998
+        },
+        {
+          "pair": "AUDCAD",
+          "adr": -0.324159
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -0.253251
+        },
+        {
+          "pair": "NZDUSD",
+          "adr": -0.20065
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": 0.159406
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2020-02-24T00:00:00.000Z",
+      "weekly_hold_adr": 33.972149,
+      "positive_trades": 17,
+      "negative_trades": 11,
+      "top1_trade_contribution_adr": 6.231014,
+      "top3_trade_contribution_adr": 17.923562,
+      "top5_trade_contribution_adr": 28.854109,
+      "bottom5_trade_drag_adr": -22.619966,
+      "average_loser_drag_adr": -2.880012,
+      "top1_share_of_week_adr": 0.183415,
+      "top3_share_of_week_adr": 0.527596,
+      "top5_share_of_week_adr": 0.849346,
+      "top_pairs": [
+        {
+          "pair": "AUDJPY",
+          "adr": 6.231014
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 5.866488
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 5.82606
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": 5.563395
+        },
+        {
+          "pair": "EURCAD",
+          "adr": 5.367152
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "GBPJPY",
+          "adr": -6.245453
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -5.376566
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -4.033705
+        },
+        {
+          "pair": "GBPCHF",
+          "adr": -3.645581
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -3.318661
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2022-09-25T23:00:00.000Z",
+      "weekly_hold_adr": 33.434795,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 3.710648,
+      "top3_trade_contribution_adr": 10.541869,
+      "top5_trade_contribution_adr": 16.267447,
+      "bottom5_trade_drag_adr": -3.463398,
+      "average_loser_drag_adr": -0.69268,
+      "top1_share_of_week_adr": 0.110982,
+      "top3_share_of_week_adr": 0.315296,
+      "top5_share_of_week_adr": 0.486542,
+      "top_pairs": [
+        {
+          "pair": "GBPAUD",
+          "adr": 3.710648
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": 3.535958
+        },
+        {
+          "pair": "GBPCAD",
+          "adr": 3.295263
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 3.07986
+        },
+        {
+          "pair": "EURNZD",
+          "adr": 2.645718
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURGBP",
+          "adr": -1.771368
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -0.624907
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": -0.466136
+        },
+        {
+          "pair": "NZDCAD",
+          "adr": -0.304126
+        },
+        {
+          "pair": "CADJPY",
+          "adr": -0.296861
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2023-11-27T00:00:00.000Z",
+      "weekly_hold_adr": 31.661446,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 5.412712,
+      "top3_trade_contribution_adr": 11.601735,
+      "top5_trade_contribution_adr": 17.211168,
+      "bottom5_trade_drag_adr": -4.671765,
+      "average_loser_drag_adr": -0.934353,
+      "top1_share_of_week_adr": 0.170956,
+      "top3_share_of_week_adr": 0.366431,
+      "top5_share_of_week_adr": 0.5436,
+      "top_pairs": [
+        {
+          "pair": "EURCHF",
+          "adr": 5.412712
+        },
+        {
+          "pair": "EURNZD",
+          "adr": 3.279139
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 2.909884
+        },
+        {
+          "pair": "EURGBP",
+          "adr": 2.857095
+        },
+        {
+          "pair": "EURJPY",
+          "adr": 2.752338
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "AUDNZD",
+          "adr": -1.580805
+        },
+        {
+          "pair": "EURUSD",
+          "adr": -1.238134
+        },
+        {
+          "pair": "GBPCAD",
+          "adr": -0.867519
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -0.595366
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": -0.389941
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2021-02-15T00:00:00.000Z",
+      "weekly_hold_adr": 30.084356,
+      "positive_trades": 22,
+      "negative_trades": 6,
+      "top1_trade_contribution_adr": 2.901186,
+      "top3_trade_contribution_adr": 8.498695,
+      "top5_trade_contribution_adr": 13.646858,
+      "bottom5_trade_drag_adr": -6.593701,
+      "average_loser_drag_adr": -1.118682,
+      "top1_share_of_week_adr": 0.096435,
+      "top3_share_of_week_adr": 0.282495,
+      "top5_share_of_week_adr": 0.45362,
+      "top_pairs": [
+        {
+          "pair": "GBPCHF",
+          "adr": 2.901186
+        },
+        {
+          "pair": "GBPJPY",
+          "adr": 2.81627
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": 2.781239
+        },
+        {
+          "pair": "AUDJPY",
+          "adr": 2.744628
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 2.403535
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "AUDUSD",
+          "adr": -1.775368
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": -1.729756
+        },
+        {
+          "pair": "NZDUSD",
+          "adr": -1.456072
+        },
+        {
+          "pair": "USDCAD",
+          "adr": -1.227778
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": -0.404727
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2019-10-06T23:00:00.000Z",
+      "weekly_hold_adr": 27.995032,
+      "positive_trades": 19,
+      "negative_trades": 9,
+      "top1_trade_contribution_adr": 6.642414,
+      "top3_trade_contribution_adr": 15.289662,
+      "top5_trade_contribution_adr": 22.694077,
+      "bottom5_trade_drag_adr": -13.006376,
+      "average_loser_drag_adr": -1.748614,
+      "top1_share_of_week_adr": 0.237271,
+      "top3_share_of_week_adr": 0.546156,
+      "top5_share_of_week_adr": 0.810647,
+      "top_pairs": [
+        {
+          "pair": "GBPJPY",
+          "adr": 6.642414
+        },
+        {
+          "pair": "EURJPY",
+          "adr": 4.585037
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": 4.062211
+        },
+        {
+          "pair": "GBPCHF",
+          "adr": 3.863187
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": 3.541228
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURGBP",
+          "adr": -3.927526
+        },
+        {
+          "pair": "CADJPY",
+          "adr": -3.287109
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -2.937568
+        },
+        {
+          "pair": "CADCHF",
+          "adr": -1.799955
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": -1.054218
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2019-12-09T00:00:00.000Z",
+      "weekly_hold_adr": 27.561087,
+      "positive_trades": 24,
+      "negative_trades": 4,
+      "top1_trade_contribution_adr": 3.836099,
+      "top3_trade_contribution_adr": 10.604957,
+      "top5_trade_contribution_adr": 15.347429,
+      "bottom5_trade_drag_adr": -4.673983,
+      "average_loser_drag_adr": -1.183631,
+      "top1_share_of_week_adr": 0.139185,
+      "top3_share_of_week_adr": 0.38478,
+      "top5_share_of_week_adr": 0.556851,
+      "top_pairs": [
+        {
+          "pair": "CHFJPY",
+          "adr": 3.836099
+        },
+        {
+          "pair": "EURJPY",
+          "adr": 3.457029
+        },
+        {
+          "pair": "GBPJPY",
+          "adr": 3.311829
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": 2.702024
+        },
+        {
+          "pair": "AUDJPY",
+          "adr": 2.040448
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "CADJPY",
+          "adr": -1.771351
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -1.566576
+        },
+        {
+          "pair": "EURGBP",
+          "adr": -1.372567
+        },
+        {
+          "pair": "EURCHF",
+          "adr": -0.024031
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": 0.060542
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2019-10-27T23:00:00.000Z",
+      "weekly_hold_adr": 26.497876,
+      "positive_trades": 20,
+      "negative_trades": 8,
+      "top1_trade_contribution_adr": 4.149272,
+      "top3_trade_contribution_adr": 11.464455,
+      "top5_trade_contribution_adr": 16.719506,
+      "bottom5_trade_drag_adr": -6.48302,
+      "average_loser_drag_adr": -0.905144,
+      "top1_share_of_week_adr": 0.156589,
+      "top3_share_of_week_adr": 0.432656,
+      "top5_share_of_week_adr": 0.630975,
+      "top_pairs": [
+        {
+          "pair": "AUDCAD",
+          "adr": 4.149272
+        },
+        {
+          "pair": "EURCAD",
+          "adr": 3.896578
+        },
+        {
+          "pair": "NZDCAD",
+          "adr": 3.418605
+        },
+        {
+          "pair": "CADCHF",
+          "adr": 2.852804
+        },
+        {
+          "pair": "CADJPY",
+          "adr": 2.402247
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "USDCAD",
+          "adr": -2.332685
+        },
+        {
+          "pair": "EURAUD",
+          "adr": -1.359679
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": -1.239537
+        },
+        {
+          "pair": "EURNZD",
+          "adr": -1.11521
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": -0.435909
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2020-05-17T23:00:00.000Z",
+      "weekly_hold_adr": 26.469344,
+      "positive_trades": 24,
+      "negative_trades": 4,
+      "top1_trade_contribution_adr": 2.22624,
+      "top3_trade_contribution_adr": 6.425428,
+      "top5_trade_contribution_adr": 10.188718,
+      "bottom5_trade_drag_adr": -1.588051,
+      "average_loser_drag_adr": -0.460465,
+      "top1_share_of_week_adr": 0.084106,
+      "top3_share_of_week_adr": 0.24275,
+      "top5_share_of_week_adr": 0.384925,
+      "top_pairs": [
+        {
+          "pair": "NZDCAD",
+          "adr": 2.22624
+        },
+        {
+          "pair": "EURCHF",
+          "adr": 2.177194
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": 2.021994
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": 1.931552
+        },
+        {
+          "pair": "NZDUSD",
+          "adr": 1.831738
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURJPY",
+          "adr": -1.096733
+        },
+        {
+          "pair": "USDJPY",
+          "adr": -0.408101
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -0.24929
+        },
+        {
+          "pair": "USDCHF",
+          "adr": -0.087738
+        },
+        {
+          "pair": "EURGBP",
+          "adr": 0.253811
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2023-07-09T23:00:00.000Z",
+      "weekly_hold_adr": 26.286846,
+      "positive_trades": 16,
+      "negative_trades": 12,
+      "top1_trade_contribution_adr": 5.092122,
+      "top3_trade_contribution_adr": 12.864871,
+      "top5_trade_contribution_adr": 19.452684,
+      "bottom5_trade_drag_adr": -8.03418,
+      "average_loser_drag_adr": -0.975456,
+      "top1_share_of_week_adr": 0.193714,
+      "top3_share_of_week_adr": 0.489403,
+      "top5_share_of_week_adr": 0.740016,
+      "top_pairs": [
+        {
+          "pair": "USDCHF",
+          "adr": 5.092122
+        },
+        {
+          "pair": "CADCHF",
+          "adr": 3.926443
+        },
+        {
+          "pair": "EURUSD",
+          "adr": 3.846306
+        },
+        {
+          "pair": "USDJPY",
+          "adr": 3.589758
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": 2.998055
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "GBPCHF",
+          "adr": -2.290661
+        },
+        {
+          "pair": "EURCHF",
+          "adr": -2.172297
+        },
+        {
+          "pair": "USDCAD",
+          "adr": -1.495449
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -1.085903
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": -0.98987
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2023-11-13T00:00:00.000Z",
+      "weekly_hold_adr": 26.267023,
+      "positive_trades": 20,
+      "negative_trades": 8,
+      "top1_trade_contribution_adr": 2.835667,
+      "top3_trade_contribution_adr": 8.113533,
+      "top5_trade_contribution_adr": 12.900224,
+      "bottom5_trade_drag_adr": -3.939246,
+      "average_loser_drag_adr": -0.59401,
+      "top1_share_of_week_adr": 0.107955,
+      "top3_share_of_week_adr": 0.308887,
+      "top5_share_of_week_adr": 0.491119,
+      "top_pairs": [
+        {
+          "pair": "EURUSD",
+          "adr": 2.835667
+        },
+        {
+          "pair": "USDCHF",
+          "adr": 2.81414
+        },
+        {
+          "pair": "AUDCAD",
+          "adr": 2.463726
+        },
+        {
+          "pair": "EURCAD",
+          "adr": 2.445398
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": 2.341293
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "AUDJPY",
+          "adr": -1.24628
+        },
+        {
+          "pair": "EURJPY",
+          "adr": -0.806534
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": -0.803401
+        },
+        {
+          "pair": "AUDCHF",
+          "adr": -0.614019
+        },
+        {
+          "pair": "EURGBP",
+          "adr": -0.469012
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2023-12-11T00:00:00.000Z",
+      "weekly_hold_adr": 25.208876,
+      "positive_trades": 23,
+      "negative_trades": 5,
+      "top1_trade_contribution_adr": 3.383746,
+      "top3_trade_contribution_adr": 7.560766,
+      "top5_trade_contribution_adr": 11.39122,
+      "bottom5_trade_drag_adr": -1.968146,
+      "average_loser_drag_adr": -0.393629,
+      "top1_share_of_week_adr": 0.134228,
+      "top3_share_of_week_adr": 0.299925,
+      "top5_share_of_week_adr": 0.451873,
+      "top_pairs": [
+        {
+          "pair": "USDCAD",
+          "adr": 3.383746
+        },
+        {
+          "pair": "AUDUSD",
+          "adr": 2.120127
+        },
+        {
+          "pair": "EURUSD",
+          "adr": 2.056893
+        },
+        {
+          "pair": "USDJPY",
+          "adr": 1.916959
+        },
+        {
+          "pair": "USDCHF",
+          "adr": 1.913495
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "AUDCHF",
+          "adr": -1.01473
+        },
+        {
+          "pair": "EURGBP",
+          "adr": -0.4322
+        },
+        {
+          "pair": "CADCHF",
+          "adr": -0.279661
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -0.224787
+        },
+        {
+          "pair": "NZDCAD",
+          "adr": -0.016768
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2020-09-20T23:00:00.000Z",
+      "weekly_hold_adr": 24.815745,
+      "positive_trades": 19,
+      "negative_trades": 9,
+      "top1_trade_contribution_adr": 3.709603,
+      "top3_trade_contribution_adr": 10.599842,
+      "top5_trade_contribution_adr": 16.336567,
+      "bottom5_trade_drag_adr": -9.62845,
+      "average_loser_drag_adr": -1.301425,
+      "top1_share_of_week_adr": 0.149486,
+      "top3_share_of_week_adr": 0.427142,
+      "top5_share_of_week_adr": 0.658315,
+      "top_pairs": [
+        {
+          "pair": "AUDUSD",
+          "adr": 3.709603
+        },
+        {
+          "pair": "AUDCAD",
+          "adr": 3.552012
+        },
+        {
+          "pair": "USDCHF",
+          "adr": 3.338227
+        },
+        {
+          "pair": "NZDUSD",
+          "adr": 2.977563
+        },
+        {
+          "pair": "EURAUD",
+          "adr": 2.759162
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "NZDCAD",
+          "adr": -2.566305
+        },
+        {
+          "pair": "NZDJPY",
+          "adr": -2.038515
+        },
+        {
+          "pair": "EURNZD",
+          "adr": -1.801581
+        },
+        {
+          "pair": "GBPNZD",
+          "adr": -1.627737
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -1.594312
+        }
+      ]
+    },
+    {
+      "week_open_utc": "2019-10-13T23:00:00.000Z",
+      "weekly_hold_adr": 24.663422,
+      "positive_trades": 22,
+      "negative_trades": 6,
+      "top1_trade_contribution_adr": 2.66452,
+      "top3_trade_contribution_adr": 7.292565,
+      "top5_trade_contribution_adr": 11.297179,
+      "bottom5_trade_drag_adr": -2.894927,
+      "average_loser_drag_adr": -0.494521,
+      "top1_share_of_week_adr": 0.108035,
+      "top3_share_of_week_adr": 0.295683,
+      "top5_share_of_week_adr": 0.458054,
+      "top_pairs": [
+        {
+          "pair": "USDCHF",
+          "adr": 2.66452
+        },
+        {
+          "pair": "EURUSD",
+          "adr": 2.463394
+        },
+        {
+          "pair": "GBPUSD",
+          "adr": 2.164651
+        },
+        {
+          "pair": "GBPJPY",
+          "adr": 2.015937
+        },
+        {
+          "pair": "CHFJPY",
+          "adr": 1.988677
+        }
+      ],
+      "bottom_pairs": [
+        {
+          "pair": "EURGBP",
+          "adr": -1.341471
+        },
+        {
+          "pair": "CADJPY",
+          "adr": -0.585779
+        },
+        {
+          "pair": "NZDCHF",
+          "adr": -0.507394
+        },
+        {
+          "pair": "EURCHF",
+          "adr": -0.348524
+        },
+        {
+          "pair": "AUDNZD",
+          "adr": -0.111759
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,398 @@
+[
+  {
+    "rule_id": "TRAIL_TP_A100_F050_T200",
+    "family": "trail_plus_hard_tp",
+    "top20_weekly_hold_minus_exit_adr": 664.60084,
+    "average_top5_share_of_week_adr_in_damaged_weeks": 0.537663,
+    "clipped_top20_weeks": 20,
+    "top_damage_weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050611,
+        "exit_adr": 2.580277,
+        "weekly_hold_minus_exit_adr": 58.470334,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 24.090182,
+        "top5_share_of_week_adr": 0.394594
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "exit_adr": 2.09712,
+        "weekly_hold_minus_exit_adr": 58.464456,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 26.04038,
+        "top5_share_of_week_adr": 0.429982
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494142,
+        "exit_adr": 0.454691,
+        "weekly_hold_minus_exit_adr": 46.039451,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 21.274529,
+        "top5_share_of_week_adr": 0.457574
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245397,
+        "exit_adr": 0.380372,
+        "weekly_hold_minus_exit_adr": 42.865025,
+        "positive_trade_count_at_friday": 19,
+        "top5_trade_final_adr": 31.855265,
+        "top5_share_of_week_adr": 0.736616
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "exit_adr": 0.320633,
+        "weekly_hold_minus_exit_adr": 37.838229,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 14.871193,
+        "top5_share_of_week_adr": 0.389718
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761267,
+        "exit_adr": 0.445393,
+        "weekly_hold_minus_exit_adr": 37.315874,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.331024,
+        "top5_share_of_week_adr": 0.458963
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288622,
+        "exit_adr": 0.456694,
+        "weekly_hold_minus_exit_adr": 34.831928,
+        "positive_trade_count_at_friday": 24,
+        "top5_trade_final_adr": 13.054061,
+        "top5_share_of_week_adr": 0.369923
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434795,
+        "exit_adr": 0.476239,
+        "weekly_hold_minus_exit_adr": 32.958556,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 16.267447,
+        "top5_share_of_week_adr": 0.486542
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972149,
+        "exit_adr": 2.267792,
+        "weekly_hold_minus_exit_adr": 31.704357,
+        "positive_trade_count_at_friday": 17,
+        "top5_trade_final_adr": 28.854109,
+        "top5_share_of_week_adr": 0.849346
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "exit_adr": 2.33216,
+        "weekly_hold_minus_exit_adr": 29.329286,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.211168,
+        "top5_share_of_week_adr": 0.5436
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_WEEK",
+    "family": "global_close_all_stop_week",
+    "top20_weekly_hold_minus_exit_adr": 658.681058,
+    "average_top5_share_of_week_adr_in_damaged_weeks": 0.537663,
+    "clipped_top20_weeks": 20,
+    "top_damage_weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050611,
+        "exit_adr": 1.293507,
+        "weekly_hold_minus_exit_adr": 59.757104,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 24.090182,
+        "top5_share_of_week_adr": 0.394594
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "exit_adr": 1.499074,
+        "weekly_hold_minus_exit_adr": 59.062502,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 26.04038,
+        "top5_share_of_week_adr": 0.429982
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494142,
+        "exit_adr": 1.369055,
+        "weekly_hold_minus_exit_adr": 45.125087,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 21.274529,
+        "top5_share_of_week_adr": 0.457574
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245397,
+        "exit_adr": 1.280414,
+        "weekly_hold_minus_exit_adr": 41.964983,
+        "positive_trade_count_at_friday": 19,
+        "top5_trade_final_adr": 31.855265,
+        "top5_share_of_week_adr": 0.736616
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761267,
+        "exit_adr": 1.267676,
+        "weekly_hold_minus_exit_adr": 36.493591,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.331024,
+        "top5_share_of_week_adr": 0.458963
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "exit_adr": 2.047381,
+        "weekly_hold_minus_exit_adr": 36.111481,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 14.871193,
+        "top5_share_of_week_adr": 0.389718
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288622,
+        "exit_adr": 1.327866,
+        "weekly_hold_minus_exit_adr": 33.960756,
+        "positive_trade_count_at_friday": 24,
+        "top5_trade_final_adr": 13.054061,
+        "top5_share_of_week_adr": 0.369923
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972149,
+        "exit_adr": 1.326453,
+        "weekly_hold_minus_exit_adr": 32.645696,
+        "positive_trade_count_at_friday": 17,
+        "top5_trade_final_adr": 28.854109,
+        "top5_share_of_week_adr": 0.849346
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434795,
+        "exit_adr": 1.474928,
+        "weekly_hold_minus_exit_adr": 31.959867,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 16.267447,
+        "top5_share_of_week_adr": 0.486542
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "exit_adr": 1.348979,
+        "weekly_hold_minus_exit_adr": 30.312467,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.211168,
+        "top5_share_of_week_adr": 0.5436
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F025",
+    "family": "basket_profit_floor_trailing",
+    "top20_weekly_hold_minus_exit_adr": 489.672289,
+    "average_top5_share_of_week_adr_in_damaged_weeks": 0.541897,
+    "clipped_top20_weeks": 15,
+    "top_damage_weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050611,
+        "exit_adr": 0.070805,
+        "weekly_hold_minus_exit_adr": 60.979806,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 24.090182,
+        "top5_share_of_week_adr": 0.394594
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245397,
+        "exit_adr": 0.140291,
+        "weekly_hold_minus_exit_adr": 43.105106,
+        "positive_trade_count_at_friday": 19,
+        "top5_trade_final_adr": 31.855265,
+        "top5_share_of_week_adr": 0.736616
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "exit_adr": 0.171789,
+        "weekly_hold_minus_exit_adr": 37.987073,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 14.871193,
+        "top5_share_of_week_adr": 0.389718
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761267,
+        "exit_adr": 0.157247,
+        "weekly_hold_minus_exit_adr": 37.60402,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.331024,
+        "top5_share_of_week_adr": 0.458963
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288622,
+        "exit_adr": 0.118118,
+        "weekly_hold_minus_exit_adr": 35.170504,
+        "positive_trade_count_at_friday": 24,
+        "top5_trade_final_adr": 13.054061,
+        "top5_share_of_week_adr": 0.369923
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972149,
+        "exit_adr": 0.243385,
+        "weekly_hold_minus_exit_adr": 33.728764,
+        "positive_trade_count_at_friday": 17,
+        "top5_trade_final_adr": 28.854109,
+        "top5_share_of_week_adr": 0.849346
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434795,
+        "exit_adr": 0.1675,
+        "weekly_hold_minus_exit_adr": 33.267295,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 16.267447,
+        "top5_share_of_week_adr": 0.486542
+      },
+      {
+        "week_open_utc": "2019-10-06T23:00:00.000Z",
+        "weekly_hold_adr": 27.995032,
+        "exit_adr": 0.15972,
+        "weekly_hold_minus_exit_adr": 27.835312,
+        "positive_trade_count_at_friday": 19,
+        "top5_trade_final_adr": 22.694077,
+        "top5_share_of_week_adr": 0.810647
+      },
+      {
+        "week_open_utc": "2019-12-09T00:00:00.000Z",
+        "weekly_hold_adr": 27.561087,
+        "exit_adr": 0.214968,
+        "weekly_hold_minus_exit_adr": 27.346119,
+        "positive_trade_count_at_friday": 24,
+        "top5_trade_final_adr": 15.347429,
+        "top5_share_of_week_adr": 0.556851
+      },
+      {
+        "week_open_utc": "2019-10-27T23:00:00.000Z",
+        "weekly_hold_adr": 26.497876,
+        "exit_adr": 0.184231,
+        "weekly_hold_minus_exit_adr": 26.313645,
+        "positive_trade_count_at_friday": 20,
+        "top5_trade_final_adr": 16.719506,
+        "top5_share_of_week_adr": 0.630975
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_200",
+    "family": "global_target_plus_adverse_stop",
+    "top20_weekly_hold_minus_exit_adr": 684.102412,
+    "average_top5_share_of_week_adr_in_damaged_weeks": 0.537663,
+    "clipped_top20_weeks": 20,
+    "top_damage_weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050611,
+        "exit_adr": 0.563181,
+        "weekly_hold_minus_exit_adr": 60.48743,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 24.090182,
+        "top5_share_of_week_adr": 0.394594
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "exit_adr": 0.534821,
+        "weekly_hold_minus_exit_adr": 60.026755,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 26.04038,
+        "top5_share_of_week_adr": 0.429982
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494142,
+        "exit_adr": 0.526832,
+        "weekly_hold_minus_exit_adr": 45.96731,
+        "positive_trade_count_at_friday": 22,
+        "top5_trade_final_adr": 21.274529,
+        "top5_share_of_week_adr": 0.457574
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245397,
+        "exit_adr": 0.507088,
+        "weekly_hold_minus_exit_adr": 42.738309,
+        "positive_trade_count_at_friday": 19,
+        "top5_trade_final_adr": 31.855265,
+        "top5_share_of_week_adr": 0.736616
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "exit_adr": 0.590843,
+        "weekly_hold_minus_exit_adr": 37.568019,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 14.871193,
+        "top5_share_of_week_adr": 0.389718
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761267,
+        "exit_adr": 0.528088,
+        "weekly_hold_minus_exit_adr": 37.233179,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.331024,
+        "top5_share_of_week_adr": 0.458963
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288622,
+        "exit_adr": 0.682232,
+        "weekly_hold_minus_exit_adr": 34.60639,
+        "positive_trade_count_at_friday": 24,
+        "top5_trade_final_adr": 13.054061,
+        "top5_share_of_week_adr": 0.369923
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972149,
+        "exit_adr": 0.657483,
+        "weekly_hold_minus_exit_adr": 33.314666,
+        "positive_trade_count_at_friday": 17,
+        "top5_trade_final_adr": 28.854109,
+        "top5_share_of_week_adr": 0.849346
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434795,
+        "exit_adr": 0.502699,
+        "weekly_hold_minus_exit_adr": 32.932096,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 16.267447,
+        "top5_share_of_week_adr": 0.486542
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "exit_adr": 0.639715,
+        "weekly_hold_minus_exit_adr": 31.021731,
+        "positive_trade_count_at_friday": 23,
+        "top5_trade_final_adr": 17.211168,
+        "top5_share_of_week_adr": 0.5436
+      }
+    ]
+  }
+]

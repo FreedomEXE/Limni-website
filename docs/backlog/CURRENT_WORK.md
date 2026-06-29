@@ -8,10 +8,11 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 73A: weekly-basket-path-anatomy.
+Latest completed gate: Gate 73B:
+candidate-b-trade-leg-anatomy-and-runner-preserving-exit-design-preflight.
 
-Objective completed: explain why the Gate 72 clean exit shortlist improved
-profitable-week rate but collapsed total ADR and year stability.
+Objective completed: test Candidate B final trade-leg composition from existing
+warehouses and bind the trade-leg path timing gap before any dynamic exit work.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -21,6 +22,21 @@ Gate 73 current state:
 
 - Candidate B final ledger remains read-only directional truth.
 - Candidate C shadow ledger remains monitoring-only.
+- Gate 73B used existing materialized warehouses only: Gate 57 pair-week
+  outcomes, Gate 71B-M basket path warehouse, Gate 71B diagnostics, Gate 72
+  matrix rows, and Gate 73A path classes.
+- Gate 73B produced a `10,444` row week x pair final-composition ledger with
+  no raw M1 source rebuild, no new exit rules scored, no exit promotion, no
+  risk layer, and no Brain mutation.
+- Gate 73B key finding: top 20 weekly-hold winners average `21.4` positive
+  trades and `0.537663` of week ADR from the top 5 final trade legs.
+- Gate 73B green-giveback end-state: `222` weeks; `163` mixed end-state,
+  `55` broad laggard-drag, and `4` few-surviving-leader weeks.
+- Gate 73B explicitly binds the path timing gap: existing warehouses do not
+  provide trade-level MFE/MAE timestamps, trade contribution at basket MFE, live
+  checkpoint runner identification, or trade-level recovery after adverse
+  threshold. Dynamic trade exits need a dedicated trade-leg path warehouse, or
+  Gate 73C must stay limited to hypotheses answerable by current warehouses.
 - Gate 73A used the Gate 71B diagnostics and Gate 71C/72C exit ledgers only;
   no raw M1 rebuild, new exit rule, exit promotion, or risk layer was started.
 - Gate 73A classified all 373 weekly basket paths and produced MFE/MAE,
@@ -40,11 +56,14 @@ Gate 73 current state:
 Gate 73 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
+- `npm run engine:gate73b:trade-leg-anatomy-preflight`
 
 Gate 73 current verdicts:
 
 - Gate 73A:
   `PASS_GATE73A_WEEKLY_BASKET_PATH_ANATOMY__RIGHT_TAIL_AND_GIVEBACK_PROFILE_VISIBLE`
+- Gate 73B:
+  `PASS_GATE73B_TRADE_LEG_COMPOSITION_PREFLIGHT__FINAL_COMPOSITION_VISIBLE_PATH_TIMING_GAP_BOUND`
 
 Gate 72 reference:
 
