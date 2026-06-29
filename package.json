@@ -87,6 +87,7 @@
     "engine:gate74d:pair-net-grid-open-loss-forensics": "tsx engine/scripts/verification/build-gate74d-pair-net-grid-open-loss-forensics.ts",
     "engine:gate74e:pair-net-grid-tail-containment-adapter-pack": "tsx engine/scripts/verification/build-gate74e-pair-net-grid-tail-containment-adapter-pack.ts",
     "engine:gate75a:broad-exit-family-taxonomy-protocol-freeze": "tsx engine/scripts/verification/build-gate75a-broad-exit-family-taxonomy-protocol-freeze.ts",
+    "engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery": "tsx engine/scripts/verification/build-gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

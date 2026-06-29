@@ -8,12 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 75A:
-broad-exit-family-taxonomy-and-matrix-protocol-freeze.
+Latest completed gate: Gate 76:
+pair-directional-two-sided-grid-and-reset-limit-lifecycle-discovery.
 
-Objective completed: convert Gates 72-74E evidence into a frozen broader
-exit-family taxonomy and predeclared Gate 75B matrix plan without running the
-matrix.
+Objective completed: test Freedom's missing post-Gate-75 lifecycle family:
+directional two-sided pair grids with favorable expansion fills, exact
+account-level close-mark reset targets, and reset-limit rules.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -153,8 +153,42 @@ Gate 75A current state:
 - Gate 75A explicitly forbids Gate 75B promotion. No Gate 75B row is promotion
   eligible regardless of metrics.
 
-Held next gate if Freedom opens it: Gate 75B,
-broad-exit-family-taxonomy-matrix. Gate 75B is not open.
+Gate 76 current state:
+
+- Gate 76 verdict:
+  `PASS_GATE76_PAIR_DIRECTIONAL_TWO_SIDED_GRID_RESET_LIMIT_DISCOVERY__RECOVERY_EXPANSION_AND_ACCOUNT_RESET_LIFECYCLE_VISIBLE_NO_PROMOTION`.
+- Gate 76 preserved Gate 75A as closed prior evidence and did not amend the
+  Gate 75A taxonomy packet.
+- Gate 76 replayed `20` fixed rules across `373` weeks, `28` pairs, and
+  `10,444` Gate 74B pair-week rows with Candidate B directions unchanged.
+- Gate 76 included the Gate 74E adverse-only focus baseline and matched it
+  exactly: `14381.312614` closed ADR, `9901.156008` final equity ADR,
+  `-4480.156606` final open unrealized, `-5462.545131` max drawdown, and
+  `-10815.950986` flip-loss ADR.
+- Gate 76 built exact synchronized close-mark account replay from the Gate 74B
+  path warehouse. Account reset rows are not pair-series summary
+  approximations.
+- Best first-pass row by final equity was
+  `PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP` with
+  `18012.423714` closed ADR, `12295.79489` final equity ADR, equity PF
+  `1.282295`, max drawdown `-7565.450203`, and final open unrealized
+  `-5716.628824`.
+- Interpretation: favorable expansion fills increased harvest and final equity,
+  but every two-sided target worsened drawdown and final open loss versus the
+  Gate 74E focus. This is discovery evidence only, not promotion.
+- Best account-reset target row by final equity was
+  `ACCOUNT_TWO_SIDED_GRID_RESET_TARGET_300_SPACING_020` with `6262.893813`
+  closed ADR, `1819.37303` final equity ADR, equity PF `1.07472`, max drawdown
+  `-6577.847171`, and final open unrealized `-4443.520783`.
+- Reset limits reduced open loss/drawdown in some rows but also capped right
+  tail and harvest. No reset-limit row is promotion eligible.
+- Gate 76 applied no costs, spread, slippage, swap, commission, risk layer,
+  correlation pruning, pair pruning, fair-value pruning, source mutation, Brain
+  mutation, Candidate C promotion, Candidate D retest, Candidate E, Alpha v2,
+  MT5/live/app/runtime work, or exit promotion.
+
+No next gate is open. Gate 75B broad matrix, Gate 77, costs, risk, and live/app
+work remain closed unless Freedom explicitly opens the next scope.
 
 Gate 73 reference:
 
@@ -208,7 +242,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-75 commands:
+Gate 73-76 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -219,6 +253,7 @@ Gate 73-75 commands:
 - `npm run engine:gate74d:pair-net-grid-open-loss-forensics`
 - `npm run engine:gate74e:pair-net-grid-tail-containment-adapter-pack`
 - `npm run engine:gate75a:broad-exit-family-taxonomy-protocol-freeze`
+- `npm run engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery`
 
 Current verdicts:
 
@@ -240,6 +275,8 @@ Current verdicts:
   `PASS_GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK__TAIL_MECHANICS_AND_UNIVERSAL_CONTAINMENT_RANKING_VISIBLE_NO_PROMOTION`
 - Gate 75A:
   `PASS_GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE__MATRIX_PLAN_PREDECLARED_NO_EXECUTION`
+- Gate 76:
+  `PASS_GATE76_PAIR_DIRECTIONAL_TWO_SIDED_GRID_RESET_LIMIT_DISCOVERY__RECOVERY_EXPANSION_AND_ACCOUNT_RESET_LIFECYCLE_VISIBLE_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -317,17 +354,17 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 75A unless Freedom explicitly opens the next gate.
+Stop after Gate 76 unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 75B broad matrix execution, cost validation, exact
-account-level synchronized exit materialization, broad fixed ADR spacing matrix,
-risk/portfolio expression matrix, final exit promotion, final algorithm
-naming/branding, Alpha v2 promotion, risk overlays, pair-specific pruning,
-regime-specific exits, fair-value pruning, execution, MT5/live, app/runtime
-work, source mutation, COT retuning, Strength retuning, Regime retuning, broad
-source consolidation, optimized threshold search, learned weights, pair/date
-exclusions, P&L attribution, or live trading unless Freedom explicitly opens
-that scope.
+Do not proceed to Gate 75B broad matrix execution, Gate 77, cost validation,
+additional account-level synchronized exit materialization, broad fixed ADR
+spacing matrix, risk/portfolio expression matrix, final exit promotion, final
+algorithm naming/branding, Alpha v2 promotion, risk overlays, pair-specific
+pruning, regime-specific exits, fair-value pruning, execution, MT5/live,
+app/runtime work, source mutation, COT retuning, Strength retuning, Regime
+retuning, broad source consolidation, optimized threshold search, learned
+weights, pair/date exclusions, P&L attribution, or live trading unless Freedom
+explicitly opens that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -345,6 +382,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate76/GATE76_PAIR_DIRECTIONAL_TWO_SIDED_GRID_AND_RESET_LIMIT_LIFECYCLE_DISCOVERY_2026-06-29.md`
 
 `docs/research/gates/gate75a/GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE_2026-06-29.md`
 
