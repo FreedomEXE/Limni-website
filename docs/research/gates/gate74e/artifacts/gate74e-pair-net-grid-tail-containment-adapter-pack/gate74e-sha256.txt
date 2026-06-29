@@ -1,0 +1,24 @@
+gate_id Gate 74E: pair-net-grid-tail-containment-adapter-pack
+command npm run engine:gate74e:pair-net-grid-tail-containment-adapter-pack
+generated_at 2026-06-29T13:12:10.184Z
+git_commit aec70e50d4ae5f081fdfaa3c9da9a3ae345af1f7
+adapter_result_rows 0B0C04745445FFDF8E5F0E0F82799B2546A022E8FE5E46E3B81B61F744F2A7F2 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/adapter-result.rows.json
+cycle_state_reconciliation_rows 953F96E2D8DDC51C3FAE6E7BBD200FAE0D250D4177B1A8095901B4D8FDF9BD6B docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/cycle-state-reconciliation.rows.json
+tail_concentration_rows 3702846AF18EE87007ECA54A69CEDCCDB99A9FEBE74538759FD62E0F765F148C docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/tail-concentration.rows.json
+weekly_equity_truth_rows 0161B5CC97E28A552F6C8DE7A90368EC2B165511A4855BE55A5577B95806ABCF docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/weekly-equity-truth.rows.json
+final_open_inventory_rows 23379F9194943935E089129F5C308D5415B6D1E62AF74E562322BBCABDA36047 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/final-open-inventory.rows.json
+final_open_by_pair_rows 84CD7D492F0058C3592EB73202724F399CECEA53FEC1AC29BF134B328705C84E docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/final-open-by-pair.rows.json
+final_open_by_start_year_rows 179EA8CA387D4D17C0BD12FC817E649A06213F960296AC19D002BCC6060C0CC1 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/final-open-by-start-year.rows.json
+final_open_by_age_rows A6EB71D2BE02C60241DDF37FE981F309DB37A9B78D3DF86D705DF01B52A6883C docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/final-open-by-age.rows.json
+final_open_by_streak_rows 5452DA0C916773A1091231E0757A4AF7B94F96F737B90E98CE5343B9DEE697CC docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/final-open-by-streak.rows.json
+drawdown_rows C51102C5F304D0A8FE697188AD943B3BFD9E47E6254AF9FC781976D5D73D5279 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/drawdown-windows.rows.json
+drawdown_pair_contributors 2599C76524022DA62008CC67DFB14FFD8165F6474F7D422E9E87C0FE6CEF650A docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/drawdown-pair-contributors.rows.json
+drawdown_currency_contributors FA584BC694080B3352E18A8DCD11F61A2B61E5267E0654796A7112623FA7E9D8 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/drawdown-currency-contributors.rows.json
+flip_loss_summary_rows 7A05DF7DFB4EB59CDA0A375779DE28C93E66F928951E0A97012923E14C51EB5F docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/flip-loss-summary.rows.json
+worst_flip_loss_cycles EA105AA739A4684C1D7013212600E188596CD1B577D9C5F6786FBA2947DF7628 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/worst-flip-loss-cycles.rows.json
+recovery_summary_rows 1F506E7FF89899D0E0385A6507A72C9A0521EFADA85A21A53309479BECD50410 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/recovery-summary.rows.json
+worst_never_recovered_cycles 9D518DC205D07F72478481309CB1E8ED3FC4F42521633E7B733A5707DD7CE9A7 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/worst-never-recovered-cycles.rows.json
+worst_10_weeks 435889AB761DF5A7B64F52AF0063E1FC2B50BA4E5B3FDF62F93EDE3FD04EB48F docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/worst-10-equity-weeks.rows.json
+best_10_closed_weeks E5A8C7FB3CB189760D1506A316F4853F56FB92817FBD4562351A7ED013005F5B docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/best-10-closed-harvest-weeks.rows.json
+summary_json 4451C2E71DAFB542F3C90241D7CD898F2C79B8D61022CED36E803E7ED9B41A52 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/gate74e-summary.json
+report 0006DB4BEC8BD04930749E922C1E4C1D780A1E0B51FAAED1D5C994CDF5F23F17 docs/research/gates/gate74e/GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK_2026-06-29.md

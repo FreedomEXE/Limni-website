@@ -1,0 +1,802 @@
+[
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -2675.565587,
+    "allocated_open_unrealized_at_trough": -2430.692164,
+    "pair_count": 7,
+    "content_hash": "4A6C225E2F0AACA8500A0EC134C1B3AD42B2E540FE121BAE00795B54F1788C53"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -1633.490346,
+    "allocated_open_unrealized_at_trough": -1799.709957,
+    "pair_count": 7,
+    "content_hash": "15A98EACBCA91A09FE55363A0726D0EC9F508EFAA36F07641209845F0AE5E7CD"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -1045.540788,
+    "allocated_open_unrealized_at_trough": -404.149052,
+    "pair_count": 7,
+    "content_hash": "4B4901F968C48183F0B81A4B8EE3771DD06CA7304057219D86904BD9EC406613"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -350.417062,
+    "allocated_open_unrealized_at_trough": -5.691189,
+    "pair_count": 7,
+    "content_hash": "A06EA508BEBD6720C2D36FF1E1074DD06AFC6ACB46ED13AF894A485B7BA9BB9A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -79.684101,
+    "allocated_open_unrealized_at_trough": -35.472937,
+    "pair_count": 7,
+    "content_hash": "03EFB658863AA913FA3CD5A64A6CA1C18DB4D8E4420536A658AC7636A9A7AC08"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -57.444398,
+    "allocated_open_unrealized_at_trough": -257.868561,
+    "pair_count": 7,
+    "content_hash": "32D74AF08F91ACBB0B6ACEF1123FB5FFD6097BDE0546B2CA5CD4CCA72D06952E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": 181.348054,
+    "allocated_open_unrealized_at_trough": -36.142101,
+    "pair_count": 7,
+    "content_hash": "C6BB0C6FEAE80E1A892FFD6940CA7824DBFB9AD51B0B1C7C5097704C280C11EF"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": 198.249107,
+    "allocated_open_unrealized_at_trough": -48.706621,
+    "pair_count": 7,
+    "content_hash": "71B8003A85A4EDE1DA458753EBCEA6393B922D2D2E4E729E3D5C35CB39F74192"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -692.738381,
+    "allocated_open_unrealized_at_trough": -88.903825,
+    "pair_count": 7,
+    "content_hash": "7931A2C727DCD60B9B51E2F7A7C0D6AA83BB2957ACEC534ED350286951F9EF0E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -250.430167,
+    "allocated_open_unrealized_at_trough": -208.574815,
+    "pair_count": 7,
+    "content_hash": "73A9A88CF3036C0DDCDCC5C7DB5106975BD19D34DA66E9BF8703EF7C42D1B224"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -129.679859,
+    "allocated_open_unrealized_at_trough": -101.205434,
+    "pair_count": 7,
+    "content_hash": "F1DD1295DE1B48D18ABC14707EE253C9C539CD6A0997B3CF5EE9188C3CA6F34C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -104.05682,
+    "allocated_open_unrealized_at_trough": -59.644542,
+    "pair_count": 7,
+    "content_hash": "2DEFC0407BAD93677D34FDE1D0D242707E8B39D5C60A8BE110F8635E032396A1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -84.893565,
+    "allocated_open_unrealized_at_trough": -60.293964,
+    "pair_count": 7,
+    "content_hash": "9610DBABA243C867CEB72005F9954ECC9150E65639F7FC0D7ADACE6C54449391"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -58.921106,
+    "allocated_open_unrealized_at_trough": -59.304702,
+    "pair_count": 7,
+    "content_hash": "CD9A9C19D131176CAA131D92C57643304E78DA1931AE8200A04E50620CABB201"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": 15.652297,
+    "allocated_open_unrealized_at_trough": -4.742521,
+    "pair_count": 7,
+    "content_hash": "B69FC411F922078819E1B974695338CF6BF84C088F0FEE6C7C7C2081A9DBE048"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": 72.150691,
+    "allocated_open_unrealized_at_trough": -94.473072,
+    "pair_count": 7,
+    "content_hash": "292AD181E791FDEC81CB09240A0E9B34883B013F6509E4066AF137F19DCC3437"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -884.777677,
+    "allocated_open_unrealized_at_trough": -710.598167,
+    "pair_count": 7,
+    "content_hash": "FEAE95865392637D7F5453A2E1B964153EDF0CF4D748BF615ED3A10CB7D080DB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -689.948322,
+    "allocated_open_unrealized_at_trough": -494.610707,
+    "pair_count": 7,
+    "content_hash": "6C82D7BE1D49246740272395344E00CBA8DD07DE1BDBD3DEDA5BADFFBDFFC7B8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -249.51865,
+    "allocated_open_unrealized_at_trough": -201.371257,
+    "pair_count": 7,
+    "content_hash": "A0C79C35155E4023B6B03B9DE75A09C86B04B31849052A9491E28479F4908E9B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -171.493173,
+    "allocated_open_unrealized_at_trough": -312.961132,
+    "pair_count": 7,
+    "content_hash": "462D618DA82396EDA30B44E95DB301B84DB274A378B4F77FDAD71F7B363A7311"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -102.574979,
+    "allocated_open_unrealized_at_trough": -92.410332,
+    "pair_count": 7,
+    "content_hash": "6EE2550DFD6C65E9D017E0117E6AE83C122ABB357933DE0F012F475F32195A8F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": 45.399467,
+    "allocated_open_unrealized_at_trough": -52.513687,
+    "pair_count": 7,
+    "content_hash": "3027C3FC585DD2B37443B73D5BE6099EBCF1B7182B73EFEB1A5E5AC5639559D2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": 48.971797,
+    "allocated_open_unrealized_at_trough": -92.189475,
+    "pair_count": 7,
+    "content_hash": "82A9A4E0BB12514D6E18D89E760CA8B95D28E340DD84EFF30183B04BFCEA7778"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": 110.253512,
+    "allocated_open_unrealized_at_trough": -92.357076,
+    "pair_count": 7,
+    "content_hash": "031758A4B64E24345C8ADA4F9A263561DB347259624CB20E21A72CE0AE5E64DD"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -420.098389,
+    "allocated_open_unrealized_at_trough": -45.023023,
+    "pair_count": 7,
+    "content_hash": "D502FE3B1C7412841E06E8B51A727DBBD311E4BDB67238FE3BF5B715DA50CD22"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -372.797944,
+    "allocated_open_unrealized_at_trough": -65.761479,
+    "pair_count": 7,
+    "content_hash": "4951D2123AB085303CEBB73CA0F35EB5271F791F81131715412CEEDE6411CED1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -118.699094,
+    "allocated_open_unrealized_at_trough": -48.242856,
+    "pair_count": 7,
+    "content_hash": "C9C650C16F95D78F53DBB88DE06EFA4F5D9D588FC298ABFB6E6703E9E246C0EE"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": -92.307261,
+    "allocated_open_unrealized_at_trough": -83.237444,
+    "pair_count": 7,
+    "content_hash": "B38ECCFE8E096E49202644C881F76D72CDC10FAFCC80D2E056BD3503D2D301F6"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -90.362878,
+    "allocated_open_unrealized_at_trough": -37.925511,
+    "pair_count": 7,
+    "content_hash": "F04F229F514F59E1BC75744A5F9FC366CA6534378FE0D856BCC40469AEDB2A24"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -3.114848,
+    "allocated_open_unrealized_at_trough": -78.200734,
+    "pair_count": 7,
+    "content_hash": "5AF62E432928A86C8147D136B55BC70D12699F5AC80147B849BB1770BC218EEB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": 18.367297,
+    "allocated_open_unrealized_at_trough": -34.055661,
+    "pair_count": 7,
+    "content_hash": "10574C4D35878602F797B671A7002074DD3FE98EF4D6E29A5EE919224BE198A3"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": 61.029545,
+    "allocated_open_unrealized_at_trough": -23.920154,
+    "pair_count": 7,
+    "content_hash": "0950B1285C46AE50804BC2B7CA9684891406A1FF6CAA27E5E0C829CF86EAEF6A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -1057.444728,
+    "allocated_open_unrealized_at_trough": -947.272747,
+    "pair_count": 7,
+    "content_hash": "A282866F87FBC9521CB678B562358A564A1B5E5203D8F60C5AFB473708D58AF7"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -863.353968,
+    "allocated_open_unrealized_at_trough": -277.055029,
+    "pair_count": 7,
+    "content_hash": "F6DB7AD405BEB0333D63D1BFD9D731DD712E616A110E0359C7A5BE52F586D45F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -335.093595,
+    "allocated_open_unrealized_at_trough": -369.888975,
+    "pair_count": 7,
+    "content_hash": "398334683F4A38928B189961BB50451B6B09A91E0F1A3FF8D3E58157D805AE5C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -149.759813,
+    "allocated_open_unrealized_at_trough": -184.199785,
+    "pair_count": 7,
+    "content_hash": "8E29764CABD3F76CA432B335D09243CEF3AE4FB3B8B183B33268E1AA96AE327C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -118.424793,
+    "allocated_open_unrealized_at_trough": -6.073542,
+    "pair_count": 7,
+    "content_hash": "58B55F84F565D1B8B873654E18DCC2EF4971BFA22209FA94617ECCB7D16959E2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -72.959936,
+    "allocated_open_unrealized_at_trough": -16.087358,
+    "pair_count": 7,
+    "content_hash": "F54815D79FDD6010BB5FC9AF263E34917441C577B4203CB12AC19B493F79E377"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -16.589033,
+    "allocated_open_unrealized_at_trough": -10.047301,
+    "pair_count": 7,
+    "content_hash": "1DCAB490CC9370158FD1329AE1080023636B8063DA7DA0DC4FC07BCA40C5656C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": 1.322015,
+    "allocated_open_unrealized_at_trough": -152.309773,
+    "pair_count": 7,
+    "content_hash": "54A9BF59FE8A10E02B4EB12167CB3A2DB42DB06CB4CAA08B3C08A4B92A2EA95E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -696.831997,
+    "allocated_open_unrealized_at_trough": -5.448647,
+    "pair_count": 7,
+    "content_hash": "74763068D10318DC19FB4A86163D8EF307A0A4ABA4716C9A18726F56F683653A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": -463.192231,
+    "allocated_open_unrealized_at_trough": -8.807701,
+    "pair_count": 7,
+    "content_hash": "9998864B86C74575738E2ACD5322BEE0D6013196B8FCFD230E7B6BEFBBFE8860"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -102.214992,
+    "allocated_open_unrealized_at_trough": -5.979228,
+    "pair_count": 7,
+    "content_hash": "4EB22FF6FDD36DB7ABD7EE615B1A1722EF211592A8D04486718E01C61FE177EB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -74.969249,
+    "allocated_open_unrealized_at_trough": -1.822092,
+    "pair_count": 7,
+    "content_hash": "4DB1E6F6D8633F9A17FE90D760E6F5D1A003A71767E69CEF55708D8A216AF77F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -15.994441,
+    "allocated_open_unrealized_at_trough": -8.495044,
+    "pair_count": 7,
+    "content_hash": "D246CCB4854871B90A7B29703C834214EF0180DB09298D82B706B580C0E433AB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": 46.485962,
+    "allocated_open_unrealized_at_trough": -4.967939,
+    "pair_count": 7,
+    "content_hash": "8CE28CCD5EECF6438A63B87603920F422781994A1D829BBC12A9CBC14C8CE6C2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": 52.129271,
+    "allocated_open_unrealized_at_trough": -4.934985,
+    "pair_count": 7,
+    "content_hash": "C83FD6B6F7C441CA991311A0ED5623A13439D998E6A79947FAD4CB05C55E5019"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": 84.457313,
+    "allocated_open_unrealized_at_trough": -4.364963,
+    "pair_count": 7,
+    "content_hash": "E59DEB493BA24456C0C87340CEB1D9A0521366D46B02CCCAD449166E5957F733"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -627.055259,
+    "allocated_open_unrealized_at_trough": -2.882595,
+    "pair_count": 7,
+    "content_hash": "BCC413C77AE60A780F709A11806F1F09E46E334EF1DCB72F441C500D6F85D1CA"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": -440.648775,
+    "allocated_open_unrealized_at_trough": -5.815725,
+    "pair_count": 7,
+    "content_hash": "0D548BCB2823045E854BADEC8B162318C0B7A7BFAFF6524B5B25241D00C275CE"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -147.379621,
+    "allocated_open_unrealized_at_trough": -10.22877,
+    "pair_count": 7,
+    "content_hash": "ABE3B0ED0CAB07E067ACB38A7939928557F44D152E8EED6B0F4F482F4541AF67"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -140.842427,
+    "allocated_open_unrealized_at_trough": -3.972864,
+    "pair_count": 7,
+    "content_hash": "AC0AEA54B9CBE0CA2390AF150FE7F84159DF6235C52CCBC407523D58DB1B2F45"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": 28.328824,
+    "allocated_open_unrealized_at_trough": -7.24057,
+    "pair_count": 7,
+    "content_hash": "6360D88AFD1A291C82F2409EA80B59035E16E4405963724E0AD24737B570DC39"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": 30.923618,
+    "allocated_open_unrealized_at_trough": -3.426234,
+    "pair_count": 7,
+    "content_hash": "40D4229707305779CE3941D4A2332EC4D6479DE65F301440A2611EFED1BCF45E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": 63.191907,
+    "allocated_open_unrealized_at_trough": -5.799057,
+    "pair_count": 7,
+    "content_hash": "1AFDCCAFF484521AC9131A945D59EAC1BFFC322E327ADB40F59BCD413456CA21"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": 77.555813,
+    "allocated_open_unrealized_at_trough": -9.692007,
+    "pair_count": 7,
+    "content_hash": "8F185099799A37BA1C129EA6E4BB2A4A0D306622D070A5961CBBC4AB55C1C9C8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -604.789464,
+    "allocated_open_unrealized_at_trough": -11.116937,
+    "pair_count": 7,
+    "content_hash": "DD717DDA9C4065CEC50F1F64F0A27C895ED6F44C1B409D1BBABAC44D8FD9C1F7"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -224.093015,
+    "allocated_open_unrealized_at_trough": -3.269478,
+    "pair_count": 7,
+    "content_hash": "15F981C4463F31FC6012C1A8FAEF9334A29927301AE28A45365034728789F030"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": -141.328237,
+    "allocated_open_unrealized_at_trough": -8.522259,
+    "pair_count": 7,
+    "content_hash": "B2422891E5267C3800C4D1297A162D0DED55F4692B17883D6B3E47FE51C5C597"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -126.180456,
+    "allocated_open_unrealized_at_trough": -3.120842,
+    "pair_count": 7,
+    "content_hash": "AD91F96D93B9CCD52651886F745A7D70FD4C53E3145AF5A8A0B59A983CF9A6CC"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": 33.885813,
+    "allocated_open_unrealized_at_trough": -11.317922,
+    "pair_count": 7,
+    "content_hash": "E3CFE834A944A51A89227EA61B63388B2B5CB01B5803DFCD708F10E663E8CD44"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": 39.762956,
+    "allocated_open_unrealized_at_trough": -6.129473,
+    "pair_count": 7,
+    "content_hash": "4478FE5ED0DCF12281F2C950E05F67E48F08CC5A2639178F32359F5897FBBA0C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": 57.054463,
+    "allocated_open_unrealized_at_trough": -15.955863,
+    "pair_count": 7,
+    "content_hash": "B9C0AEA36AFF1AFA214AAD8466C84EBA5E982C128B5776FBEF805513811E06AD"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": 92.92944,
+    "allocated_open_unrealized_at_trough": -12.455491,
+    "pair_count": 7,
+    "content_hash": "5DA55A3A8E2D2DCDCF504E1EE8CFAE6F13FB764175FA3489BAE8E3E35306E020"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": -172.357915,
+    "allocated_open_unrealized_at_trough": -43.197073,
+    "pair_count": 7,
+    "content_hash": "C67FC04C94F207F34BC6EDF53F7293BCB35AF4546CF86EB3F75AF1AD3AB6D9B4"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -136.51725,
+    "allocated_open_unrealized_at_trough": -37.885073,
+    "pair_count": 7,
+    "content_hash": "21C9B762931D7FB6425C6C33CBECCB6918CA07A21C738BFD0E7C67BCC05E29C8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -73.619167,
+    "allocated_open_unrealized_at_trough": -45.275755,
+    "pair_count": 7,
+    "content_hash": "6C9CBAFD4982472E6D1B0B194097760796B337F005D39D7D2E257E59B4F659DF"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -72.170826,
+    "allocated_open_unrealized_at_trough": -45.653075,
+    "pair_count": 7,
+    "content_hash": "143F7244243405B0C9D2F8DF1BEE34DC2847548B70932DC812E50EBAA3C992B5"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": -50.297146,
+    "allocated_open_unrealized_at_trough": -53.899829,
+    "pair_count": 7,
+    "content_hash": "71E2EC9DC4B1F0BC8FE378B95C68CE1D63D6F907FC0B86A0E69122D49905B6FF"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -46.672846,
+    "allocated_open_unrealized_at_trough": -29.30226,
+    "pair_count": 7,
+    "content_hash": "5E839ABD2D44FAB21441DEDA93FCC091DD50F0F1C14BC8037AF3B9ADC35A9B2B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": -36.876569,
+    "allocated_open_unrealized_at_trough": -54.746516,
+    "pair_count": 7,
+    "content_hash": "6EE0CA28F1EDAB5CD0FAA3A379E567AE8EED2FC375403F860E33496087B7322E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -33.2984,
+    "allocated_open_unrealized_at_trough": -38.811679,
+    "pair_count": 7,
+    "content_hash": "13BD68AD0D6B22B4961A495C55A4E88A532818ECEA1A5C721FAE05F642651569"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "AUD",
+    "allocated_pair_equity_delta": -2412.737683,
+    "allocated_open_unrealized_at_trough": -2202.621833,
+    "pair_count": 7,
+    "content_hash": "CC68CC72F9CA2277B775FB20D53DC49086A2090245CC06B0D1652A6A540C1EA9"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "NZD",
+    "allocated_pair_equity_delta": -1674.035355,
+    "allocated_open_unrealized_at_trough": -1798.1438,
+    "pair_count": 7,
+    "content_hash": "7D0550396D5DE8CD550C4BF72345E74F39F866BAD56F2084054BF0CB8E328FF4"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "JPY",
+    "allocated_pair_equity_delta": -1023.700854,
+    "allocated_open_unrealized_at_trough": -380.213134,
+    "pair_count": 7,
+    "content_hash": "B4C4A86E8DE166A116DAAAF290CEDCC6ED0911B63C572E1B090D5A799F6F4432"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CHF",
+    "allocated_pair_equity_delta": -356.949046,
+    "allocated_open_unrealized_at_trough": -5.494035,
+    "pair_count": 7,
+    "content_hash": "CB1D9BC8859ED644266FBAE5C8AC84FB1056DDCDDDD43A237AA8456C50B9D7AE"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "CAD",
+    "allocated_pair_equity_delta": -111.961732,
+    "allocated_open_unrealized_at_trough": -32.458506,
+    "pair_count": 7,
+    "content_hash": "A5F9E2731FD677EED877AEAB72079B5101E40585F662E7F864535733248FE1D3"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "GBP",
+    "allocated_pair_equity_delta": 124.826482,
+    "allocated_open_unrealized_at_trough": -53.519993,
+    "pair_count": 7,
+    "content_hash": "1BF8128736C40CC2D028C521A89A01096C27E4313BE46406AC8C41E1BBA3F74B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "USD",
+    "allocated_pair_equity_delta": 176.298502,
+    "allocated_open_unrealized_at_trough": -47.527128,
+    "pair_count": 7,
+    "content_hash": "D28380AF057CCC5F6A151A18F6CAB5E6B0B2C69BEEDDDACF5D6FE0FCCBE35E1F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "allocation_method": "split_50_50_pair_equity_delta",
+    "currency": "EUR",
+    "allocated_pair_equity_delta": 178.24731,
+    "allocated_open_unrealized_at_trough": -33.246942,
+    "pair_count": 7,
+    "content_hash": "790127B80DC7D12BF6AB7A828F2A3C204C9B41150B6261390176E77D8D9A6A7C"
+  }
+]

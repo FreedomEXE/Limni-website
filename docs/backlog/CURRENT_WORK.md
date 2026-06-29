@@ -8,12 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 74D:
-pair-net-grid-open-loss-forensics.
+Latest completed gate: Gate 74E:
+pair-net-grid-tail-containment-adapter-pack.
 
-Objective completed: decompose unresolved open-loss inventory, drawdown,
-flip-loss, recovery, and narrow robustness for the Gate 74C pair net-grid
-lifecycle family.
+Objective completed: test whether the Gate 74C/74D focus pair net-grid harvest
+adapter can be made survivable with simple universal gross-only tail-containment
+rules.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -88,30 +88,44 @@ Gate 74 current state:
 - Gate 74D narrow robustness read: `0.75/0.15` harvested more closed ADR but
   worsened open loss and drawdown; `0.75/0.25` reduced fill depth but gave up
   too much equity. Do not promote `0.75/0.2`.
+- Gate 74E replayed the exact focus adapter plus `9` universal containment
+  adapters across `373` weeks and `28` pairs from the Gate 74B warehouse, with
+  no raw M1 rebuild.
+- Gate 74E verdict:
+  `PASS_GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK__TAIL_MECHANICS_AND_UNIVERSAL_CONTAINMENT_RANKING_VISIBLE_NO_PROMOTION`.
+- Gate 74E focus parity matched Gate 74C and Gate 74D exactly:
+  `14381.312614` closed ADR, `9901.156008` final equity ADR, equity PF
+  `1.254319`, max drawdown `-5462.545131` ADR, and final open unrealized
+  `-4480.156606` ADR.
+- Gate 74E tested a small gross-only pack: max-fill guards `50/75`, max-age
+  guards `720h/2160h`, pair stop-loss `10/15/20 ADR`, a `15 ADR`
+  loss-visible freeze/lock-until-flip rule, and an adverse `15 ADR` to
+  `-2.5 ADR` recovery-close rule.
+- Gate 74E main read: simple universal containment can reduce final open loss,
+  max drawdown, and flip-loss ADR, but none of the tested containment rules
+  improved final equity versus the focus adapter. The best final-equity row was
+  still the uncontained focus baseline at `9901.156008` ADR.
+- Gate 74E best survivability trade-off among containment rows was not
+  promotion-positive. `MAX_FILL_075` held `0.818016` of focus equity and
+  improved max drawdown by `3568.857095` ADR, but retained only `0.613687` of
+  closed ADR. `MAX_AGE_2160H` held `0.83275` of focus equity and improved max
+  drawdown by `2850.241272` ADR, but retained only `0.596128` of closed ADR.
+- Gate 74E pair stop-loss rows contained tails but destroyed harvest: `10/15/20`
+  ADR stops ended at `-1141.160536`, `-885.125874`, and `-217.27639` final
+  equity ADR.
+- Gate 74E freeze/lock held floating loss visible and reduced max drawdown, but
+  ended at `-383.784205` final equity ADR. It did not delete loss and is not an
+  exit candidate.
+- Gate 74E recovery-close retained `0.870594` of closed ADR but ended at
+  `8412.154864` final equity ADR, still below the focus baseline, and left
+  `-4108.123347` final open unrealized.
+- Gate 74E did not start exact account-level synchronous stop/recovery/floor
+  policies. The Gate 74B reader path is pair-series oriented; exact account
+  intraminute lifecycle exits require a synchronized all-pair event replay and
+  remain outside this narrow gate.
 
-Held next gate if Freedom opens it: Gate 74E:
-pair-net-grid-tail-containment-adapter-pack.
-
-Gate 74E framing:
-
-- Keep Gate 74E narrow. It tests whether the current best observed pair
-  net-grid adapter, `0.75 ADR` target / `0.2 ADR` spacing, can be made
-  survivable. It is not the whole exit search.
-- Preserve Gate 74C semantics unless a variant explicitly changes them:
-  cycle-start ADR anchor, cross-week carry, close-mark semantics, and no weekly
-  forced close unless the adapter defines it.
-- Every adapter must report closed PnL and mark-to-market equity PnL side by
-  side.
-- Start with negative-cycle state reconciliation: recovered to target,
-  flip-loss, flip-profit, sample-end open loss, and other/ambiguous.
-- Tail-containment candidates may include universal max-fill guard, max-age
-  guard, pair-level stop loss, account-level stop loss, hedge/freeze lock,
-  account-level recovery close, and possibly account-level profit floor/trail
-  if cheap.
-- Treat the old `~15 ADR` stop-loss clue as unverified until a prior artifact
-  or fresh test confirms it.
-- Do not exclude `AUDNZD`, do not add risk/correlation pruning, do not reopen
-  Candidate B, and do not promote an exit.
+Held next gate if Freedom opens it: Gate 75, broader controlled exit-family
+taxonomy and matrix. Gate 75 is not open.
 
 Gate 75 parking lot:
 
@@ -181,6 +195,7 @@ Gate 73/74 commands:
 - `npm run engine:gate74b:trade-leg-path-materialization`
 - `npm run engine:gate74c:gross-replay-adapter-sanity-pack`
 - `npm run engine:gate74d:pair-net-grid-open-loss-forensics`
+- `npm run engine:gate74e:pair-net-grid-tail-containment-adapter-pack`
 
 Current verdicts:
 
@@ -198,6 +213,8 @@ Current verdicts:
   `PASS_GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK__PAIR_GRID_LIFECYCLE_VISIBLE_NO_PROMOTION`
 - Gate 74D:
   `PASS_GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS__UNRESOLVED_INVENTORY_AND_DRAWDOWN_ANATOMY_VISIBLE`
+- Gate 74E:
+  `PASS_GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK__TAIL_MECHANICS_AND_UNIVERSAL_CONTAINMENT_RANKING_VISIBLE_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -275,16 +292,17 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 74D unless Freedom explicitly opens the next gate.
+Stop after Gate 74E unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 74E lifecycle refinement, cost validation, account-level
-equity exit policies, broad fixed ADR spacing matrix, risk/portfolio expression
-matrix, final exit promotion, final algorithm naming/branding, Alpha v2
-promotion, risk overlays, pair-specific pruning, regime-specific exits,
-fair-value pruning, execution, MT5/live, app/runtime work, source mutation, COT
-retuning, Strength retuning, Regime retuning, broad source consolidation,
-optimized threshold search, learned weights, pair/date exclusions, P&L
-attribution, or live trading unless Freedom explicitly opens that scope.
+Do not proceed to Gate 75 lifecycle taxonomy, cost validation, exact
+account-level synchronized exit policies, broad fixed ADR spacing matrix,
+risk/portfolio expression matrix, final exit promotion, final algorithm
+naming/branding, Alpha v2 promotion, risk overlays, pair-specific pruning,
+regime-specific exits, fair-value pruning, execution, MT5/live, app/runtime
+work, source mutation, COT retuning, Strength retuning, Regime retuning, broad
+source consolidation, optimized threshold search, learned weights, pair/date
+exclusions, P&L attribution, or live trading unless Freedom explicitly opens
+that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -302,6 +320,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate74e/GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK_2026-06-29.md`
 
 `docs/research/gates/gate74d/GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS_2026-06-29.md`
 
