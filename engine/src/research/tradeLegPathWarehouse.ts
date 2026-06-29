@@ -200,8 +200,11 @@ type PairWeekSummaryDbRow = {
   pair: string;
   candidate_b_side: "LONG" | "SHORT";
   final_direction: "BASE_CURRENCY" | "QUOTE_CURRENCY";
+  candidate_row_key: string;
+  decision_hash: string;
   direction_streak_id: string;
   flip_boundary_utc: Date | string | null;
+  flip_week_open_utc: Date | string | null;
   entry_timestamp_utc: Date | string;
   friday_cutoff_timestamp_utc: Date | string;
   pair_adr_pct: number | string;
@@ -764,7 +767,8 @@ export async function readTradeLegPathWarehousePairWeek(options: {
   await ensureTradeLegPathWarehouseSchema();
   const [row] = await query<PairWeekSummaryDbRow>(
     `SELECT week_open_utc, pair, candidate_b_side, final_direction,
-            direction_streak_id, flip_boundary_utc, entry_timestamp_utc,
+            candidate_row_key, decision_hash, direction_streak_id,
+            flip_boundary_utc, flip_week_open_utc, entry_timestamp_utc,
             friday_cutoff_timestamp_utc, pair_adr_pct, adr_was_default,
             entry_price, expected_bar_count, actual_bar_count, point_count,
             coverage_state, first_bar_utc, last_bar_utc,
@@ -785,8 +789,11 @@ export async function readTradeLegPathWarehousePairWeek(options: {
     pair: row.pair,
     candidate_b_side: row.candidate_b_side,
     final_direction: row.final_direction,
+    candidate_row_key: row.candidate_row_key,
+    decision_hash: row.decision_hash,
     direction_streak_id: row.direction_streak_id,
     flip_boundary_utc: iso(row.flip_boundary_utc),
+    flip_week_open_utc: iso(row.flip_week_open_utc),
     entry_timestamp_utc: iso(row.entry_timestamp_utc)!,
     friday_cutoff_timestamp_utc: iso(row.friday_cutoff_timestamp_utc)!,
     pair_adr_pct: Number(row.pair_adr_pct),
@@ -812,4 +819,105 @@ export async function readTradeLegPathWarehousePairWeek(options: {
     summary_hash: row.summary_hash,
     content_hash: row.content_hash,
   };
+}
+
+function mapPairWeekSummaryRow(row: PairWeekSummaryDbRow) {
+  return {
+    week_open_utc: iso(row.week_open_utc)!,
+    pair: row.pair,
+    candidate_b_side: row.candidate_b_side,
+    final_direction: row.final_direction,
+    candidate_row_key: row.candidate_row_key,
+    decision_hash: row.decision_hash,
+    direction_streak_id: row.direction_streak_id,
+    flip_boundary_utc: iso(row.flip_boundary_utc),
+    flip_week_open_utc: iso(row.flip_week_open_utc),
+    entry_timestamp_utc: iso(row.entry_timestamp_utc)!,
+    friday_cutoff_timestamp_utc: iso(row.friday_cutoff_timestamp_utc)!,
+    pair_adr_pct: Number(row.pair_adr_pct),
+    adr_was_default: row.adr_was_default,
+    entry_price: row.entry_price === null ? null : Number(row.entry_price),
+    expected_bar_count: Number(row.expected_bar_count),
+    actual_bar_count: Number(row.actual_bar_count),
+    point_count: Number(row.point_count),
+    coverage_state: row.coverage_state,
+    first_bar_utc: iso(row.first_bar_utc),
+    last_bar_utc: iso(row.last_bar_utc),
+    first_green_timestamp_utc: iso(row.first_green_timestamp_utc),
+    first_red_timestamp_utc: iso(row.first_red_timestamp_utc),
+    mfe_adr: Number(row.mfe_adr),
+    mfe_timestamp_utc: iso(row.mfe_timestamp_utc),
+    mae_adr: Number(row.mae_adr),
+    mae_timestamp_utc: iso(row.mae_timestamp_utc),
+    friday_close_adr: Number(row.friday_close_adr),
+    first_touch_indexes: parseJson<TradeLegFirstTouchRow[]>(row.first_touch_indexes_json),
+    path_payload: decodeCompressedPayload(row.path_payload_compressed),
+    path_hash: row.path_hash,
+    first_touch_hash: row.first_touch_hash,
+    summary_hash: row.summary_hash,
+    content_hash: row.content_hash,
+  };
+}
+
+export type TradeLegPathReplayPairWeek = ReturnType<typeof mapPairWeekSummaryRow>;
+
+export async function readTradeLegPathWarehouseWeekKeys(manifestId: string) {
+  await ensureTradeLegPathWarehouseSchema();
+  const rows = await query<{ week_open_utc: Date | string }>(
+    `SELECT DISTINCT week_open_utc
+       FROM research_trade_leg_path_pair_weeks
+      WHERE manifest_id = $1
+      ORDER BY week_open_utc ASC`,
+    [manifestId],
+  );
+  return rows.map((row) => iso(row.week_open_utc)!);
+}
+
+export async function readTradeLegPathWarehousePairSeries(options: {
+  manifestId: string;
+  pair: string;
+  weeks?: string[];
+}): Promise<TradeLegPathReplayPairWeek[]> {
+  await ensureTradeLegPathWarehouseSchema();
+  const normalizedPair = options.pair.toUpperCase();
+  const weeks = options.weeks ? normalizeWeeks(options.weeks) : null;
+  const rows = weeks
+    ? await query<PairWeekSummaryDbRow>(
+        `SELECT week_open_utc, pair, candidate_b_side, final_direction,
+                candidate_row_key, decision_hash, direction_streak_id,
+                flip_boundary_utc, flip_week_open_utc, entry_timestamp_utc,
+                friday_cutoff_timestamp_utc, pair_adr_pct, adr_was_default,
+                entry_price, expected_bar_count, actual_bar_count, point_count,
+                coverage_state, first_bar_utc, last_bar_utc,
+                first_green_timestamp_utc, first_red_timestamp_utc,
+                mfe_adr, mfe_timestamp_utc, mae_adr, mae_timestamp_utc,
+                friday_close_adr, first_touch_indexes_json,
+                path_payload_compressed, path_hash, first_touch_hash,
+                summary_hash, content_hash
+           FROM research_trade_leg_path_pair_weeks
+          WHERE manifest_id = $1
+            AND pair = $2
+            AND week_open_utc = ANY($3::timestamptz[])
+          ORDER BY week_open_utc ASC`,
+        [options.manifestId, normalizedPair, weeks],
+      )
+    : await query<PairWeekSummaryDbRow>(
+        `SELECT week_open_utc, pair, candidate_b_side, final_direction,
+                candidate_row_key, decision_hash, direction_streak_id,
+                flip_boundary_utc, flip_week_open_utc, entry_timestamp_utc,
+                friday_cutoff_timestamp_utc, pair_adr_pct, adr_was_default,
+                entry_price, expected_bar_count, actual_bar_count, point_count,
+                coverage_state, first_bar_utc, last_bar_utc,
+                first_green_timestamp_utc, first_red_timestamp_utc,
+                mfe_adr, mfe_timestamp_utc, mae_adr, mae_timestamp_utc,
+                friday_close_adr, first_touch_indexes_json,
+                path_payload_compressed, path_hash, first_touch_hash,
+                summary_hash, content_hash
+           FROM research_trade_leg_path_pair_weeks
+          WHERE manifest_id = $1
+            AND pair = $2
+          ORDER BY week_open_utc ASC`,
+        [options.manifestId, normalizedPair],
+      );
+  return rows.map(mapPairWeekSummaryRow);
 }

@@ -1,0 +1,11 @@
+gate_id Gate 74C: gross-replay-adapter-sanity-pack
+command npm run engine:gate74c:gross-replay-adapter-sanity-pack
+generated_at 2026-06-29T07:18:40.810Z
+git_commit 4fa316d3a25f5775ea4eae3b6fed3ebad736c3ba
+adapter_summary_rows 86C436D7A665C8161A7B431854115E54866A2FACBB974DE359CA9F5DA45051C5 docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/gross-replay-adapter-summary.rows.json
+weekly_equity_rows 97C44C07CB74F04CF441615DB3DFDA0575123D246E80C64B185F6D00EC7178BC docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/gross-replay-weekly-equity.rows.json
+pair_summary_rows 4F491806696C6267AC6D7FF1529D03569248D13570FB8627F4EEDEBF3C257662 docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/gross-replay-pair-summary.rows.json
+annual_rows C16D60C84E0F9FEB70A9C9C67564DE3DA0C83800765918506CDE8B9667C216AD docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/gross-replay-annual.rows.json
+top_week_retention 2CB407247193649AEE2FE4A8BAA5BA24FA03CEB17AAA3C68F2E83EAF07FA1A22 docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/top-week-retention.json
+summary_json 9A947D685ED6E5B7FC8325ED8B01C343019020CA7DC56D4D4A253FE51CBF0055 docs/research/gates/gate74c/artifacts/gate74c-gross-replay-adapter-sanity-pack/gate74c-summary.json
+report 291E1D609D00DE84671A724EAFCB0C3C4B052BDEDCE904D58643E63A07E3C3E9 docs/research/gates/gate74c/GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK_2026-06-29.md

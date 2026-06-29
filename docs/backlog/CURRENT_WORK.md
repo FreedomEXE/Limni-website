@@ -8,11 +8,11 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 74B:
-trade-leg-path-materialization.
+Latest completed gate: Gate 74C:
+gross-replay-adapter-sanity-pack.
 
-Objective completed: materialize the policy-neutral Candidate B trade-leg path
-warehouse from the frozen Gate 74A protocol.
+Objective completed: run a gross-only replay adapter sanity pack from the frozen
+Gate 74B trade-leg path warehouse.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -50,6 +50,22 @@ Gate 74 current state:
   count; it is visible evidence, not a replay policy.
 - Gate 74B did not run replay policies, test fixed ADR targets, optimize exits,
   start risk, touch MT5/live/runtime, mutate sources, or mutate Brain truth.
+- Gate 74C ran gross-only replay adapters from the Gate 74B warehouse with no
+  raw M1 rebuild.
+- Gate 74C tested independent pair net-grid cycle exits first. Account-level
+  equity exits remained diagnostics-only and were not active policy.
+- Gate 74C kept grid spacing fixed at `0.2 ADR` and varied net cycle targets
+  across `0.2`, `0.3`, `0.5`, `0.75`, and `1.0 ADR`.
+- Gate 74C applied no spread, slippage, swap, commission, risk sizing, pair
+  pruning, spacing optimization, account equity exit, or promotion logic.
+- Gate 74C best final-equity gross adapter was
+  `PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP` with
+  `9901.156008` equity ADR, `14381.312614` closed ADR, equity PF `1.254319`,
+  equity max drawdown `-5462.545131` ADR, and final open unrealized
+  `-4480.156606` ADR.
+- Gate 74C finding: pair net-grid lifecycle has gross replay edge under the
+  tested close-mark adapter semantics, but open-loss/drawdown scale is large.
+  This is discovery evidence only, not promotion.
 
 Gate 73 reference:
 
@@ -110,6 +126,7 @@ Gate 73/74 commands:
 - `npm run engine:gate73c:direction-continuation-lifecycle`
 - `npm run engine:gate74a:trade-leg-path-warehouse-protocol-freeze`
 - `npm run engine:gate74b:trade-leg-path-materialization`
+- `npm run engine:gate74c:gross-replay-adapter-sanity-pack`
 
 Current verdicts:
 
@@ -123,6 +140,8 @@ Current verdicts:
   `PASS_GATE74A_TRADE_LEG_PATH_WAREHOUSE_PROTOCOL_FREEZE__POLICY_NEUTRAL_PRIMITIVES_ONLY`
 - Gate 74B:
   `PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY`
+- Gate 74C:
+  `PASS_GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK__PAIR_GRID_LIFECYCLE_VISIBLE_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -200,16 +219,16 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 74B unless Freedom explicitly opens the next gate.
+Stop after Gate 74C unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 74C replay adapter sanity pack, Gate 74D no-drift
-review, risk/portfolio expression
-matrix, final exit promotion, final algorithm naming/branding, Alpha v2
-promotion, risk overlays, pair-specific exits, regime-specific exits, fair-value
-pruning, execution, MT5/live, app/runtime work, source mutation, COT retuning,
-Strength retuning, Regime retuning, broad source consolidation, optimized
-threshold search, learned weights, pair/date exclusions, P&L attribution, or
-live trading unless Freedom explicitly opens that scope.
+Do not proceed to Gate 74D no-drift review, cost validation, account-level equity
+exit policies, fixed ADR spacing matrix, risk/portfolio expression matrix, final
+exit promotion, final algorithm naming/branding, Alpha v2 promotion, risk
+overlays, pair-specific pruning, regime-specific exits, fair-value pruning,
+execution, MT5/live, app/runtime work, source mutation, COT retuning, Strength
+retuning, Regime retuning, broad source consolidation, optimized threshold
+search, learned weights, pair/date exclusions, P&L attribution, or live trading
+unless Freedom explicitly opens that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -227,6 +246,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate74c/GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK_2026-06-29.md`
 
 `docs/research/gates/gate74b/GATE74B_TRADE_LEG_PATH_MATERIALIZATION_2026-06-29.md`
 
