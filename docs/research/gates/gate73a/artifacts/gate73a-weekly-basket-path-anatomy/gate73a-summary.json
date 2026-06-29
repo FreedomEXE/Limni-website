@@ -1,0 +1,191 @@
+{
+  "gate_id": "Gate 73A: weekly-basket-path-anatomy",
+  "command": "npm run engine:gate73a:weekly-basket-path-anatomy",
+  "generated_at": "2026-06-29T00:37:56.879Z",
+  "git_commit": "1eab85a604899e8bad885cf99e98e80a7557db4d",
+  "verdict": "PASS_GATE73A_WEEKLY_BASKET_PATH_ANATOMY__RIGHT_TAIL_AND_GIVEBACK_PROFILE_VISIBLE",
+  "key_finding": "Top 20 weekly-hold winners contribute 1.077375x total net ADR, while green-then-giveback weeks occur at 0.595174. This supports runner-preserving profit protection rather than fixed close-all targets.",
+  "validation": {
+    "diagnostics_weeks": 373,
+    "expected_weeks": 373,
+    "weekly_hold_rows": 373,
+    "shortlist_rule_count": 4,
+    "raw_m1_rebuild_performed": false,
+    "new_exit_rules_scored": false,
+    "exit_promotion_performed": false,
+    "risk_layer_started": false,
+    "classified_week_count": 373,
+    "class_summary_count": 6,
+    "top20_share_of_total_net_adr": 1.077375,
+    "green_then_giveback_rate": 0.595174,
+    "volatile_recovery_rate": 0.120643,
+    "late_runner_rate": 0.005362
+  },
+  "classification_summary": [
+    {
+      "primary_class": "green_then_giveback",
+      "weeks": 222,
+      "rate": 0.595174,
+      "total_weekly_hold_adr": -1183.85448,
+      "average_weekly_hold_adr": -5.332678,
+      "average_mfe_adr": 6.765667,
+      "average_mae_adr": -10.340071,
+      "average_giveback_adr": 12.098344
+    },
+    {
+      "primary_class": "clean_winner",
+      "weeks": 50,
+      "rate": 0.134048,
+      "total_weekly_hold_adr": 667.276689,
+      "average_weekly_hold_adr": 13.345534,
+      "average_mfe_adr": 14.961789,
+      "average_mae_adr": -3.799911,
+      "average_giveback_adr": 1.616255
+    },
+    {
+      "primary_class": "mixed_or_neutral",
+      "weeks": 48,
+      "rate": 0.128686,
+      "total_weekly_hold_adr": 313.389799,
+      "average_weekly_hold_adr": 6.528954,
+      "average_mfe_adr": 13.503791,
+      "average_mae_adr": -6.123448,
+      "average_giveback_adr": 6.974837
+    },
+    {
+      "primary_class": "volatile_recovery",
+      "weeks": 26,
+      "rate": 0.069705,
+      "total_weekly_hold_adr": 258.882005,
+      "average_weekly_hold_adr": 9.957,
+      "average_mfe_adr": 13.063961,
+      "average_mae_adr": -6.425688,
+      "average_giveback_adr": 3.10696
+    },
+    {
+      "primary_class": "monster_trend",
+      "weeks": 20,
+      "rate": 0.053619,
+      "total_weekly_hold_adr": 687.48965,
+      "average_weekly_hold_adr": 34.374483,
+      "average_mfe_adr": 39.789995,
+      "average_mae_adr": -4.899558,
+      "average_giveback_adr": 5.415512
+    },
+    {
+      "primary_class": "never_green_loser",
+      "weeks": 7,
+      "rate": 0.018767,
+      "total_weekly_hold_adr": -105.068265,
+      "average_weekly_hold_adr": -15.009752,
+      "average_mfe_adr": 0.044829,
+      "average_mae_adr": -20.527898,
+      "average_giveback_adr": 15.054581
+    }
+  ],
+  "anatomy_percentiles": {
+    "mfe_adr": {
+      "count": 373,
+      "mean": 10.815083,
+      "min": 0,
+      "p05": 0.676883,
+      "p10": 1.374744,
+      "p25": 3.896349,
+      "p50": 8.40596,
+      "p75": 14.525975,
+      "p90": 22.364135,
+      "p95": 28.875433,
+      "max": 65.312854
+    },
+    "mae_adr": {
+      "count": 373,
+      "mean": -8.547376,
+      "min": -41.478023,
+      "p05": -23.048466,
+      "p10": -18.36214,
+      "p25": -12.670004,
+      "p50": -6.609662,
+      "p75": -3.368163,
+      "p90": -0.976249,
+      "p95": -0.338328,
+      "max": 0
+    },
+    "friday_close_adr": {
+      "count": 373,
+      "mean": 1.710765,
+      "min": -31.994788,
+      "p05": -18.372454,
+      "p10": -14.045791,
+      "p25": -6.587252,
+      "p50": 0.209155,
+      "p75": 8.835887,
+      "p90": 17.306601,
+      "p95": 24.724351,
+      "max": 61.050609
+    },
+    "peak_to_friday_giveback_adr": {
+      "count": 373,
+      "mean": 9.104318,
+      "min": 0,
+      "p05": 0.670234,
+      "p10": 1.343435,
+      "p25": 3.381731,
+      "p50": 7.594591,
+      "p75": 13.866142,
+      "p90": 19.092719,
+      "p95": 23.184697,
+      "max": 31.994788
+    },
+    "time_to_mfe_hours": {
+      "count": 373,
+      "mean": 57.898838,
+      "min": 0,
+      "p05": 0.793333,
+      "p10": 3.45,
+      "p25": 24.016667,
+      "p50": 61.816667,
+      "p75": 91.783333,
+      "p90": 109.846667,
+      "p95": 110.79,
+      "max": 111
+    },
+    "time_to_mae_hours": {
+      "count": 373,
+      "mean": 56.387846,
+      "min": 0,
+      "p05": 0.326667,
+      "p10": 3.643333,
+      "p25": 14.966667,
+      "p50": 56.666667,
+      "p75": 97.4,
+      "p90": 109.876666,
+      "p95": 110.866667,
+      "max": 111
+    }
+  },
+  "recommendation": {
+    "next_gate_recommendation": "Gate 73B: runner-preserving-profit-protection-design",
+    "recommended_matrix_direction": [
+      "no hard TP as the default next test",
+      "delayed activation trails such as +1.25/+0.25, +1.50/+0.50, +2.00/+0.75",
+      "peak-distance trailing after meaningful profit rather than fixed close-all targets",
+      "wide or absent adverse stops until volatile recovery is quantified more tightly"
+    ],
+    "notes": [
+      "Do not run another broad fixed-target matrix yet.",
+      "Next exit matrix should preserve right-tail weeks and test profit protection without hard caps.",
+      "Top-winner dependency is high; hard profit targets are structurally dangerous unless paired with a runner-preservation rule.",
+      "Green-then-giveback support is high enough to justify delayed/wider basket profit-floor trailing tests."
+    ]
+  },
+  "artifacts": {
+    "weeklyClassificationLedger": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/weekly-path-classification.rows.jsonl",
+    "pathAnatomyPercentiles": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/path-anatomy-percentiles.json",
+    "thresholdAnatomy": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/threshold-hit-anatomy.json",
+    "topWinnerDependency": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/top-winner-dependency.json",
+    "shortlistAttribution": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/shortlist-vs-weekly-hold-attribution.json",
+    "summaryJson": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/gate73a-summary.json",
+    "shaIdentity": "docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/gate73a-sha256.txt",
+    "report": "docs/research/gates/gate73a/GATE73A_WEEKLY_BASKET_PATH_ANATOMY_2026-06-29.md"
+  }
+}

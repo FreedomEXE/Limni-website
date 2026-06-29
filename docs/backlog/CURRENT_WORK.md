@@ -8,19 +8,46 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 72D: review-packet-no-promotion.
+Latest completed gate: Gate 73A: weekly-basket-path-anatomy.
 
-Objective completed: review the full Gate 71C Candidate B exit matrix after
-first auditing the frozen warehouse/manifest bindings and matrix ledger shape.
+Objective completed: explain why the Gate 72 clean exit shortlist improved
+profitable-week rate but collapsed total ADR and year stability.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Gate 72 current state:
+Gate 73 current state:
 
 - Candidate B final ledger remains read-only directional truth.
 - Candidate C shadow ledger remains monitoring-only.
+- Gate 73A used the Gate 71B diagnostics and Gate 71C/72C exit ledgers only;
+  no raw M1 rebuild, new exit rule, exit promotion, or risk layer was started.
+- Gate 73A classified all 373 weekly basket paths and produced MFE/MAE,
+  giveback, time-to-extreme, threshold-hit, right-tail dependency, and shortlist
+  attribution artifacts.
+- Top 20 weekly-hold winners contributed `1.077375x` total net ADR. The system
+  has clear right-tail dependency.
+- Green-then-giveback weeks occurred at `0.595174`; there is real profit
+  protection opportunity, but it cannot be solved by clipping runners.
+- Gate 72 shortlist rules all clipped the top 20 weekly-hold winners heavily:
+  `TRAIL_TP_A100_F050_T200` lost `664.612016` ADR versus weekly hold on top 20
+  weeks; `GLOBAL_TP_125_STOP_WEEK` lost `658.692234`; `TRAIL_A075_F025` lost
+  `489.683465`; `GLOBAL_TP_050_STOP_200` lost `684.113588`.
+- Gate 73A recommendation: next design should be runner-preserving profit
+  protection, not another broad fixed-target matrix.
+
+Gate 73 commands:
+
+- `npm run engine:gate73a:weekly-basket-path-anatomy`
+
+Gate 73 current verdicts:
+
+- Gate 73A:
+  `PASS_GATE73A_WEEKLY_BASKET_PATH_ANATOMY__RIGHT_TAIL_AND_GIVEBACK_PROFILE_VISIBLE`
+
+Gate 72 reference:
+
 - Gate 72A audited the Gate 71B-M basket path warehouse manifest:
   `gate71bm_basket_path_1A8231225169`.
 - Gate 72A confirmed direct bindings for Candidate B ledger file hash, price
@@ -37,24 +64,6 @@ Gate 72 current state:
   stability.
 - Gate 72D review/no-promotion packet passed.
 - No exit rule has been promoted.
-
-Gate 72 commands:
-
-- `npm run engine:gate72a:warehouse-manifest-binding-audit`
-- `npm run engine:gate72b:matrix-ledger-sanity-review`
-- `npm run engine:gate72c:exit-family-ranking-shortlist`
-- `npm run engine:gate72d:review-packet-no-promotion`
-
-Gate 72 current verdicts:
-
-- Gate 72A:
-  `PASS_WITH_CAVEAT_GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT__DIRECT_PATH_BINDING_TRANSITIVE_GATE68`
-- Gate 72B:
-  `PASS_GATE72B_MATRIX_LEDGER_SANITY_REVIEW__RESULT_LEDGER_SHAPE_VALID_NO_REPLAY_DRIFT`
-- Gate 72C:
-  `PASS_GATE72C_EXIT_FAMILY_RANKING_SHORTLIST__NO_CLEAN_PROMOTION_CANDIDATE`
-- Gate 72D:
-  `PASS_GATE72D_REVIEW_PACKET_NO_PROMOTION__SHORTLIST_VISIBLE_NO_SCOPE_DRIFT`
 
 Gate 71 reference:
 
@@ -113,15 +122,16 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 72D unless Freedom explicitly opens the next gate.
+Stop after Gate 73A unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 73 risk/portfolio expression matrix, final exit
-promotion, final algorithm naming/branding, Alpha v2 promotion, risk overlays,
-pair-specific exits, regime-specific exits, fair-value pruning, execution,
-MT5/live, app/runtime work, source mutation, COT retuning, Strength retuning,
-Regime retuning, broad source consolidation, optimized threshold search,
-learned weights, pair/date exclusions, P&L attribution, or live trading unless
-Freedom explicitly opens that scope.
+Do not proceed to Gate 73B runner-preserving profit-protection design, Gate 74
+risk/portfolio expression matrix, final exit promotion, final algorithm
+naming/branding, Alpha v2 promotion, risk overlays, pair-specific exits,
+regime-specific exits, fair-value pruning, execution, MT5/live, app/runtime
+work, source mutation, COT retuning, Strength retuning, Regime retuning, broad
+source consolidation, optimized threshold search, learned weights, pair/date
+exclusions, P&L attribution, or live trading unless Freedom explicitly opens
+that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -139,6 +149,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate73a/GATE73A_WEEKLY_BASKET_PATH_ANATOMY_2026-06-29.md`
 
 `docs/research/gates/gate72a/GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT_2026-06-28.md`
 

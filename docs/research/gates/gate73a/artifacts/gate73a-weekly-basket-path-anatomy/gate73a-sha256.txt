@@ -1,0 +1,11 @@
+gate_id Gate 73A: weekly-basket-path-anatomy
+command npm run engine:gate73a:weekly-basket-path-anatomy
+generated_at 2026-06-29T00:37:58.288Z
+git_commit 1eab85a604899e8bad885cf99e98e80a7557db4d
+weekly_classification_ledger 009F4AC6D97A7ADE6787E340641D12AD7F32E515F3BF314DFAA22A6320B9A591 docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/weekly-path-classification.rows.jsonl
+path_anatomy_percentiles F9E3A0D0979B6D047AF007AC1F7C0C2FC39A0D5BDD90E3395FB72900286EB01F docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/path-anatomy-percentiles.json
+threshold_anatomy 79AA32A8A2B3B974B847A00EC64E34911FFF064140E78668112AD6BE1ADA6199 docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/threshold-hit-anatomy.json
+top_winner_dependency 2A18EFC147ED19042A92FF7B648D74FC1023AA97F667239B7B2366F22DA0E207 docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/top-winner-dependency.json
+shortlist_attribution C1DF3410024CC8D0D0FC24EF045DCC0D5A287B377EC1B27820FA4CB132D9B143 docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/shortlist-vs-weekly-hold-attribution.json
+summary_json DA882828595DC26E42295A1594518B2B0A2F6C957C12ED7D43BDC027B15B4F91 docs/research/gates/gate73a/artifacts/gate73a-weekly-basket-path-anatomy/gate73a-summary.json
+report 0A05CD40EE96399327E072AE8BCAF0BFF10C3C4D55FFB9993E4842D1C0EE6C31 docs/research/gates/gate73a/GATE73A_WEEKLY_BASKET_PATH_ANATOMY_2026-06-29.md

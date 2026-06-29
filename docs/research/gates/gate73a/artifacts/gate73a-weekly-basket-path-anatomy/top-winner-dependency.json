@@ -1,0 +1,572 @@
+[
+  {
+    "top_weeks": 10,
+    "weekly_hold_adr": 421.628865,
+    "share_of_total_net_adr": 0.660741,
+    "share_of_positive_adr": 0.193518,
+    "weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050609,
+        "mfe_adr": 61.795893,
+        "giveback_adr": 0.745284
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "mfe_adr": 65.312854,
+        "giveback_adr": 4.751278
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494143,
+        "mfe_adr": 56.316297,
+        "giveback_adr": 9.822154
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245395,
+        "mfe_adr": 47.596594,
+        "giveback_adr": 4.351199
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "mfe_adr": 38.914712,
+        "giveback_adr": 0.75585
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761266,
+        "mfe_adr": 40.402693,
+        "giveback_adr": 2.641427
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288625,
+        "mfe_adr": 59.830469,
+        "giveback_adr": 24.541844
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972147,
+        "mfe_adr": 48.214659,
+        "giveback_adr": 14.242512
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434796,
+        "mfe_adr": 33.434796,
+        "giveback_adr": 0
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "mfe_adr": 32.011482,
+        "giveback_adr": 0.350036
+      }
+    ],
+    "shortlist_losses_vs_weekly_hold": {
+      "TRAIL_TP_A100_F050_T200": {
+        "weekly_hold_minus_exit_adr": 409.817494,
+        "average_weekly_hold_minus_exit_adr": 40.981749,
+        "clipped_week_count": 10
+      },
+      "GLOBAL_TP_125_STOP_WEEK": {
+        "weekly_hold_minus_exit_adr": 407.393532,
+        "average_weekly_hold_minus_exit_adr": 40.739353,
+        "clipped_week_count": 10
+      },
+      "TRAIL_A075_F025": {
+        "weekly_hold_minus_exit_adr": 281.842565,
+        "average_weekly_hold_minus_exit_adr": 28.184256,
+        "clipped_week_count": 7
+      },
+      "GLOBAL_TP_050_STOP_200": {
+        "weekly_hold_minus_exit_adr": 415.895883,
+        "average_weekly_hold_minus_exit_adr": 41.589588,
+        "clipped_week_count": 10
+      }
+    }
+  },
+  {
+    "top_weeks": 20,
+    "weekly_hold_adr": 687.48965,
+    "share_of_total_net_adr": 1.077375,
+    "share_of_positive_adr": 0.315542,
+    "weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050609,
+        "mfe_adr": 61.795893,
+        "giveback_adr": 0.745284
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "mfe_adr": 65.312854,
+        "giveback_adr": 4.751278
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494143,
+        "mfe_adr": 56.316297,
+        "giveback_adr": 9.822154
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245395,
+        "mfe_adr": 47.596594,
+        "giveback_adr": 4.351199
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "mfe_adr": 38.914712,
+        "giveback_adr": 0.75585
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761266,
+        "mfe_adr": 40.402693,
+        "giveback_adr": 2.641427
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288625,
+        "mfe_adr": 59.830469,
+        "giveback_adr": 24.541844
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972147,
+        "mfe_adr": 48.214659,
+        "giveback_adr": 14.242512
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434796,
+        "mfe_adr": 33.434796,
+        "giveback_adr": 0
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "mfe_adr": 32.011482,
+        "giveback_adr": 0.350036
+      },
+      {
+        "week_open_utc": "2021-02-15T00:00:00.000Z",
+        "weekly_hold_adr": 30.084357,
+        "mfe_adr": 30.535325,
+        "giveback_adr": 0.450968
+      },
+      {
+        "week_open_utc": "2019-10-06T23:00:00.000Z",
+        "weekly_hold_adr": 27.99503,
+        "mfe_adr": 32.441451,
+        "giveback_adr": 4.446421
+      },
+      {
+        "week_open_utc": "2019-12-09T00:00:00.000Z",
+        "weekly_hold_adr": 27.561086,
+        "mfe_adr": 45.395512,
+        "giveback_adr": 17.834426
+      },
+      {
+        "week_open_utc": "2019-10-27T23:00:00.000Z",
+        "weekly_hold_adr": 26.509054,
+        "mfe_adr": 29.150997,
+        "giveback_adr": 2.641943
+      },
+      {
+        "week_open_utc": "2020-05-17T23:00:00.000Z",
+        "weekly_hold_adr": 26.469344,
+        "mfe_adr": 36.489585,
+        "giveback_adr": 10.020241
+      },
+      {
+        "week_open_utc": "2023-07-09T23:00:00.000Z",
+        "weekly_hold_adr": 26.286846,
+        "mfe_adr": 27.230706,
+        "giveback_adr": 0.94386
+      },
+      {
+        "week_open_utc": "2023-11-13T00:00:00.000Z",
+        "weekly_hold_adr": 26.267024,
+        "mfe_adr": 27.723674,
+        "giveback_adr": 1.45665
+      },
+      {
+        "week_open_utc": "2023-12-11T00:00:00.000Z",
+        "weekly_hold_adr": 25.208878,
+        "mfe_adr": 30.080918,
+        "giveback_adr": 4.87204
+      },
+      {
+        "week_open_utc": "2020-09-20T23:00:00.000Z",
+        "weekly_hold_adr": 24.815744,
+        "mfe_adr": 25.519394,
+        "giveback_adr": 0.70365
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "weekly_hold_adr": 24.663422,
+        "mfe_adr": 27.401885,
+        "giveback_adr": 2.738463
+      }
+    ],
+    "shortlist_losses_vs_weekly_hold": {
+      "TRAIL_TP_A100_F050_T200": {
+        "weekly_hold_minus_exit_adr": 664.612016,
+        "average_weekly_hold_minus_exit_adr": 33.230601,
+        "clipped_week_count": 20
+      },
+      "GLOBAL_TP_125_STOP_WEEK": {
+        "weekly_hold_minus_exit_adr": 658.692234,
+        "average_weekly_hold_minus_exit_adr": 32.934612,
+        "clipped_week_count": 20
+      },
+      "TRAIL_A075_F025": {
+        "weekly_hold_minus_exit_adr": 489.683465,
+        "average_weekly_hold_minus_exit_adr": 24.484173,
+        "clipped_week_count": 15
+      },
+      "GLOBAL_TP_050_STOP_200": {
+        "weekly_hold_minus_exit_adr": 684.113588,
+        "average_weekly_hold_minus_exit_adr": 34.205679,
+        "clipped_week_count": 20
+      }
+    }
+  },
+  {
+    "top_weeks": 50,
+    "weekly_hold_adr": 1239.586795,
+    "share_of_total_net_adr": 1.942575,
+    "share_of_positive_adr": 0.568941,
+    "weeks": [
+      {
+        "week_open_utc": "2024-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 61.050609,
+        "mfe_adr": 61.795893,
+        "giveback_adr": 0.745284
+      },
+      {
+        "week_open_utc": "2020-05-31T23:00:00.000Z",
+        "weekly_hold_adr": 60.561576,
+        "mfe_adr": 65.312854,
+        "giveback_adr": 4.751278
+      },
+      {
+        "week_open_utc": "2024-07-21T23:00:00.000Z",
+        "weekly_hold_adr": 46.494143,
+        "mfe_adr": 56.316297,
+        "giveback_adr": 9.822154
+      },
+      {
+        "week_open_utc": "2025-03-30T23:00:00.000Z",
+        "weekly_hold_adr": 43.245395,
+        "mfe_adr": 47.596594,
+        "giveback_adr": 4.351199
+      },
+      {
+        "week_open_utc": "2024-04-28T23:00:00.000Z",
+        "weekly_hold_adr": 38.158862,
+        "mfe_adr": 38.914712,
+        "giveback_adr": 0.75585
+      },
+      {
+        "week_open_utc": "2024-07-14T23:00:00.000Z",
+        "weekly_hold_adr": 37.761266,
+        "mfe_adr": 40.402693,
+        "giveback_adr": 2.641427
+      },
+      {
+        "week_open_utc": "2025-10-12T23:00:00.000Z",
+        "weekly_hold_adr": 35.288625,
+        "mfe_adr": 59.830469,
+        "giveback_adr": 24.541844
+      },
+      {
+        "week_open_utc": "2020-02-24T00:00:00.000Z",
+        "weekly_hold_adr": 33.972147,
+        "mfe_adr": 48.214659,
+        "giveback_adr": 14.242512
+      },
+      {
+        "week_open_utc": "2022-09-25T23:00:00.000Z",
+        "weekly_hold_adr": 33.434796,
+        "mfe_adr": 33.434796,
+        "giveback_adr": 0
+      },
+      {
+        "week_open_utc": "2023-11-27T00:00:00.000Z",
+        "weekly_hold_adr": 31.661446,
+        "mfe_adr": 32.011482,
+        "giveback_adr": 0.350036
+      },
+      {
+        "week_open_utc": "2021-02-15T00:00:00.000Z",
+        "weekly_hold_adr": 30.084357,
+        "mfe_adr": 30.535325,
+        "giveback_adr": 0.450968
+      },
+      {
+        "week_open_utc": "2019-10-06T23:00:00.000Z",
+        "weekly_hold_adr": 27.99503,
+        "mfe_adr": 32.441451,
+        "giveback_adr": 4.446421
+      },
+      {
+        "week_open_utc": "2019-12-09T00:00:00.000Z",
+        "weekly_hold_adr": 27.561086,
+        "mfe_adr": 45.395512,
+        "giveback_adr": 17.834426
+      },
+      {
+        "week_open_utc": "2019-10-27T23:00:00.000Z",
+        "weekly_hold_adr": 26.509054,
+        "mfe_adr": 29.150997,
+        "giveback_adr": 2.641943
+      },
+      {
+        "week_open_utc": "2020-05-17T23:00:00.000Z",
+        "weekly_hold_adr": 26.469344,
+        "mfe_adr": 36.489585,
+        "giveback_adr": 10.020241
+      },
+      {
+        "week_open_utc": "2023-07-09T23:00:00.000Z",
+        "weekly_hold_adr": 26.286846,
+        "mfe_adr": 27.230706,
+        "giveback_adr": 0.94386
+      },
+      {
+        "week_open_utc": "2023-11-13T00:00:00.000Z",
+        "weekly_hold_adr": 26.267024,
+        "mfe_adr": 27.723674,
+        "giveback_adr": 1.45665
+      },
+      {
+        "week_open_utc": "2023-12-11T00:00:00.000Z",
+        "weekly_hold_adr": 25.208878,
+        "mfe_adr": 30.080918,
+        "giveback_adr": 4.87204
+      },
+      {
+        "week_open_utc": "2020-09-20T23:00:00.000Z",
+        "weekly_hold_adr": 24.815744,
+        "mfe_adr": 25.519394,
+        "giveback_adr": 0.70365
+      },
+      {
+        "week_open_utc": "2019-10-13T23:00:00.000Z",
+        "weekly_hold_adr": 24.663422,
+        "mfe_adr": 27.401885,
+        "giveback_adr": 2.738463
+      },
+      {
+        "week_open_utc": "2021-02-22T00:00:00.000Z",
+        "weekly_hold_adr": 23.286919,
+        "mfe_adr": 34.466599,
+        "giveback_adr": 11.17968
+      },
+      {
+        "week_open_utc": "2019-09-08T23:00:00.000Z",
+        "weekly_hold_adr": 23.209286,
+        "mfe_adr": 24.097292,
+        "giveback_adr": 0.888006
+      },
+      {
+        "week_open_utc": "2021-02-01T00:00:00.000Z",
+        "weekly_hold_adr": 22.935276,
+        "mfe_adr": 23.933118,
+        "giveback_adr": 0.997842
+      },
+      {
+        "week_open_utc": "2023-07-02T23:00:00.000Z",
+        "weekly_hold_adr": 21.801039,
+        "mfe_adr": 22.421149,
+        "giveback_adr": 0.62011
+      },
+      {
+        "week_open_utc": "2022-01-31T00:00:00.000Z",
+        "weekly_hold_adr": 21.40623,
+        "mfe_adr": 21.74451,
+        "giveback_adr": 0.33828
+      },
+      {
+        "week_open_utc": "2019-07-28T23:00:00.000Z",
+        "weekly_hold_adr": 21.181077,
+        "mfe_adr": 23.482444,
+        "giveback_adr": 2.301367
+      },
+      {
+        "week_open_utc": "2021-01-25T00:00:00.000Z",
+        "weekly_hold_adr": 21.022287,
+        "mfe_adr": 22.690757,
+        "giveback_adr": 1.66847
+      },
+      {
+        "week_open_utc": "2019-09-01T23:00:00.000Z",
+        "weekly_hold_adr": 20.973068,
+        "mfe_adr": 24.137911,
+        "giveback_adr": 3.164843
+      },
+      {
+        "week_open_utc": "2022-09-04T23:00:00.000Z",
+        "weekly_hold_adr": 20.559679,
+        "mfe_adr": 38.440997,
+        "giveback_adr": 17.881318
+      },
+      {
+        "week_open_utc": "2026-05-03T23:00:00.000Z",
+        "weekly_hold_adr": 19.67069,
+        "mfe_adr": 22.840776,
+        "giveback_adr": 3.170086
+      },
+      {
+        "week_open_utc": "2021-03-01T00:00:00.000Z",
+        "weekly_hold_adr": 18.756483,
+        "mfe_adr": 21.114128,
+        "giveback_adr": 2.357645
+      },
+      {
+        "week_open_utc": "2021-08-01T23:00:00.000Z",
+        "weekly_hold_adr": 18.266612,
+        "mfe_adr": 18.383061,
+        "giveback_adr": 0.116449
+      },
+      {
+        "week_open_utc": "2023-03-06T00:00:00.000Z",
+        "weekly_hold_adr": 18.207148,
+        "mfe_adr": 19.671757,
+        "giveback_adr": 1.464609
+      },
+      {
+        "week_open_utc": "2020-05-03T23:00:00.000Z",
+        "weekly_hold_adr": 18.152494,
+        "mfe_adr": 19.525513,
+        "giveback_adr": 1.373019
+      },
+      {
+        "week_open_utc": "2026-04-05T23:00:00.000Z",
+        "weekly_hold_adr": 18.13011,
+        "mfe_adr": 25.963258,
+        "giveback_adr": 7.833148
+      },
+      {
+        "week_open_utc": "2025-03-03T00:00:00.000Z",
+        "weekly_hold_adr": 17.917719,
+        "mfe_adr": 22.13608,
+        "giveback_adr": 4.218361
+      },
+      {
+        "week_open_utc": "2026-02-09T00:00:00.000Z",
+        "weekly_hold_adr": 17.731009,
+        "mfe_adr": 19.702285,
+        "giveback_adr": 1.971276
+      },
+      {
+        "week_open_utc": "2023-01-09T00:00:00.000Z",
+        "weekly_hold_adr": 17.376513,
+        "mfe_adr": 18.760738,
+        "giveback_adr": 1.384225
+      },
+      {
+        "week_open_utc": "2019-06-16T23:00:00.000Z",
+        "weekly_hold_adr": 17.026953,
+        "mfe_adr": 17.853412,
+        "giveback_adr": 0.826459
+      },
+      {
+        "week_open_utc": "2020-02-17T00:00:00.000Z",
+        "weekly_hold_adr": 16.995256,
+        "mfe_adr": 21.029491,
+        "giveback_adr": 4.034235
+      },
+      {
+        "week_open_utc": "2020-11-09T00:00:00.000Z",
+        "weekly_hold_adr": 16.729264,
+        "mfe_adr": 30.4152,
+        "giveback_adr": 13.685936
+      },
+      {
+        "week_open_utc": "2023-10-15T23:00:00.000Z",
+        "weekly_hold_adr": 16.715527,
+        "mfe_adr": 18.444409,
+        "giveback_adr": 1.728882
+      },
+      {
+        "week_open_utc": "2025-11-03T00:00:00.000Z",
+        "weekly_hold_adr": 16.208077,
+        "mfe_adr": 18.206349,
+        "giveback_adr": 1.998272
+      },
+      {
+        "week_open_utc": "2020-08-30T23:00:00.000Z",
+        "weekly_hold_adr": 16.095559,
+        "mfe_adr": 17.437996,
+        "giveback_adr": 1.342437
+      },
+      {
+        "week_open_utc": "2022-01-03T00:00:00.000Z",
+        "weekly_hold_adr": 15.654735,
+        "mfe_adr": 16.064465,
+        "giveback_adr": 0.40973
+      },
+      {
+        "week_open_utc": "2024-03-31T23:00:00.000Z",
+        "weekly_hold_adr": 15.508794,
+        "mfe_adr": 17.858332,
+        "giveback_adr": 2.349538
+      },
+      {
+        "week_open_utc": "2020-10-11T23:00:00.000Z",
+        "weekly_hold_adr": 15.472705,
+        "mfe_adr": 17.302829,
+        "giveback_adr": 1.830124
+      },
+      {
+        "week_open_utc": "2019-12-23T00:00:00.000Z",
+        "weekly_hold_adr": 15.127598,
+        "mfe_adr": 16.27468,
+        "giveback_adr": 1.147082
+      },
+      {
+        "week_open_utc": "2023-12-25T00:00:00.000Z",
+        "weekly_hold_adr": 15.030251,
+        "mfe_adr": 24.846398,
+        "giveback_adr": 9.816147
+      },
+      {
+        "week_open_utc": "2022-08-28T23:00:00.000Z",
+        "weekly_hold_adr": 14.948787,
+        "mfe_adr": 19.92423,
+        "giveback_adr": 4.975443
+      }
+    ],
+    "shortlist_losses_vs_weekly_hold": {
+      "TRAIL_TP_A100_F050_T200": {
+        "weekly_hold_minus_exit_adr": 1184.727403,
+        "average_weekly_hold_minus_exit_adr": 23.694548,
+        "clipped_week_count": 50
+      },
+      "GLOBAL_TP_125_STOP_WEEK": {
+        "weekly_hold_minus_exit_adr": 1171.373383,
+        "average_weekly_hold_minus_exit_adr": 23.427468,
+        "clipped_week_count": 50
+      },
+      "TRAIL_A075_F025": {
+        "weekly_hold_minus_exit_adr": 976.919234,
+        "average_weekly_hold_minus_exit_adr": 19.538385,
+        "clipped_week_count": 42
+      },
+      "GLOBAL_TP_050_STOP_200": {
+        "weekly_hold_minus_exit_adr": 1228.7406,
+        "average_weekly_hold_minus_exit_adr": 24.574812,
+        "clipped_week_count": 50
+      }
+    }
+  }
+]
