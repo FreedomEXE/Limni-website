@@ -89,6 +89,37 @@ Gate 74 current state:
   worsened open loss and drawdown; `0.75/0.25` reduced fill depth but gave up
   too much equity. Do not promote `0.75/0.2`.
 
+Held next gate if Freedom opens it: Gate 74E:
+pair-net-grid-tail-containment-adapter-pack.
+
+Gate 74E framing:
+
+- Keep Gate 74E narrow. It tests whether the current best observed pair
+  net-grid adapter, `0.75 ADR` target / `0.2 ADR` spacing, can be made
+  survivable. It is not the whole exit search.
+- Preserve Gate 74C semantics unless a variant explicitly changes them:
+  cycle-start ADR anchor, cross-week carry, close-mark semantics, and no weekly
+  forced close unless the adapter defines it.
+- Every adapter must report closed PnL and mark-to-market equity PnL side by
+  side.
+- Start with negative-cycle state reconciliation: recovered to target,
+  flip-loss, flip-profit, sample-end open loss, and other/ambiguous.
+- Tail-containment candidates may include universal max-fill guard, max-age
+  guard, pair-level stop loss, account-level stop loss, hedge/freeze lock,
+  account-level recovery close, and possibly account-level profit floor/trail
+  if cheap.
+- Treat the old `~15 ADR` stop-loss clue as unverified until a prior artifact
+  or fresh test confirms it.
+- Do not exclude `AUDNZD`, do not add risk/correlation pruning, do not reopen
+  Candidate B, and do not promote an exit.
+
+Gate 75 parking lot:
+
+- Account net ADR target reset, hybrid pair-grid plus account-level
+  reset/override, partial-close / let-rest-run variants, and the broad
+  controlled exit-family matrix belong in Gate 75 unless Freedom explicitly
+  pulls a small diagnostic subset into Gate 74E.
+
 Gate 73 reference:
 
 - Candidate B final ledger remains read-only directional truth.
