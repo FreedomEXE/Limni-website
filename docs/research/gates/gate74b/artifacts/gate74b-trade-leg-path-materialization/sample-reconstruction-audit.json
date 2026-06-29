@@ -1,0 +1,95 @@
+{
+  "source_basket_manifest_id": "gate71bm_basket_path_1A8231225169",
+  "source_basket_warehouse_hash": "CD8A18C163A7B19515F8EFB948481535704704D75C3C70F620B76DA6384EB8F0",
+  "weeks_checked": 373,
+  "max_abs_delta_adr": 0.000005,
+  "mismatch_count_gt_0001": 0,
+  "largest_delta_rows": [
+    {
+      "week_open_utc": "2023-04-30T23:00:00.000Z",
+      "pair_sum_friday_close_adr": 6.15087,
+      "gate71bm_friday_close_adr": 6.150875,
+      "delta_adr": -0.000005
+    },
+    {
+      "week_open_utc": "2021-07-25T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -8.878605,
+      "gate71bm_friday_close_adr": -8.878601,
+      "delta_adr": -0.000004
+    },
+    {
+      "week_open_utc": "2021-10-03T23:00:00.000Z",
+      "pair_sum_friday_close_adr": 10.417856,
+      "gate71bm_friday_close_adr": 10.417852,
+      "delta_adr": 0.000004
+    },
+    {
+      "week_open_utc": "2023-05-07T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -3.475986,
+      "gate71bm_friday_close_adr": -3.47599,
+      "delta_adr": 0.000004
+    },
+    {
+      "week_open_utc": "2023-09-10T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -5.435765,
+      "gate71bm_friday_close_adr": -5.435761,
+      "delta_adr": -0.000004
+    },
+    {
+      "week_open_utc": "2025-08-24T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -4.444418,
+      "gate71bm_friday_close_adr": -4.444414,
+      "delta_adr": -0.000004
+    },
+    {
+      "week_open_utc": "2025-09-07T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -8.268062,
+      "gate71bm_friday_close_adr": -8.268058,
+      "delta_adr": -0.000004
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -7.753745,
+      "gate71bm_friday_close_adr": -7.753742,
+      "delta_adr": -0.000003
+    },
+    {
+      "week_open_utc": "2019-07-21T23:00:00.000Z",
+      "pair_sum_friday_close_adr": -0.903321,
+      "gate71bm_friday_close_adr": -0.903318,
+      "delta_adr": -0.000003
+    },
+    {
+      "week_open_utc": "2019-07-28T23:00:00.000Z",
+      "pair_sum_friday_close_adr": 21.18108,
+      "gate71bm_friday_close_adr": 21.181077,
+      "delta_adr": 0.000003
+    }
+  ],
+  "sample_reconstruction": [
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDCAD",
+      "summary_friday_close_adr": 0.198296,
+      "payload_friday_close_adr": 0.198296,
+      "path_hash_matches_payload": true,
+      "point_count_matches_payload": true
+    },
+    {
+      "week_open_utc": "2022-11-07T00:00:00.000Z",
+      "pair": "EURUSD",
+      "summary_friday_close_adr": 3.013331,
+      "payload_friday_close_adr": 3.013331,
+      "path_hash_matches_payload": true,
+      "point_count_matches_payload": true
+    },
+    {
+      "week_open_utc": "2026-05-31T23:00:00.000Z",
+      "pair": "USDJPY",
+      "summary_friday_close_adr": -2.001787,
+      "payload_friday_close_adr": -2.001787,
+      "path_hash_matches_payload": true,
+      "point_count_matches_payload": true
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "gate_id": "Gate 74B: trade-leg-path-materialization",
+  "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "contract_id": "gate74_trade_leg_path_base_primitives_v1",
+  "warehouse_version": "trade_leg_path_week_pair_columnar_gzip_v1",
+  "path_payload_codec": "gzip+json+columnar_trade_leg_path_points_v1",
+  "physical_storage": "one compressed columnar payload per Candidate B pair-week; chunks are one logical week each",
+  "logical_path_point_contract": [
+    "week_open_utc",
+    "timestamp_utc",
+    "pair",
+    "candidate_b_side",
+    "direction_streak_id",
+    "directed_open_adr",
+    "directed_high_adr",
+    "directed_low_adr",
+    "directed_close_adr",
+    "basket_contribution_close_adr",
+    "mfe_adr_to_date",
+    "mae_adr_to_date",
+    "first_green_timestamp_utc",
+    "first_red_timestamp_utc",
+    "direction_still_valid",
+    "flip_boundary_utc",
+    "coverage_state",
+    "content_hash"
+  ],
+  "durability_hashing": {
+    "path_hash": "SHA-256 of canonical uncompressed columnar path payload",
+    "first_touch_hash": "SHA-256 of first-touch acceleration rows",
+    "content_hash": "SHA-256 of pair-week summary plus path and first-touch hashes",
+    "chunk_hash": "SHA-256 of week-level pair content hashes",
+    "warehouse_hash": "SHA-256 of ordered chunk hashes"
+  },
+  "policy_fields_in_base": false
+}

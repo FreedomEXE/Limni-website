@@ -1,0 +1,2613 @@
+[
+  {
+    "chunk_index": 0,
+    "week_open_utc": "2019-04-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 172255,
+    "chunk_hash": "AE480E39DABDF168DB0146F0D6A808601CE85DD34752891A4A73AA282C4EA631"
+  },
+  {
+    "chunk_index": 1,
+    "week_open_utc": "2019-04-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173778,
+    "chunk_hash": "C7E73CBB0B04C406249840D51CBC210BBC850DFF12C9D67AA38DAE4B47C3F2B2"
+  },
+  {
+    "chunk_index": 2,
+    "week_open_utc": "2019-04-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 172961,
+    "chunk_hash": "66C82A309498D2A4A1D669AF87A79A943DD3E7D8EB3BE6EA5DEADD9DA59CD68E"
+  },
+  {
+    "chunk_index": 3,
+    "week_open_utc": "2019-05-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179886,
+    "chunk_hash": "E92D74B5BA3264619C692BDB3CD8BC86D09E0743910D09303D65FF81F74776F7"
+  },
+  {
+    "chunk_index": 4,
+    "week_open_utc": "2019-05-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176852,
+    "chunk_hash": "6C62EF7832D5420F426188179152CDBA8285133245C809C355524F87FB85D2DB"
+  },
+  {
+    "chunk_index": 5,
+    "week_open_utc": "2019-05-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175974,
+    "chunk_hash": "8AE465C014B725DFF879BF47EB7B943916AF9CDC2832B49BEF7B19A9B88AB6A7"
+  },
+  {
+    "chunk_index": 6,
+    "week_open_utc": "2019-05-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173641,
+    "chunk_hash": "FD0D67D1D57F923A6A0CD8286E09FE787E153D1E5E84624D9ADE867F400E490A"
+  },
+  {
+    "chunk_index": 7,
+    "week_open_utc": "2019-06-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178068,
+    "chunk_hash": "0DD6EBAC1519AAC4868B36BC52E94D912E1CA6ED8DB601A0085743996F5F0FD9"
+  },
+  {
+    "chunk_index": 8,
+    "week_open_utc": "2019-06-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176694,
+    "chunk_hash": "2CF5041B76B7FD50CE3BE26957F26C6AE21063EF678B4604FACA8CB7B814BA53"
+  },
+  {
+    "chunk_index": 9,
+    "week_open_utc": "2019-06-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177309,
+    "chunk_hash": "4C875D8C91DA767352EF48D86E842F825909D5494F981673A28FB66D021CB36C"
+  },
+  {
+    "chunk_index": 10,
+    "week_open_utc": "2019-06-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177719,
+    "chunk_hash": "E5DC15C58F7F3A7DFA9386763202F180AD95931525ABB772DC30917CD8F82A56"
+  },
+  {
+    "chunk_index": 11,
+    "week_open_utc": "2019-06-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173723,
+    "chunk_hash": "A7062E63093C6052B3B001D8A6A9022D93D0DC3B1202E831DF7B28AC8200068B"
+  },
+  {
+    "chunk_index": 12,
+    "week_open_utc": "2019-07-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176516,
+    "chunk_hash": "20E71A2DABF501C0AF632EAE3E49A2355496375EB81B2B8D083012CCD383EAB1"
+  },
+  {
+    "chunk_index": 13,
+    "week_open_utc": "2019-07-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176078,
+    "chunk_hash": "78CD1D1A1BF9833871AC4BE2733A5F4CDD0F4A754B1583969D26C2103D2924DE"
+  },
+  {
+    "chunk_index": 14,
+    "week_open_utc": "2019-07-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175303,
+    "chunk_hash": "667C639A08D1206479DEBC1894888AF6241F07F3161E154FEB0B99391A0B536B"
+  },
+  {
+    "chunk_index": 15,
+    "week_open_utc": "2019-07-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177360,
+    "chunk_hash": "9EC3E333F183AA86F400C7218C436F48F25FE9B621BAF20C286EA1FAD214A7B1"
+  },
+  {
+    "chunk_index": 16,
+    "week_open_utc": "2019-08-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182151,
+    "chunk_hash": "CF3A6A3CCFFE17D4642A28A1CB351CC87A59230803BD74EA28B3AF60E49B8E25"
+  },
+  {
+    "chunk_index": 17,
+    "week_open_utc": "2019-08-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180303,
+    "chunk_hash": "8037D3E137B8F9CD02C5F9362C333961FFFA6AB984B155ABA433C77E68FE8572"
+  },
+  {
+    "chunk_index": 18,
+    "week_open_utc": "2019-08-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176135,
+    "chunk_hash": "EAB4DBE2F9843AD2FB4F430C1CB5F104ED194FA8B8658E9D1279159E12EA8656"
+  },
+  {
+    "chunk_index": 19,
+    "week_open_utc": "2019-08-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178625,
+    "chunk_hash": "126EADBB755E78071DCB62DAB3D07C264C5E74D58920A5B684A637AE1A9C2B15"
+  },
+  {
+    "chunk_index": 20,
+    "week_open_utc": "2019-09-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176197,
+    "chunk_hash": "E3C8BA2EAA6AAF3BFC1C4A744CE1C8797BE189BEABCB4834F2B7703B18B6732D"
+  },
+  {
+    "chunk_index": 21,
+    "week_open_utc": "2019-09-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176663,
+    "chunk_hash": "30EE45C703D78B579ABCE0E92903949A7F679CCC01EDC2438CAE237A173D7027"
+  },
+  {
+    "chunk_index": 22,
+    "week_open_utc": "2019-09-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178351,
+    "chunk_hash": "F5103F843465E12DCA52E95F7FA2A7FC18313FE5CEF219138FB3D7EF5CDA83EA"
+  },
+  {
+    "chunk_index": 23,
+    "week_open_utc": "2019-09-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177103,
+    "chunk_hash": "41761F3CA78EBCF256909F61A9ACC1A3A61EF2062F3EEA8CCA9A1221614EE149"
+  },
+  {
+    "chunk_index": 24,
+    "week_open_utc": "2019-09-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177662,
+    "chunk_hash": "3CFE6757DB94FDEC3BCE95442138DD1873BB865A275909E7DEA3ED7A14233FC7"
+  },
+  {
+    "chunk_index": 25,
+    "week_open_utc": "2019-10-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177647,
+    "chunk_hash": "BBBAD4DE1BE0C8A55EADB4DF746DFC99DF067419BBE90AC0B99E580262A73015"
+  },
+  {
+    "chunk_index": 26,
+    "week_open_utc": "2019-10-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178596,
+    "chunk_hash": "7A4F7B7318B5D1A625D201BD060A3A65FBE2861B414B0A3E457C21EB9FC86F9E"
+  },
+  {
+    "chunk_index": 27,
+    "week_open_utc": "2019-10-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176851,
+    "chunk_hash": "6374C31296891979326840896D4E32738A35CF41BB934739E7BFE25C8E27A6D0"
+  },
+  {
+    "chunk_index": 28,
+    "week_open_utc": "2019-10-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176502,
+    "chunk_hash": "7EC9DCF51558748481877B175122DF9E5EEA09956C2CB7BC3889FD76DE3759CE"
+  },
+  {
+    "chunk_index": 29,
+    "week_open_utc": "2019-11-04T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176766,
+    "chunk_hash": "6B4CFC8F630F747AD8342B1C27866269A3DCDD86E6F601A0370C9D6912D6A0A3"
+  },
+  {
+    "chunk_index": 30,
+    "week_open_utc": "2019-11-11T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176462,
+    "chunk_hash": "9736511478E132A8EA2D3C60487CAA6A1387DB9B9A35A18497D0AA672EAC1DAC"
+  },
+  {
+    "chunk_index": 31,
+    "week_open_utc": "2019-11-18T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175567,
+    "chunk_hash": "F5E5E1398D1150873B12EFFDDEA6D16D5C15973257104A8270076CE886EBDB65"
+  },
+  {
+    "chunk_index": 32,
+    "week_open_utc": "2019-11-25T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173751,
+    "chunk_hash": "CE8DC698F72F5269B377A5CBBC77D7112DBD008312681113C6104867CB3C71C2"
+  },
+  {
+    "chunk_index": 33,
+    "week_open_utc": "2019-12-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 174345,
+    "chunk_hash": "D34FDD4D842AAC49C986A4CA0A0735DEB041D48FBECAA444B5442D86EEDF122F"
+  },
+  {
+    "chunk_index": 34,
+    "week_open_utc": "2019-12-09T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176483,
+    "chunk_hash": "8083325D36253A42F51A587079CA686F569E46B2B440F9DF76BCD2019D9AE6D7"
+  },
+  {
+    "chunk_index": 35,
+    "week_open_utc": "2019-12-16T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175907,
+    "chunk_hash": "2606111DD017F6A675ED117643DA9E30CE96BE11AF860AF2B8CA01B3BB5FF803"
+  },
+  {
+    "chunk_index": 36,
+    "week_open_utc": "2019-12-23T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 129869,
+    "chunk_hash": "9A94A3539CD0FC51CA1CF7D6C224BFA453045E9AAE79EF8ED224D784B4A6254B"
+  },
+  {
+    "chunk_index": 37,
+    "week_open_utc": "2019-12-30T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 138273,
+    "chunk_hash": "0699A3E3DA2DAF03D52F6B1F50DAA4CDEFD521B7CF6DFCFC95EFC3FC786A74F3"
+  },
+  {
+    "chunk_index": 38,
+    "week_open_utc": "2020-01-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178281,
+    "chunk_hash": "C5FC33ECAB791EACBA149AD827B0D30D6CE7D9E4FFA81134CFE16666E9C71C4E"
+  },
+  {
+    "chunk_index": 39,
+    "week_open_utc": "2020-01-13T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175089,
+    "chunk_hash": "296025C0C9596261651D81845961BBBAB5B318D85D9CEF7E56E4BBA1BA1DEE51"
+  },
+  {
+    "chunk_index": 40,
+    "week_open_utc": "2020-01-20T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173868,
+    "chunk_hash": "92B8387FDA5751E53A5254A9ED2A45D6C3888BB94470F03B7B327809CC8897FF"
+  },
+  {
+    "chunk_index": 41,
+    "week_open_utc": "2020-01-27T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177191,
+    "chunk_hash": "62E21D57C6C5019B36234C7B57FAC5237FB48260577F11F7F42A9D47024B1BDD"
+  },
+  {
+    "chunk_index": 42,
+    "week_open_utc": "2020-02-03T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177578,
+    "chunk_hash": "8C6D38122F60FB25FC627367D728E205E4558EBB316FF60CC6CDFA8A2DA1AAE2"
+  },
+  {
+    "chunk_index": 43,
+    "week_open_utc": "2020-02-10T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177691,
+    "chunk_hash": "107CD0DC993737E0417DE15BD14D3130444492762F380323B451509877910D0C"
+  },
+  {
+    "chunk_index": 44,
+    "week_open_utc": "2020-02-17T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176491,
+    "chunk_hash": "FCCB13BD3C97C67016B9AA9972ED398A2008C6073E58282EB909C2D28B1E50E7"
+  },
+  {
+    "chunk_index": 45,
+    "week_open_utc": "2020-02-24T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182707,
+    "chunk_hash": "EB7AAC7B277C44E83B0E4181E26BF15A728D56EFE0D2739732BDABFE56011EE9"
+  },
+  {
+    "chunk_index": 46,
+    "week_open_utc": "2020-03-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183144,
+    "chunk_hash": "E7E6F331872E589CF5A30C26A94B3B6F5F49B92927FC47EE1883632526184F2A"
+  },
+  {
+    "chunk_index": 47,
+    "week_open_utc": "2020-03-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185293,
+    "chunk_hash": "E9E8FD46410AC40D596F4359E3FC2BD5EB9EE4B306EA02BAF0CDED9B1D44D797"
+  },
+  {
+    "chunk_index": 48,
+    "week_open_utc": "2020-03-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185281,
+    "chunk_hash": "D0AA4C11CAD18135FC556CD756D32AB125E19C11675A23EB6E24A3AEB16B6894"
+  },
+  {
+    "chunk_index": 49,
+    "week_open_utc": "2020-03-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185127,
+    "chunk_hash": "8A69CDDB95E35448294CAC0CA4D811D0A8EE02D4F455F9F4517B322A0A73A53B"
+  },
+  {
+    "chunk_index": 50,
+    "week_open_utc": "2020-03-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184221,
+    "chunk_hash": "F6B9B24AE9A640405FE179628B74C32ED1CF8A4391B2C24F46D9A078EDA12C60"
+  },
+  {
+    "chunk_index": 51,
+    "week_open_utc": "2020-04-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179569,
+    "chunk_hash": "BAAE8FAF9C13ED286B5FCCA39CB5E77BD9CF3960ABED39370D5D3405237DF0C1"
+  },
+  {
+    "chunk_index": 52,
+    "week_open_utc": "2020-04-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182734,
+    "chunk_hash": "6BB9F7CD7C70CEFFF5D5108F6DE59C5AF368CE607A5AE35410CDABACCF893A41"
+  },
+  {
+    "chunk_index": 53,
+    "week_open_utc": "2020-04-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181903,
+    "chunk_hash": "517F4206F4F83D4F1BCEA8E708BA0F9F332C0E35E31F429D00D78C8E2A014713"
+  },
+  {
+    "chunk_index": 54,
+    "week_open_utc": "2020-04-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182395,
+    "chunk_hash": "728E3EE345E87775D63F4E52BECFBDC5116726691551C1A9FE3F53CB3E051EC2"
+  },
+  {
+    "chunk_index": 55,
+    "week_open_utc": "2020-05-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181474,
+    "chunk_hash": "0D2723FD41710817B0B5F50E76B516908160876538BA66D87C0A8336B0A035CE"
+  },
+  {
+    "chunk_index": 56,
+    "week_open_utc": "2020-05-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181932,
+    "chunk_hash": "BE562441AE4BA4A85B8F0E3EA1EBC25A86517533F0D31273E1770336791F4875"
+  },
+  {
+    "chunk_index": 57,
+    "week_open_utc": "2020-05-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181490,
+    "chunk_hash": "6B277F10D4810DC0E578310E909A44B3636D7E46FE1F863C2D1A16A2FCDEEF5C"
+  },
+  {
+    "chunk_index": 58,
+    "week_open_utc": "2020-05-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180775,
+    "chunk_hash": "C4F363321D40F61ABB18BFD0EE1F2EE4034B9E3F7596FE97334F8CA0323A9D01"
+  },
+  {
+    "chunk_index": 59,
+    "week_open_utc": "2020-05-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182833,
+    "chunk_hash": "5129CD91F0115F751BBD060DB4911AEE923EF27920A3C70A514E95FFE488A488"
+  },
+  {
+    "chunk_index": 60,
+    "week_open_utc": "2020-06-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183017,
+    "chunk_hash": "3AB64255B16F97B0A5497AB9456C128B899FBE97588CB741DE7F40C6F3DC6D78"
+  },
+  {
+    "chunk_index": 61,
+    "week_open_utc": "2020-06-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183453,
+    "chunk_hash": "5EF35D4B62FE5ADD6A9845B479C0274B6467FA9B3A9709565BEBFF3D8B5CF1C3"
+  },
+  {
+    "chunk_index": 62,
+    "week_open_utc": "2020-06-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182571,
+    "chunk_hash": "7A5CA09091F4314CB8DE3882FE3D46924DEAFD809DBC00A31529685F9E920B99"
+  },
+  {
+    "chunk_index": 63,
+    "week_open_utc": "2020-06-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180773,
+    "chunk_hash": "2BD6D6381001458E396BB26BEC43662997FBB9DE1675619A177B541AD1968882"
+  },
+  {
+    "chunk_index": 64,
+    "week_open_utc": "2020-07-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180088,
+    "chunk_hash": "B4F00C3817CB140A634D1D0054D4FA46E6201B67B58596330D875C0969E6D36E"
+  },
+  {
+    "chunk_index": 65,
+    "week_open_utc": "2020-07-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180579,
+    "chunk_hash": "7E916C2360BB684EA76E5DAE20EFDFFA4D5C0756B1196C5174703F3DB7F2CBD6"
+  },
+  {
+    "chunk_index": 66,
+    "week_open_utc": "2020-07-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181357,
+    "chunk_hash": "4C4531B32B84211C3A778DE3BA66FDD47CDE4A8D292C215653521E96BD5268C1"
+  },
+  {
+    "chunk_index": 67,
+    "week_open_utc": "2020-07-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182811,
+    "chunk_hash": "01231C64492D777C93ACBA76C9AB80CEAC16AE73CA4D1E30857F047179104E66"
+  },
+  {
+    "chunk_index": 68,
+    "week_open_utc": "2020-08-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181542,
+    "chunk_hash": "4CDDBB4216D5CC95B4A38B132D9177AA5DFA72D7A997D835D483DF04870E9920"
+  },
+  {
+    "chunk_index": 69,
+    "week_open_utc": "2020-08-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181617,
+    "chunk_hash": "409DB7A15243E64D5252E9A8DC103CE64401CF4CD8408AA48A6A85ADAC15408F"
+  },
+  {
+    "chunk_index": 70,
+    "week_open_utc": "2020-08-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181567,
+    "chunk_hash": "62839047D3351F1D370938E14DD89C772094E4C91E25F20023BEB6BD2B5BD40F"
+  },
+  {
+    "chunk_index": 71,
+    "week_open_utc": "2020-08-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180629,
+    "chunk_hash": "68C6B2D8C4B9418E98F0F7974B1D66EC76B759028685072D33D3ECEAA90B25E1"
+  },
+  {
+    "chunk_index": 72,
+    "week_open_utc": "2020-08-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181215,
+    "chunk_hash": "86938837D21D20E36D72837E7DF9529395BF073B5E8D2124055D6585888BBA14"
+  },
+  {
+    "chunk_index": 73,
+    "week_open_utc": "2020-09-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179053,
+    "chunk_hash": "54CB45D6E474ADA6DCF7513956A6930B9F6F6D4ED581D996D1AD20F8555AD4C1"
+  },
+  {
+    "chunk_index": 74,
+    "week_open_utc": "2020-09-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180285,
+    "chunk_hash": "3C89A82871345E82D11F012C4E9C88538587C5848EAA154DC19353CAF40D6A30"
+  },
+  {
+    "chunk_index": 75,
+    "week_open_utc": "2020-09-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181974,
+    "chunk_hash": "9638BD6DE8E639FB395AAA4FEF5ED84907AB01319072A8017889AE1BC41A1E61"
+  },
+  {
+    "chunk_index": 76,
+    "week_open_utc": "2020-09-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180214,
+    "chunk_hash": "BADC02109FE1F29CAA95B315D0980D968D36732F571EABDAA76D3BD5F127E280"
+  },
+  {
+    "chunk_index": 77,
+    "week_open_utc": "2020-10-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179566,
+    "chunk_hash": "B64F8E6A9C06830C4510162E85654C15731A68C7486AB1E41ACEBACCBB4FD0E8"
+  },
+  {
+    "chunk_index": 78,
+    "week_open_utc": "2020-10-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179720,
+    "chunk_hash": "64BB939AC7D728B305CCF33EEF4D22A9F23AA99BDF2F42DEF7A5762C6487026C"
+  },
+  {
+    "chunk_index": 79,
+    "week_open_utc": "2020-10-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179933,
+    "chunk_hash": "282D90D83AA39121C28A650B6F2DB9FD6B213FCEDA1A3A3BED81D1B76DAC5379"
+  },
+  {
+    "chunk_index": 80,
+    "week_open_utc": "2020-10-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180698,
+    "chunk_hash": "B2B02FFBBB63D6031063C90DD14F89FAC52DAD5420BFB84FC901780B80C943C9"
+  },
+  {
+    "chunk_index": 81,
+    "week_open_utc": "2020-11-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183209,
+    "chunk_hash": "9E65BA132D8D3710414052CBE0E4FF95D403B2F8016164F9ABFB87730F9E2B57"
+  },
+  {
+    "chunk_index": 82,
+    "week_open_utc": "2020-11-09T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183031,
+    "chunk_hash": "42C2CF872CB6B7DD74F13E0DD5B4AF4A1B6EC9F20E9EFD17B6D282C72F4FEB47"
+  },
+  {
+    "chunk_index": 83,
+    "week_open_utc": "2020-11-16T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181532,
+    "chunk_hash": "1110DB37198FA5A6F29BC8F8413434013C430179938BFD849C2C23E71D96E3C6"
+  },
+  {
+    "chunk_index": 84,
+    "week_open_utc": "2020-11-23T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179519,
+    "chunk_hash": "5CBC845EFEBF4FCA745581AEFBBEFEB369CAA964F3202C2FAABDB9681CC7E42B"
+  },
+  {
+    "chunk_index": 85,
+    "week_open_utc": "2020-11-30T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181763,
+    "chunk_hash": "2FBE210F8E8D8FC39D25AE287BADF6BFA101C03BA9973E098A39EBC0A5EC8731"
+  },
+  {
+    "chunk_index": 86,
+    "week_open_utc": "2020-12-07T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180817,
+    "chunk_hash": "2F64B49CD44DCEC72946E8335B069904916CC4FBAC09D71047719D7D664F25A5"
+  },
+  {
+    "chunk_index": 87,
+    "week_open_utc": "2020-12-14T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180787,
+    "chunk_hash": "E58BE1681A930A6FBC2826F6904BCEB29D8B7C5EC634BAC615BFA4791F8AAC8C"
+  },
+  {
+    "chunk_index": 88,
+    "week_open_utc": "2020-12-21T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 151854,
+    "chunk_hash": "20277E2F5009FDC63FE66B18C03B40D8A07888340DBC24E9988213742207F57C"
+  },
+  {
+    "chunk_index": 89,
+    "week_open_utc": "2020-12-28T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 152077,
+    "chunk_hash": "D04DBE3AA623C070892D05571AA2F644C6D75488DF98E0E0EFA09C915F2C2620"
+  },
+  {
+    "chunk_index": 90,
+    "week_open_utc": "2021-01-04T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183207,
+    "chunk_hash": "4921FBE59E6EFD33077E290B90039FE9F92970523C414F0C48267CE9DB4042B0"
+  },
+  {
+    "chunk_index": 91,
+    "week_open_utc": "2021-01-11T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182694,
+    "chunk_hash": "0D671C81E902F30818BC2EA260A75CDCBC2EC03754064B3B423E2EF7565B96B2"
+  },
+  {
+    "chunk_index": 92,
+    "week_open_utc": "2021-01-18T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180616,
+    "chunk_hash": "9A7CC074552009A9B1615B2EB60E32FD5104AC20D3D89FF642FD0843CD1973DA"
+  },
+  {
+    "chunk_index": 93,
+    "week_open_utc": "2021-01-25T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182597,
+    "chunk_hash": "11B35FCAF8497962FA8D24FBDA6444E2745458700856ED7587E1D0F63464ADD9"
+  },
+  {
+    "chunk_index": 94,
+    "week_open_utc": "2021-02-01T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182796,
+    "chunk_hash": "AA39315E23E61393FF6C58FEE824532F5B9247CF9C9ABA994D8AE8ACB11E7575"
+  },
+  {
+    "chunk_index": 95,
+    "week_open_utc": "2021-02-08T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180071,
+    "chunk_hash": "A81ED890F7B90266AF7E4E5AB229AE8600108B45AA43A989E0944D5079A0B17F"
+  },
+  {
+    "chunk_index": 96,
+    "week_open_utc": "2021-02-15T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179485,
+    "chunk_hash": "C11343E78DBEFD44C607B285985F179587285FAB0529AEE437CA1F9E24594CF2"
+  },
+  {
+    "chunk_index": 97,
+    "week_open_utc": "2021-02-22T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183111,
+    "chunk_hash": "3A5C27EBDBDA505F3BC231A931E65BF8F46F768C2CEE1487B479994865F77C90"
+  },
+  {
+    "chunk_index": 98,
+    "week_open_utc": "2021-03-01T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183356,
+    "chunk_hash": "A812D6EE2E59E4DC5E3359BA2986F784E309E376E2AFAF99448C7FFF46D4B66D"
+  },
+  {
+    "chunk_index": 99,
+    "week_open_utc": "2021-03-08T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183007,
+    "chunk_hash": "98EC19020D3C9483DC20A217B38897BFFA5639733DF2F3290BE0000D226CAE22"
+  },
+  {
+    "chunk_index": 100,
+    "week_open_utc": "2021-03-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181992,
+    "chunk_hash": "BDEF4251061DAC4DE2293068418C5E908803EC67B9033EF13153B0012CDACF79"
+  },
+  {
+    "chunk_index": 101,
+    "week_open_utc": "2021-03-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181767,
+    "chunk_hash": "ACE64503A90BB94B637C5B01900DE44FA1739D6C5382435FE679BC8BDC36685B"
+  },
+  {
+    "chunk_index": 102,
+    "week_open_utc": "2021-03-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179111,
+    "chunk_hash": "507AB20208A38AFA15241242AD1067E1C5BD74AC618B80750C66480B06550DAD"
+  },
+  {
+    "chunk_index": 103,
+    "week_open_utc": "2021-04-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179733,
+    "chunk_hash": "08427B062F96120A0FABA137C0A8E935FD85F64A2446EB1B6BC53C21474FB0C2"
+  },
+  {
+    "chunk_index": 104,
+    "week_open_utc": "2021-04-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180499,
+    "chunk_hash": "9A4BE981C41E64C250CE552490E77AD815D9F05EAE598F7690DE92D578C198C6"
+  },
+  {
+    "chunk_index": 105,
+    "week_open_utc": "2021-04-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180603,
+    "chunk_hash": "D691FF78CF9D372285D77AA418A2E0F4195A4EE11F16E0FA5167E85E332E35CD"
+  },
+  {
+    "chunk_index": 106,
+    "week_open_utc": "2021-04-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180267,
+    "chunk_hash": "9D1B5C85C020DEA5A31F777AEB0EE1E50FA2CF341C7CE7BD101497B3E2E4F6EB"
+  },
+  {
+    "chunk_index": 107,
+    "week_open_utc": "2021-05-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179431,
+    "chunk_hash": "3133B0FC1004A87F8FAE2C8F1007E0EE890ED6338B83869C4B5971AF54D4CC03"
+  },
+  {
+    "chunk_index": 108,
+    "week_open_utc": "2021-05-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181413,
+    "chunk_hash": "A02C445C41F26B1D198267CA37C3C53302477A15AA0A342855FB658A035330ED"
+  },
+  {
+    "chunk_index": 109,
+    "week_open_utc": "2021-05-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180428,
+    "chunk_hash": "609B16AB6486D3D59AA200EF262BBC89B124EA1502E4DF454DF31BE9F62081E2"
+  },
+  {
+    "chunk_index": 110,
+    "week_open_utc": "2021-05-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180266,
+    "chunk_hash": "5C477BF6DA43F6C2B1EDB2C82684E61584F039942F9F6E59B3E6681866AF08D5"
+  },
+  {
+    "chunk_index": 111,
+    "week_open_utc": "2021-05-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177153,
+    "chunk_hash": "877957D524BB394625B47C5BF77C93DD3AE91E724FFFDC0B430C029997BFE749"
+  },
+  {
+    "chunk_index": 112,
+    "week_open_utc": "2021-06-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175198,
+    "chunk_hash": "EB8EE19EA259658C25190BF512B980E63293EC7CC18701B21544E8CFF9455621"
+  },
+  {
+    "chunk_index": 113,
+    "week_open_utc": "2021-06-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178925,
+    "chunk_hash": "30E97082D2EE83C88515C129724AEC9BA7ED153EFD76824C3CB55A2E3C9E9BEF"
+  },
+  {
+    "chunk_index": 114,
+    "week_open_utc": "2021-06-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179451,
+    "chunk_hash": "EE4CF7337EB915496C571B20046E9CA707D7A84371671FFCE0693B11D245EEE4"
+  },
+  {
+    "chunk_index": 115,
+    "week_open_utc": "2021-06-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 177876,
+    "chunk_hash": "4165845094BF71B6A75725CA2A0F7C21271365B93B82624883F021651C5FDA2E"
+  },
+  {
+    "chunk_index": 116,
+    "week_open_utc": "2021-07-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178901,
+    "chunk_hash": "12E35F76C30344A7E3719D060FDFBE39A1E7F273F61AC757FC4FA1BDE1C075D8"
+  },
+  {
+    "chunk_index": 117,
+    "week_open_utc": "2021-07-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178688,
+    "chunk_hash": "2F3ECC9FB73BBB92C3D5F41E024364CB6A6244FEDFEE0C5AE29B28094C329D05"
+  },
+  {
+    "chunk_index": 118,
+    "week_open_utc": "2021-07-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178467,
+    "chunk_hash": "2D9884F63273D55B6A78C1DA0ED69327E22B6C21D71AEDDA1291D57E27020587"
+  },
+  {
+    "chunk_index": 119,
+    "week_open_utc": "2021-07-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178735,
+    "chunk_hash": "57FAA1A9C0D1F7263797514B6F4202911C422C47BD473B86C28713337F7657C6"
+  },
+  {
+    "chunk_index": 120,
+    "week_open_utc": "2021-08-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 175996,
+    "chunk_hash": "3292E17E4DB65D3F66966C94DA45B2CFAD3C25C8B5617E0FC749695FA4ED0408"
+  },
+  {
+    "chunk_index": 121,
+    "week_open_utc": "2021-08-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173920,
+    "chunk_hash": "B319AA296A99C4578B43A2EC10968496047DA291EE182409EF6D1776895EF58E"
+  },
+  {
+    "chunk_index": 122,
+    "week_open_utc": "2021-08-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178261,
+    "chunk_hash": "6C417CE448D354ACDDD16A553BB0833855C0DE8A03387679F8E06D49808EB398"
+  },
+  {
+    "chunk_index": 123,
+    "week_open_utc": "2021-08-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176523,
+    "chunk_hash": "CCA98CF74772D4DA84812B5218E0606377D1ED706C089752AA08AAD9E954FB7E"
+  },
+  {
+    "chunk_index": 124,
+    "week_open_utc": "2021-08-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176350,
+    "chunk_hash": "A52BFBF39D944D51EE0FED94458A2239FFEAF07366AA331E054B77F4A245B8DD"
+  },
+  {
+    "chunk_index": 125,
+    "week_open_utc": "2021-09-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176320,
+    "chunk_hash": "75C26A2B951E9F7105D15A75D5A6041D90C62F975F456D6A284FC7CDF7BB2906"
+  },
+  {
+    "chunk_index": 126,
+    "week_open_utc": "2021-09-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178330,
+    "chunk_hash": "2E78A919EE5DE9D4E76060A447C1FF30B9101E045EF5B5697DE8B2E383D0FBFB"
+  },
+  {
+    "chunk_index": 127,
+    "week_open_utc": "2021-09-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179943,
+    "chunk_hash": "A715349D73760D145965FF63B21ADC3900DBF531E3F63B5D4AD9D35489D59BC8"
+  },
+  {
+    "chunk_index": 128,
+    "week_open_utc": "2021-09-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179758,
+    "chunk_hash": "AFB16FFAB4D33ED9CA805BAF9910140B97B76F0B9B00BB1A45B591D3E8B49F11"
+  },
+  {
+    "chunk_index": 129,
+    "week_open_utc": "2021-10-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180015,
+    "chunk_hash": "C24C05C751C279F7EDE7F70B7B2B674EC10A7938BAD7AEC8D2A3CE1108941D58"
+  },
+  {
+    "chunk_index": 130,
+    "week_open_utc": "2021-10-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178965,
+    "chunk_hash": "C6D1391E9B5644995753FF65651447224B90E07F877FEDCA892685CD06A28D3D"
+  },
+  {
+    "chunk_index": 131,
+    "week_open_utc": "2021-10-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180006,
+    "chunk_hash": "9A1D850859BEFC3838B34F111E3949DE494D7EF50FE32E4A51F3A1FACE135941"
+  },
+  {
+    "chunk_index": 132,
+    "week_open_utc": "2021-10-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179704,
+    "chunk_hash": "0780BF44C62FDAB2665839FA1BD97953A52A19DD174B65264F8659DA3D48F5F0"
+  },
+  {
+    "chunk_index": 133,
+    "week_open_utc": "2021-10-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179572,
+    "chunk_hash": "5A903DA7C11D5333E922511F4B1BCF4204262CEAC2624425BFBB3BB508DF10E8"
+  },
+  {
+    "chunk_index": 134,
+    "week_open_utc": "2021-11-08T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180018,
+    "chunk_hash": "60B7A6D8ACBE56BE5B7F4D74C38B9A0403C2CE369F57B79AEDEBC4F02B4B88B7"
+  },
+  {
+    "chunk_index": 135,
+    "week_open_utc": "2021-11-15T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181129,
+    "chunk_hash": "82B49A6AC57469FFB555A0E9B052261FF41525B8B62E17FFE89A6B9CC2E1997C"
+  },
+  {
+    "chunk_index": 136,
+    "week_open_utc": "2021-11-22T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180168,
+    "chunk_hash": "7A2DAA4099674F5317679D9437BA18B971FA1F93BF6B0A56879EF2F5428961D8"
+  },
+  {
+    "chunk_index": 137,
+    "week_open_utc": "2021-11-29T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182031,
+    "chunk_hash": "9CD12F8271BF08CDE9706292033909932228D9758AA5347C2EB9A77F59D9AB05"
+  },
+  {
+    "chunk_index": 138,
+    "week_open_utc": "2021-12-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180325,
+    "chunk_hash": "105C1E4C51A376856F42B727BAAE9EE51BE3A09FB2DBEB67626774B698ECBF87"
+  },
+  {
+    "chunk_index": 139,
+    "week_open_utc": "2021-12-13T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179505,
+    "chunk_hash": "D5C1DBF7D69B59CFAF8E426715ADD55881CD8A87CFC89AAC7CD07F31808046CE"
+  },
+  {
+    "chunk_index": 140,
+    "week_open_utc": "2021-12-20T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 176136,
+    "chunk_hash": "82F2E7D0022AD82573E647139AD5E97122B5852F83CCD6737B0660040E992B64"
+  },
+  {
+    "chunk_index": 141,
+    "week_open_utc": "2021-12-27T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 173048,
+    "chunk_hash": "7209D6BE890DFBB67F5EC35EDF9083B2B317638F34968497C2D887498F42DB01"
+  },
+  {
+    "chunk_index": 142,
+    "week_open_utc": "2022-01-03T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178781,
+    "chunk_hash": "70495D722590F8A946AB50A1C22D9ABA76803BC1D9559135304EE15960D9AA54"
+  },
+  {
+    "chunk_index": 143,
+    "week_open_utc": "2022-01-10T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179851,
+    "chunk_hash": "F8C5E21EDD231C0B0317F419334DC9027B3EBFBFCEB1C52FFF551CDF45A58F73"
+  },
+  {
+    "chunk_index": 144,
+    "week_open_utc": "2022-01-17T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 179949,
+    "chunk_hash": "6DE275D1CA2262AE56F361739CCE843FB5AFE5455CC216351F24F5BEABE1AE69"
+  },
+  {
+    "chunk_index": 145,
+    "week_open_utc": "2022-01-24T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181780,
+    "chunk_hash": "C4383F9120BCCB46B1441D7102C9752513BF0260BEEE6B3E922C89494DC13A35"
+  },
+  {
+    "chunk_index": 146,
+    "week_open_utc": "2022-01-31T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180455,
+    "chunk_hash": "D01A03A1A57994EB4EAB89930558B145830842AB9BB3BFCDE909ADF293BFBE70"
+  },
+  {
+    "chunk_index": 147,
+    "week_open_utc": "2022-02-07T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 180360,
+    "chunk_hash": "3A15994BE716EE48C3FFAF70241CA737006BBF27DCA491B1CF2E44DE98D0A89B"
+  },
+  {
+    "chunk_index": 148,
+    "week_open_utc": "2022-02-14T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184516,
+    "chunk_hash": "73EF38EDED0412408F25197554C912A29A33EAD9365C339521DB0BC50022F5F7"
+  },
+  {
+    "chunk_index": 149,
+    "week_open_utc": "2022-02-21T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184696,
+    "chunk_hash": "1AEFD5EEDD4E03F83F9AB1BAAFAB731FE1C784461D4F0AC75F7119CC802BF2F7"
+  },
+  {
+    "chunk_index": 150,
+    "week_open_utc": "2022-02-28T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184749,
+    "chunk_hash": "84966A1F3D7CC34339AB77D3838832E70E304C1E33F4ABB31AAF756B90A13393"
+  },
+  {
+    "chunk_index": 151,
+    "week_open_utc": "2022-03-07T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184711,
+    "chunk_hash": "E1C58FF443CF19ECBE5A94BA1A56868C76F4349864A2B84E141A434C605267CD"
+  },
+  {
+    "chunk_index": 152,
+    "week_open_utc": "2022-03-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184690,
+    "chunk_hash": "E01BB2DE9BBA72C9BA49F2DF5AA6EB95BBE4054880EE72E7FC9C1502AEEAD586"
+  },
+  {
+    "chunk_index": 153,
+    "week_open_utc": "2022-03-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184337,
+    "chunk_hash": "59CA7EBB26F69A783627D7DF0C98FADC5018FF7ABAF9098BC5C5974D9DCFCA61"
+  },
+  {
+    "chunk_index": 154,
+    "week_open_utc": "2022-03-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184286,
+    "chunk_hash": "78A267EC8370AD4B9374419309FAC1E9CBC2B7D67927DC9789B4306E2C545CB0"
+  },
+  {
+    "chunk_index": 155,
+    "week_open_utc": "2022-04-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184371,
+    "chunk_hash": "CF61F76CEF201A9D1486EC381AB107D40B15CD81940D71D8D5921877C4824596"
+  },
+  {
+    "chunk_index": 156,
+    "week_open_utc": "2022-04-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183911,
+    "chunk_hash": "8CEAFC1AD51C09FABE5263CA94FA4AF53FC90CAF36D75FE31EBEEBB4C75F301A"
+  },
+  {
+    "chunk_index": 157,
+    "week_open_utc": "2022-04-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184943,
+    "chunk_hash": "4FCD0C49949CBDC2CCCF5FCDCE324845C8E9E71B4B5C26301032F345369B0005"
+  },
+  {
+    "chunk_index": 158,
+    "week_open_utc": "2022-04-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184855,
+    "chunk_hash": "84CCCA48E67E62263415B58D00DB85706A4286C647BD4A688628A5D500768E52"
+  },
+  {
+    "chunk_index": 159,
+    "week_open_utc": "2022-05-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184391,
+    "chunk_hash": "067E5B638666B1D51F99B53726853D7612CBD571839A91CE924716B4B1E52F33"
+  },
+  {
+    "chunk_index": 160,
+    "week_open_utc": "2022-05-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184954,
+    "chunk_hash": "2EC8FAAFE26D1E8FED098D416B07AD72077106F4F5CD35A4FDE360BF55955609"
+  },
+  {
+    "chunk_index": 161,
+    "week_open_utc": "2022-05-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184810,
+    "chunk_hash": "1635136F7AC5E0932137EBCD4BDB03440BC0C2507F8C57D65770C142630A80FA"
+  },
+  {
+    "chunk_index": 162,
+    "week_open_utc": "2022-05-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184576,
+    "chunk_hash": "DEEB42C2212DAFF4D4835BB8B9564A1328594DC7C4590A54C0BAF1F1776E62D5"
+  },
+  {
+    "chunk_index": 163,
+    "week_open_utc": "2022-05-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184400,
+    "chunk_hash": "FAF7A2131A3D9276FA5296AFF98ECF5E8E6443C49A2B5B025471F7BC5CEEFCE8"
+  },
+  {
+    "chunk_index": 164,
+    "week_open_utc": "2022-06-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184673,
+    "chunk_hash": "36D4ECCC6B09A8FA59BF4D98620F92ED322F7B3E5BE6A2065EAA63FB661F2F4A"
+  },
+  {
+    "chunk_index": 165,
+    "week_open_utc": "2022-06-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185156,
+    "chunk_hash": "BE3AB79C73AB118D3512779313DD1C02A6DD1E7D7F6E30814B1F2D6BF75CC267"
+  },
+  {
+    "chunk_index": 166,
+    "week_open_utc": "2022-06-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184838,
+    "chunk_hash": "4EE58B9B421D91CEB3DB149864777DE772189E34A0F439AED204747D77F9F3F2"
+  },
+  {
+    "chunk_index": 167,
+    "week_open_utc": "2022-06-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185054,
+    "chunk_hash": "4D42E7B51AAF8EA12F0FC263AD0AF358258A9C3AFD4F671189B0A7B3C08707D4"
+  },
+  {
+    "chunk_index": 168,
+    "week_open_utc": "2022-07-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184888,
+    "chunk_hash": "02D3B587D03228B64F671AE40F0A9D0F89A8E7D71FD2843B3F4E43867A874EE2"
+  },
+  {
+    "chunk_index": 169,
+    "week_open_utc": "2022-07-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185021,
+    "chunk_hash": "C7505700934735E0AA655A5C6AA8C5BD501949E8934165CFB30C5A6A465988F0"
+  },
+  {
+    "chunk_index": 170,
+    "week_open_utc": "2022-07-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185116,
+    "chunk_hash": "052594E28B69386D3ED4DD9FBF996E82AD28354CD914B2B5BDEE20F91FEE51D1"
+  },
+  {
+    "chunk_index": 171,
+    "week_open_utc": "2022-07-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185102,
+    "chunk_hash": "C2B8D7D6BA0231CD11D02B644366E0BDA2D9543B196D238BD0D56CD2545B7BF7"
+  },
+  {
+    "chunk_index": 172,
+    "week_open_utc": "2022-07-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185064,
+    "chunk_hash": "CDA3D25CCFF84C4E86C76762F9F83BD05D08852D1F5414FE177264E9A37D5A40"
+  },
+  {
+    "chunk_index": 173,
+    "week_open_utc": "2022-08-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184896,
+    "chunk_hash": "15666B8359BA421D7554822985025B8E797913417BC53BB151F9517114FBDD7D"
+  },
+  {
+    "chunk_index": 174,
+    "week_open_utc": "2022-08-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184976,
+    "chunk_hash": "FED811B4BF44ED9C9D6B42716FAB347111B6A90AF8FB4850287E9A64FA7B2288"
+  },
+  {
+    "chunk_index": 175,
+    "week_open_utc": "2022-08-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185129,
+    "chunk_hash": "08D69E291845BAA9B55CA956F211710220A23D338A6C2493DBB0600FDFDDBC43"
+  },
+  {
+    "chunk_index": 176,
+    "week_open_utc": "2022-08-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185111,
+    "chunk_hash": "E2D654A0D8136A8F1EB9F81FCE6BAB3AC632C0434F90193F64F04B0ABDB06363"
+  },
+  {
+    "chunk_index": 177,
+    "week_open_utc": "2022-09-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184391,
+    "chunk_hash": "E202068E9E882DE6E81CE000750D7D651F125A054EDB015D5027AE7B83C80D8D"
+  },
+  {
+    "chunk_index": 178,
+    "week_open_utc": "2022-09-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185142,
+    "chunk_hash": "3A8CDF7D188FAB37A8BBEDD0DDDE672483B700B0E09147F7AEDBACC528735A99"
+  },
+  {
+    "chunk_index": 179,
+    "week_open_utc": "2022-09-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185304,
+    "chunk_hash": "A86B511B88692666E3E4F1DDF30E1BF0DB547AA1D5F7A1DEE1079EC7E773436E"
+  },
+  {
+    "chunk_index": 180,
+    "week_open_utc": "2022-09-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185469,
+    "chunk_hash": "FC1FB278953D4CF903A53FC3185A304CA52BE649378DC9F2A68615DB31C33EE2"
+  },
+  {
+    "chunk_index": 181,
+    "week_open_utc": "2022-10-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185306,
+    "chunk_hash": "DF24F2E63C3DA5959A239359E93E71E83DD7A7B73847B89EFFD6C07493121EF9"
+  },
+  {
+    "chunk_index": 182,
+    "week_open_utc": "2022-10-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185286,
+    "chunk_hash": "B8BDC698B52C365EDC7A2F6BD6C4DEC72DD43D825B8DDA5D0BA8F38AC1DF7FE7"
+  },
+  {
+    "chunk_index": 183,
+    "week_open_utc": "2022-10-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185324,
+    "chunk_hash": "04C55A3A57AC7887C09448BCFDB65CA61ACE6995266CCCAD92F69B8BE017533F"
+  },
+  {
+    "chunk_index": 184,
+    "week_open_utc": "2022-10-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185310,
+    "chunk_hash": "1372490D9156897838A7F7E31AE2940C35EBED68FB915695CFD6D9608628F25B"
+  },
+  {
+    "chunk_index": 185,
+    "week_open_utc": "2022-10-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185253,
+    "chunk_hash": "24A914FDB4A840796E721A3F58752FB925766BEA3A1A329A88D6EA31140A6BF7"
+  },
+  {
+    "chunk_index": 186,
+    "week_open_utc": "2022-11-07T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185403,
+    "chunk_hash": "D4FD96BA56DB8D85FA119F645B1CF5D42D239CEDBCAE0BFF9A6948C3613AB61C"
+  },
+  {
+    "chunk_index": 187,
+    "week_open_utc": "2022-11-14T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185515,
+    "chunk_hash": "8675D3CDA0DB87BA140111B6C079E6EDF9018D603BF3CB30880E8D3D7D674F95"
+  },
+  {
+    "chunk_index": 188,
+    "week_open_utc": "2022-11-21T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185165,
+    "chunk_hash": "800C9A4887FA00E8C94A3A995E36C65644410BBF10D4E7A2AD9F85186ECCB3EB"
+  },
+  {
+    "chunk_index": 189,
+    "week_open_utc": "2022-11-28T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185475,
+    "chunk_hash": "9753C1C9C76CE8C207E3459137F94B83D8BCC9A3BDF1C8549A40339BAE39F765"
+  },
+  {
+    "chunk_index": 190,
+    "week_open_utc": "2022-12-05T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185370,
+    "chunk_hash": "D1D4D190C0079AB9CA7C876AD4E6F5A9D48D79E8E8C282C411BF35A098CD077F"
+  },
+  {
+    "chunk_index": 191,
+    "week_open_utc": "2022-12-12T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185250,
+    "chunk_hash": "6F8AAA57D8191DDA2EC2633867131D73B7A8706BDD2EAC6DAEFF38602827808C"
+  },
+  {
+    "chunk_index": 192,
+    "week_open_utc": "2022-12-19T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185346,
+    "chunk_hash": "2667B3933E12E6596F2F69D7B769015DDE5882FC2758054BDA04837C3F313E7C"
+  },
+  {
+    "chunk_index": 193,
+    "week_open_utc": "2022-12-26T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 149680,
+    "chunk_hash": "02201F860E9F150ADD42811C8D0194C56D0171FC70708B0A9483D39AAD520488"
+  },
+  {
+    "chunk_index": 194,
+    "week_open_utc": "2023-01-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 178114,
+    "chunk_hash": "43C5FEF4C6F16475557690AE8F4373D30DE20F8D87C4C3427809FAB9DE0FC8EF"
+  },
+  {
+    "chunk_index": 195,
+    "week_open_utc": "2023-01-09T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185155,
+    "chunk_hash": "0CD74231A012340910AC4818FBEBE2B7389665CCFF20C4BABDE990CC183A1767"
+  },
+  {
+    "chunk_index": 196,
+    "week_open_utc": "2023-01-16T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185326,
+    "chunk_hash": "5E90EB525FB3A9DA0914566C5ABF35F0A0DE26A7C764FA08FDC33974E488B15E"
+  },
+  {
+    "chunk_index": 197,
+    "week_open_utc": "2023-01-23T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185333,
+    "chunk_hash": "6835EBC77A18468E79868638491C2BACA86616754E70B3B3495EEC14FF2A2742"
+  },
+  {
+    "chunk_index": 198,
+    "week_open_utc": "2023-01-30T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185457,
+    "chunk_hash": "3B4C537FEA1E19C06DC06ED8D7A19776D333B36FF05FB0890539CC0509C13E19"
+  },
+  {
+    "chunk_index": 199,
+    "week_open_utc": "2023-02-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185410,
+    "chunk_hash": "E1CB1E46098CB7458783D427CA9E745D9D8C056A4126FF89CE6BBAD4C0247F8E"
+  },
+  {
+    "chunk_index": 200,
+    "week_open_utc": "2023-02-13T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185382,
+    "chunk_hash": "94861DB86241F40B666318F0A74140CE8155EBD820AC8024BEF4B6D8B5DAE0C2"
+  },
+  {
+    "chunk_index": 201,
+    "week_open_utc": "2023-02-20T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184878,
+    "chunk_hash": "903AFE791A9BC193E133DC656E2648669D3BCC44643F65045EA2B1B64E8C3926"
+  },
+  {
+    "chunk_index": 202,
+    "week_open_utc": "2023-02-27T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185304,
+    "chunk_hash": "F0AC55383EA1458B5804755951C411BEDDEFE4939E88A09BDBAC127403B3376D"
+  },
+  {
+    "chunk_index": 203,
+    "week_open_utc": "2023-03-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185247,
+    "chunk_hash": "95AE48750F92829823CCBCD32668656F3E403FABDBAECFE9AAB69B61BE7E6C8D"
+  },
+  {
+    "chunk_index": 204,
+    "week_open_utc": "2023-03-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185422,
+    "chunk_hash": "E39B51294AB358CB33BB172E5B16AEA927733964A5AA9F100BBD9858750DC8FE"
+  },
+  {
+    "chunk_index": 205,
+    "week_open_utc": "2023-03-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185177,
+    "chunk_hash": "81B86A64F8AE89637509EF9AAAF7E53DEE197E2DEE977EF7F7CFFC6A1EFB598A"
+  },
+  {
+    "chunk_index": 206,
+    "week_open_utc": "2023-03-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184899,
+    "chunk_hash": "83D5430E7771994802B77FDB10CB9F03854F76D760B858A52F8FD27AF48CB231"
+  },
+  {
+    "chunk_index": 207,
+    "week_open_utc": "2023-04-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184224,
+    "chunk_hash": "F380FE346D31797B2438FE659567FFFDFC3AE997D7421E70BA30639E53B8642B"
+  },
+  {
+    "chunk_index": 208,
+    "week_open_utc": "2023-04-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184662,
+    "chunk_hash": "0697869361BDF17E4331030EC04EBDDA6ABFC4583F2CEC0108792CFCE745D6B2"
+  },
+  {
+    "chunk_index": 209,
+    "week_open_utc": "2023-04-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184703,
+    "chunk_hash": "E169F83C271DA56B91531B1C540BEBB2727FC88BBA77D2E0AEA41580C05719FF"
+  },
+  {
+    "chunk_index": 210,
+    "week_open_utc": "2023-04-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184993,
+    "chunk_hash": "3D72DA11C970E5041DC4917F89A0B3BFA79F12A7562C75DFBE2A5A6571191DAE"
+  },
+  {
+    "chunk_index": 211,
+    "week_open_utc": "2023-04-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184974,
+    "chunk_hash": "9415C2D4564060DFCC50BBEF812DCCE8AB13400983B308EA49A705BD5B66A867"
+  },
+  {
+    "chunk_index": 212,
+    "week_open_utc": "2023-05-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184325,
+    "chunk_hash": "DD5DAB8953D9F5EEB1A34C1796A1622A54B785D8FACC7CAB34EB1B7A6F5FF3D5"
+  },
+  {
+    "chunk_index": 213,
+    "week_open_utc": "2023-05-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184711,
+    "chunk_hash": "E17012627F6C42E7B20381B9D5338CA92CBCB353FF77508BD5595F2ABA228C0C"
+  },
+  {
+    "chunk_index": 214,
+    "week_open_utc": "2023-05-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184712,
+    "chunk_hash": "E94F4977021FAAE289BDD968D3C38DC3F2A7413472ECF2CF6F3FAE120422D6FB"
+  },
+  {
+    "chunk_index": 215,
+    "week_open_utc": "2023-05-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183597,
+    "chunk_hash": "EBF3D582843243C209F64E089790101831F9B2AC9F35589E976E4DEAB71860DA"
+  },
+  {
+    "chunk_index": 216,
+    "week_open_utc": "2023-06-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184517,
+    "chunk_hash": "F90F7259BC8F0D6D0706E5F2FF60EEC40D730162904C876F1BFDBBB410D821AF"
+  },
+  {
+    "chunk_index": 217,
+    "week_open_utc": "2023-06-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184547,
+    "chunk_hash": "FECE63317467E67D476419EDA147C06713B029D636776763F12219577974EA6A"
+  },
+  {
+    "chunk_index": 218,
+    "week_open_utc": "2023-06-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184288,
+    "chunk_hash": "7D471140733505B7A750BDF0092C845152FB925C5CDDEB577A08ED855ADC6ED3"
+  },
+  {
+    "chunk_index": 219,
+    "week_open_utc": "2023-06-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184518,
+    "chunk_hash": "DBD4DEBACCB9BBB0FECA15792C450460C77060BB0B6FCC982B21E7E358C46A9F"
+  },
+  {
+    "chunk_index": 220,
+    "week_open_utc": "2023-07-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183568,
+    "chunk_hash": "64C4D34CCD7D2E3D582105EF4C595F1A6745E3C08A49E5E00ED0807F393FA073"
+  },
+  {
+    "chunk_index": 221,
+    "week_open_utc": "2023-07-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184429,
+    "chunk_hash": "C37A6988A298CBAE52ADA8F0208A9D7785E4FB56FD7E351AE27F9378765223BC"
+  },
+  {
+    "chunk_index": 222,
+    "week_open_utc": "2023-07-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184941,
+    "chunk_hash": "4010E4DA69A63952ED81B11D67E96957D02DA78DB2B4DE36EED39119790BA1F1"
+  },
+  {
+    "chunk_index": 223,
+    "week_open_utc": "2023-07-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184702,
+    "chunk_hash": "AD5840B8B0C0329980FF6C0D6C81C8BA842A7B88BFD71785642FF5D9E62774A5"
+  },
+  {
+    "chunk_index": 224,
+    "week_open_utc": "2023-07-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185190,
+    "chunk_hash": "AC8B8FD0A69FF3A13467F17C863C068AD0E88178E9E4845A25E5655C76152168"
+  },
+  {
+    "chunk_index": 225,
+    "week_open_utc": "2023-08-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184966,
+    "chunk_hash": "EF052989DCEC30439C30D8346C3FD59A275BCDF001ADFEEFBD07210F9B9FAF84"
+  },
+  {
+    "chunk_index": 226,
+    "week_open_utc": "2023-08-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185207,
+    "chunk_hash": "E2B5092B8D5B6395EAA2C3C1B5956F1380CCBC1F5EB96EB34B05771707F14C8B"
+  },
+  {
+    "chunk_index": 227,
+    "week_open_utc": "2023-08-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184793,
+    "chunk_hash": "074B568EEFD1332E6B1F60245FA1A4168A36C410240317DC4E69A2D44E9A4C9D"
+  },
+  {
+    "chunk_index": 228,
+    "week_open_utc": "2023-08-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184966,
+    "chunk_hash": "D4572A55BBFAE0C939253C151A3A8E0D63FC7126C7028905C897CF2ACD1EF5AE"
+  },
+  {
+    "chunk_index": 229,
+    "week_open_utc": "2023-09-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183325,
+    "chunk_hash": "703A577C62BA00633FEE570CDA81B03A19DC4C31290FB785F4F9A9F1C7AAEE3F"
+  },
+  {
+    "chunk_index": 230,
+    "week_open_utc": "2023-09-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184694,
+    "chunk_hash": "68371F12CCD93F6B3FF629F8287B33D4269B27B944370BEAF4861EB5361DEB15"
+  },
+  {
+    "chunk_index": 231,
+    "week_open_utc": "2023-09-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184484,
+    "chunk_hash": "944D39C8B49E0BFA23C698FA492DF10FD3B53BF7C48D38D9E438E9A601DB4728"
+  },
+  {
+    "chunk_index": 232,
+    "week_open_utc": "2023-09-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184427,
+    "chunk_hash": "2A6A4F1E19BEB0BF72B901DE5F497DCB6084AB9C6C13FB97AB1B0A97FF5F3752"
+  },
+  {
+    "chunk_index": 233,
+    "week_open_utc": "2023-10-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184680,
+    "chunk_hash": "287913B729D6ECA62C12D1887DB9051E3B5718858B40F9C038A17E9ADE49B158"
+  },
+  {
+    "chunk_index": 234,
+    "week_open_utc": "2023-10-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184625,
+    "chunk_hash": "4EFF0F8C58B045173A6C5CB2065731DBE75B8FD2D3CF44DDAD460FE144F13F7F"
+  },
+  {
+    "chunk_index": 235,
+    "week_open_utc": "2023-10-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184517,
+    "chunk_hash": "B1D2DB64BACB7120FF058489A9D21253830C4893B70BA7020F23FCFDEAA963B0"
+  },
+  {
+    "chunk_index": 236,
+    "week_open_utc": "2023-10-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184535,
+    "chunk_hash": "617FC12ADFB738C259C2196685110D8A5A2F15C757A497AA6F3B1052AE789FC1"
+  },
+  {
+    "chunk_index": 237,
+    "week_open_utc": "2023-10-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183969,
+    "chunk_hash": "A00B4F462A5B472D4C7DA09241E4CE48D2CFE0A63A346EBB89A6187EEBAB6852"
+  },
+  {
+    "chunk_index": 238,
+    "week_open_utc": "2023-11-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184009,
+    "chunk_hash": "E017BC2D431FE07789E29897DD606F74DFB41936873C5146B50471EF6DD3934E"
+  },
+  {
+    "chunk_index": 239,
+    "week_open_utc": "2023-11-13T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183894,
+    "chunk_hash": "D686C4608E1BA7CEAEFFF94135DACB6D84CF496B27DAFA9F49064A2F2087609D"
+  },
+  {
+    "chunk_index": 240,
+    "week_open_utc": "2023-11-20T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183174,
+    "chunk_hash": "A4864200C8790EA9223208835113844FB7736C72EF35FFFA2D3FEF740276DD33"
+  },
+  {
+    "chunk_index": 241,
+    "week_open_utc": "2023-11-27T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184562,
+    "chunk_hash": "3866763F0C2073B2E2C398F3E62D78FE4A98A9E1CE3C4218860FFF74FBE5346C"
+  },
+  {
+    "chunk_index": 242,
+    "week_open_utc": "2023-12-04T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184522,
+    "chunk_hash": "3B0E171EA76CE539F6B4DD652DB2E94613F4B7D56ECD818997C649C42AA1C856"
+  },
+  {
+    "chunk_index": 243,
+    "week_open_utc": "2023-12-11T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184618,
+    "chunk_hash": "58298CCAAABCAE293CF0A28D1E4F99A75257947136820E67C0984DD8A4EB501A"
+  },
+  {
+    "chunk_index": 244,
+    "week_open_utc": "2023-12-18T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184505,
+    "chunk_hash": "86CAF65EE7468029A9FD547D84FAD76DBBB29DC2C3E8AD8BFB4737DDC752E4D9"
+  },
+  {
+    "chunk_index": 245,
+    "week_open_utc": "2023-12-25T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 147882,
+    "chunk_hash": "D4BE31EB64A267375FAA5B4C10D61CD83DE01840AB2133BED7D7BF2EEEFE4B50"
+  },
+  {
+    "chunk_index": 246,
+    "week_open_utc": "2024-01-01T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 149470,
+    "chunk_hash": "6827CD5EF39C69FE5E3A59AD26B3E7233674E01659872AC98737B3F43F1B1A01"
+  },
+  {
+    "chunk_index": 247,
+    "week_open_utc": "2024-01-08T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184981,
+    "chunk_hash": "12E5A2A6D294E2E4B3538C4AB6BC2A4B4A9581FF149BB5442F78E74E60C1000C"
+  },
+  {
+    "chunk_index": 248,
+    "week_open_utc": "2024-01-15T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184300,
+    "chunk_hash": "A3EF3B3705A1819752AFB08F8E2D39AB225DACDCA5564D205B6EBD0E681F1CA9"
+  },
+  {
+    "chunk_index": 249,
+    "week_open_utc": "2024-01-22T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184659,
+    "chunk_hash": "275D452329E83F9BB396E95A4E0C3E3A9F2AC6C420F6FA987C1456096DCC1992"
+  },
+  {
+    "chunk_index": 250,
+    "week_open_utc": "2024-01-29T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184619,
+    "chunk_hash": "6247E38AB61A0E49DDF83EEBBEDFFFCF723DECB082D848A4ABDD75C449782611"
+  },
+  {
+    "chunk_index": 251,
+    "week_open_utc": "2024-02-05T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184587,
+    "chunk_hash": "70E65A5E97181E0BCCFDB44708E9979653A384326D710EBBBDC9FF26DE47A894"
+  },
+  {
+    "chunk_index": 252,
+    "week_open_utc": "2024-02-12T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184181,
+    "chunk_hash": "FB99FEB0CA2A05F61D671C0996CF70BDAED190F75888CF09A0C3AEC480211F01"
+  },
+  {
+    "chunk_index": 253,
+    "week_open_utc": "2024-02-19T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183767,
+    "chunk_hash": "843EFAF916909EF7CB471CA1AF50F93B8A88DE88E75D1018D20AF0E478D84C1C"
+  },
+  {
+    "chunk_index": 254,
+    "week_open_utc": "2024-02-26T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184963,
+    "chunk_hash": "29B3B60E89AD802A958521062BD6318FE81084B83EBB6D8327B9F892AE3CBDC9"
+  },
+  {
+    "chunk_index": 255,
+    "week_open_utc": "2024-03-04T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184934,
+    "chunk_hash": "3166F18DA63144AE36863B9270961D680C47A5C9014B731AC9CA984151E0D4FA"
+  },
+  {
+    "chunk_index": 256,
+    "week_open_utc": "2024-03-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184585,
+    "chunk_hash": "647EF5774ED516D79070FBBB400B1CD5AFB13190DE2A662DF505267206B47EFB"
+  },
+  {
+    "chunk_index": 257,
+    "week_open_utc": "2024-03-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184491,
+    "chunk_hash": "7965DD2F5B21A8916D5AC81AD4E7E0A6885FADAEDF51358AF63AA3EEE839431A"
+  },
+  {
+    "chunk_index": 258,
+    "week_open_utc": "2024-03-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183134,
+    "chunk_hash": "13523141CD7E4A9E186DDBAEFCAB92C700770C32373004816D656B702F143EB2"
+  },
+  {
+    "chunk_index": 259,
+    "week_open_utc": "2024-03-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184151,
+    "chunk_hash": "044E216E5B59FE14C7976890EB601B35D603066A441B2CCD9E88FF7AF36D39F5"
+  },
+  {
+    "chunk_index": 260,
+    "week_open_utc": "2024-04-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184549,
+    "chunk_hash": "8CB006AEAB0E3E2F70885D2A6D50A0D91F44532DE5CAD912F9F46735729BB118"
+  },
+  {
+    "chunk_index": 261,
+    "week_open_utc": "2024-04-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184900,
+    "chunk_hash": "61EC7260A0EA4928892360A3250588AF676E41E847D88DA154A01C59FA52DA1F"
+  },
+  {
+    "chunk_index": 262,
+    "week_open_utc": "2024-04-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184301,
+    "chunk_hash": "83947DFEEFDE35E1AF58E92F68CB39632DA9B2DAB86D2C123FD23311C5D8BB39"
+  },
+  {
+    "chunk_index": 263,
+    "week_open_utc": "2024-04-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184655,
+    "chunk_hash": "38CC2C22DCA11BC015239EDA04265D438EBC74CB06FA6F4ADC6349D74BC0C595"
+  },
+  {
+    "chunk_index": 264,
+    "week_open_utc": "2024-05-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183612,
+    "chunk_hash": "A00972202CE5308C39CB413A14E952364EBDDC2CDD2A44126AEF895CC033F670"
+  },
+  {
+    "chunk_index": 265,
+    "week_open_utc": "2024-05-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183734,
+    "chunk_hash": "2744B90941D1A5BD0EB5FB4DDDA9233F7045510D9ECFC537C3343D74BACCB133"
+  },
+  {
+    "chunk_index": 266,
+    "week_open_utc": "2024-05-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183785,
+    "chunk_hash": "7E182D1B3F15F113F27A9603FD748B1E4204D073DF1C6A25BCD135B33A92FC83"
+  },
+  {
+    "chunk_index": 267,
+    "week_open_utc": "2024-05-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182977,
+    "chunk_hash": "1E132E7052A9B4F79AA2A29FA58595C998216798B2D7BBA3DAC5220AAB06D265"
+  },
+  {
+    "chunk_index": 268,
+    "week_open_utc": "2024-06-02T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184101,
+    "chunk_hash": "66ACDD494A38591DDEAA9AE1244556A64C6B70325F9CB7C44357400FC6C3390D"
+  },
+  {
+    "chunk_index": 269,
+    "week_open_utc": "2024-06-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183629,
+    "chunk_hash": "7EB9958BB664395015AC8FE0B7CA15BFC12247430C38128DBD50EC7C691963A3"
+  },
+  {
+    "chunk_index": 270,
+    "week_open_utc": "2024-06-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182166,
+    "chunk_hash": "078469452FF91B1BC6817A4AD6C51C9658FD798EC9801D3672F00DC0C1EACAC7"
+  },
+  {
+    "chunk_index": 271,
+    "week_open_utc": "2024-06-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183780,
+    "chunk_hash": "E5470DD895E81D9CFD2268C9156B08D875970BB0C95C7F654152C505761617E1"
+  },
+  {
+    "chunk_index": 272,
+    "week_open_utc": "2024-06-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 181799,
+    "chunk_hash": "6E92D0AA784F89B93FEC7B39B98E416C2735927C63C7E70923B7D89C88C47E1E"
+  },
+  {
+    "chunk_index": 273,
+    "week_open_utc": "2024-07-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183374,
+    "chunk_hash": "E643124E3C7A003C7AB4A96CA51E1792DB8ECFF1219EABFD854AB8F96E64A7F0"
+  },
+  {
+    "chunk_index": 274,
+    "week_open_utc": "2024-07-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184158,
+    "chunk_hash": "C4D4721F71A813DF6EC4A27202EFBE8E8D4B728E5DD8534EEB4B959C911010CD"
+  },
+  {
+    "chunk_index": 275,
+    "week_open_utc": "2024-07-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184275,
+    "chunk_hash": "22A61D5841F0D022D9D837E03FFEEA2F6689EB1E0031A0B1583838933E370979"
+  },
+  {
+    "chunk_index": 276,
+    "week_open_utc": "2024-07-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184852,
+    "chunk_hash": "7CC5C80ACD126AF33588F112AEAB27205EFDD8A4A85F0D1639F1E4DDA7895105"
+  },
+  {
+    "chunk_index": 277,
+    "week_open_utc": "2024-08-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184750,
+    "chunk_hash": "B75ABBDD85F2EDB5C43B51E00F51E99999E02C9A9D55B74BAB415415DFA63505"
+  },
+  {
+    "chunk_index": 278,
+    "week_open_utc": "2024-08-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184471,
+    "chunk_hash": "81E2C7EA7D67095E9FEDE99690795689F3819BC6644CAA36CA0127FFC625C18E"
+  },
+  {
+    "chunk_index": 279,
+    "week_open_utc": "2024-08-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184782,
+    "chunk_hash": "9D7072388F14CF3EA20DD3A6EB00C584B1CA92CAB28375B49D8729333B81DB1D"
+  },
+  {
+    "chunk_index": 280,
+    "week_open_utc": "2024-08-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184723,
+    "chunk_hash": "41FF22C65F37827C43466F043E01465ADE3592B50FC6F66B3887C7D8CD2071BB"
+  },
+  {
+    "chunk_index": 281,
+    "week_open_utc": "2024-09-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183426,
+    "chunk_hash": "11C3FFF1738AFE26440A96303E962137ACF437BB827870ADE89C1A0CF0B8D735"
+  },
+  {
+    "chunk_index": 282,
+    "week_open_utc": "2024-09-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184600,
+    "chunk_hash": "66E963E2FF33CA39C5A39E7889515AE2A9A950D14572B071A4F81A1829A0AD8E"
+  },
+  {
+    "chunk_index": 283,
+    "week_open_utc": "2024-09-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184410,
+    "chunk_hash": "5251B34A4FA4DC1D2A48C76F9EDF3886D22960A6DE60258D6FAED8D269998C3F"
+  },
+  {
+    "chunk_index": 284,
+    "week_open_utc": "2024-09-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184751,
+    "chunk_hash": "381915DC247B6A76A4B1B555A0643544DD70D99323DBB74808CD370457B00B26"
+  },
+  {
+    "chunk_index": 285,
+    "week_open_utc": "2024-09-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184702,
+    "chunk_hash": "EF5B4F5A151DC8996E2C9FBAE68F7C256E99E8C3DC42D8AF582F45C8FA5B6599"
+  },
+  {
+    "chunk_index": 286,
+    "week_open_utc": "2024-10-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184872,
+    "chunk_hash": "FD6D3F437BF168D0E396C6E8CC56FF6ACB0E668B8D4B43524E4F5D8C9025FEF5"
+  },
+  {
+    "chunk_index": 287,
+    "week_open_utc": "2024-10-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184816,
+    "chunk_hash": "85E9C39098A1668CF08349F5EF946395DA96084BE77955E6F37019379813E615"
+  },
+  {
+    "chunk_index": 288,
+    "week_open_utc": "2024-10-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184722,
+    "chunk_hash": "4C7D7360A3C56E0F12DFED45F8D01A27290AA96BD86114057FFD71FCE54B3625"
+  },
+  {
+    "chunk_index": 289,
+    "week_open_utc": "2024-10-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184868,
+    "chunk_hash": "8A8E6B9CA25185CF78C4459BD85BFFB16EC06FF7BDB42074B064DD446D73ABBC"
+  },
+  {
+    "chunk_index": 290,
+    "week_open_utc": "2024-11-04T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185052,
+    "chunk_hash": "92D0FE7808185E024139F58B14C0F8CF3F1282F211BEFD9D7D8E3024A0B9A452"
+  },
+  {
+    "chunk_index": 291,
+    "week_open_utc": "2024-11-11T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185191,
+    "chunk_hash": "D9138258B463D69081B29A4B3177B57D556281926A8D7086F9CEF6E6E66E691D"
+  },
+  {
+    "chunk_index": 292,
+    "week_open_utc": "2024-11-18T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184930,
+    "chunk_hash": "5AAA57DA7168C204CA5D4A53F05CEB575B890EE1558E081B31921766A27E2E41"
+  },
+  {
+    "chunk_index": 293,
+    "week_open_utc": "2024-11-25T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184363,
+    "chunk_hash": "7FCF1A6BBF730B9F64C2C0AA1C5755952769FCB736FA3CC2CBE12C1293AFDAA1"
+  },
+  {
+    "chunk_index": 294,
+    "week_open_utc": "2024-12-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184774,
+    "chunk_hash": "2033381EC02364DDA13F7A397423A6FA1D068376DD43F6B1DBCA3C4B49EC7A15"
+  },
+  {
+    "chunk_index": 295,
+    "week_open_utc": "2024-12-09T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185116,
+    "chunk_hash": "9A46EA1FB9A9C69F57C995BEF8AF7A5B6DC003BB8930543C1B275C60D7B0F3F8"
+  },
+  {
+    "chunk_index": 296,
+    "week_open_utc": "2024-12-16T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185180,
+    "chunk_hash": "4BB42F3C131DDBFED06400122C91D129C57FCF435656465087A80F95F1EA9311"
+  },
+  {
+    "chunk_index": 297,
+    "week_open_utc": "2024-12-23T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 142102,
+    "chunk_hash": "0716763892C9899B62CB9517EA45ED31CCE137FD96E4C9B1D692F508A1517DC3"
+  },
+  {
+    "chunk_index": 298,
+    "week_open_utc": "2024-12-30T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 144564,
+    "chunk_hash": "C4756D2939A4C16E09F143AB0C34D41589A124F93D04D777C405ABF8FA615FD1"
+  },
+  {
+    "chunk_index": 299,
+    "week_open_utc": "2025-01-06T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184925,
+    "chunk_hash": "B172291DA74205F7D3C32A8EC9F3B28020F0B7C86CCAE00AF8B24154497D2BC3"
+  },
+  {
+    "chunk_index": 300,
+    "week_open_utc": "2025-01-13T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185116,
+    "chunk_hash": "7209A92F150C718BC6FECDC0EF5C9C18F670872F4E19E4411134FB36175E06AC"
+  },
+  {
+    "chunk_index": 301,
+    "week_open_utc": "2025-01-20T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185147,
+    "chunk_hash": "F273906AB17A7ADABD482F04CC012922A0CAF05401564571C77823476FAC5CF8"
+  },
+  {
+    "chunk_index": 302,
+    "week_open_utc": "2025-01-27T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185041,
+    "chunk_hash": "D92FE6446EAA361D3A2A973565DAC1A43019946D96A71AB6257B6D6382267C26"
+  },
+  {
+    "chunk_index": 303,
+    "week_open_utc": "2025-02-03T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184975,
+    "chunk_hash": "5A8A1EA7D132E53D18AD8CF599274FC51634CFDA58A3567ECE80FE6802CD84C0"
+  },
+  {
+    "chunk_index": 304,
+    "week_open_utc": "2025-02-10T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185080,
+    "chunk_hash": "996E61D61FA5E0EACA8CAFB80DB590607A00241C1BF680E7DEF78DF5D01A7FA3"
+  },
+  {
+    "chunk_index": 305,
+    "week_open_utc": "2025-02-17T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184867,
+    "chunk_hash": "AE6264E3878632DE4795BB5D195659535E1036F9AAB78D47045ADEFAD47EE793"
+  },
+  {
+    "chunk_index": 306,
+    "week_open_utc": "2025-02-24T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184982,
+    "chunk_hash": "22A3BBF08F4D5A0A891C8FB4F5E4E5529EFD4482E4E65758D920A3F3C123A587"
+  },
+  {
+    "chunk_index": 307,
+    "week_open_utc": "2025-03-03T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185134,
+    "chunk_hash": "D61295B545CB5574B8D9DFBE4B7B44C139ECBE0BF583F4E7261CDD41C101E624"
+  },
+  {
+    "chunk_index": 308,
+    "week_open_utc": "2025-03-09T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184699,
+    "chunk_hash": "F8392D889D2593DA3BAD865C9B13BBE20628AE8B459179E9D6C63C69126C2DBB"
+  },
+  {
+    "chunk_index": 309,
+    "week_open_utc": "2025-03-16T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184383,
+    "chunk_hash": "EEA97BF07B723B8536DE4776206ADF64944722F8A4680D8901A7BC3430502CF7"
+  },
+  {
+    "chunk_index": 310,
+    "week_open_utc": "2025-03-23T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184671,
+    "chunk_hash": "33B9FABFDB9751B2A6A06462F8D76296AD9C2E3AD669D7243069AFFA50C2244C"
+  },
+  {
+    "chunk_index": 311,
+    "week_open_utc": "2025-03-30T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184289,
+    "chunk_hash": "1013DA20C99D2F0642616367CD59801D58AD7719F9501C4DAAF48E86286C5403"
+  },
+  {
+    "chunk_index": 312,
+    "week_open_utc": "2025-04-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183796,
+    "chunk_hash": "EC933A82E6C19CF39209A3FE78156FA1629D43A9BC189B64BD831EEC8847ACBB"
+  },
+  {
+    "chunk_index": 313,
+    "week_open_utc": "2025-04-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183416,
+    "chunk_hash": "D58DEADD915E7919BC1328FAEF73CD73A7DB3154B02B4C90071D49FA77566D7C"
+  },
+  {
+    "chunk_index": 314,
+    "week_open_utc": "2025-04-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184499,
+    "chunk_hash": "39E81FF0A0965A6107D9F95A2779AAE0C19A42366F390A8C68E8A1CBD0E71E8E"
+  },
+  {
+    "chunk_index": 315,
+    "week_open_utc": "2025-04-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184291,
+    "chunk_hash": "58DAD2DDB88C81FD133A2CE0D0E83F84CF84F82A84EF9221ADB9C481E0338BBA"
+  },
+  {
+    "chunk_index": 316,
+    "week_open_utc": "2025-05-04T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184177,
+    "chunk_hash": "679E4D16F82EBB1470FE903B1A45070CE9F4466AE757BAF683881C06B49C2B87"
+  },
+  {
+    "chunk_index": 317,
+    "week_open_utc": "2025-05-11T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184800,
+    "chunk_hash": "A94AFE4FCFBE5CF5B862419BF60357E7C3B8C7645B8734DFA346B31F822CDFC5"
+  },
+  {
+    "chunk_index": 318,
+    "week_open_utc": "2025-05-18T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184835,
+    "chunk_hash": "017410389B4E5AA6D0FFDA219568C35CC74992747CEB3B287CF0628B133637EE"
+  },
+  {
+    "chunk_index": 319,
+    "week_open_utc": "2025-05-25T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184001,
+    "chunk_hash": "601C900BE6AE90C1A328B027BA7F5DA26D1263360FCD56C6C838D627D693CEA4"
+  },
+  {
+    "chunk_index": 320,
+    "week_open_utc": "2025-06-01T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184611,
+    "chunk_hash": "BDDF8163A358D538E050BF35DA2FFB358E163A187770B30ADC6C9999796E3F75"
+  },
+  {
+    "chunk_index": 321,
+    "week_open_utc": "2025-06-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184363,
+    "chunk_hash": "C3C8CA567B98D0D7780730E8AC0905CEC6BDFA53296E420EB4FEDD3C232B0A2B"
+  },
+  {
+    "chunk_index": 322,
+    "week_open_utc": "2025-06-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184428,
+    "chunk_hash": "749DB105CBBAAEA2651035761905406FBB415C70C0EAC43D368198D61598509B"
+  },
+  {
+    "chunk_index": 323,
+    "week_open_utc": "2025-06-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184183,
+    "chunk_hash": "BD22A08006FFD809A6954CEB6EB0C8355762029C8F9F5983BEE0A5BB5399A0C0"
+  },
+  {
+    "chunk_index": 324,
+    "week_open_utc": "2025-06-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184248,
+    "chunk_hash": "CDF0442F96DC9AD027D44E15EA66A4DA0F18E7DEF055B7BAF853783B0452B35F"
+  },
+  {
+    "chunk_index": 325,
+    "week_open_utc": "2025-07-06T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183769,
+    "chunk_hash": "80EF417D5E626EDEC427A7ABCF4A8DA9F3C98464A7F0E17B6328BB8147C713FE"
+  },
+  {
+    "chunk_index": 326,
+    "week_open_utc": "2025-07-13T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183374,
+    "chunk_hash": "C28AC7110B427B735A10BF4E8C31D3E828D4F653AC7C68E370C15A9680A83D8E"
+  },
+  {
+    "chunk_index": 327,
+    "week_open_utc": "2025-07-20T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183666,
+    "chunk_hash": "0E590F54929B19AE840093DE076D5371420A5A59532A21DC3D840B7346ECA135"
+  },
+  {
+    "chunk_index": 328,
+    "week_open_utc": "2025-07-27T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183961,
+    "chunk_hash": "EFB84851098027E16062533844BA87E9249812D7E629A6B0402173D0008D10B1"
+  },
+  {
+    "chunk_index": 329,
+    "week_open_utc": "2025-08-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184120,
+    "chunk_hash": "459381AF9DC74D4DA3BC155BBBA1E6572488CFF5E10E530ADC1A3793CD1773EE"
+  },
+  {
+    "chunk_index": 330,
+    "week_open_utc": "2025-08-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183462,
+    "chunk_hash": "D55A4EF626473685237E9D0ABDB788DBEF0369392F353F7BDC2FBEF89C77C9D4"
+  },
+  {
+    "chunk_index": 331,
+    "week_open_utc": "2025-08-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184114,
+    "chunk_hash": "B1543A35775C3D1C94B3C5EF33809056584A9FDA4973DCE8ADAB81AF4BC433F5"
+  },
+  {
+    "chunk_index": 332,
+    "week_open_utc": "2025-08-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183965,
+    "chunk_hash": "B68002B74593EF3CCE181016A6C3CE066452F6592D72057B082EC8877EA62C84"
+  },
+  {
+    "chunk_index": 333,
+    "week_open_utc": "2025-08-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182793,
+    "chunk_hash": "4592779AA18D0E11E4BCE242A3DB228C4871031FF09A26348F6F61ABB7377B5C"
+  },
+  {
+    "chunk_index": 334,
+    "week_open_utc": "2025-09-07T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184071,
+    "chunk_hash": "0071C40441C3BA3259B3D53588AB50152B636D602E8A1AA0A86FE99E9197A62B"
+  },
+  {
+    "chunk_index": 335,
+    "week_open_utc": "2025-09-14T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183949,
+    "chunk_hash": "84748F85EB788C46905EF98E981C85BFCCB61C69DFD40CD3428D0BE0002380D1"
+  },
+  {
+    "chunk_index": 336,
+    "week_open_utc": "2025-09-21T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184165,
+    "chunk_hash": "591DA28A324925ED45203215C9205EA2654A132C948F24B9DFA95A591B3EA7C0"
+  },
+  {
+    "chunk_index": 337,
+    "week_open_utc": "2025-09-28T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183633,
+    "chunk_hash": "50CFC6D18C69FDCF3856092DF3DA05A3E1D14595DDFBD844C405CF52BC6487F1"
+  },
+  {
+    "chunk_index": 338,
+    "week_open_utc": "2025-10-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184281,
+    "chunk_hash": "8FA3ABD301140A7F5228E0F6DD96AD5F26E4AD7D93096CC3A2A1D78E73571FB9"
+  },
+  {
+    "chunk_index": 339,
+    "week_open_utc": "2025-10-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184696,
+    "chunk_hash": "78FEE97812455709228A204789D47A64826EEE134C36E7D01CDDA621810FD4A5"
+  },
+  {
+    "chunk_index": 340,
+    "week_open_utc": "2025-10-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184513,
+    "chunk_hash": "CF40EB068004F5D77C7F0AD1BE81982C659344F764AAC06564F36E0D39173F7C"
+  },
+  {
+    "chunk_index": 341,
+    "week_open_utc": "2025-10-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184872,
+    "chunk_hash": "7584FDA4E16AE44B7860529FEC932ABF774C65FEDB7F7FD6A21BF7F6D1A7DE7B"
+  },
+  {
+    "chunk_index": 342,
+    "week_open_utc": "2025-11-03T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184835,
+    "chunk_hash": "0654B6CC8FD2EBA9BBAC4CA8663C6B75C247CFA98E599F18786810FFB0101FF2"
+  },
+  {
+    "chunk_index": 343,
+    "week_open_utc": "2025-11-10T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184957,
+    "chunk_hash": "3A94B497D447AFB49B5E6802D76004C8F066019CB0D15AECD896BA511E748298"
+  },
+  {
+    "chunk_index": 344,
+    "week_open_utc": "2025-11-17T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185298,
+    "chunk_hash": "DD27B210F83E47C6EBDE08DE2D6022748FE3D4252F98A42C11908AFDB990A529"
+  },
+  {
+    "chunk_index": 345,
+    "week_open_utc": "2025-11-24T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183898,
+    "chunk_hash": "01BAB044BEA5646538C3B2BE38E7E06BA7B9CBCFE9E3654F3D90A718870BF0F2"
+  },
+  {
+    "chunk_index": 346,
+    "week_open_utc": "2025-12-01T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184468,
+    "chunk_hash": "769A559FC6F52358705544DD88A41CDB197BEC07BA82B64388E8255564B85F4B"
+  },
+  {
+    "chunk_index": 347,
+    "week_open_utc": "2025-12-08T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185071,
+    "chunk_hash": "77FBE9D27E728C5A980E628D5E95784308005F2FE5B6EAEEFA5C44CB8D32B7BB"
+  },
+  {
+    "chunk_index": 348,
+    "week_open_utc": "2025-12-15T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184969,
+    "chunk_hash": "F351748207B8ACCE7DC031D740D0F221EC69B24D73FB82D01ED33B6536E9521C"
+  },
+  {
+    "chunk_index": 349,
+    "week_open_utc": "2025-12-22T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 144368,
+    "chunk_hash": "52BCB0ABB95E29AF61F0F8866EA9620235C22DC5B8FF92A45A31AF7080CFB38C"
+  },
+  {
+    "chunk_index": 350,
+    "week_open_utc": "2025-12-29T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 144124,
+    "chunk_hash": "A60A929FA8DF49F7D57315430835BD3D91272986F03566DDF12A8C958B8DB19B"
+  },
+  {
+    "chunk_index": 351,
+    "week_open_utc": "2026-01-05T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184630,
+    "chunk_hash": "782100B54153BD0F91906B483EDA01894221350F33E7B71587C8C23E452A9635"
+  },
+  {
+    "chunk_index": 352,
+    "week_open_utc": "2026-01-12T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184642,
+    "chunk_hash": "6C932BD23AA6E64150A3D7FF6BBFECBE0D71A78A423AB363EDE8D0D96170F67D"
+  },
+  {
+    "chunk_index": 353,
+    "week_open_utc": "2026-01-19T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184405,
+    "chunk_hash": "F63A73E708782BFCCBE90E3EECF9A39B16350D6ACED9D216501AE553E566FB2E"
+  },
+  {
+    "chunk_index": 354,
+    "week_open_utc": "2026-01-26T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185495,
+    "chunk_hash": "3B1EC9E907A330AEE235BF78BFCD73EC7ABF47466A1979DDAED236792712AC6F"
+  },
+  {
+    "chunk_index": 355,
+    "week_open_utc": "2026-02-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185579,
+    "chunk_hash": "DC9EB5DC0F538144E8FDDA84C244FABC19BCBCDD4C3C52EA6FF1B8A2FD2DF3D0"
+  },
+  {
+    "chunk_index": 356,
+    "week_open_utc": "2026-02-09T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185218,
+    "chunk_hash": "ECB48D5A960D3DB5ADC8B0E50D2BE11054F05EECC026767536A7CC3BFC1B4DC3"
+  },
+  {
+    "chunk_index": 357,
+    "week_open_utc": "2026-02-16T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183534,
+    "chunk_hash": "9F8772D2699A72AFE35EE50B05FCB447745CF1B09637F09ED904EF248928D78D"
+  },
+  {
+    "chunk_index": 358,
+    "week_open_utc": "2026-02-23T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185050,
+    "chunk_hash": "AB5318AE341784F5FCB2D74024B0E99B8CE21A3A9A3B2AF3A5315B209F006D34"
+  },
+  {
+    "chunk_index": 359,
+    "week_open_utc": "2026-03-02T00:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185583,
+    "chunk_hash": "2162D970CC35BD4E0F81898BE1BCED4BF8C8DBF568AD3D655DBD91007505734A"
+  },
+  {
+    "chunk_index": 360,
+    "week_open_utc": "2026-03-08T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185322,
+    "chunk_hash": "37863FCDB43C626FE64323B8F286CF4B79B270954BCA28E92EE641FC2C47C2DF"
+  },
+  {
+    "chunk_index": 361,
+    "week_open_utc": "2026-03-15T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185092,
+    "chunk_hash": "4EA5033C31AA059CD1FDABF5D5D0018E8E9C2E0177BFC8657A39A5F0A3473F81"
+  },
+  {
+    "chunk_index": 362,
+    "week_open_utc": "2026-03-22T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 185394,
+    "chunk_hash": "88B28535FB6641F1794117FB7FC8CDF065F32CFC0D1D692A5372246020DDD425"
+  },
+  {
+    "chunk_index": 363,
+    "week_open_utc": "2026-03-29T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 183731,
+    "chunk_hash": "C12EE6F822C6D9522D541B6E2CCD27BD62BD46148D527D41981B3334557746BB"
+  },
+  {
+    "chunk_index": 364,
+    "week_open_utc": "2026-04-05T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184945,
+    "chunk_hash": "BBE8E921CCFD5F7BE898F2A3B2C68570F63FCC70DE92FD278F366CBE5938026E"
+  },
+  {
+    "chunk_index": 365,
+    "week_open_utc": "2026-04-12T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184278,
+    "chunk_hash": "AB5F40DD3B11AAF8B3175107C73D7364FA3FF4D38535C67CBACC257466FDF89D"
+  },
+  {
+    "chunk_index": 366,
+    "week_open_utc": "2026-04-19T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184400,
+    "chunk_hash": "82BB1744885DBFBFBC81BC2F5552A48444A5DD5A4EA232D5B8F12306B8BBEF33"
+  },
+  {
+    "chunk_index": 367,
+    "week_open_utc": "2026-04-26T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184084,
+    "chunk_hash": "A64734EAB86D5AB4D07D7F2126F360FA76D2ADA362801AEB6B6FBBF2D01050F6"
+  },
+  {
+    "chunk_index": 368,
+    "week_open_utc": "2026-05-03T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184625,
+    "chunk_hash": "1F823976A0CE59A72A07C761CC0B6552F2EC4A2412C743A728F3D237E9AF3716"
+  },
+  {
+    "chunk_index": 369,
+    "week_open_utc": "2026-05-10T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184327,
+    "chunk_hash": "D1E7EB98BAE0A224AB1D305FDEC2FC4409EE7EAB7ED20439D9FB58BD301BFE09"
+  },
+  {
+    "chunk_index": 370,
+    "week_open_utc": "2026-05-17T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184799,
+    "chunk_hash": "78985DD68DD0D6B392975A8D4D265A1BA1A6BF4DF289F605D3044B5D121F9210"
+  },
+  {
+    "chunk_index": 371,
+    "week_open_utc": "2026-05-24T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 182983,
+    "chunk_hash": "89415769CD39ABCAC9F18CC19109A19649149D18B61E615EA84E54B7A6C92792"
+  },
+  {
+    "chunk_index": 372,
+    "week_open_utc": "2026-05-31T23:00:00.000Z",
+    "pair_week_count": 28,
+    "path_point_count": 184377,
+    "chunk_hash": "1B973BC74E66546DF5DF6322A4C15D73695FCA0F3967E47B8129263BE37EEE70"
+  }
+]

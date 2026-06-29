@@ -8,11 +8,11 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 74A:
-trade-leg-path-warehouse-protocol-freeze.
+Latest completed gate: Gate 74B:
+trade-leg-path-materialization.
 
-Objective completed: freeze the policy-neutral trade-leg path warehouse
-contract before materialization or replay.
+Objective completed: materialize the policy-neutral Candidate B trade-leg path
+warehouse from the frozen Gate 74A protocol.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -33,10 +33,23 @@ Gate 74 current state:
   depend on unresolved ambiguity.
 - Gate 74A keeps close-profitable / hold-unresolved-until-flip as a replay
   adapter idea only, not a base warehouse design.
-- Gate 74A did not build the warehouse, replay policies, optimize exits, start
-  risk, touch MT5/live/runtime, mutate sources, or mutate Brain truth.
-- Gate 74B remains the next closed scope: materialize the policy-neutral
-  trade-leg path base warehouse only if Freedom explicitly opens it.
+- Gate 74B materialized the base trade-leg path warehouse:
+  `gate74b_trade_leg_path_ECDE7C4A6553`.
+- Gate 74B warehouse hash:
+  `36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC`.
+- Gate 74B stores one compressed columnar payload per Candidate B pair-week, with
+  pair-week path hashes, week chunk hashes, and a warehouse hash. The bulky path
+  data lives in the database warehouse, not in git.
+- Gate 74B materialized `373` weeks, `10,444` pair-week rows, `67,650,431`
+  logical path points, and `373` chunks.
+- Gate 74B reconstruction audit matched Gate 71B-M basket Friday closes with
+  `0` mismatches over `0.0001` ADR.
+- Gate 74B had `0` missing price pair-weeks, `10,444` strict partial coverage
+  pair-weeks, and `270` default ADR pair-weeks. Strict partial coverage means
+  the actual local M1 rows are less than a continuous Sunday-to-Friday minute
+  count; it is visible evidence, not a replay policy.
+- Gate 74B did not run replay policies, test fixed ADR targets, optimize exits,
+  start risk, touch MT5/live/runtime, mutate sources, or mutate Brain truth.
 
 Gate 73 reference:
 
@@ -96,6 +109,7 @@ Gate 73/74 commands:
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
 - `npm run engine:gate73c:direction-continuation-lifecycle`
 - `npm run engine:gate74a:trade-leg-path-warehouse-protocol-freeze`
+- `npm run engine:gate74b:trade-leg-path-materialization`
 
 Current verdicts:
 
@@ -107,6 +121,8 @@ Current verdicts:
   `PASS_GATE73C_DIRECTION_CONTINUATION_LIFECYCLE__PERSISTENCE_AND_COST_SENSITIVITY_VISIBLE`
 - Gate 74A:
   `PASS_GATE74A_TRADE_LEG_PATH_WAREHOUSE_PROTOCOL_FREEZE__POLICY_NEUTRAL_PRIMITIVES_ONLY`
+- Gate 74B:
+  `PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY`
 
 Gate 72 reference:
 
@@ -184,10 +200,10 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 74A unless Freedom explicitly opens the next gate.
+Stop after Gate 74B unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 74B trade-leg path warehouse materialization, Gate 74C
-replay adapter sanity pack, Gate 74D no-drift review, risk/portfolio expression
+Do not proceed to Gate 74C replay adapter sanity pack, Gate 74D no-drift
+review, risk/portfolio expression
 matrix, final exit promotion, final algorithm naming/branding, Alpha v2
 promotion, risk overlays, pair-specific exits, regime-specific exits, fair-value
 pruning, execution, MT5/live, app/runtime work, source mutation, COT retuning,
@@ -211,6 +227,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate74b/GATE74B_TRADE_LEG_PATH_MATERIALIZATION_2026-06-29.md`
 
 `docs/research/gates/gate74a/GATE74A_TRADE_LEG_PATH_WAREHOUSE_PROTOCOL_FREEZE_2026-06-29.md`
 

@@ -1,0 +1,12 @@
+gate_id Gate 74B: trade-leg-path-materialization
+command npm run engine:gate74b:trade-leg-path-materialization
+generated_at 2026-06-29T04:06:30.688Z
+git_commit a7c86dee7da8abfe75e77841dfdc26bb1c9049cf
+summary_json 8691C81023379027CB52D556BDC22FA3789C5B2AA4AE904546718EB94FDB7738 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/gate74b-summary.json
+schema_receipt 6F5438DE00620FE8EC672564F9E85736E68CE6760C270F0EC6E614EC4A11A72B docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/schema-receipt.json
+missing_partial_report AC2C2EA09F79E67C8374088F49DD3A21FB454853B144A66FC2DC80FEC34EDE35 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/missing-partial-report.json
+row_counts 12209D0E46DD92E404854EFD313264A53F7F98676A2AFE428C1A41AA418CCC06 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/row-counts.json
+chunk_hashes 81FC8A6D2DE780A8107D4D0A2117663CF0462743C38FD9E994E2672BBCB88367 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/chunk-hashes.json
+sample_reconstruction_audit D762F9ACF894A5D1BE64CB15E2D02DAB76F9B924C3A50FA056C5811BEE841D59 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/sample-reconstruction-audit.json
+no_policy_fields_audit 10670C751BDF22F9E782A6933FFD7060C4065D3632651088D6BE1CEB4DBA99A7 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/no-policy-fields-audit.json
+report 6B87AB9CFAC0FB17E7D6E2798BC5AA383DC334CCFB389C9A831E57FE71F14777 docs/research/gates/gate74b/GATE74B_TRADE_LEG_PATH_MATERIALIZATION_2026-06-29.md
