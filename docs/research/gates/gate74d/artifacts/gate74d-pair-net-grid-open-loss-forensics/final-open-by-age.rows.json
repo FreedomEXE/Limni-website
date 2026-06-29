@@ -1,0 +1,233 @@
+[
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 7,
+    "final_open_unrealized_adr": -4.58841,
+    "content_hash": "F6A3CA8147ADE2B1539454C5B381BBBC5218AC9ED4589847872217B381CB2448"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 9,
+    "final_open_unrealized_adr": 0.764085,
+    "content_hash": "FB1A9CE948FAC8282A4FD3A526A5C5467077D2080B6344AB7BED42E05D982094"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "age_bucket": "3m_to_6m",
+    "final_open_cycles": 4,
+    "final_open_unrealized_adr": -17.175578,
+    "content_hash": "928F87B2244DAD8882594CFEDE9BB0C47A64B7D27B8EDF84DC673DF11C4792D9"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 8,
+    "final_open_unrealized_adr": -76.168397,
+    "content_hash": "31768AD894586EDD1AF19310FC5AA50C42E221972EB750E2AF47C406D3F4D32C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1d_to_1w",
+    "final_open_cycles": 4,
+    "final_open_unrealized_adr": -23.560017,
+    "content_hash": "9D472A12A2F6ABB668AFABDDAE7CA1E3E6FC76FAF816EB5CB17BB0627E5428A5"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 3,
+    "final_open_unrealized_adr": -137.341102,
+    "content_hash": "7D54BDCBA66AF449BE0F900AE8DC9A2F42110D1E15FDC502186CDD3D961DED04"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 6,
+    "final_open_unrealized_adr": -108.66963,
+    "content_hash": "05E123E94B056F2E006B2C5165DCAA9FB2B2086409B39364DC2039501D808325"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "3m_to_6m",
+    "final_open_cycles": 1,
+    "final_open_unrealized_adr": -296.32475,
+    "content_hash": "534B6B0E6076ABB504F59D188B2AA1F58E601B46FE4CFC81AEF1A2388EB81F00"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -5017.013076,
+    "content_hash": "D2C8D3FA345ADD24483634FF23154724692A9BAD355B0BDB48BC039B9593B255"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "lt_1d",
+    "final_open_cycles": 12,
+    "final_open_unrealized_adr": -11.463364,
+    "content_hash": "737A8E2976B3C2DC0C3A12E5992FD9D96BDA9B5E50DDDDA1603A54A9564E6CE5"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "age_bucket": "1d_to_1w",
+    "final_open_cycles": 6,
+    "final_open_unrealized_adr": -31.500244,
+    "content_hash": "6BDCF3DF2F571933EB5C9FF83CBEA77E0790E45702D087B15504572EF255D1D8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 3,
+    "final_open_unrealized_adr": -171.059847,
+    "content_hash": "82F5FE658CD66C13CBDE9C48A2D2637B35293553E798A1025D5FC94682972606"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 5,
+    "final_open_unrealized_adr": -92.971738,
+    "content_hash": "DB376A93E1323729D161CA55678B7AA33DC0BEC37A358456E8C96887FEFF0735"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -6744.428394,
+    "content_hash": "44063C9E9FDD29A5BC8A52FDE01ED2BF6FEA74ABEDAB17FE9DE39CFA7883D340"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "age_bucket": "lt_1d",
+    "final_open_cycles": 12,
+    "final_open_unrealized_adr": -7.249314,
+    "content_hash": "036F09560A183294BE124FF0F89FDF413AEF9E618A99B5CB064422A0DDF34336"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1d_to_1w",
+    "final_open_cycles": 5,
+    "final_open_unrealized_adr": -22.99024,
+    "content_hash": "2184B4D4A99408A4DF8BA2DC1CDE68D8EB20E8C8DB729C18D68EF8CC9EF7C5E9"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 3,
+    "final_open_unrealized_adr": -136.644352,
+    "content_hash": "CBD7B2BEA1B458EBBD33662AE2C9C591F37D57C58D88D2D700DFAD723E27D87A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 8,
+    "final_open_unrealized_adr": -140.142997,
+    "content_hash": "D2A8CA553A0C0B735CAFBD88C61D2F2498A69257BC53F8E48C63171F5B2DADC1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "3m_to_6m",
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -1081.170407,
+    "content_hash": "C71BCAE7CE4F43AF8C093E2210BEFC9581A7A5276CA226930C1C44884C32A7FA"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 1,
+    "final_open_unrealized_adr": -3099.046979,
+    "content_hash": "FD8E0890947A078A5FEB21E33D1F5A466FF1120D10E6DF41D4AC8108C89C11FC"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "lt_1d",
+    "final_open_cycles": 9,
+    "final_open_unrealized_adr": -0.161631,
+    "content_hash": "BDEAD235DA0CDACB68893990CC3D1D7E61DDBBF3B8FD99DCAC73201DF883BDB4"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "1d_to_1w",
+    "final_open_cycles": 5,
+    "final_open_unrealized_adr": -12.912419,
+    "content_hash": "D83FA9FEE088788AB555971429CCD5A70EDB3BF7B46B0C30EDE2BE15CAC49995"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 4,
+    "final_open_unrealized_adr": -126.815943,
+    "content_hash": "51D69214A20FD65EDFCBD3D4772017AC6C3E8E4CA0671D56FE0FB73D7849D713"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 8,
+    "final_open_unrealized_adr": -99.32384,
+    "content_hash": "E42F82A23EF3F70B468FEC900DE4EB62E3A0EBA38663BB6BCB59379A2BD8630D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "3m_to_6m",
+    "final_open_cycles": 1,
+    "final_open_unrealized_adr": -228.31819,
+    "content_hash": "EE669B187DA9FB99B1629FE32B26015F58C92711C07207E8CDF09198ED51236B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -3948.509139,
+    "content_hash": "CB6147E0C07CDCF9CACCAFC4E9849CC894353288727561ECFE32658874FFBF1B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "age_bucket": "lt_1d",
+    "final_open_cycles": 8,
+    "final_open_unrealized_adr": 1.165282,
+    "content_hash": "A11DB78D86956928FE073931ECBFFD0091620E9435D9EC0AAF4C4D1EE7619C13"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1d_to_1w",
+    "final_open_cycles": 5,
+    "final_open_unrealized_adr": -24.801834,
+    "content_hash": "6F12596C5DECF6026000A5A89DFB86949A99148B6B6C5031AB19262B89989753"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1m_to_3m",
+    "final_open_cycles": 3,
+    "final_open_unrealized_adr": -142.908373,
+    "content_hash": "3F3B120645225714EA452B89F54FDF64E1A6574D02A1270C0504AB34B7E17E61"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "1w_to_1m",
+    "final_open_cycles": 7,
+    "final_open_unrealized_adr": -123.386773,
+    "content_hash": "95E97888CDB3AEE79F9F4598F7430AA42C75E270A3BF7C3EBF4F5971D39D4C6D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "3m_to_6m",
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -1046.289865,
+    "content_hash": "CA3E6588982E1CE8CA6B4D5D96A1632CD6C5DCA86A84515E266098987791B12D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "gt_6m",
+    "final_open_cycles": 1,
+    "final_open_unrealized_adr": -2968.168281,
+    "content_hash": "A67A98C6AF234DED2289AA007784E2784EAD3ECAFD32602A1B54E0D8F53E83A8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "age_bucket": "lt_1d",
+    "final_open_cycles": 10,
+    "final_open_unrealized_adr": 1.045736,
+    "content_hash": "C8046B53F9B3E1A477EE3774E2E55150D43CD2C780CC2A0AF7D060FA6662E84A"
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "drawdown_start_week_open_utc": "2023-12-25T00:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "peak_equity_adr": 709.876777,
+    "trough_equity_adr": 468.893289,
+    "drawdown_adr": -116.795157,
+    "content_hash": "8A59A0A0F259EEE40C7F7429AC8C3BC5CA04EE081A63E331C770D638659C0639"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-04-06T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "peak_equity_adr": 764.550063,
+    "trough_equity_adr": 597.519846,
+    "drawdown_adr": -167.030217,
+    "content_hash": "EB854F95549492F15F30A1857969BA5FB50A37E5D5C6F16532306DA2BCF7DCA1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 15082.315762,
+    "trough_equity_adr": 7238.084805,
+    "drawdown_adr": -7844.230957,
+    "content_hash": "A8DA7093869BB20EE2676EDE3EDD4E39E7F34D510DDCCDEA24E55E64B4F388CD"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 14735.376222,
+    "trough_equity_adr": 9272.831091,
+    "drawdown_adr": -5462.545131,
+    "content_hash": "1227E5BC6E43DC6D660CC4D1F5FAA3B4659720E2464CEC72355E41322C783916"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 14673.337405,
+    "trough_equity_adr": 8506.527457,
+    "drawdown_adr": -6166.809948,
+    "content_hash": "7E63188A7E02CAB61F08B05594971191C6906C131F04386CA9D3CCD3C79B2109"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 19147.290217,
+    "trough_equity_adr": 9645.1492,
+    "drawdown_adr": -9502.141017,
+    "content_hash": "35C8D34C72BF795586A8968C363B98FDDFCFE5D3039E91FE7A77A9227B1F7658"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 12188.197407,
+    "trough_equity_adr": 6127.205177,
+    "drawdown_adr": -6060.99223,
+    "content_hash": "840006BC5DB2F4F8B65F87AB12D6CD9DAE1048988604AF60B841C3C9A226044E"
+  }
+]

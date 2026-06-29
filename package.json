@@ -84,6 +84,7 @@
     "engine:gate74a:trade-leg-path-warehouse-protocol-freeze": "tsx engine/scripts/verification/build-gate74a-trade-leg-path-warehouse-protocol-freeze.ts",
     "engine:gate74b:trade-leg-path-materialization": "tsx engine/scripts/verification/build-gate74b-trade-leg-path-materialization.ts",
     "engine:gate74c:gross-replay-adapter-sanity-pack": "tsx engine/scripts/verification/build-gate74c-gross-replay-adapter-sanity-pack.ts",
+    "engine:gate74d:pair-net-grid-open-loss-forensics": "tsx engine/scripts/verification/build-gate74d-pair-net-grid-open-loss-forensics.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

@@ -8,11 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 74C:
-gross-replay-adapter-sanity-pack.
+Latest completed gate: Gate 74D:
+pair-net-grid-open-loss-forensics.
 
-Objective completed: run a gross-only replay adapter sanity pack from the frozen
-Gate 74B trade-leg path warehouse.
+Objective completed: decompose unresolved open-loss inventory, drawdown,
+flip-loss, recovery, and narrow robustness for the Gate 74C pair net-grid
+lifecycle family.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -66,6 +67,27 @@ Gate 74 current state:
 - Gate 74C finding: pair net-grid lifecycle has gross replay edge under the
   tested close-mark adapter semantics, but open-loss/drawdown scale is large.
   This is discovery evidence only, not promotion.
+- Gate 74D replayed `2` controls and `5` lifecycle/robustness rules across
+  `373` weeks and `28` pairs from the Gate 74B warehouse, with no raw M1
+  rebuild.
+- Gate 74D parity guard matched Gate 74C for the focus adapter
+  `PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP`.
+- Gate 74D focus adapter remained `14381.312614` closed ADR and `9901.156008`
+  final equity ADR, with equity PF `1.254319`, equity max drawdown
+  `-5462.545131` ADR, and final open unrealized `-4480.156606` ADR.
+- Gate 74D finding: the lifecycle harvest engine is real, but survivability is
+  dominated by a small unrecovered tail. For the focus adapter, `28456`
+  negative cycles produced a `0.967986` target-recovery rate, while `616`
+  flip-loss cycles lost `-10815.950986` ADR.
+- Gate 74D final open inventory for the focus adapter was highly concentrated:
+  `AUDNZD` ended at `-3099.046979` ADR, `AUDJPY` at `-791.32201`, and `GBPAUD`
+  at `-289.848397`.
+- Gate 74D max drawdown trough was the week opened `2026-05-10T23:00:00.000Z`.
+  The largest pair contributors from the peak-to-trough window were `AUDNZD`
+  `-3560.00976`, `CHFJPY` `-1194.488678`, and `AUDJPY` `-739.32395` ADR.
+- Gate 74D narrow robustness read: `0.75/0.15` harvested more closed ADR but
+  worsened open loss and drawdown; `0.75/0.25` reduced fill depth but gave up
+  too much equity. Do not promote `0.75/0.2`.
 
 Gate 73 reference:
 
@@ -127,6 +149,7 @@ Gate 73/74 commands:
 - `npm run engine:gate74a:trade-leg-path-warehouse-protocol-freeze`
 - `npm run engine:gate74b:trade-leg-path-materialization`
 - `npm run engine:gate74c:gross-replay-adapter-sanity-pack`
+- `npm run engine:gate74d:pair-net-grid-open-loss-forensics`
 
 Current verdicts:
 
@@ -142,6 +165,8 @@ Current verdicts:
   `PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY`
 - Gate 74C:
   `PASS_GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK__PAIR_GRID_LIFECYCLE_VISIBLE_NO_PROMOTION`
+- Gate 74D:
+  `PASS_GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS__UNRESOLVED_INVENTORY_AND_DRAWDOWN_ANATOMY_VISIBLE`
 
 Gate 72 reference:
 
@@ -219,16 +244,16 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 74C unless Freedom explicitly opens the next gate.
+Stop after Gate 74D unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 74D no-drift review, cost validation, account-level equity
-exit policies, fixed ADR spacing matrix, risk/portfolio expression matrix, final
-exit promotion, final algorithm naming/branding, Alpha v2 promotion, risk
-overlays, pair-specific pruning, regime-specific exits, fair-value pruning,
-execution, MT5/live, app/runtime work, source mutation, COT retuning, Strength
-retuning, Regime retuning, broad source consolidation, optimized threshold
-search, learned weights, pair/date exclusions, P&L attribution, or live trading
-unless Freedom explicitly opens that scope.
+Do not proceed to Gate 74E lifecycle refinement, cost validation, account-level
+equity exit policies, broad fixed ADR spacing matrix, risk/portfolio expression
+matrix, final exit promotion, final algorithm naming/branding, Alpha v2
+promotion, risk overlays, pair-specific pruning, regime-specific exits,
+fair-value pruning, execution, MT5/live, app/runtime work, source mutation, COT
+retuning, Strength retuning, Regime retuning, broad source consolidation,
+optimized threshold search, learned weights, pair/date exclusions, P&L
+attribution, or live trading unless Freedom explicitly opens that scope.
 
 Permanent rule: Alpha and Regime layers must force 28. Only risk/portfolio
 layers may later reduce actual trade expression, while the shadow ledger retains
@@ -246,6 +271,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate74d/GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS_2026-06-29.md`
 
 `docs/research/gates/gate74c/GATE74C_GROSS_REPLAY_ADAPTER_SANITY_PACK_2026-06-29.md`
 

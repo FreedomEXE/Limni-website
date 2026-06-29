@@ -1,0 +1,93 @@
+[
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "start_year": 2023,
+    "final_open_cycles": 1,
+    "final_open_unrealized_adr": 11.299293,
+    "content_hash": "62C2AFC094EB326CCD096CCCD67EA3F2F1488349DFE676F39A61EF739F0DE450"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 7,
+    "final_open_unrealized_adr": -87.46769,
+    "content_hash": "21C176C57C627636A105BD68411D25ACAB9CF3C00B7644854225179D23DF688D"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 20,
+    "final_open_unrealized_adr": -20.999903,
+    "content_hash": "28288B8F3B9B1B0B8731A04811B38F3AB3647B047F25FCBCF260FCDEB59D8877"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -5017.013076,
+    "content_hash": "FFE54F7B15CBA19F45AED990F8065EECBE8C0192468FE57F4C1EB93C07F776AB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 26,
+    "final_open_unrealized_adr": -577.358863,
+    "content_hash": "D8ADD86DC20FC4325481C81889A26AEF048D784BCF04FB776944502AF0EFBC63"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -6744.428394,
+    "content_hash": "F0730CAADADF6DD5B7B06ACC728E514949BFE9E6B6545489A4A65E074597B520"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_015_RESTART_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 26,
+    "final_open_unrealized_adr": -302.781143,
+    "content_hash": "23F263B8F529327A20FD23E83BF489AF43C764A24AC7B9A4E5F078C843997A57"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -3890.368989,
+    "content_hash": "EB7318CF14D28031345749EF5AC3426FFFC924274705F8C86914B1E77E8FED32"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 26,
+    "final_open_unrealized_adr": -589.787617,
+    "content_hash": "5855193BBFF9E98C48E99232A50C0A187C087AECA65C5DB9071D141CB2B8B417"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -3948.509139,
+    "content_hash": "F6824CAF5D014BFC536A6BFF9F66EA993CC17CBB174BAC94F832544F77D9623A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_025_RESTART_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 26,
+    "final_open_unrealized_adr": -466.20511,
+    "content_hash": "B54C2F764318DFA6A74ED4FD56C045C4FA24F32AE7D3656951B1D8DA99C910D5"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2025,
+    "final_open_cycles": 2,
+    "final_open_unrealized_adr": -3720.205124,
+    "content_hash": "B0E6D4B6BC427AC5DE4C58D4D6CCC487F634D285BED1113B69A61F882DE59C81"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "start_year": 2026,
+    "final_open_cycles": 26,
+    "final_open_unrealized_adr": -584.304266,
+    "content_hash": "60FAD338FA8C09E3D6B16B978FF9B940B6AC6F89D953C7F037DB5233295334C3"
+  }
+]
