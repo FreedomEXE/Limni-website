@@ -1,0 +1,177 @@
+[
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate B direction recomputation",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "DB5E25728EC4FAC75062E0E896AFBDE04B51DB7DE354C5B55091A0A637386921"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate B relabeling",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "03EB975E4746EF393E74C2B587124474548FB5CD8C63E7146D6592C38C20B332"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate B reweighting",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "DDFB1FF2D3B3E7CD88A802A353A321B45161DB56C5E0D2593C9C04A1480424A9"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate B pair/date exclusion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "B529968B6C33A10F8B4E3CF06E7AEDA4F402250E85142CAFE4AB88D1070769D5"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate C promotion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "DB73CC7BFF6EFDC76A683AF47EA74F50F6D5D56C5069698E6B8163EB2C126543"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate D retest",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "24760742F599DA65AAB3FA7A6357E3828B33C5FBE4DF5A7E98633CA5CA65C63E"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Candidate E creation",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "2DC7580D2565C07223EF6460CA425353CB285CF226DE0E5D3E472E273989C2DE"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "COT retuning",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "77229BDA92D40AF2061052F6C703F869AD5CBB93FBCFB8E16E252DA193E3EAF6"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Strength retuning",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "9F0C7610202CBD59F0BDECEEC31168214902E23C418EE76A24CA4144C39BD161"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Regime retuning",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "34C6C34FF4211766D4B1E9410EAB8283B4E7183FED89BA4C439FFB76EB34F153"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "risk/correlation pruning",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "12AE9701C77DE16CD0EAB747F1302D424BC3421DC4523E33C07860393BBEC130"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "fair-value pruning",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "53C78F7D76BE631042F3DF7E4748EF0A26E972B0DCA059A5503FC7436453F79A"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "AUDNZD exclusion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "DBC1C1587E23B017F44349987A9547D6AF61047FB61BA9D0FECA9929491111D7"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "pair exclusion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "710A2BDE69E8D60C098BF0B21FDCA5C7B33C596F26CE3F2C00ABF303CADD7EB3"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "date exclusion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "DB00110829E2CAB836945C87AD4D29919CCAF1D4B9E37DDB370859C304E57A20"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "spread/slippage/swap/commission costs",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "9950ABBFB227A38AFAD6F15A59E57CD7C51940983EE3AD7FF6E139AB644B2CC8"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "MT5/live/runtime/app work",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "EAEC87996C46D715EDFC6414BB09541B148E69DE9317F75EAF5DAC7AD8723018"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "source mutation",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "02658212A3680C41F0628F029A422C9674E8212E6EBB464362BB7B0AD906FC2F"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Brain mutation",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "AF57E5E70C4D123AF4D567AA92CFC56F062E9CD8B96C0F5FA286F48E8F3E75E2"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "Alpha v2 promotion",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "CEB313AE1A129F3132FF56C829F6BDBCF2BEE53F4D9F6C50E08B174498D066CC"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "giant parameter optimization",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "60E6F2204AAE07F14FBD08C99F50892855E6A1229C573EC3B4B253B62E965F11"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "ranking by closed PnL alone",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "66256C8E1988EAA095FAA9244A7757F00ABA4A75473C7B5B81EAF541C9A7EAE1"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "ranking by final equity alone",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "BEE57A62A4B6C1B0F09EC79839451AB510DCB608CF2D7A10DFD74DD809126C69"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "deleting or hiding floating loss",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "8FEDBB89079C23594C3281C66E3FD46522E5749DB8C7CB5E2B7CBC61FCD48756"
+  },
+  {
+    "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+    "behavior": "exit promotion in Gate 75A or Gate 75B",
+    "gate75b_allowed": false,
+    "failure_mode": "hard_fail_protocol_violation",
+    "content_hash": "3410EAA0FD1583863AA50D806E70EB1E6870F17C49BF040F5FD7FE773949EF12"
+  }
+]

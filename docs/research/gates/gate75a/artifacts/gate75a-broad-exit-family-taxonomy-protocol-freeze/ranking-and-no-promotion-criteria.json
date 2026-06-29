@@ -1,0 +1,43 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "ranking_mode": "pareto_frontier_not_final_equity_only",
+  "no_promotion_in_gate75a_or_gate75b": true,
+  "primary_metrics": [
+    "final_equity_adr",
+    "equity_profit_factor",
+    "max_equity_drawdown_adr",
+    "final_open_unrealized_adr",
+    "closed_adr",
+    "closed_adr_retention_vs_focus",
+    "top20_winner_retention",
+    "worst_week_loss_adr",
+    "worst_5_week_loss_adr",
+    "annual_stability",
+    "negative_year_count",
+    "profitable_week_rate",
+    "recovery_behavior_where_applicable",
+    "flip_loss_adr_where_applicable",
+    "stops_resets_freezes_locks_count",
+    "fill_count",
+    "turnover_metadata",
+    "hold_time_metadata",
+    "tail_concentration_by_pair_reporting_only",
+    "tail_concentration_by_currency_reporting_only"
+  ],
+  "required_side_by_side_accounting": [
+    "closed_pnl_adr",
+    "mark_to_market_equity_pnl_adr"
+  ],
+  "reporting_only_not_pruning": [
+    "pair_tail_concentration",
+    "currency_tail_concentration",
+    "AUDNZD_failure_contribution"
+  ],
+  "promotion_floor": "No Gate 75B row is promotion eligible, regardless of metrics. Promotion requires a later explicitly opened promotion gate.",
+  "negative_result_rules": [
+    "Families that improve drawdown by destroying closed ADR must be labelled containment-only or failed.",
+    "Families that reduce open loss by reducing exposure must report exposure reduction separately from edge.",
+    "Families that retain right-tail weeks but leave unresolved loss must remain diagnostic."
+  ],
+  "content_hash": "2430FCCD7DAE196DE35C0A0BCE97345A220599E8B8E3C9940BFAD7D2A6A6B251"
+}

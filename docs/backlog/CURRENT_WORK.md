@@ -8,12 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 74E:
-pair-net-grid-tail-containment-adapter-pack.
+Latest completed gate: Gate 75A:
+broad-exit-family-taxonomy-and-matrix-protocol-freeze.
 
-Objective completed: test whether the Gate 74C/74D focus pair net-grid harvest
-adapter can be made survivable with simple universal gross-only tail-containment
-rules.
+Objective completed: convert Gates 72-74E evidence into a frozen broader
+exit-family taxonomy and predeclared Gate 75B matrix plan without running the
+matrix.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -124,15 +124,37 @@ Gate 74 current state:
   intraminute lifecycle exits require a synchronized all-pair event replay and
   remain outside this narrow gate.
 
-Held next gate if Freedom opens it: Gate 75, broader controlled exit-family
-taxonomy and matrix. Gate 75 is not open.
+Gate 75A current state:
 
-Gate 75 parking lot:
+- Gate 75A verdict:
+  `PASS_GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE__MATRIX_PLAN_PREDECLARED_NO_EXECUTION`.
+- Gate 75A froze `15` exit/lifecycle families and `30` fixed configs for a
+  future Gate 75B matrix plan.
+- Gate 75A classified `7` family groups as replayable now from the Gate 74B
+  pair-series warehouse: controls, pair net-grid cycle reset, pair profit
+  floor/trail, universal pair stop/floor diagnostics, max-fill/max-age
+  containment, partial-close / let-rest-run, and hedge/freeze-lock
+  reference-only diagnostics.
+- Gate 75A parked `8` account-level and hybrid families behind a synchronized
+  all-pair account replay/materialization boundary: account net ADR reset,
+  account profit floor/trail, account stop/recovery close, one-reset-and-stop
+  weekly, no-reentry-after-reset, pair-grid plus account override, pair cycle
+  plus account floor, and partial pair close plus account runner preservation.
+- Gate 75A carried forward the Gate 74E negative result: simple universal
+  containment reduced tail pain but did not fix the focus pair net-grid adapter,
+  and another local Gate 74E parameter refinement should not run unless later
+  review finds a true near-miss.
+- Gate 75A froze Gate 75B ranking as a Pareto frontier over final equity,
+  equity PF, max drawdown, final open loss, closed ADR, closed ADR retention,
+  top-20 winner retention, worst-week and worst-5-week loss, annual stability,
+  profitable week rate, recovery behavior, flip loss, stop/reset/freeze/lock
+  counts, fill/turnover/hold metadata, and pair/currency tail concentration as
+  reporting only.
+- Gate 75A explicitly forbids Gate 75B promotion. No Gate 75B row is promotion
+  eligible regardless of metrics.
 
-- Account net ADR target reset, hybrid pair-grid plus account-level
-  reset/override, partial-close / let-rest-run variants, and the broad
-  controlled exit-family matrix belong in Gate 75 unless Freedom explicitly
-  pulls a small diagnostic subset into Gate 74E.
+Held next gate if Freedom opens it: Gate 75B,
+broad-exit-family-taxonomy-matrix. Gate 75B is not open.
 
 Gate 73 reference:
 
@@ -186,7 +208,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73/74 commands:
+Gate 73-75 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -196,6 +218,7 @@ Gate 73/74 commands:
 - `npm run engine:gate74c:gross-replay-adapter-sanity-pack`
 - `npm run engine:gate74d:pair-net-grid-open-loss-forensics`
 - `npm run engine:gate74e:pair-net-grid-tail-containment-adapter-pack`
+- `npm run engine:gate75a:broad-exit-family-taxonomy-protocol-freeze`
 
 Current verdicts:
 
@@ -215,6 +238,8 @@ Current verdicts:
   `PASS_GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS__UNRESOLVED_INVENTORY_AND_DRAWDOWN_ANATOMY_VISIBLE`
 - Gate 74E:
   `PASS_GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK__TAIL_MECHANICS_AND_UNIVERSAL_CONTAINMENT_RANKING_VISIBLE_NO_PROMOTION`
+- Gate 75A:
+  `PASS_GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE__MATRIX_PLAN_PREDECLARED_NO_EXECUTION`
 
 Gate 72 reference:
 
@@ -292,10 +317,10 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 74E unless Freedom explicitly opens the next gate.
+Stop after Gate 75A unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 75 lifecycle taxonomy, cost validation, exact
-account-level synchronized exit policies, broad fixed ADR spacing matrix,
+Do not proceed to Gate 75B broad matrix execution, cost validation, exact
+account-level synchronized exit materialization, broad fixed ADR spacing matrix,
 risk/portfolio expression matrix, final exit promotion, final algorithm
 naming/branding, Alpha v2 promotion, risk overlays, pair-specific pruning,
 regime-specific exits, fair-value pruning, execution, MT5/live, app/runtime
@@ -320,6 +345,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate75a/GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE_2026-06-29.md`
 
 `docs/research/gates/gate74e/GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK_2026-06-29.md`
 

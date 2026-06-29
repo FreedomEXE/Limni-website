@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "candidate_b": {
+    "locked_algorithm_id": "gate69_locked_unnamed_forced28_candidate_b_default",
+    "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+    "gate69b_final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+    "gate74b_candidate_b_final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+    "candidate_b_ledger_file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03",
+    "immutable_directional_truth": true,
+    "forced28_preserved": true,
+    "rows": 10444,
+    "weeks": 373,
+    "expected_symbols_per_week": 28
+  },
+  "gate74b_warehouse": {
+    "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "contract_id": "gate74_trade_leg_path_base_primitives_v1",
+    "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "path_resolution": "1m",
+    "week_count": 373,
+    "pair_week_count": 10444,
+    "path_point_count": 67650431
+  },
+  "content_hash": "516C69D88560A96EB4A7F7C8E4E4E5F013D388349D80D7F77CA170CBEBF1B03C"
+}
