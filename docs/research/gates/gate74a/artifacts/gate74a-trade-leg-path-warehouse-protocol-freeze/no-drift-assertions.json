@@ -1,0 +1,15 @@
+{
+  "gate_id": "Gate 74A: trade-leg-path-warehouse-protocol-freeze",
+  "candidate_b_read_only": true,
+  "candidate_c_shadow_only": true,
+  "atom_policies_changed": false,
+  "source_mutation": false,
+  "pair_date_exclusions": false,
+  "risk_layer_started": false,
+  "mt5_live_runtime_started": false,
+  "exit_promotion_started": false,
+  "base_warehouse_materialized": false,
+  "replay_policy_scored": false,
+  "policy_outputs_separated_from_base_path_data": true,
+  "content_hash": "EAF964ED0F1BCDCDB68AFDA702002C892BAF257769FFF35B4C731262B7B09F9A"
+}

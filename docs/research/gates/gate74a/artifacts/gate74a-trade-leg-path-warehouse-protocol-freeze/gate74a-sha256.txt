@@ -1,0 +1,13 @@
+gate_id Gate 74A: trade-leg-path-warehouse-protocol-freeze
+command npm run engine:gate74a:trade-leg-path-warehouse-protocol-freeze
+generated_at 2026-06-29T02:38:06.169Z
+git_commit a7d2d2ad1f78cbcf7da41251b51d5d7d7ea9dcea
+protocol_freeze BA0334B94138668E0CABF66B3D789EBE030188CAFA781EA235303CA851A9DCDF docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/trade-leg-path-warehouse-protocol-freeze.json
+base_warehouse_contract FCC66DAC9115A7D8CB278816A50E842EB2B8F4CA7F41C2AEB176309FA5C1F2D3 docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/base-warehouse-contract.json
+replay_adapter_contract DD627DEFE977C42CBDA6359783D272BF348AD8DFAFC4F3E850F875FD3B5B021F docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/replay-adapter-interface-contract.json
+intrabar_crossing_contract 76DAF6A474120C725DE40A8AD372E60C6EC4BF66F102AC883F70BAF5B2B62FCC docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/intrabar-crossing-semantics-contract.json
+no_drift_assertions 8AAB36ED03D66B4B1D09AFA4BD46F3EB8F34424BCC6C1A30AA0F62271FD37E42 docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/no-drift-assertions.json
+summary_json 01E6CB326F125F13237CEB14DAD84C55AB8E8C6CD6B521D98E16272E1E1AAFE4 docs/research/gates/gate74a/artifacts/gate74a-trade-leg-path-warehouse-protocol-freeze/gate74a-summary.json
+report 0A196D38CF34D80CE0597BD291189056833389D1C2FC018911F85FD47DF49324 docs/research/gates/gate74a/GATE74A_TRADE_LEG_PATH_WAREHOUSE_PROTOCOL_FREEZE_2026-06-29.md
+gate73c_summary A21C302D7B0D39309BEC49D66C1D98D6B5D48AFA3F74EC3D6823C3D830AFF68A docs/research/gates/gate73c/artifacts/gate73c-direction-continuation-lifecycle/gate73c-summary.json
+gate71bm_summary E5B300738A59B654DCB8FE08B28AF9BF511330B4291865892E6054F167DF2B45 docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse/gate71bm-summary.json
