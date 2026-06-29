@@ -74,6 +74,10 @@
     "engine:gate71b:basket-adr-path-diagnostics": "tsx engine/scripts/verification/build-gate71b-basket-adr-path-diagnostics.ts",
     "engine:gate71c:exit-baseline-matrix": "tsx engine/scripts/verification/build-gate71c-exit-baseline-matrix.ts",
     "engine:gate71d:review-packet-no-drift": "tsx engine/scripts/verification/build-gate71d-review-packet-no-drift.ts",
+    "engine:gate72a:warehouse-manifest-binding-audit": "tsx engine/scripts/verification/build-gate72a-warehouse-manifest-binding-audit.ts",
+    "engine:gate72b:matrix-ledger-sanity-review": "tsx engine/scripts/verification/build-gate72b-matrix-ledger-sanity-review.ts",
+    "engine:gate72c:exit-family-ranking-shortlist": "tsx engine/scripts/verification/build-gate72c-exit-family-ranking-shortlist.ts",
+    "engine:gate72d:review-packet-no-promotion": "tsx engine/scripts/verification/build-gate72d-review-packet-no-promotion.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

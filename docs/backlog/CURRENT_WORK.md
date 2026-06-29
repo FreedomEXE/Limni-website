@@ -8,53 +8,63 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 71D: review-packet-no-drift.
+Latest completed gate: Gate 72D: review-packet-no-promotion.
 
-Objective completed: close the Gate 71 exit-testing packet after proving the full
-Candidate B basket path warehouse, full path diagnostics, and full exit baseline
-matrix replay from frozen path materialization.
+Objective completed: review the full Gate 71C Candidate B exit matrix after
+first auditing the frozen warehouse/manifest bindings and matrix ledger shape.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
-Gate 71 current state:
+Gate 72 current state:
 
 - Candidate B final ledger remains read-only directional truth.
 - Candidate C shadow ledger remains monitoring-only.
-- Gate 71A froze the exit-testing protocol before diagnostics or scoring.
-- Gate 71A classified legacy ADR Grid as coupled entry+exit behavior; it is a
-  control only, not the foundation for basket path diagnostics.
+- Gate 72A audited the Gate 71B-M basket path warehouse manifest:
+  `gate71bm_basket_path_1A8231225169`.
+- Gate 72A confirmed direct bindings for Candidate B ledger file hash, price
+  bundle, 1m path resolution, clean exposure model, ADR target, warehouse hash,
+  and coverage.
+- Gate 72A caveat: Gate 68 capsule identity is bound transitively through Gate
+  69B and Gate 71A/71B-M, not as a direct warehouse manifest field.
+- Gate 72B confirmed the Gate 71C matrix ledger shape:
+  `373` weeks x `34` rules = `12,682` weekly rows, with no duplicate rule-week
+  rows and no raw M1 rebuild during replay.
+- Gate 72C produced a research-only family shortlist. No clean exit rule passed
+  all promotion constraints because clean rules improved win rate by clipping
+  weeks but collapsed total ADR versus weekly hold and usually worsened year
+  stability.
+- Gate 72D review/no-promotion packet passed.
+- No exit rule has been promoted.
+
+Gate 72 commands:
+
+- `npm run engine:gate72a:warehouse-manifest-binding-audit`
+- `npm run engine:gate72b:matrix-ledger-sanity-review`
+- `npm run engine:gate72c:exit-family-ranking-shortlist`
+- `npm run engine:gate72d:review-packet-no-promotion`
+
+Gate 72 current verdicts:
+
+- Gate 72A:
+  `PASS_WITH_CAVEAT_GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT__DIRECT_PATH_BINDING_TRANSITIVE_GATE68`
+- Gate 72B:
+  `PASS_GATE72B_MATRIX_LEDGER_SANITY_REVIEW__RESULT_LEDGER_SHAPE_VALID_NO_REPLAY_DRIFT`
+- Gate 72C:
+  `PASS_GATE72C_EXIT_FAMILY_RANKING_SHORTLIST__NO_CLEAN_PROMOTION_CANDIDATE`
+- Gate 72D:
+  `PASS_GATE72D_REVIEW_PACKET_NO_PROMOTION__SHORTLIST_VISIBLE_NO_SCOPE_DRIFT`
+
+Gate 71 reference:
+
 - Gate 71B-M materialized the full reusable Candidate B basket path warehouse:
   `gate71bm_basket_path_1A8231225169`.
 - Gate 71B full 373-week diagnostics passed from the basket path warehouse with
   no raw M1 rebuild during diagnostics.
 - Gate 71C full matrix passed from the same basket path warehouse with no raw
   M1 rebuild during policy replay.
-- Gate 71D review/no-drift packet passed.
 - Legacy ADR Grid is a coupled entry+exit control only.
-- No exit rule has been promoted.
-
-Gate 71 commands:
-
-- `npm run engine:gate71a:exit-testing-protocol-freeze`
-- `npm run engine:gate71bm:exit-path-materialization-warehouse`
-- `npm run engine:gate71b:basket-adr-path-diagnostics`
-- `npm run engine:gate71c:exit-baseline-matrix`
-- `npm run engine:gate71d:review-packet-no-drift`
-
-Gate 71 current verdicts:
-
-- Gate 71A:
-  `PASS_GATE71A_EXIT_TESTING_PROTOCOL_FREEZE__CLEAN_BASKET_PATH_REQUIRED`
-- Gate 71B-M:
-  `PASS_GATE71BM_EXIT_PATH_MATERIALIZATION_WAREHOUSE__FROZEN_PATH_READY_FOR_REPLAY`
-- Gate 71B full:
-  `PASS_GATE71B_BASKET_ADR_PATH_DIAGNOSTICS__CLEAN_PATH_LEDGER_BUILT`
-- Gate 71C full:
-  `PASS_GATE71C_EXIT_BASELINE_MATRIX__PREDECLARED_BASKET_RULES_SCORED`
-- Gate 71D:
-  `PASS_GATE71D_REVIEW_PACKET_NO_DRIFT__EXIT_TEST_PACKET_VISIBLE_NO_PROMOTION`
 
 ## Gate 70 Reference
 
@@ -103,9 +113,9 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 71D unless Freedom explicitly opens the next gate.
+Stop after Gate 72D unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 72 risk/portfolio expression matrix, final exit
+Do not proceed to Gate 73 risk/portfolio expression matrix, final exit
 promotion, final algorithm naming/branding, Alpha v2 promotion, risk overlays,
 pair-specific exits, regime-specific exits, fair-value pruning, execution,
 MT5/live, app/runtime work, source mutation, COT retuning, Strength retuning,
@@ -129,6 +139,14 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate72a/GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT_2026-06-28.md`
+
+`docs/research/gates/gate72b/GATE72B_MATRIX_LEDGER_SANITY_REVIEW_2026-06-28.md`
+
+`docs/research/gates/gate72c/GATE72C_EXIT_FAMILY_RANKING_SHORTLIST_2026-06-28.md`
+
+`docs/research/gates/gate72d/GATE72D_REVIEW_PACKET_NO_PROMOTION_2026-06-28.md`
 
 `docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md`
 

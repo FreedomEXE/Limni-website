@@ -1,0 +1,70 @@
+[
+  {
+    "rule_id": "TRAIL_TP_A100_F050_T200",
+    "family": "trail_plus_hard_tp",
+    "profitable_week_rate": 0.914209,
+    "total_adr": 45.849583,
+    "adr_retention_vs_weekly_hold": 0.071852,
+    "max_drawdown_adr": -67.51491,
+    "worst_week_adr": -31.994788,
+    "negative_years": 3,
+    "return_to_drawdown": 0.679103,
+    "review_classification": "review_shortlist",
+    "promotion_eligible": false,
+    "disqualification_reasons": [
+      "total_adr_below_50pct_of_weekly_hold",
+      "negative_year_count_worse_than_weekly_hold"
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_WEEK",
+    "family": "global_close_all_stop_week",
+    "profitable_week_rate": 0.911528,
+    "total_adr": 79.591558,
+    "adr_retention_vs_weekly_hold": 0.124729,
+    "max_drawdown_adr": -74.934821,
+    "worst_week_adr": -31.994788,
+    "negative_years": 4,
+    "return_to_drawdown": 1.062144,
+    "review_classification": "review_shortlist",
+    "promotion_eligible": false,
+    "disqualification_reasons": [
+      "total_adr_below_50pct_of_weekly_hold",
+      "negative_year_count_worse_than_weekly_hold"
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F025",
+    "family": "basket_profit_floor_trailing",
+    "profitable_week_rate": 0.871314,
+    "total_adr": 173.491049,
+    "adr_retention_vs_weekly_hold": 0.27188,
+    "max_drawdown_adr": -39.228258,
+    "worst_week_adr": -31.994788,
+    "negative_years": 3,
+    "return_to_drawdown": 4.422604,
+    "review_classification": "review_shortlist",
+    "promotion_eligible": false,
+    "disqualification_reasons": [
+      "total_adr_below_50pct_of_weekly_hold",
+      "negative_year_count_worse_than_weekly_hold"
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_200",
+    "family": "global_target_plus_adverse_stop",
+    "profitable_week_rate": 0.809651,
+    "total_adr": 31.070777,
+    "adr_retention_vs_weekly_hold": 0.048691,
+    "max_drawdown_adr": -11.79483,
+    "worst_week_adr": -2.329995,
+    "negative_years": 3,
+    "return_to_drawdown": 2.634271,
+    "review_classification": "review_shortlist",
+    "promotion_eligible": false,
+    "disqualification_reasons": [
+      "total_adr_below_50pct_of_weekly_hold",
+      "negative_year_count_worse_than_weekly_hold"
+    ]
+  }
+]

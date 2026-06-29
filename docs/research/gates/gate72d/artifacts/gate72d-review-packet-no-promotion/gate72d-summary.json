@@ -1,0 +1,60 @@
+{
+  "gate_id": "Gate 72D: review-packet-no-promotion",
+  "command": "npm run engine:gate72d:review-packet-no-promotion",
+  "generated_at": "2026-06-29T00:17:49.268Z",
+  "git_commit": "dc2043d87e8e76763e674ffe2bac31bb313b3fe7",
+  "verdict": "PASS_GATE72D_REVIEW_PACKET_NO_PROMOTION__SHORTLIST_VISIBLE_NO_SCOPE_DRIFT",
+  "validation": {
+    "gate72a_passed": true,
+    "gate72b_passed": true,
+    "gate72c_passed": true,
+    "required_commands_present": true,
+    "missing_commands": [],
+    "current_work_points_to_gate72d": true,
+    "artifact_paths_checked": 21,
+    "missing_artifact_paths": [],
+    "no_promotion_assertion": {
+      "gate_id": "Gate 72D: review-packet-no-promotion",
+      "candidate_b_mutated": false,
+      "candidate_c_shadow_only": true,
+      "exit_promotion_performed": false,
+      "promotion_eligible_exit_count": 0,
+      "shortlist_is_review_only": true,
+      "risk_layer_started": false,
+      "pair_specific_exits_started": false,
+      "regime_specific_exits_started": false,
+      "fair_value_pruning_started": false,
+      "source_mutation_started": false,
+      "mt5_live_runtime_started": false,
+      "alpha_v2_promotion_started": false,
+      "raw_m1_rebuild_performed": false
+    },
+    "pr_update_ready_after_push": true,
+    "recovery_state_external_update_required_after_push": true
+  },
+  "no_promotion_assertion": {
+    "gate_id": "Gate 72D: review-packet-no-promotion",
+    "candidate_b_mutated": false,
+    "candidate_c_shadow_only": true,
+    "exit_promotion_performed": false,
+    "promotion_eligible_exit_count": 0,
+    "shortlist_is_review_only": true,
+    "risk_layer_started": false,
+    "pair_specific_exits_started": false,
+    "regime_specific_exits_started": false,
+    "fair_value_pruning_started": false,
+    "source_mutation_started": false,
+    "mt5_live_runtime_started": false,
+    "alpha_v2_promotion_started": false,
+    "raw_m1_rebuild_performed": false
+  },
+  "artifacts": {
+    "repoVisibleArtifactCheck": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/repo-visible-artifact-check.json",
+    "noPromotionAssertion": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/gate72-no-promotion-assertion.json",
+    "prUpdateSummary": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/pr-update-summary.json",
+    "recoveryStateSummary": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/recovery-state-summary.json",
+    "summaryJson": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/gate72d-summary.json",
+    "shaIdentity": "docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/gate72d-sha256.txt",
+    "report": "docs/research/gates/gate72d/GATE72D_REVIEW_PACKET_NO_PROMOTION_2026-06-28.md"
+  }
+}

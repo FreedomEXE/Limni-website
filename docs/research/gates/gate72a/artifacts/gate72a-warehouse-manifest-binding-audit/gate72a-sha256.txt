@@ -1,0 +1,10 @@
+gate_id Gate 72A: warehouse-manifest-binding-audit
+command npm run engine:gate72a:warehouse-manifest-binding-audit
+generated_at 2026-06-29T00:14:39.053Z
+git_commit dc2043d87e8e76763e674ffe2bac31bb313b3fe7
+binding_audit 8404C4954C08F2A5E430EF41D6668075BA47123C612CEA833D142E39D2001BA9 docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/warehouse-manifest-binding-audit.json
+summary_json 5BC9B38F47C5938A5E827296D9351A5ADF6B0861B423A94EA7D666C6DE0BDA7A docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/gate72a-summary.json
+report 3B8A44B54895A2048E067413DBF14E95379C92C06F00E319AFAEB4556DDBB2C1 docs/research/gates/gate72a/GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT_2026-06-28.md
+gate71bm_summary E5B300738A59B654DCB8FE08B28AF9BF511330B4291865892E6054F167DF2B45 docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse/gate71bm-summary.json
+gate71b_summary 14932A14BB7B3F6422D391327B66EC294D9B70410420AD169E1F64DE6863D6D5 docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/gate71b-summary.json
+gate71c_summary 5CFAA67BD9F879DE93B396B44CCDF6230E5D5CD2C377C0FCBE09DBBE501C96AF docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/gate71c-summary.json
