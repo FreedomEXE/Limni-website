@@ -8,12 +8,13 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 77:
-pair-two-sided-reset-limit-confirmation-and-failure-anatomy.
+Latest completed gate: Gate 78:
+pair-two-sided-limited-reentry-enhancement-matrix.
 
-Objective completed: confirm whether Gate 76's promising pair-level reset-limit
-behavior is structurally real or just an in-sample compromise, using a small
-fixed matrix and failure-anatomy evidence only.
+Objective completed: test whether the Gate 77 limited pair-reentry structure can
+recover right-tail/harvest through final-reset runner preservation without
+reopening the negative tail, plus reference-only account emergency SL
+diagnostics.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -215,7 +216,38 @@ Gate 77 current state:
   also gives up right-tail participation. Tail concentration remains
   reporting-only and is not a pair-exclusion signal.
 
-No next gate is open. Gate 75B broad matrix, Gate 78, costs, risk, robustness,
+Gate 78 current state:
+
+- Gate 78 verdict:
+  `PASS_GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX__RUNNER_AND_REFERENCE_SL_VISIBLE_NO_PROMOTION`.
+- Gate 78 replayed a fixed `17`-rule matrix across `373` weeks, `28` pairs,
+  and `10,444` Gate 74B pair-week rows.
+- Gate 78 reproduced Gate 74E focus parity, Gate 76 no-limit `T150`, and Gate
+  77 `T075/L3`, `T100/L3`, and `T125/L3` before comparison.
+- Gate 78 tested six final-reset runner rows only: targets `0.75`, `1.0`, and
+  `1.25` ADR at spacing `0.2`, pair reset limit `3`, and runner fractions
+  `25%` / `50%`.
+- Gate 78 also ran four synchronized account emergency SL reference rows only:
+  `T100/L3` and the selected best runner row at `-3 ADR` and `-5 ADR`.
+- Best non-reference final-equity row remained the Gate 77 baseline
+  `PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK` with
+  `16124.084275` closed ADR, `13772.999764` final equity ADR, equity PF
+  `1.561828`, max drawdown `-1989.442654`, final open unrealized
+  `-2351.084511`, and flip-loss ADR `-6297.282489`.
+- Best runner by the Gate 78 research ranking was
+  `PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050`, but it reached only
+  `3129.629042` closed ADR and `2923.668101` final equity ADR despite improved
+  drawdown/open loss. It did not improve the `T100/L3` balance.
+- Gate 78 interpretation: final-reset runner preservation clipped harvest and
+  right-tail retention too hard. Account emergency SL diagnostics improved
+  drawdown/open-loss visibility only by clipping harvest and are
+  reference-only. No row is promotion eligible.
+- Gate 78 applied no costs, spread, slippage, swap, commission, risk layer,
+  correlation pruning, pair pruning, fair-value pruning, source mutation, Brain
+  mutation, Candidate C promotion, Candidate D retest, Candidate E, Alpha v2,
+  MT5/live/app/runtime work, or exit promotion.
+
+No next gate is open. Gate 75B broad matrix, Gate 79, costs, risk, robustness,
 promotion, and live/app work remain closed unless Freedom explicitly opens the
 next scope.
 
@@ -271,7 +303,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-77 commands:
+Gate 73-78 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -284,6 +316,7 @@ Gate 73-77 commands:
 - `npm run engine:gate75a:broad-exit-family-taxonomy-protocol-freeze`
 - `npm run engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery`
 - `npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy`
+- `npm run engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix`
 
 Current verdicts:
 
@@ -309,6 +342,8 @@ Current verdicts:
   `PASS_GATE76_PAIR_DIRECTIONAL_TWO_SIDED_GRID_RESET_LIMIT_DISCOVERY__RECOVERY_EXPANSION_AND_ACCOUNT_RESET_LIFECYCLE_VISIBLE_NO_PROMOTION`
 - Gate 77:
   `PASS_GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY__PAIR_LIMIT3_PROMISING_RESEARCH_ONLY_NO_PROMOTION`
+- Gate 78:
+  `PASS_GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX__RUNNER_AND_REFERENCE_SL_VISIBLE_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -386,9 +421,9 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 77 unless Freedom explicitly opens the next gate.
+Stop after Gate 78 unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 75B broad matrix execution, Gate 78, cost validation,
+Do not proceed to Gate 75B broad matrix execution, Gate 79, cost validation,
 additional account-level synchronized exit materialization, broad fixed ADR
 spacing matrix, risk/portfolio expression matrix, final exit promotion, final
 algorithm naming/branding, Alpha v2 promotion, risk overlays, pair-specific
@@ -414,6 +449,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate78/GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX_2026-06-29.md`
 
 `docs/research/gates/gate77/GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY_2026-06-29.md`
 

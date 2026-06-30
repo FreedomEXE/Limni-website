@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 78: pair-two-sided-limited-reentry-enhancement-matrix",
+  "command": "npm run engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix",
+  "generated_at": "2026-06-30T00:24:01.586Z",
+  "git_commit": "6b529aaa1e295a0a818b58e7b3b54cc3b27d18dc",
+  "mode": "implementation_research_limited_reentry_enhancement_no_promotion",
+  "matrix_contract": {
+    "spacing_adr": 0.2,
+    "pair_reset_limit_per_week": 3,
+    "limited_reentry_targets": [
+      0.75,
+      1,
+      1.25
+    ],
+    "final_reset_runner_fractions": [
+      0.25,
+      0.5
+    ],
+    "account_emergency_sl_bands": [
+      -3,
+      -5
+    ],
+    "selected_runner_for_account_emergency_sl": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "unbounded_parameter_search_started": false
+  }
+}

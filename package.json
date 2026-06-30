@@ -89,6 +89,7 @@
     "engine:gate75a:broad-exit-family-taxonomy-protocol-freeze": "tsx engine/scripts/verification/build-gate75a-broad-exit-family-taxonomy-protocol-freeze.ts",
     "engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery": "tsx engine/scripts/verification/build-gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery.ts",
     "engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy": "tsx engine/scripts/verification/build-gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy.ts",
+    "engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix": "tsx engine/scripts/verification/build-gate78-pair-two-sided-limited-reentry-enhancement-matrix.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
