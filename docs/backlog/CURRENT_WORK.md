@@ -8,12 +8,13 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 78A:
-limited-reentry-institutional-numeric-scorecard-supplement.
+Latest completed gate: Gate 81:
+hedged-broker-real-feasibility-preflight.
 
-Objective completed: produce an MTM-first institutional scorecard supplement
-over the existing Gate 78 rows before any exit freeze, risk-layer work, cost
-stress, MT5/live work, or promotion discussion.
+Objective completed: use Gate 80 receipts only to test whether the fully hedged
+T100/S020/L3 gross baseline has enough cost, swap, margin-proxy, and order-count
+buffer to justify a one-pair MT5 mechanics prototype without rerunning the full
+warehouse replay.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -277,7 +278,57 @@ Gate 78A current state:
   risk/correlation pruning, no cost/slippage/swap assumptions, no MT5/live/app
   runtime work, and no promotion.
 
-No next gate is open. Gate 75B broad matrix, Gate 79, costs, risk, robustness,
+Gate 79 current state:
+
+- Gate 79 verdict:
+  `FAIL_LIMITED_REENTRY_FAMILY_TOO_WEAK_FOR_TARGET_NO_PROMOTION`.
+- Gate 79 found the directional limited-reentry family too weak for target
+  smoothness and return/drawdown expectations. The key weak spots were open
+  inventory, flip-loss damage, and long adverse inventory.
+- Gate 79 introduced the fully hedged weekly long+short all-28 diagnostic as a
+  gross reference only: `53646.297719` final equity ADR and `-705.647194` max
+  drawdown ADR versus directional `T100/L3` at `13772.999764` final equity ADR
+  and `-1989.442654` max drawdown ADR.
+- Gate 79 applied no costs, risk/correlation pruning, pair/date exclusions,
+  AUDNZD exclusion, source mutation, Brain mutation, MT5/live/app/runtime,
+  freeze, or promotion.
+
+Gate 80 current state:
+
+- Gate 80 verdict:
+  `PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION`.
+- Gate 80 validated the fully hedged baseline as mechanically real under gross
+  no-cost replay semantics, not as broker-real or promotion-ready.
+- Gate 80 found fully hedged `T100/S020/L3` at `53646.297719` final equity ADR,
+  `-705.647194` max drawdown ADR, and `204752` fills. Directional Candidate B
+  `T100/L3` remained at `13772.999764` final equity ADR, `-1989.442654` max
+  drawdown ADR, `-2351.084511` final open unrealized ADR, and `-6297.282489`
+  flip-loss ADR.
+- Long-only, short-only, and deterministic random-side all beat Candidate B
+  directional, so the current edge appears to come from the all-pairs
+  grid/harvest engine more than Candidate B directional intelligence.
+- Gate 80 applied no Candidate B mutation, pair exclusion, AUDNZD exclusion,
+  fair-value pruning, risk layer, MT5/live/app/runtime, broker-cost claim, or
+  promotion.
+
+Gate 81 current state:
+
+- Gate 81 verdict:
+  `PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION`.
+- Gate 81 was artifact-derived from Gate 80 only and ran in under a second. It
+  did not rerun the expensive 373-week warehouse replay.
+- Under the fixed stress proxy of `0.05` ADR/fill and `0.01` ADR per active
+  side-week swap drag, hedged `T100/S020/L3` retained `42637.417719` ADR versus
+  directional `T100/L3` at `9334.109764` ADR.
+- Gate 81 order-count read: hedged all-28 averaged `548.932976` fills/week,
+  p95 `696`, max `852`, and remains too large for immediate all-28 runtime.
+  The only approved next build is a one-pair MT5 visual mechanics prototype.
+- Gate 81 applied no Candidate B mutation, no signal research, no pair pruning,
+  no AUDNZD exclusion, no risk layer, no Regime/fair-value layer, no MT5/live
+  portfolio runtime, no live readiness, and no promotion.
+
+No next gate is open. Gate 75B broad matrix, all-28 MT5/runtime, risk layer,
+signal retuning, pair exclusions, AUDNZD exclusion, fair-value pruning,
 promotion, and live/app work remain closed unless Freedom explicitly opens the
 next scope.
 
@@ -333,7 +384,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-78A commands:
+Gate 73-81 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -348,6 +399,9 @@ Gate 73-78A commands:
 - `npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy`
 - `npm run engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix`
 - `npm run engine:gate78a:limited-reentry-institutional-scorecard`
+- `npm run engine:gate79:flip-loss-adverse-inventory-root-cause-audit`
+- `npm run engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution`
+- `npm run engine:gate81:hedged-broker-real-feasibility-preflight`
 
 Current verdicts:
 
@@ -377,6 +431,12 @@ Current verdicts:
   `PASS_GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX__RUNNER_AND_REFERENCE_SL_VISIBLE_NO_PROMOTION`
 - Gate 78A:
   `PASS_SCORECARD_T100_L3_REMAINS_PRIMARY_CANDIDATE_NO_PROMOTION`
+- Gate 79:
+  `FAIL_LIMITED_REENTRY_FAMILY_TOO_WEAK_FOR_TARGET_NO_PROMOTION`
+- Gate 80:
+  `PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION`
+- Gate 81:
+  `PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -454,15 +514,15 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 78A unless Freedom explicitly opens the next gate.
+Stop after Gate 81 unless Freedom explicitly opens the next gate.
 
-Do not proceed to Gate 75B broad matrix execution, Gate 79, cost validation,
-additional account-level synchronized exit materialization, broad fixed ADR
-spacing matrix, risk/portfolio expression matrix, final exit promotion, final
-algorithm naming/branding, Alpha v2 promotion, risk overlays, pair-specific
-pruning, regime-specific exits, fair-value pruning, execution, MT5/live,
-app/runtime work, source mutation, COT retuning, Strength retuning, Regime
-retuning, broad source consolidation, optimized threshold search, learned
+Do not proceed to Gate 75B broad matrix execution, additional account-level
+synchronized exit materialization, broad fixed ADR spacing matrix,
+risk/portfolio expression matrix, final exit promotion, final algorithm
+naming/branding, Alpha v2 promotion, risk overlays, pair-specific pruning,
+regime-specific exits, fair-value pruning, all-28 execution, MT5/live portfolio
+runtime, app/runtime work, source mutation, COT retuning, Strength retuning,
+Regime retuning, broad source consolidation, optimized threshold search, learned
 weights, pair/date exclusions, P&L attribution, or live trading unless Freedom
 explicitly opens that scope.
 
@@ -482,6 +542,12 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate81/GATE81_HEDGED_BROKER_REAL_FEASIBILITY_PREFLIGHT_2026-06-30.md`
+
+`docs/research/gates/gate80/GATE80_FULLY_HEDGED_BASELINE_VALIDITY_NORMALIZATION_EDGE_ATTRIBUTION_2026-06-30.md`
+
+`docs/research/gates/gate79/GATE79_FLIP_LOSS_ADVERSE_INVENTORY_ROOT_CAUSE_AUDIT_2026-06-30.md`
 
 `docs/research/gates/gate78a/GATE78A_LIMITED_REENTRY_INSTITUTIONAL_NUMERIC_SCORECARD_SUPPLEMENT_2026-06-30.md`
 

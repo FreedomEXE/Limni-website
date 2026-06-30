@@ -1,0 +1,38 @@
+[
+  {
+    "question": "Did Gate81 rerun the expensive path replay?",
+    "answer": "no_artifact_derived_from_gate80_receipts",
+    "evidence": "Reads Gate80 JSON artifacts only; no DB replay or warehouse reconstruction.",
+    "content_hash": "910DF3593E5602EED50928E072CEE7E6B6CF9BA4D25FC28D14507282764ABC51"
+  },
+  {
+    "question": "Does the hedged baseline survive first-pass cost and swap stress?",
+    "answer": "yes_under_fixed_adr_proxy",
+    "evidence": "42637.417719 ADR after 0.05 ADR/fill and 0.01 ADR/active-side-week stress.",
+    "content_hash": "BBE22DE6024C2D80D6E8DF47465CAD1C1ABD8702AE3FCD119A05B469307E5921"
+  },
+  {
+    "question": "Does hedged still beat directional under stress?",
+    "answer": "yes_under_fixed_adr_proxy",
+    "evidence": "hedged 42637.417719 vs directional 9334.109764.",
+    "content_hash": "7667C7C8F94EE3D27F3198C7C24E8BA1D5BE5894AAE3C0CCF2E02F3E2B873CE9"
+  },
+  {
+    "question": "Is all-28 broker deployment approved?",
+    "answer": "no",
+    "evidence": "Order count, margin mode, swap, execution, and MT5 parity remain unresolved.",
+    "content_hash": "994CE63E0522D74161A85FC94E3B8AF8830542EBCB2F7D256ADCE9BCF9151B85"
+  },
+  {
+    "question": "Is a one-pair MT5 prototype justified?",
+    "answer": "yes_as_feasibility_validation_only",
+    "evidence": "One pair makes fill/reset/spread/swap/margin behavior visible without turning this into portfolio runtime work.",
+    "content_hash": "6B7B68A04E624D5A36D51E15CB37A4671731408CA89FBE851C5D3089B4C75B7C"
+  },
+  {
+    "question": "Does Gate81 promote a system?",
+    "answer": "no",
+    "evidence": "No promotion, no live readiness, no risk layer, no Candidate B mutation.",
+    "content_hash": "F5B78D6A730552FCA078149CB94C4B4BECF15CC0C866EE4C306D617B17213FEC"
+  }
+]
