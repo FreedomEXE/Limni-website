@@ -92,6 +92,7 @@
     "engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix": "tsx engine/scripts/verification/build-gate78-pair-two-sided-limited-reentry-enhancement-matrix.ts",
     "engine:gate78a:limited-reentry-institutional-scorecard": "tsx engine/scripts/verification/build-gate78a-limited-reentry-institutional-numeric-scorecard-supplement.ts",
     "engine:gate79:flip-loss-adverse-inventory-root-cause-audit": "tsx engine/scripts/verification/build-gate79-flip-loss-adverse-inventory-root-cause-audit.ts",
+    "engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution": "tsx engine/scripts/verification/build-gate80-fully-hedged-baseline-validity-normalization-edge-attribution.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
