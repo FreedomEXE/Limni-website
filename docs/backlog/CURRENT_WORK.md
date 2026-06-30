@@ -12,11 +12,12 @@ Latest completed gate: Gate 82:
 mt5-hedged-grid-visual-prototype.
 
 Objective completed: build the first MT5 visual mechanics prototype for the raw
-fully hedged grid family under `automation/mt5/gate82_hedged_grid_visual/`.
-The EA implements `NO_LIMIT_RAW` and `L3_RAW`, defaults to one chart symbol,
-requires a hedging account, blocks non-tester trading unless explicitly allowed,
-shows an audit dashboard, writes CSV state/fill/reset logs, and compiled in
-MetaEditor with `0` errors and `0` warnings.
+fully hedged grid family as
+`automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5`. The EA implements
+`NO_LIMIT_RAW` and `L3_RAW`, defaults to one chart symbol, requires a hedging
+account, blocks non-tester trading unless explicitly allowed, shows an audit
+dashboard, writes CSV state/fill/reset logs, and compiled in MetaEditor with
+`0` errors and `0` warnings.
 
 Status: active on `codex/gate82-hedged-grid-preflight`.
 

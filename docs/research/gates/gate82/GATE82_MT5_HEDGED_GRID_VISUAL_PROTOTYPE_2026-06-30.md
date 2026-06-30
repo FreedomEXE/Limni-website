@@ -11,7 +11,7 @@ inspection of the raw fully hedged grid family.
 
 Included:
 
-- MT5 EA mechanics under `automation/mt5/gate82_hedged_grid_visual/`.
+- MT5 EA mechanics under `automation/mt5/Experts/`.
 - Fully hedged long and short grid legs.
 - `NO_LIMIT_RAW` mode.
 - `L3_RAW` mode.
@@ -36,8 +36,8 @@ Excluded:
 
 ## Files
 
-- `automation/mt5/gate82_hedged_grid_visual/PoseidonGate82HedgedGridVisual.mq5`
-- `automation/mt5/gate82_hedged_grid_visual/PoseidonGate82HedgedGridVisual.ex5`
+- `automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5`
+- `automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.ex5`
 - `docs/research/gates/gate82/GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_2026-06-30.md`
 
 ## Mechanics Implemented
@@ -153,19 +153,19 @@ Written to the MT5 Files directory.
 
 Account state:
 
-- `gate82_account_state_<mode>.csv`
+- `limni_basket_hedge_alpha_v1_account_state_<mode>.csv`
 
 Symbol state:
 
-- `gate82_symbol_state_<symbol>_<mode>.csv`
+- `limni_basket_hedge_alpha_v1_symbol_state_<symbol>_<mode>.csv`
 
 Fill/deal log:
 
-- `gate82_fills_<symbol>_<mode>.csv`
+- `limni_basket_hedge_alpha_v1_fills_<symbol>_<mode>.csv`
 
 Reset log:
 
-- `gate82_resets_<symbol>_<mode>.csv`
+- `limni_basket_hedge_alpha_v1_resets_<symbol>_<mode>.csv`
 
 Closed PnL, commission, and swap are read from MT5 deal history since EA attach.
 Open PnL and open swap are read from current positions. Open-position
@@ -181,16 +181,17 @@ Compiler:
 Command shape:
 
 ```powershell
-$src = (Resolve-Path 'automation/mt5/gate82_hedged_grid_visual/PoseidonGate82HedgedGridVisual.mq5').Path
-$log = (Resolve-Path 'automation/mt5/gate82_hedged_grid_visual').Path + '\metaeditor-compile.log'
+$src = (Resolve-Path 'automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5').Path
+$log = (Resolve-Path 'automation/mt5/Experts').Path + '\LimniBasketHedgeEAAlphaV1.compile.log'
 Start-Process -FilePath 'C:\Program Files\OANDA Global MetaTrader 5 Terminal\MetaEditor64.exe' -ArgumentList @('/compile:' + $src, '/log:' + $log) -Wait -PassThru -WindowStyle Hidden
 ```
 
-Result from `metaeditor-compile.log`:
+Result from `LimniBasketHedgeEAAlphaV1.compile.log`, archived after compile at
+`archive/automation/mt5/generated-logs/2026-06-30/limni-basket-hedge-ea-alpha-v1-compile-log.txt`:
 
 - `Result: 0 errors, 0 warnings`
 - `.ex5` emitted at
-  `automation/mt5/gate82_hedged_grid_visual/PoseidonGate82HedgedGridVisual.ex5`
+  `automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.ex5`
 
 MetaEditor returned process exit code `1` despite the compile log reporting zero
 errors and zero warnings. The log and emitted `.ex5` are the compile evidence.
@@ -201,7 +202,7 @@ First validation should use one pair only.
 
 Suggested first run:
 
-- EA: `PoseidonGate82HedgedGridVisual`
+- EA: `LimniBasketHedgeEAAlphaV1`
 - Symbol: one liquid FX pair, for example `EURUSD`
 - Mode: `NO_LIMIT_RAW`
 - Visual mode: on

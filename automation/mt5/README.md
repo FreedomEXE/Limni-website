@@ -10,7 +10,9 @@ MetaTrader 5 integration workspace.
 | `Indicators/` | MT5 indicators. |
 | `Scripts/` | MT5 utility scripts. |
 | `Templates/` | MT5 chart/template assets. |
-| `docs/` | MT5-specific notes. |
+
+MT5 research receipts and historical notes live under root `docs/` or
+`archive/`.
 
 ## Rules
 

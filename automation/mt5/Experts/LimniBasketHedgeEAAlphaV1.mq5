@@ -1,19 +1,19 @@
 //+------------------------------------------------------------------+
-//|                         PoseidonGate82HedgedGridVisual.mq5       |
-//|                Gate 82 fully hedged grid visual prototype        |
+//|                         LimniBasketHedgeEAAlphaV1.mq5            |
+//|                Alpha V1 fully hedged grid visual prototype       |
 //+------------------------------------------------------------------+
 #property strict
 #property version "1.000"
 
 #include <Trade/Trade.mqh>
 
-enum Gate82Mode
+enum HedgeGridMode
 {
   NO_LIMIT_RAW = 0,
   L3_RAW = 1
 };
 
-input Gate82Mode Mode = NO_LIMIT_RAW;
+input HedgeGridMode Mode = NO_LIMIT_RAW;
 input string SymbolsCsv = "";
 input bool UseCurrentChartSymbolOnly = true;
 input double LotSize = 0.01;
@@ -31,7 +31,7 @@ input int DashboardRefreshSeconds = 1;
 input int DashboardMaxSymbols = 28;
 input bool CsvLogEnabled = true;
 
-const string BUILD_NAME = "Gate82 MT5 Hedged Grid Visual";
+const string BUILD_NAME = "Limni Basket Hedge EA Alpha V1";
 const int L3_RESET_LIMIT_PER_SIDE_WEEK = 3;
 
 struct SymbolRuntime
@@ -98,7 +98,7 @@ int OnInit()
   if(!g_hedgingSupported)
   {
     g_lastError = "UNSUPPORTED_ACCOUNT_NETTING_ONLY";
-    Print("Gate82 EA unsupported account: hedging account required.");
+    Print(BUILD_NAME + " unsupported account: hedging account required.");
   }
 
   BuildSymbolList();
@@ -1108,7 +1108,7 @@ void LogAccountState()
 
   double closedNet = closedAll.profit + closedAll.commission + closedAll.swap;
   double totalMtm = closedNet + openPnl;
-  string filename = "gate82_account_state_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v1_account_state_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,mode,enabled_symbols,balance,equity,open_pnl,closed_pnl_ea,commission_ea,swap_ea,total_mtm_ea,current_drawdown,max_drawdown,free_margin,margin_level,total_positions,long_positions,short_positions,total_fills,total_resets,last_action,last_error");
   if(h == INVALID_HANDLE)
@@ -1156,7 +1156,7 @@ void LogSymbolState(const int index)
   double adr = GetAdrValue(symbol);
   double closedNet = closed.profit + closed.commission + closed.swap;
 
-  string filename = "gate82_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v1_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
   if(h == INVALID_HANDLE)
@@ -1198,7 +1198,7 @@ void LogFill(const int index, const string action, const int side, const double 
   SymbolInfoTick(symbol, tick);
   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
   double spread = point > 0.0 ? (tick.ask - tick.bid) / point : 0.0;
-  string filename = "gate82_fills_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v1_fills_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,action,side,volume,requested_price,filled_price,bid,ask,spread,order_id,deal_id,position_id,commission,swap,realized_pnl,reason");
   if(h == INVALID_HANDLE)
@@ -1236,7 +1236,7 @@ void LogReset(const int index, const string resetType, const int positionsClosed
   GetPositionSnapshot(symbol, g_symbols[index].magic, positions);
   GetClosedSnapshot(symbol, g_symbols[index].magic, closed);
   double closedNet = closed.profit + closed.commission + closed.swap;
-  string filename = "gate82_resets_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v1_resets_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,reset_type,weekly_reset_count,total_reset_count,closed_pnl_at_reset,open_pnl_at_reset,commission_at_reset,swap_at_reset,total_mtm_at_reset,positions_closed,reason");
   if(h == INVALID_HANDLE)
