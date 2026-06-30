@@ -9,16 +9,32 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 ## Active Gate
 
 Latest completed gate: Gate 82:
-hedged-grid-four-variant-preflight.
+mt5-hedged-grid-visual-prototype.
 
-Objective completed: run a bounded four-variant hedged-grid diagnostic before
-MT5 prototype work, comparing Gate 80 raw L3/no-limit anchors against two
-pair-net `+1 ADR` flatten/reset variants under the same Gate 74B/Gate 80
-warehouse lineage.
+Objective completed: build the first MT5 visual mechanics prototype for the raw
+fully hedged grid family under `automation/mt5/gate82_hedged_grid_visual/`.
+The EA implements `NO_LIMIT_RAW` and `L3_RAW`, defaults to one chart symbol,
+requires a hedging account, blocks non-tester trading unless explicitly allowed,
+shows an audit dashboard, writes CSV state/fill/reset logs, and compiled in
+MetaEditor with `0` errors and `0` warnings.
 
 Status: active on `codex/gate82-hedged-grid-preflight`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
+
+Current verdict:
+
+- `PASS_GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_BUILT_NO_PROMOTION`
+
+Current receipt:
+
+- `docs/research/gates/gate82/GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_2026-06-30.md`
+
+Next intended scope: one-pair MT5 Strategy Tester visual inspection only. Start
+with `UseCurrentChartSymbolOnly=true`, `Mode=NO_LIMIT_RAW`, then repeat with
+`Mode=L3_RAW`. Do not start all-28 validation, risk, live trading, Candidate B,
+Brain, COT, Strength, Regime, pair-net flatten, optimization, promotion, or
+live-readiness work until Freedom explicitly opens that next gate.
 
 Gate 74 current state:
 
