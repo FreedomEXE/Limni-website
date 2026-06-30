@@ -1,0 +1,100 @@
+{
+  "gate_id": "Gate 78A: limited-reentry-institutional-numeric-scorecard-supplement",
+  "generated_at": "2026-06-30T02:03:11.138Z",
+  "git_commit": "658d9dfcf0da1d37bf398e3815772429ffb261c7",
+  "command": "npm run engine:gate78a:limited-reentry-institutional-scorecard",
+  "verdict": "PASS_SCORECARD_T100_L3_REMAINS_PRIMARY_CANDIDATE_NO_PROMOTION",
+  "purpose": "produce an MTM-first institutional scorecard supplement over existing Gate 78 rows before exit freeze, risk-layer work, costs, MT5/live, or promotion discussion",
+  "primary_candidate": {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "institutional_candidate_rank": 1,
+    "institutional_label": "primary candidate",
+    "institutional_reason": "best non-reference MTM equity with controlled drawdown versus T150 and no runner harvest collapse",
+    "reference_only": false,
+    "equity_adr": 13772.999764,
+    "max_drawdown_adr": -1989.442654,
+    "weekly_mtm_profit_factor": 1.561828,
+    "adr_calmar": 0.965143,
+    "weekly_mtm_sortino_adr_normalized": 1.362816,
+    "final_open_unrealized_adr": -2351.084511,
+    "right_tail_give_up_vs_t150_adr": 4767.124605,
+    "execution_burden_fills_per_week": 284.396783,
+    "content_hash": "BCA0E96F874FB4658285DFC7E01FA1020EA07DCD683D14FC88727CC527458AE8"
+  },
+  "required_decision_question": "Does T100/S020/L3 remain the best real trading-system candidate after full MTM risk-adjusted statistics, or does another limited-reentry row beat it without hiding floating-loss transfer?",
+  "decision_answer": "T100/S020/L3 remains the primary non-reference research candidate. It is not promoted or frozen.",
+  "metric_limitations": [
+    {
+      "metric": "pair_week_lifecycle_profit_factor",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; requires pair-week lifecycle replay instrumentation",
+      "content_hash": "F04AC9B618D63FF9A18243036425AF580CED7F313C197369ACFC21F2757941A5"
+    },
+    {
+      "metric": "account_week_mfe_mae",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; weekly MTM rolling losses and week-end open-unrealized values reported instead",
+      "content_hash": "DBD28BEC8CF9FFB7331081A83C74DF6D3CE827BC8EFB661D6C4D957745852A4D"
+    },
+    {
+      "metric": "pair_week_lifecycle_mfe_mae",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; max cycle MFE and total giveback proxies reported",
+      "content_hash": "EFD2A45DE077EF199ECFD3D4CA88F48FBF31244E1D15A8403795043E17BCCC7E"
+    },
+    {
+      "metric": "average_open_inventory",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; fill and reset burden proxies reported",
+      "content_hash": "4B3CA25704536A3AF2ABD5A19DB0E9787F8FED09677F2CA5B8755567718B1C4C"
+    },
+    {
+      "metric": "max_open_inventory",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; max weekly fill and reset counts reported",
+      "content_hash": "A3EEB12E0DD3003F3207B94D4B6F812954885BC8102439E0A0F5E88E6150FED7"
+    },
+    {
+      "metric": "max_holding_time",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; average closed cycle hold hours reported",
+      "content_hash": "DB59112C90B96B910F33BE80848CA49F716CDA0AF517C836A0AA36459797C62A"
+    },
+    {
+      "metric": "runner_mfe_mae",
+      "availability": "not_available_from_gate78_artifacts",
+      "gate78a_handling": "reported null; runner realized/unrealized contribution and close counts reported",
+      "content_hash": "C57531506558073293235369CF8A19AA84DD541BC5696AE9CE1BF48F8151E07C"
+    }
+  ],
+  "validation": {
+    "gate78a_supplement_only": true,
+    "gate78_verdict_preserved": "PASS_GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX__RUNNER_AND_REFERENCE_SL_VISIBLE_NO_PROMOTION",
+    "gate78_rule_count": 17,
+    "expected_gate78_rule_count": 17,
+    "weekly_rows": 6341,
+    "expected_weekly_rows": 6341,
+    "weeks_per_rule": true,
+    "pairs_replayed_from_gate78_summary": 28,
+    "expected_pairs": 28,
+    "pair_week_rows_replayed_from_gate78_summary": 10444,
+    "expected_pair_week_rows": 10444,
+    "candidate_b_forced28_ledger_mutated": false,
+    "candidate_b_recomputed": false,
+    "candidate_b_relabeled": false,
+    "candidate_b_reweighted": false,
+    "candidate_b_filtered": false,
+    "pair_exclusions_started": false,
+    "audnzd_excluded": false,
+    "fair_value_pruning_started": false,
+    "risk_correlation_pruning_started": false,
+    "cost_slippage_swap_commission_assumptions_introduced": false,
+    "mt5_live_app_runtime_started": false,
+    "promotion_made": false,
+    "emergency_sl_rows_reference_only": true,
+    "runner_rows_ranked_as_diagnostics": true,
+    "gross_pre_cost_pre_risk_pre_promotion_research_only": true,
+    "primary_candidate": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK"
+  }
+}

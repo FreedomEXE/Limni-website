@@ -8,13 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 78:
-pair-two-sided-limited-reentry-enhancement-matrix.
+Latest completed gate: Gate 78A:
+limited-reentry-institutional-numeric-scorecard-supplement.
 
-Objective completed: test whether the Gate 77 limited pair-reentry structure can
-recover right-tail/harvest through final-reset runner preservation without
-reopening the negative tail, plus reference-only account emergency SL
-diagnostics.
+Objective completed: produce an MTM-first institutional scorecard supplement
+over the existing Gate 78 rows before any exit freeze, risk-layer work, cost
+stress, MT5/live work, or promotion discussion.
 
 Status: active on `codex/gate50-macro-source-promotion-proof`.
 
@@ -247,6 +246,37 @@ Gate 78 current state:
   mutation, Candidate C promotion, Candidate D retest, Candidate E, Alpha v2,
   MT5/live/app/runtime work, or exit promotion.
 
+Gate 78A current state:
+
+- Gate 78A verdict:
+  `PASS_SCORECARD_T100_L3_REMAINS_PRIMARY_CANDIDATE_NO_PROMOTION`.
+- Gate 78A was a derived scorecard supplement over the existing Gate 78
+  artifacts only. It did not rerun, add, optimize, freeze, promote, or mutate
+  strategy logic.
+- Gate 78A included all `17` existing Gate 78 rows in the raw scorecard and
+  ranked non-reference candidate rows with mark-to-market equity as primary.
+- Gate 78A kept
+  `PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK` as the primary
+  non-reference research candidate: `13772.999764` equity ADR, `16124.084275`
+  closed ADR, `-1989.442654` max drawdown ADR, weekly MTM PF `1.561828`,
+  ADR-Calmar `0.965143`, ADR-normalized Sortino `1.362816`, `-8525.307355`
+  worst 13-week aggregate MTM loss ADR, and `-2351.084511` final open
+  unrealized ADR.
+- Gate 78A classified `T075/L3` as an alternate candidate, `T125/L3` as too
+  much tail, runner rows as too much harvest loss or reject, and emergency-SL
+  rows as reference-only diagnostics.
+- Gate 78A explicitly labels Sharpe/Sortino as ADR-normalized diagnostics, not
+  true investment Sharpe/Sortino, because sizing, margin, costs, swap, and
+  capital base are not defined yet.
+- Gate 78A explicitly labels unavailable intraperiod metrics rather than
+  fabricating them: pair-week lifecycle PF, account-week MFE/MAE, pair-week
+  lifecycle MFE/MAE, open inventory counts, max holding time, and runner MFE/MAE
+  require replay instrumentation beyond the Gate 78 artifact surface.
+- Gate 78A applied no Candidate B mutation/recompute/relabel/reweight/filter,
+  no pair exclusion, no AUDNZD exclusion, no fair-value pruning, no
+  risk/correlation pruning, no cost/slippage/swap assumptions, no MT5/live/app
+  runtime work, and no promotion.
+
 No next gate is open. Gate 75B broad matrix, Gate 79, costs, risk, robustness,
 promotion, and live/app work remain closed unless Freedom explicitly opens the
 next scope.
@@ -303,7 +333,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-78 commands:
+Gate 73-78A commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -317,6 +347,7 @@ Gate 73-78 commands:
 - `npm run engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery`
 - `npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy`
 - `npm run engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix`
+- `npm run engine:gate78a:limited-reentry-institutional-scorecard`
 
 Current verdicts:
 
@@ -344,6 +375,8 @@ Current verdicts:
   `PASS_GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY__PAIR_LIMIT3_PROMISING_RESEARCH_ONLY_NO_PROMOTION`
 - Gate 78:
   `PASS_GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX__RUNNER_AND_REFERENCE_SL_VISIBLE_NO_PROMOTION`
+- Gate 78A:
+  `PASS_SCORECARD_T100_L3_REMAINS_PRIMARY_CANDIDATE_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -421,7 +454,7 @@ Gate 68 capsule reference:
 
 ## Stop Boundary
 
-Stop after Gate 78 unless Freedom explicitly opens the next gate.
+Stop after Gate 78A unless Freedom explicitly opens the next gate.
 
 Do not proceed to Gate 75B broad matrix execution, Gate 79, cost validation,
 additional account-level synchronized exit materialization, broad fixed ADR
@@ -449,6 +482,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate78a/GATE78A_LIMITED_REENTRY_INSTITUTIONAL_NUMERIC_SCORECARD_SUPPLEMENT_2026-06-30.md`
 
 `docs/research/gates/gate78/GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX_2026-06-29.md`
 

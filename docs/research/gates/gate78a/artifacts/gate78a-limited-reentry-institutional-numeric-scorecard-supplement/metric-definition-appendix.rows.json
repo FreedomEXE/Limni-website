@@ -1,0 +1,212 @@
+[
+  {
+    "metric": "closed_adr",
+    "formula": "sum of weekly closed_week_adr for the rule; equals Gate 78 closed_total_adr",
+    "sign_convention": "positive is profit, negative is loss",
+    "provenance": "Gate 78 adapter summary and weekly equity truth",
+    "content_hash": "7219E935B40664700F006F2FB05D6A298A9372CA9B2B52FCF16C38613A67E759"
+  },
+  {
+    "metric": "equity_adr",
+    "formula": "final cumulative mark-to-market equity snapshot, closed PnL plus ending open unrealized PnL",
+    "sign_convention": "positive is profit, negative is loss",
+    "provenance": "Gate 78 weekly equity truth",
+    "content_hash": "704071AC9B8F9C3DA3D37AFE5E04B4AE34C37C67F38494422DF019DAEA0EED61"
+  },
+  {
+    "metric": "weekly_mtm_equity_change",
+    "formula": "weekly equity_delta_adr",
+    "sign_convention": "positive is profitable weekly MTM change",
+    "provenance": "Gate 78 weekly equity truth",
+    "content_hash": "99F1F2B96737EF3F34016496555EF614E0990BA24BED59DA657036CD072433E8"
+  },
+  {
+    "metric": "max_drawdown",
+    "formula": "minimum cumulative MTM equity snapshot minus prior peak",
+    "sign_convention": "reported as a negative ADR value",
+    "provenance": "Gate 78 adapter summary and Gate 78A weekly recomputation",
+    "content_hash": "5DD8BA82DC5864C27D4BB1438C52871947997C6A8F83C552A5077552A17F3909"
+  },
+  {
+    "metric": "return_drawdown",
+    "formula": "final equity ADR / absolute max drawdown ADR",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78A derived",
+    "content_hash": "DDD535DF57BFC0F2E7B250F346ABBF89C6BECA7B4C5CB5CE53A57832DDD34BE7"
+  },
+  {
+    "metric": "closed_profit_factor",
+    "formula": "sum positive weekly closed PnL / absolute sum negative weekly closed PnL",
+    "sign_convention": "higher is better; weekly closed aggregation, not independent cycle PF",
+    "provenance": "Gate 78 weekly equity truth",
+    "content_hash": "8F1B0A126656575A13D9049BC93835B527518620B819BA415897398D0FD4B76B"
+  },
+  {
+    "metric": "weekly_mtm_profit_factor",
+    "formula": "sum positive weekly MTM equity changes / absolute sum negative weekly MTM equity changes",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78 weekly equity truth; primary Gate 78A PF",
+    "content_hash": "1417DCD62C0694423BE744145952297D4EBE1EEA9609C4C6098AA10FE80917EC"
+  },
+  {
+    "metric": "worst_5_week_mtm_loss_adr",
+    "formula": "sum of the five worst weekly MTM equity changes, not necessarily contiguous",
+    "sign_convention": "negative is loss",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "42968675FC60CEA42B2A1CFE7C7A06F0BA703D3071EF26AACA5B7AFA55293A62"
+  },
+  {
+    "metric": "worst_13_week_mtm_loss_adr",
+    "formula": "sum of the thirteen worst weekly MTM equity changes, not necessarily contiguous",
+    "sign_convention": "negative is loss",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "EAA5501A3C9778069E8EC2D84B6E93507B00DD041977D5168B85DD37F4921258"
+  },
+  {
+    "metric": "worst_5_week_contiguous_mtm_loss_adr",
+    "formula": "worst contiguous 5-week sum of weekly MTM equity changes",
+    "sign_convention": "negative is loss",
+    "provenance": "Gate 78A derived from weekly equity truth",
+    "content_hash": "9B9FAEEEF727729F1680ADB03E6951B65E5C0063130F3B19C5338B35A0B9A5B8"
+  },
+  {
+    "metric": "worst_13_week_contiguous_mtm_loss_adr",
+    "formula": "worst contiguous 13-week sum of weekly MTM equity changes",
+    "sign_convention": "negative is loss",
+    "provenance": "Gate 78A derived from weekly equity truth",
+    "content_hash": "39DC882CD3C149B089A9AEE7FA388FFCC41E617D934ACC5AEB9CB64B2C9FA3A2"
+  },
+  {
+    "metric": "lifecycle_profit_factor",
+    "formula": "gross winning pair-week lifecycle result / absolute losing pair-week lifecycle result",
+    "sign_convention": "higher is better",
+    "provenance": "not emitted by Gate 78 artifacts; requires pair-week lifecycle replay instrumentation",
+    "content_hash": "A82CA7D5B1001993FFCAA0121A349327918AACB15BA67738B996EDA32C3A5084"
+  },
+  {
+    "metric": "adr_calmar",
+    "formula": "annualized MTM equity ADR / absolute max drawdown ADR",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78A derived; ADR-normalized diagnostic",
+    "content_hash": "A1EB0B29FAE56A763822CA63F2912BD4FE50F5F3E789144AFABA9B8ECDB19736"
+  },
+  {
+    "metric": "sharpe",
+    "formula": "mean weekly MTM equity change / sample stddev weekly MTM equity change * sqrt(52)",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78A derived; ADR-normalized diagnostic, not true investment Sharpe",
+    "content_hash": "60294037BEED5AB1FCE672EF36F57232D7D47537F08980EE4C1C68E0D6FBE3C5"
+  },
+  {
+    "metric": "sortino",
+    "formula": "mean weekly MTM equity change / sample stddev of negative weekly MTM equity changes * sqrt(52)",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78A derived; ADR-normalized diagnostic, not true investment Sortino",
+    "content_hash": "EF1AA4363AF18770E5B6A9321425745ECA03F6398EFCAB7AA518388466F6F4B3"
+  },
+  {
+    "metric": "weekly_win_rate",
+    "formula": "count of weeks with positive weekly MTM equity change / total weeks",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78 weekly equity truth",
+    "content_hash": "6C3C55B20103BD0C95FBA4969F9969D0C33A5CC279E18F059ED26DF0584914FA"
+  },
+  {
+    "metric": "monthly_win_rate",
+    "formula": "count of months with positive aggregate monthly MTM equity change / total months",
+    "sign_convention": "higher is better",
+    "provenance": "Gate 78A derived from weekly equity truth",
+    "content_hash": "535192241F768B40FAED7E7A6857141F83A29A0B235F5E170EB74ADEABC7FD80"
+  },
+  {
+    "metric": "account_week_expectancy",
+    "formula": "average weekly MTM equity change",
+    "sign_convention": "positive is profitable",
+    "provenance": "Gate 78 weekly equity truth",
+    "content_hash": "FC1838EBBDCF4F39287DBFBD226EC5D50CE315AFC799D604BE173D092DDE070C"
+  },
+  {
+    "metric": "pair_week_expectancy",
+    "formula": "final MTM equity ADR / 10,444 Candidate B pair-week rows",
+    "sign_convention": "positive is profitable",
+    "provenance": "Gate 78A derived denominator proxy",
+    "content_hash": "6D9C302BEE6FB6FDF1C33EEAA8FD00F2D5008FA6C9748EF9980B491BD158B17E"
+  },
+  {
+    "metric": "reset_cycle_expectancy",
+    "formula": "closed ADR / target reset cycles",
+    "sign_convention": "diagnostic only; reset cycles are path-dependent",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "2AA757CA4680BB3C805EA7144971027C925E27616F103A9D1AD65B0D2D68875E"
+  },
+  {
+    "metric": "fill_level_expectancy",
+    "formula": "closed ADR / fill count",
+    "sign_convention": "diagnostic only; fills are not independent trades",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "F622FA2B398A024DF32922372E10089A82EEFCBA631ECD6D97690691D28B3C0D"
+  },
+  {
+    "metric": "mfe",
+    "formula": "maximum favorable excursion",
+    "sign_convention": "positive favorable excursion",
+    "provenance": "Gate 78 exposes max cycle MFE only; account-week and pair-week MFE require replay instrumentation",
+    "content_hash": "004C4EE5DA56BA754591344CFED9D3814E5083304059EA90886875F043539C10"
+  },
+  {
+    "metric": "mae",
+    "formula": "maximum adverse excursion",
+    "sign_convention": "negative adverse excursion",
+    "provenance": "Gate 78A reports worst weekly open-unrealized and drawdown proxies; intraperiod MAE requires replay instrumentation",
+    "content_hash": "8AAECEA5B98EC21E8F518E6CDF59A057A0725E4E764D7481657A0BCCF6F48449"
+  },
+  {
+    "metric": "mfe_capture_ratio",
+    "formula": "closed ADR / (closed ADR + total giveback ADR)",
+    "sign_convention": "higher is better; proxy only",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "54CD3A4EDD9359BAA7C0E22080442E09B2D51EF15D14818B0E71FA2DEB05D140"
+  },
+  {
+    "metric": "mae_recovery_ratio",
+    "formula": "recovered negative cycles / negative cycles",
+    "sign_convention": "higher is better; proxy only",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "168AC619D7E7D3E7EC42F7D00D687BEBB84A042255D69C387D2E7AEDEA9A261A"
+  },
+  {
+    "metric": "top20_winner_retention",
+    "formula": "Gate 78 top-20 winner ADR divided by weekly forced top-20 winner ADR",
+    "sign_convention": "higher retains more right tail",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "34CA55E76569AC657D9D4338F1D77E156B32E620661646CEC99F464A9437C8F0"
+  },
+  {
+    "metric": "right_tail_give_up",
+    "formula": "T150 top-20 winner ADR minus rule top-20 winner ADR",
+    "sign_convention": "higher is more right-tail loss",
+    "provenance": "Gate 78 right-tail retention artifact",
+    "content_hash": "113C8A45A2227276DA7AF22C89D3F927A4328AE26D8C9CB10E6B400F6AF01BBB"
+  },
+  {
+    "metric": "worst20_loser_concentration",
+    "formula": "absolute sum of 20 worst weekly MTM changes / absolute sum of all negative weekly MTM changes",
+    "sign_convention": "higher is more concentrated loss",
+    "provenance": "Gate 78A derived from weekly equity truth",
+    "content_hash": "5B1394BBBC68BC40237EE2ABC848EA0870A0FB67209E9639C25DE04091603A99"
+  },
+  {
+    "metric": "open_unrealized_adr",
+    "formula": "ending open unrealized ADR; weekly worst/average use week-end open unrealized values",
+    "sign_convention": "negative is floating loss",
+    "provenance": "Gate 78 adapter summary and weekly equity truth",
+    "content_hash": "B80239BB470E632498616923FB152509866BDC988438726C6426A7B0A1AC6A21"
+  },
+  {
+    "metric": "flip_loss_adr",
+    "formula": "sum of cycle losses closed by Candidate B flip or sample-end policy where reported by Gate 78",
+    "sign_convention": "negative is loss",
+    "provenance": "Gate 78 adapter summary",
+    "content_hash": "11ADDCFC4572F266FBCACACADF52F83DB2B34B668950592E8F388BAC88D07650"
+  }
+]
