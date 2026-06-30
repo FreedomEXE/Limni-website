@@ -1,0 +1,50 @@
+[
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_L3_PAIR_NET_TP_1ADR",
+    "close_reason": "target",
+    "event_count": 27532,
+    "realized_or_open_adr": 29843.763532,
+    "fill_count": 90882,
+    "content_hash": "CF1BC701E19284281B2A624B0F554538A31A2546BFA632B059A719D15CCBDBD8"
+  },
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_L3_PAIR_NET_TP_1ADR",
+    "close_reason": "pair_net_flatten",
+    "event_count": 21835,
+    "realized_or_open_adr": -11223.730169,
+    "fill_count": 94435,
+    "content_hash": "3DC2A02E20754025E80FE2B479408EA9AAA65583DA56AE4FEDE275EEC82498F9"
+  },
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_L3_PAIR_NET_TP_1ADR",
+    "close_reason": "sample_end",
+    "event_count": 1786,
+    "realized_or_open_adr": -18437.393584,
+    "fill_count": 18366,
+    "content_hash": "E87108D4A221FFE871DABBC44E62234F5BCF9D1C80200F2D66921F72D90F6825"
+  },
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_NO_LIMIT_PAIR_NET_TP_1ADR",
+    "close_reason": "target",
+    "event_count": 72183,
+    "realized_or_open_adr": 79520.111821,
+    "fill_count": 245232,
+    "content_hash": "2FA95DC94F8CF2BBF2F131DF95BB8C30EECE7664848994478B8DEA78093B2A14"
+  },
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_NO_LIMIT_PAIR_NET_TP_1ADR",
+    "close_reason": "pair_net_flatten",
+    "event_count": 48628,
+    "realized_or_open_adr": -29362.291728,
+    "fill_count": 190248,
+    "content_hash": "200D7BBF6B42377459CC63FE9546D9F279D91564265B41E43229F0E6F1BF8AF4"
+  },
+  {
+    "variant_id": "HEDGED_GRID_T100_S020_NO_LIMIT_PAIR_NET_TP_1ADR",
+    "close_reason": "sample_end",
+    "event_count": 20888,
+    "realized_or_open_adr": -51193.299206,
+    "fill_count": 94935,
+    "content_hash": "9A8ED42A83EEC80CE20AD740BE044836A7899B7CB526016AA6BF625629A81898"
+  }
+]

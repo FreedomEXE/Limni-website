@@ -8,15 +8,15 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 81:
-hedged-broker-real-feasibility-preflight.
+Latest completed gate: Gate 82:
+hedged-grid-four-variant-preflight.
 
-Objective completed: use Gate 80 receipts only to test whether the fully hedged
-T100/S020/L3 gross baseline has enough cost, swap, margin-proxy, and order-count
-buffer to justify a one-pair MT5 mechanics prototype without rerunning the full
-warehouse replay.
+Objective completed: run a bounded four-variant hedged-grid diagnostic before
+MT5 prototype work, comparing Gate 80 raw L3/no-limit anchors against two
+pair-net `+1 ADR` flatten/reset variants under the same Gate 74B/Gate 80
+warehouse lineage.
 
-Status: active on `codex/gate50-macro-source-promotion-proof`.
+Status: active on `codex/gate82-hedged-grid-preflight`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
 
@@ -327,10 +327,30 @@ Gate 81 current state:
   no AUDNZD exclusion, no risk layer, no Regime/fair-value layer, no MT5/live
   portfolio runtime, no live readiness, and no promotion.
 
-No next gate is open. Gate 75B broad matrix, all-28 MT5/runtime, risk layer,
-signal retuning, pair exclusions, AUDNZD exclusion, fair-value pruning,
-promotion, and live/app work remain closed unless Freedom explicitly opens the
-next scope.
+Gate 82 current state:
+
+- Gate 82 preflight verdict:
+  `PASS_FOUR_VARIANT_HEDGED_GRID_DIAGNOSTIC_BUILT_NO_PROMOTION`.
+- Gate 82 preflight used the same Gate 74B/Gate 80 warehouse lineage:
+  `gate74b_trade_leg_path_ECDE7C4A6553`, `373` weeks, `28` pairs, and
+  `10,444` pair-week rows.
+- Raw L3 and raw no-limit hedged rows were imported from Gate 80 artifacts,
+  not rerun:
+  `HEDGED_GRID_T100_S020_L3_RAW` at `53646.297719` final equity ADR and
+  `HEDGED_GRID_T100_S020_NO_LIMIT_RAW` at `82549.112283` final equity ADR.
+- Pair-net `+1 ADR` flatten/reset reduced final and worst open inventory, but
+  also destroyed too much harvest versus raw anchors. L3 pair-net ended at
+  `18485.96236` final equity ADR versus raw L3 `53646.297719`; no-limit
+  pair-net ended at `49969.699611` versus raw no-limit `82549.112283`.
+- Gate 82 preflight applied no Candidate B mutation, no COT, no Strength, no
+  Regime, no risk layer, no MT5 code, no all-28 runtime/deployment work, no
+  parameter sweep, no threshold optimization, no promotion, and no live-capital
+  claim.
+
+Next intended scope: one-pair MT5 fully hedged visual mechanics prototype under
+`automation/`, using this preflight as evidence. Do not start all-28 runtime,
+risk layer, app/runtime integration, Candidate B/macro research, pair pruning,
+promotion, or live readiness in this gate.
 
 Gate 73 reference:
 
@@ -384,7 +404,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-81 commands:
+Gate 73-82 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -402,6 +422,7 @@ Gate 73-81 commands:
 - `npm run engine:gate79:flip-loss-adverse-inventory-root-cause-audit`
 - `npm run engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution`
 - `npm run engine:gate81:hedged-broker-real-feasibility-preflight`
+- `npm run engine:gate82:hedged-grid-four-variant-preflight`
 
 Current verdicts:
 
@@ -437,6 +458,8 @@ Current verdicts:
   `PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION`
 - Gate 81:
   `PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION`
+- Gate 82:
+  `PASS_FOUR_VARIANT_HEDGED_GRID_DIAGNOSTIC_BUILT_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -542,6 +565,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate82_preflight/GATE82_HEDGED_GRID_FOUR_VARIANT_PREFLIGHT_2026-06-30.md`
 
 `docs/research/gates/gate81/GATE81_HEDGED_BROKER_REAL_FEASIBILITY_PREFLIGHT_2026-06-30.md`
 
