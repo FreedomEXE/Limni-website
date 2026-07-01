@@ -8,7 +8,54 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gate: Gate 83: raw-hedged-grid-speed-simplification.
+Latest active gate: Gate 84: mt5-raw-harvest-v3-simplification-install.
+
+Gate 84 opened the MT5 implementation/install lane after the Gate 83 full
+EURUSD warehouse run showed the raw hedged harvest signal was worth testing in
+the terminal. It added `LimniBasketHedgeEAAlphaV3`, a raw no-boundary harvest
+EA intended for Freedom's one-pair EURUSD Strategy Tester comparison.
+
+Gate 84 active files:
+
+- `automation/mt5/Experts/LimniBasketHedgeEAAlphaV3.mq5`
+- `automation/mt5/Experts/Include/Strategy/RawHarvestEngine.mqh`
+
+Gate 84 archived prior hedged prototype files:
+
+- `archive/automation/mt5/Experts/LimniBasketHedgeEAAlphaV2.mq5`
+- `archive/automation/mt5/Experts/Include/Strategy/WeeklyBoundary.mqh`
+- `archive/automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.ex5` was already
+  archived before this gate.
+
+Gate 84 verification:
+
+- Repo compile:
+  `docs/research/gates/gate84/artifacts/limni-basket-hedge-ea-alpha-v3-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Active terminal compile:
+  `docs/research/gates/gate84/artifacts/limni-basket-hedge-ea-alpha-v3-active-terminal-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Active running terminal data root:
+  `C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB`.
+- Installed active terminal files:
+  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.mq5`,
+  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.ex5`, and
+  `MQL5/Experts/Include/Strategy/RawHarvestEngine.mqh`.
+
+Gate 84 removes the V2 weekly-boundary/helper path, week tags, trade-window
+gating, `RAW`/`GRID_CAP` mode switch, grid-cap reset limit, Pine-style weekly
+price anchor, chart objects, per-tick `HistorySelect`, per-tick CSV state
+logging, and global-variable state persistence. It keeps only the raw harvest
+loop: open long+short sides, close a side at `1.0` ADR, and add adverse/favorable
+fills every `0.2` ADR from the side anchor. ADR is cached from D1 bars unless
+`AdrValue` is manually supplied.
+
+Gate 84 is not an MT5 Strategy Tester result, optimization, risk layer,
+all-pair runtime, promotion, or live-readiness claim. Freedom's next action is
+to run one EURUSD Strategy Tester pass with broker costs added and compare it
+against the Gate 83 EURUSD warehouse result.
+
+Recent prior gate: Gate 83: raw-hedged-grid-speed-simplification.
 
 Gate 83 opened the warehouse/backtester-only raw hedged-grid speed lane after
 Gate 82F scratch overcomplicated the comparison. It added

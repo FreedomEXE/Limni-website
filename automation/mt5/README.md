@@ -14,6 +14,14 @@ MetaTrader 5 integration workspace.
 MT5 research receipts and historical notes live under root `docs/` or
 `archive/`.
 
+## Active Hedge EA
+
+- `Experts/LimniBasketHedgeEAAlphaV3.mq5` is the active raw no-boundary harvest
+  EA.
+- `Experts/Include/Strategy/RawHarvestEngine.mqh` is its only project-local
+  strategy include.
+- Previous hedged prototype versions belong under root `archive/automation/mt5/`.
+
 ## Rules
 
 - This folder is anchored by `.github/workflows/contract-artifacts-sync.yml`,
