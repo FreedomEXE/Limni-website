@@ -1,0 +1,14 @@
+gate_id Gate 83: raw-hedged-grid-speed-simplification
+command npm run engine:gate83:raw-hedged-grid-speed-simplification
+generated_at 2026-07-01T09:02:49.204Z
+git_commit d18a34f33b047c0e8e1b85626a9016102a469660
+summary_json 76BECDD9C9B483884869CE828FC0DD6AF5412A0900914458DEC9D8487EAFBBB7 docs/research/gates/gate83/artifacts/fast-basket-small/cost-ladder-summary.rows.json
+weekly_gross_json 014981D60A0455A5DD3248F66B469BE2548F70481B111C7AD77826A2E7D11D89 docs/research/gates/gate83/artifacts/fast-basket-small/weekly-gross-mtm.rows.json
+weekly_cost_json 0FEF8EE6CD2F3EDBE1D66A1D72998B4CB55D6635CD54D7ABEA56B7A9572A6429 docs/research/gates/gate83/artifacts/fast-basket-small/weekly-cost-ladder-mtm.rows.json
+close_events_json 479DC8E837086B83698879C1402DD3811AA2329DCCED2D6E6CEA07A5C806FA66 docs/research/gates/gate83/artifacts/fast-basket-small/close-events.rows.json
+pair_contribution_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate83/artifacts/fast-basket-small/worst-drawdown-pair-contribution.rows.json
+validation_json BF4C148FBE156209A92417D20D88678500182B82320716A6896A827FEECE3236 docs/research/gates/gate83/artifacts/fast-basket-small/validation.rows.json
+metric_definitions_json 08EC7429EE204395CC2759991F4BF3E1F5D1493A43B8DED599821F68674C6573 docs/research/gates/gate83/artifacts/fast-basket-small/metric-definitions.rows.json
+command_receipt FBA5963DB1B4EFAEC00FE3DA3A736FC1B8BD165A1C9E2E2B30E688D887F71716 docs/research/gates/gate83/artifacts/fast-basket-small/command-receipt.json
+run_summary_json 94E668B60842B53572E546A753A2F5F7A6026B2C831E702C5ED4E6F6ED1D6D63 docs/research/gates/gate83/artifacts/fast-basket-small/gate83-run-summary.json
+report DE3CCAC1E0D7CCBE8A02B4F409604C722424323FC25ADFF7620C4ECAD6272F0A docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_BASKET_SMALL_2026-07-01.md

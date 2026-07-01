@@ -1,0 +1,26 @@
+{
+  "gate_id": "Gate 83: raw-hedged-grid-speed-simplification",
+  "command": "npm run engine:gate83:raw-hedged-grid-speed-simplification",
+  "speed_profile": "FAST_BASKET",
+  "durable_command": "npm run engine:gate83:raw-hedged-grid-speed-simplification -- --profile=FAST_BASKET --artifact-dir=docs/research/gates/gate83/artifacts/fast-basket-small --report-path=docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_BASKET_SMALL_2026-07-01.md",
+  "git_commit": "d18a34f33b047c0e8e1b85626a9016102a469660",
+  "generated_at": "2026-07-01T09:02:49.182Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate83/artifacts/fast-basket-small",
+    "reportPath": "docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_BASKET_SMALL_2026-07-01.md",
+    "manifestId": null,
+    "speedProfile": "FAST_BASKET",
+    "onlyPair": null,
+    "pairs": [
+      "AUDCAD",
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY"
+    ],
+    "maxWeeks": 1,
+    "weekFrom": null,
+    "weekTo": null,
+    "logProgress": true
+  }
+}

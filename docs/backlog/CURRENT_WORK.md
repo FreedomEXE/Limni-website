@@ -8,7 +8,38 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gates: Gate 82B / Gate 82C / Gate 82D / Gate 82E:
+Latest active gate: Gate 83: raw-hedged-grid-speed-simplification.
+
+Gate 83 opened the warehouse/backtester-only raw hedged-grid speed lane after
+Gate 82F scratch overcomplicated the comparison. It added
+`RAW_HEDGED_GRID_T100_S020_NO_BOUNDARY`: fully hedged long+short raw grid,
+T100/S020, no direction signal, no Candidate B pair selection, no COT,
+Strength, Regime, risk layer, Grid Cap, pair-net flatten, trailing, Pine
+price-anchor, or artificial Sunday 20:00 ET to Friday 11:00 ET execution
+boundary. Week identity is retained for warehouse grouping/reporting only.
+
+Gate 83 artifacts:
+
+- `docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_SMOKE_2026-07-01.md`
+- `docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_BASKET_SMALL_2026-07-01.md`
+- `docs/research/gates/gate83/artifacts/fast-smoke/`
+- `docs/research/gates/gate83/artifacts/fast-basket-small/`
+
+Gate 83 verification:
+
+- `FAST_SMOKE`: `AUDCAD`, `1` week, `PASS_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_BUILT_NO_PROMOTION`;
+  gross final MTM `7.493187` ADR, 50% target-cost final MTM `-9.256813` ADR.
+- `FAST_BASKET` small: `AUDCAD,EURUSD,GBPUSD,USDJPY`, `1` week,
+  `PASS_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_BUILT_NO_PROMOTION`;
+  gross final MTM `9.561754` ADR, 50% target-cost final MTM `-34.188246` ADR.
+
+Gate 83 is not MT5 EA simplification, MT5 compile/tester work, dangerous-fill
+guard implementation, full acceptance, optimization, risk, promotion, or live
+readiness. Next likely gate is either a wider Gate 83 warehouse profile
+(`FAST_BASKET` longer or `STRESS_WINDOWS`) or a separate MT5 raw-only
+simplification gate if Freedom explicitly opens it.
+
+Recent prior gates: Gate 82B / Gate 82C / Gate 82D / Gate 82E:
 weekly-boundary-anchor-contract, MT5 EA V2 boundary/anchor rework, and
 warehouse price-anchor V2 comparison, followed by a single trade-window
 boundary correction.
