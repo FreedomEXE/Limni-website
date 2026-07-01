@@ -28,7 +28,7 @@ and active process docs before treating any entry as current work.
   - Proposed internal id: `weekly_hold_trail_1x_adr_040`.
   - Keep this visibly separate from baseline Weekly Hold if it graduates into v2.0.3 or later.
 - Active indicator work:
-  - Revamp `scripts/pinescript/limni-adr-verifier.pine` ADR Grid mode to match the current app close-and-rearm model.
+  - Revamp `automation/indicators/tradingview/limni-adr-verifier.pine` ADR Grid mode to match the current app close-and-rearm model.
   - Show level activation count with colored grid lines, capped visually at `3+` for Pair Fill Cap.
   - Use aggregate red DD, green realized-TP, and light-green favorable-excursion boxes.
   - Use compact entry markers at fill levels and TP markers at the actual fill TP price; avoid partial-close or runner visuals.

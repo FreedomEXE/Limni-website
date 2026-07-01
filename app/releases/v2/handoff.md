@@ -37,7 +37,7 @@ Strategy and data:
 
 TradingView verifier:
 
-- Added `scripts/pinescript/limni-adr-verifier.pine`.
+- Added `automation/indicators/tradingview/limni-adr-verifier.pine`.
 - Verifier supports Weekly Hold and ADR Grid modes.
 - Verifier supports Market Truth vs Execution anchor checks.
 - Verifier supports Raw vs ADR Normalized checks.
@@ -79,7 +79,7 @@ High-signal files:
 - `src/lib/performance/engineAdapter.ts`
 - `src/lib/performance/strategyConfig.ts`
 - `src/lib/weekAnchor.ts`
-- `scripts/pinescript/limni-adr-verifier.pine`
+- `automation/indicators/tradingview/limni-adr-verifier.pine`
 - `scripts/adr-grid-weekly-anchor-ab.ts`
 
 Do not assume unrelated dirty files are part of this release.

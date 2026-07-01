@@ -10,7 +10,8 @@ runners.
 | `verification/` | App/indicator parity exporters and inspectors. |
 | `research/` | Research-only helper scripts that still belong with script tooling. |
 | `db/` | DB probes and maintenance helpers. |
-| `pinescript/` | TradingView verifier scripts. |
+
+TradingView Pine indicators moved to `automation/indicators/tradingview/`.
 
 ## Rules
 

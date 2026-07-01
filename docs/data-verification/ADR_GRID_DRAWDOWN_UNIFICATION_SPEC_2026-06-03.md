@@ -252,7 +252,7 @@ Phase 1.2 balance/equity path status:
 - `src/lib/performance/engineAdapter.ts`, `src/components/performance/PerformanceSimulationSection.tsx`, and `src/components/performance/RollingPerformanceWindows.tsx` carry the balance/adverse fields through multi-sleeve simulation aggregation.
 - `src/components/research/EquityCurveChart.tsx` renders mark-to-market equity and realized balance as separate lines when the series contains both values.
 - Legacy or cached paths that only have `equity_pct` are reconstructed with `balancePct = equityPct` and `adverseEquityPct = equityPct`.
-- `scripts/pinescript/limni-adr-verifier.pine` now stacks active ADR Grid fill adverse DD on the same bar instead of displaying only the worst individual active fill.
+- `automation/indicators/tradingview/limni-adr-verifier.pine` now stacks active ADR Grid fill adverse DD on the same bar instead of displaying only the worst individual active fill.
 - `src/lib/__tests__/basketPathEngine.test.ts` covers:
   - 36 concurrent Weekly Hold legs,
   - concurrent and staggered overlapping ADR Grid fills,
