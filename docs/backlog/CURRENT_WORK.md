@@ -8,24 +8,63 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gate: Gate 84: mt5-raw-harvest-v3-simplification-install.
+Latest active gate: Gate 85A:
+`eurusd-tail-trail-lifecycle-smoke`.
+
+Gate 85A ran a one-pair EURUSD warehouse/backtester-only smoke for residual
+tail runners with trailing stops. It deliberately did not touch MT5 while
+Freedom's manual V3 Strategy Tester run was active.
+
+Gate 85A scope:
+
+- Pair: `EURUSD`.
+- Window: `2020-01-06` through `2026-05-31T23:00:00.000Z`.
+- Raw grid: `1.0` ADR target, `0.2` ADR spacing, long+short harvest.
+- Tail fractions: `0`, `0.025`, `0.05`, `0.10`.
+- Tail activation ADR: `1`, `2`.
+- Tail trailing stop ADR: `1`, `2`, `3`, `5`.
+- Cost ladder:
+  `0`, `0.0025`, `0.005`, `0.01`, `0.02`, `0.05`, `0.1`, `0.2`, `0.5`.
+- HWM reset stayed `OFF`; synchronized account reset remains a later gate only
+  if reopened.
+
+Gate 85A verdict:
+
+- `PASS_TAIL_TRAIL_SMOKE_BUILT_IDEAS_WEAK_NO_PROMOTION`
+
+Gate 85A result read:
+
+- Full run: `335` weeks, `25` tail configs, `225` cost-ladder rows,
+  `602s` elapsed.
+- Baseline at `0.05` cost: final equity `217.664666` ADR, max drawdown
+  `-1306.263752` ADR.
+- Best drawdown row at `0.05` cost:
+  `TAIL100_A1_TR1`, final equity `212.507634` ADR, max drawdown
+  `-1306.027941` ADR, drawdown improvement only `0.235811` ADR, final equity
+  `-5.157032` ADR versus baseline.
+- Best final-equity row at `0.05` cost:
+  `TAIL100_A2_TR3`, final equity `252.538818` ADR, but max drawdown worsened to
+  `-1322.034135` ADR, `-15.770383` ADR versus baseline drawdown.
+
+Interpretation: residual tails with trailing stops are not dead, but this
+simple form does not solve the negative-tail problem. Tiny drawdown relief costs
+final equity, and variants that improve final equity make drawdown worse.
+
+Gate 85A artifacts:
+
+- `docs/research/gates/gate85a/GATE85A_EURUSD_TAIL_TRAIL_LIFECYCLE_SMOKE_2026-07-01.md`
+- `docs/research/gates/gate85a/artifacts/eurusd-tail-trail-lifecycle-smoke/`
+
+Gate 85A is not MT5, EA code, optimization, risk, HWM reset, full basket,
+promotion, or live-readiness work. The manual MT5 V3 Strategy Tester run remains
+the active external comparison to collect from Freedom.
+
+Recent prior gate: Gate 84: mt5-raw-harvest-v3-simplification-install.
 
 Gate 84 opened the MT5 implementation/install lane after the Gate 83 full
 EURUSD warehouse run showed the raw hedged harvest signal was worth testing in
 the terminal. It added `LimniBasketHedgeEAAlphaV3`, a raw no-boundary harvest
 EA intended for Freedom's one-pair EURUSD Strategy Tester comparison.
-
-Gate 84 active files:
-
-- `automation/mt5/Experts/LimniBasketHedgeEAAlphaV3.mq5`
-- `automation/mt5/Experts/Include/Strategy/RawHarvestEngine.mqh`
-
-Gate 84 archived prior hedged prototype files:
-
-- `archive/automation/mt5/Experts/LimniBasketHedgeEAAlphaV2.mq5`
-- `archive/automation/mt5/Experts/Include/Strategy/WeeklyBoundary.mqh`
-- `archive/automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.ex5` was already
-  archived before this gate.
 
 Gate 84 verification:
 
@@ -35,25 +74,12 @@ Gate 84 verification:
 - Active terminal compile:
   `docs/research/gates/gate84/artifacts/limni-basket-hedge-ea-alpha-v3-active-terminal-compile-log.txt`;
   `0` errors, `0` warnings.
-- Active running terminal data root:
+- Active terminal install root:
   `C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB`.
-- Installed active terminal files:
-  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.mq5`,
-  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.ex5`, and
-  `MQL5/Experts/Include/Strategy/RawHarvestEngine.mqh`.
-
-Gate 84 removes the V2 weekly-boundary/helper path, week tags, trade-window
-gating, `RAW`/`GRID_CAP` mode switch, grid-cap reset limit, Pine-style weekly
-price anchor, chart objects, per-tick `HistorySelect`, per-tick CSV state
-logging, and global-variable state persistence. It keeps only the raw harvest
-loop: open long+short sides, close a side at `1.0` ADR, and add adverse/favorable
-fills every `0.2` ADR from the side anchor. ADR is cached from D1 bars unless
-`AdrValue` is manually supplied.
 
 Gate 84 is not an MT5 Strategy Tester result, optimization, risk layer,
-all-pair runtime, promotion, or live-readiness claim. Freedom's next action is
-to run one EURUSD Strategy Tester pass with broker costs added and compare it
-against the Gate 83 EURUSD warehouse result.
+all-pair runtime, promotion, or live-readiness claim. Freedom's manual EURUSD
+Strategy Tester run is in progress from `2020-01-02` through `2026-06-30`.
 
 Recent prior gate: Gate 83: raw-hedged-grid-speed-simplification.
 
