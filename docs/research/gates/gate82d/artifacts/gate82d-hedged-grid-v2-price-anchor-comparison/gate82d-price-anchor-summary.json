@@ -1,0 +1,262 @@
+{
+  "gate_id": "Gate 82D: hedged-grid-v2-price-anchor-comparison",
+  "generated_at": "2026-07-01T06:00:36.981Z",
+  "git_commit": "c2e418bb52212b91273160429fa396ed6a604f8e",
+  "command": "npm run engine:gate82d:hedged-grid-v2-price-anchor-comparison",
+  "verdict": "PASS_GATE82D_PRICE_ANCHOR_V2_WAREHOUSE_COMPARISON_BUILT_NO_PROMOTION",
+  "warehouse": {
+    "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "weeks_replayed": 373,
+    "pairs_replayed": 28,
+    "pair_week_rows_replayed": 10444
+  },
+  "comparison": [
+    {
+      "variant_id": "HEDGED_GRID_T100_S020_L3_RAW",
+      "source_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+      "final_equity_adr": 53646.297719,
+      "closed_adr": 53870.954145,
+      "final_open_unrealized_adr": -224.656426,
+      "worst_open_unrealized_adr": -966.732115,
+      "max_drawdown_adr": -705.647194,
+      "return_dd_ratio": 76.024249,
+      "weekly_mtm_profit_factor": 10.308136,
+      "weekly_sharpe": 0.856116,
+      "weekly_sortino": 1.103443,
+      "weekly_win_rate": 0.857909,
+      "monthly_win_rate": 0.965116,
+      "worst_weekly_mtm_loss_adr": -705.647194,
+      "worst_13_week_aggregate_mtm_loss_adr": 915.954548,
+      "fills": 204752,
+      "resets": 48500,
+      "pair_net_flatten_reset_count": 0,
+      "active_side_week_count": 20888,
+      "max_open_position_inventory_count": 56,
+      "gross_no_cost_final_equity_adr": 53646.297719,
+      "gate81_style_stressed_cost_final_equity_adr": 42637.417719,
+      "gate80_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+      "gate80_raw_reproduced": null,
+      "metric_semantics": "imported_gate80_artifact",
+      "interpretation": "raw_gate80_artifact_imported_for_apples_to_apples_anchor",
+      "content_hash": "F81899956CF187495D8D465CF808FCA65009DDCAEE64AEFE93D503497E556863"
+    },
+    {
+      "variant_id": "HEDGED_GRID_T100_S020_NO_LIMIT_RAW",
+      "source_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+      "final_equity_adr": 82549.112283,
+      "closed_adr": 82805.435182,
+      "final_open_unrealized_adr": -256.322899,
+      "worst_open_unrealized_adr": -1927.15691,
+      "max_drawdown_adr": -1167.092908,
+      "return_dd_ratio": 70.730541,
+      "weekly_mtm_profit_factor": 22.70833,
+      "weekly_sharpe": 1.007575,
+      "weekly_sortino": 0.902634,
+      "weekly_win_rate": 0.932976,
+      "monthly_win_rate": 0.988372,
+      "worst_weekly_mtm_loss_adr": -1167.092908,
+      "worst_13_week_aggregate_mtm_loss_adr": 1520.691714,
+      "fills": 305641,
+      "resets": 74186,
+      "pair_net_flatten_reset_count": 0,
+      "active_side_week_count": 20888,
+      "max_open_position_inventory_count": 56,
+      "gross_no_cost_final_equity_adr": 82549.112283,
+      "gate81_style_stressed_cost_final_equity_adr": 65307.632283,
+      "gate80_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+      "gate80_raw_reproduced": null,
+      "metric_semantics": "imported_gate80_artifact",
+      "interpretation": "raw_gate80_artifact_imported_for_apples_to_apples_anchor",
+      "content_hash": "00B040B9583C48DA6639C3EF008418533FC62E54C90BF344DB4A2968EC35418E"
+    },
+    {
+      "variant_id": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR",
+      "source_rule_id": null,
+      "final_equity_adr": 31861.651847,
+      "closed_adr": 31940.162404,
+      "final_open_unrealized_adr": -78.510557,
+      "worst_open_unrealized_adr": -1412.179673,
+      "max_drawdown_adr": -1135.436382,
+      "return_dd_ratio": 28.061151,
+      "weekly_mtm_profit_factor": 5.979238,
+      "weekly_sharpe": 0.523782,
+      "weekly_sortino": 0.497149,
+      "weekly_win_rate": 0.841823,
+      "monthly_win_rate": 0.953488,
+      "worst_weekly_mtm_loss_adr": -1135.436382,
+      "worst_13_week_aggregate_mtm_loss_adr": -89.479319,
+      "fills": 172568,
+      "resets": 28297,
+      "pair_net_flatten_reset_count": 0,
+      "active_side_week_count": 17254,
+      "max_open_position_inventory_count": 57,
+      "gross_no_cost_final_equity_adr": 31861.651847,
+      "gate81_style_stressed_cost_final_equity_adr": 23060.711847,
+      "gate80_reference_rule_id": null,
+      "gate80_raw_reproduced": null,
+      "metric_semantics": "price_anchor_v2_replay",
+      "interpretation": "price_anchor_v2_raw_no_reset_cap_replayed_from_gate74b_path_rows",
+      "content_hash": "4E2F6A08C341072A9035C7CBD24F15E152AAD2CDFA8ECAA8BD74018AA6CD22C3"
+    },
+    {
+      "variant_id": "HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+      "source_rule_id": null,
+      "final_equity_adr": 28128.243783,
+      "closed_adr": 28202.238439,
+      "final_open_unrealized_adr": -73.994656,
+      "worst_open_unrealized_adr": -1034.302267,
+      "max_drawdown_adr": -855.413524,
+      "return_dd_ratio": 32.882627,
+      "weekly_mtm_profit_factor": 5.571719,
+      "weekly_sharpe": 0.538358,
+      "weekly_sortino": 0.555296,
+      "weekly_win_rate": 0.831099,
+      "monthly_win_rate": 0.94186,
+      "worst_weekly_mtm_loss_adr": -855.413524,
+      "worst_13_week_aggregate_mtm_loss_adr": 81.181583,
+      "fills": 151272,
+      "resets": 25155,
+      "pair_net_flatten_reset_count": 0,
+      "active_side_week_count": 17254,
+      "max_open_position_inventory_count": 50,
+      "gross_no_cost_final_equity_adr": 28128.243783,
+      "gate81_style_stressed_cost_final_equity_adr": 20392.103783,
+      "gate80_reference_rule_id": null,
+      "gate80_raw_reproduced": null,
+      "metric_semantics": "price_anchor_v2_replay",
+      "interpretation": "price_anchor_v2_grid_cap_3_inherited_cap_not_optimized",
+      "content_hash": "06BB15FFE1F7FF9E3A60C98815F5E7A33758E7AFC71413EB88AD2C678AF1D732"
+    }
+  ],
+  "validation": [
+    {
+      "check": "gate74b_verdict",
+      "value": "PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY",
+      "passed": true,
+      "content_hash": "752E5A367A6DE2B87A8B74EF85B3A6D13739ACC4F37CC434CE01197E470B5F08"
+    },
+    {
+      "check": "gate80_verdict",
+      "value": "PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION",
+      "passed": true,
+      "content_hash": "7D02FDCE9CD10F824BAA59F7C0DCFC571D8C12D82D9BC19C8A5A206963B56DDA"
+    },
+    {
+      "check": "manifest_complete",
+      "value": "complete",
+      "passed": true,
+      "content_hash": "58484BB98CF50A38DEA1C6C88792FC4258F02D1CF9E01219A78F962161F1996E"
+    },
+    {
+      "check": "same_manifest_as_gate80",
+      "value": "gate74b_trade_leg_path_ECDE7C4A6553",
+      "expected": "gate74b_trade_leg_path_ECDE7C4A6553",
+      "passed": true,
+      "content_hash": "D6C2BD6BB1FF0AAE41FED9AFD211C7CA90A93C610C1E010E0CDD1D1FEED68682"
+    },
+    {
+      "check": "same_warehouse_hash_as_gate80",
+      "value": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+      "expected": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+      "passed": true,
+      "content_hash": "5DC507D0D64B851697AC9ADCC193A888E7651A608A1A615F71E2F66F95039759"
+    },
+    {
+      "check": "week_count",
+      "value": 373,
+      "expected": 373,
+      "passed": true,
+      "content_hash": "328DC5B755833B89A5C69E6A25E1CE8971D0B047185BB060C25A052A124B511B"
+    },
+    {
+      "check": "pair_count",
+      "value": 28,
+      "expected": 28,
+      "passed": true,
+      "content_hash": "6E1C098B09E833AF5081ED3203176F698FEE471CEA7552DA9709D0CEC873D14B"
+    },
+    {
+      "check": "pair_week_rows",
+      "value": 10444,
+      "expected": 10444,
+      "passed": true,
+      "content_hash": "973AF34886E3DCE30262A972783605B1BE2E7CA21F0C78FA0EB2E5C0F3EF57EE"
+    },
+    {
+      "check": "raw_rows_imported_from_gate80",
+      "value": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE,FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+      "passed": true,
+      "content_hash": "327EAC5A19D95E7D6667065548E589D35D63455B2783C5478A209E72CFA30E93"
+    },
+    {
+      "check": "price_anchor_v2_rows_present",
+      "value": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR,HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+      "expected": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR,HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+      "passed": true,
+      "content_hash": "485F1230886B196FC025A177FDE62FF57EF577461DD438119594C1BAB2B075F5"
+    },
+    {
+      "check": "grid_cap_3_visible_but_not_optimized",
+      "value": "price_anchor_v2_grid_cap_3_inherited_cap_not_optimized",
+      "expected": "inherited_cap_not_optimized",
+      "passed": true,
+      "content_hash": "DD79CF9B59095306FC319AD2B53795F970DEF21339162FBE60F1786FA9EEF09D"
+    },
+    {
+      "check": "candidate_b_mutated",
+      "value": false,
+      "passed": true,
+      "content_hash": "945236FEE87C124124D1E6F141003D26E4FE1BF8572C5B3594F9EB96FB59E480"
+    },
+    {
+      "check": "cot_strength_regime_used",
+      "value": false,
+      "passed": true,
+      "content_hash": "EE2AC904B9C6CB619E8D6178E28058D378A82E231BB7DF26E07A316D57FD2C9B"
+    },
+    {
+      "check": "risk_layer_started",
+      "value": false,
+      "passed": true,
+      "content_hash": "3030F5FF25CB219358CBC44CE221F8996F653C0F60DD1DE33D581B0EF5133D7A"
+    },
+    {
+      "check": "mt5_compile_or_tester_run",
+      "value": false,
+      "passed": true,
+      "content_hash": "A08B987073852BA7BF68C4FFCDB14D617B13C6DA253CED51574D0F814AE31DDE"
+    },
+    {
+      "check": "promotion_claimed",
+      "value": false,
+      "passed": true,
+      "content_hash": "036978E59A8CCD53F638F755DF950B2C530FD2B6DE56F13343B9DBCB4F529553"
+    }
+  ],
+  "artifacts": {
+    "comparisonJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/v2-price-anchor-comparison.rows.json",
+    "comparisonCsv": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/v2-price-anchor-comparison.rows.csv",
+    "weeklyEquityJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/weekly-equity.rows.json",
+    "weeklyEquityCsv": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/weekly-equity.rows.csv",
+    "closeReasonJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/close-reason-breakdown.rows.json",
+    "closeReasonCsv": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/close-reason-breakdown.rows.csv",
+    "validationJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/validation.rows.json",
+    "validationCsv": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/validation.rows.csv",
+    "metricDefinitionsJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/metric-definitions.rows.json",
+    "metricDefinitionsCsv": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/metric-definitions.rows.csv",
+    "commandReceipt": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/command-receipt.json",
+    "summaryJson": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/gate82d-price-anchor-summary.json",
+    "shaIdentity": "docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/gate82d-price-anchor-sha256.txt",
+    "report": "docs/research/gates/gate82d/GATE82D_HEDGED_GRID_V2_PRICE_ANCHOR_COMPARISON_2026-07-01.md"
+  },
+  "frozen_areas": [
+    "Candidate B/C locked artifacts not modified",
+    "No COT, Strength, or Regime dependency introduced",
+    "No risk layer",
+    "No MT5 compile or Strategy Tester run",
+    "No all-28 runtime/deployment work",
+    "No grid-cap parameter sweep or threshold optimization",
+    "No promotion or live-capital claim"
+  ]
+}

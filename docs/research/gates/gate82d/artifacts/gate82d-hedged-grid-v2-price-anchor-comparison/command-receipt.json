@@ -1,0 +1,39 @@
+{
+  "gate_id": "Gate 82D: hedged-grid-v2-price-anchor-comparison",
+  "command": "npm run engine:gate82d:hedged-grid-v2-price-anchor-comparison",
+  "generated_at": "2026-07-01T06:00:36.561Z",
+  "git_commit": "c2e418bb52212b91273160429fa396ed6a604f8e",
+  "mode": "bounded_gate82d_price_anchor_v2_warehouse_comparison_no_promotion_no_mt5_compile",
+  "warehouse_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+  "variants": [
+    {
+      "variant_id": "HEDGED_GRID_T100_S020_L3_RAW",
+      "source_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+      "reset_limit_per_side_week": 3,
+      "pair_net_flatten_target_adr": null,
+      "gate80_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE"
+    },
+    {
+      "variant_id": "HEDGED_GRID_T100_S020_NO_LIMIT_RAW",
+      "source_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+      "reset_limit_per_side_week": null,
+      "pair_net_flatten_target_adr": null,
+      "gate80_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE"
+    },
+    {
+      "variant_id": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR",
+      "source_rule_id": null,
+      "reset_limit_per_side_week": null,
+      "pair_net_flatten_target_adr": null,
+      "gate80_reference_rule_id": null
+    },
+    {
+      "variant_id": "HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+      "source_rule_id": null,
+      "reset_limit_per_side_week": 3,
+      "pair_net_flatten_target_adr": null,
+      "gate80_reference_rule_id": null
+    }
+  ]
+}

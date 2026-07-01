@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
-//|                         LimniBasketHedgeEAAlphaV1.mq5            |
-//|                Alpha V1 fully hedged grid visual prototype       |
+//|                         LimniBasketHedgeEAAlphaV2.mq5            |
+//|                Alpha V2 fully hedged grid visual prototype       |
 //+------------------------------------------------------------------+
 #property strict
 #property version "1.000"
@@ -10,8 +10,8 @@
 
 enum HedgeGridMode
 {
-  RAW_V2 = 0,
-  L3_V2 = 1
+  RAW = 0,
+  GRID_CAP = 1
 };
 
 enum BoundaryTimeSource
@@ -20,7 +20,7 @@ enum BoundaryTimeSource
   BOUNDARY_TIME_GMT = 1
 };
 
-input HedgeGridMode Mode = RAW_V2;
+input HedgeGridMode Mode = RAW;
 input string SymbolsCsv = "";
 input bool UseCurrentChartSymbolOnly = true;
 input double LotSize = 0.01;
@@ -43,8 +43,8 @@ input int DashboardRefreshSeconds = 1;
 input int DashboardMaxSymbols = 28;
 input bool CsvLogEnabled = true;
 
-const string BUILD_NAME = "Limni Basket Hedge EA Alpha V1 V2";
-const int L3_RESET_LIMIT_PER_SIDE_WEEK = 3;
+const string BUILD_NAME = "Limni Basket Hedge EA Alpha V2";
+const int GRID_CAP_RESET_LIMIT_PER_SIDE_WEEK = 3;
 
 struct SymbolRuntime
 {
@@ -233,7 +233,7 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
 
   int sideCount = weekSideSnapshot.totalCount;
   int sideWeeklyResets = (side == POSITION_TYPE_BUY ? g_symbols[index].longWeeklyResets : g_symbols[index].shortWeeklyResets);
-  if(Mode == L3_V2 && sideWeeklyResets >= L3_RESET_LIMIT_PER_SIDE_WEEK)
+  if(Mode == GRID_CAP && sideWeeklyResets >= GRID_CAP_RESET_LIMIT_PER_SIDE_WEEK)
     return;
 
   if(sideCount <= 0)
@@ -651,7 +651,7 @@ long MagicForSymbol(const string symbol)
   long hash = 0;
   for(int i = 0; i < StringLen(symbol); i++)
     hash = (hash * 131 + StringGetCharacter(symbol, i)) % 900000;
-  return MagicNumberBase + (Mode == L3_V2 ? 1000000 : 0) + hash;
+  return MagicNumberBase + (Mode == GRID_CAP ? 1000000 : 0) + hash;
 }
 
 //+------------------------------------------------------------------+
@@ -1416,7 +1416,7 @@ void LogAccountState()
 
   double closedNet = closedAll.profit + closedAll.commission + closedAll.swap;
   double totalMtm = closedNet + openPnl;
-  string filename = "limni_basket_hedge_alpha_v1_account_state_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v2_account_state_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,mode,enabled_symbols,balance,equity,open_pnl,closed_pnl_ea,commission_ea,swap_ea,total_mtm_ea,current_drawdown,max_drawdown,free_margin,margin_level,total_positions,long_positions,short_positions,total_fills,total_resets,last_action,last_error");
   if(h == INVALID_HANDLE)
@@ -1464,7 +1464,7 @@ void LogSymbolState(const int index)
   double adr = GetAdrValue(symbol);
   double closedNet = closed.profit + closed.commission + closed.swap;
 
-  string filename = "limni_basket_hedge_alpha_v1_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v2_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,week_tag,boundary_now_gmt,entry_window_open,action_window_open,anchor_high,anchor_low,long_entry_level,short_entry_level,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
   if(h == INVALID_HANDLE)
@@ -1514,7 +1514,7 @@ void LogFill(const int index, const string action, const int side, const double 
   SymbolInfoTick(symbol, tick);
   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
   double spread = point > 0.0 ? (tick.ask - tick.bid) / point : 0.0;
-  string filename = "limni_basket_hedge_alpha_v1_fills_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v2_fills_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,week_tag,order_comment,action,side,volume,requested_price,filled_price,bid,ask,spread,order_id,deal_id,position_id,commission,swap,realized_pnl,reason");
   if(h == INVALID_HANDLE)
@@ -1554,7 +1554,7 @@ void LogReset(const int index, const string resetType, const int positionsClosed
   GetPositionSnapshot(symbol, g_symbols[index].magic, positions);
   GetClosedSnapshot(symbol, g_symbols[index].magic, closed);
   double closedNet = closed.profit + closed.commission + closed.swap;
-  string filename = "limni_basket_hedge_alpha_v1_resets_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
+  string filename = "limni_basket_hedge_alpha_v2_resets_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
                   "timestamp,symbol,mode,week_tag,reset_type,weekly_reset_count,total_reset_count,closed_pnl_at_reset,open_pnl_at_reset,commission_at_reset,swap_at_reset,total_mtm_at_reset,positions_closed,reason");
   if(h == INVALID_HANDLE)
@@ -1666,13 +1666,13 @@ string StateKey(const int index, const string suffix)
 //+------------------------------------------------------------------+
 string ModeName()
 {
-  return Mode == L3_V2 ? "L3_V2" : "RAW_V2";
+  return Mode == GRID_CAP ? "GRID_CAP" : "RAW";
 }
 
 //+------------------------------------------------------------------+
 string ModeCode()
 {
-  return Mode == L3_V2 ? "L2" : "R2";
+  return Mode == GRID_CAP ? "G" : "R";
 }
 
 //+------------------------------------------------------------------+

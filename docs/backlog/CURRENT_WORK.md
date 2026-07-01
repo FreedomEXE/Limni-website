@@ -8,19 +8,42 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gates: Gate 82B / Gate 82C:
-weekly-boundary-anchor-contract and MT5 EA V2 boundary/anchor rework.
+Latest active gates: Gate 82B / Gate 82C / Gate 82D:
+weekly-boundary-anchor-contract, MT5 EA V2 boundary/anchor rework, and
+warehouse price-anchor V2 comparison.
 
 Gate 82B froze the weekly boundary and anchor contract for the fully hedged
 MT5 EA lane. Gate 82C applies that contract to
-`automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5`: active modes are now
-`RAW_V2` and `L3_V2`, with Pine-style price-anchor entries, New York
+`automation/mt5/Experts/LimniBasketHedgeEAAlphaV2.mq5`: active modes are now
+`RAW` and `GRID_CAP`, with Pine-style price-anchor entries, New York
 DST-aware weekly boundary helpers, compact week-tagged order comments,
 current-week cycle filtering, carried-old-week target-close handling, optional
 chart lines for anchor/entry levels, and expanded CSV audit fields.
 
-Gate 82C is source/static only so far. It has not been compiled in MetaEditor,
-installed into MT5, or run in MT5 Strategy Tester.
+Gate 82D replayed the price-anchor V2 rows from the Gate 74B warehouse and
+kept the old Gate 80 raw fill-anchor rows imported in the same advanced metric
+schema. The output includes return/drawdown, weekly MTM PF, Sharpe, Sortino,
+weekly/monthly win rates, worst-week and 13-week losses, drawdown, open
+inventory, fills/resets, and stressed-cost final equity for all rows.
+
+Gate 82D result:
+
+- Old `HEDGED_GRID_T100_S020_L3_RAW`: final equity `53646.297719` ADR,
+  return/DD `76.024249`, final open inventory `-224.656426` ADR.
+- Old `HEDGED_GRID_T100_S020_NO_LIMIT_RAW`: final equity `82549.112283` ADR,
+  return/DD `70.730541`, final open inventory `-256.322899` ADR.
+- V2 `RAW` price-anchor: final equity `31861.651847` ADR, return/DD
+  `28.061151`, final open inventory `-78.510557` ADR.
+- V2 `GRID_CAP_3` price-anchor: final equity `28128.243783` ADR,
+  return/DD `32.882627`, final open inventory `-73.994656` ADR.
+
+Interpretation: price-anchor V2 materially reduced final open inventory, but
+did not match the old raw fill-anchor harvest/advanced metrics in this first
+warehouse replay. The inherited grid cap of 3 is documented as a starting point
+only; it has not been optimized for the new anchor logic.
+
+Gate 82C/82D have not been compiled in MetaEditor, installed into MT5, or run
+in MT5 Strategy Tester.
 
 Status: active on `codex/gate82-hedged-grid-preflight`.
 
@@ -31,19 +54,23 @@ Current verdict:
 - `PASS_GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_BUILT_NO_PROMOTION`
 - `PASS_CONTRACT_READY_FOR_GATE82C_EA_REWORK_NO_BACKTEST_CLAIM`
 - `PASS_SOURCE_REWORK_STATIC_ONLY_NO_MT5_COMPILE_NO_TESTER_CLAIM`
+- `PASS_GATE82D_PRICE_ANCHOR_V2_WAREHOUSE_COMPARISON_BUILT_NO_PROMOTION`
 
 Current receipt:
 
 - `docs/research/gates/gate82/GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_2026-06-30.md`
 - `docs/research/gates/gate82b/GATE82B_WEEKLY_BOUNDARY_AND_ANCHOR_CONTRACT_2026-07-01.md`
 - `docs/research/gates/gate82c/GATE82C_MT5_EA_V2_BOUNDARY_ANCHOR_REWORK_2026-07-01.md`
+- `docs/research/gates/gate82d/GATE82D_HEDGED_GRID_V2_PRICE_ANCHOR_COMPARISON_2026-07-01.md`
 
-Next intended scope: compile-only MetaEditor validation, then one-pair MT5
-Strategy Tester visual inspection if Freedom opens that scope. Start with
-`UseCurrentChartSymbolOnly=true`, `Mode=RAW_V2`, then repeat with
-`Mode=L3_V2`. Do not start all-28 validation, risk, live trading, Candidate B,
-Brain, COT, Strength, Regime, pair-net flatten, optimization, promotion, repo
-backtests, or live-readiness work until Freedom explicitly opens that next gate.
+Next intended scope: decide whether to use MT5 next for visual/weekly-boundary
+inspection only, or open a separate warehouse cap/anchor sensitivity gate before
+more MT5. If MT5 is opened, start compile-only MetaEditor validation, then
+one-pair Strategy Tester visual inspection with `UseCurrentChartSymbolOnly=true`,
+`Mode=RAW`, then `Mode=GRID_CAP`. Do not start all-28 validation, risk, live
+trading, Candidate B, Brain, COT, Strength, Regime, pair-net flatten,
+optimization, promotion, repo backtests beyond the opened Gate 82D artifact, or
+live-readiness work until Freedom explicitly opens that next gate.
 
 Gate 74 current state:
 
@@ -448,6 +475,7 @@ Gate 73-82 commands:
 - `npm run engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution`
 - `npm run engine:gate81:hedged-broker-real-feasibility-preflight`
 - `npm run engine:gate82:hedged-grid-four-variant-preflight`
+- `npm run engine:gate82d:hedged-grid-v2-price-anchor-comparison`
 
 Current verdicts:
 

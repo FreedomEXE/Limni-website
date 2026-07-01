@@ -65,15 +65,15 @@ the old research names visible in docs and comments.
 
 | User-facing mode | Meaning |
 | --- | --- |
-| `RAW_V2` | Pine-style weekly price-anchor entries, no weekly reset cap. |
-| `L3_V2` | Pine-style weekly price-anchor entries with side-local three-reset cap per symbol-side per canonical week. |
+| `RAW` | Pine-style weekly price-anchor entries, no weekly reset cap. |
+| `GRID_CAP` | Pine-style weekly price-anchor entries with side-local reset cap per symbol-side per canonical week. Current inherited cap is 3; it has not been optimized for price-anchor V2. |
 
 Historical mapping:
 
 | Historical label | Status |
 | --- | --- |
-| `NO_LIMIT_RAW` | Gate 80/82 fill-anchor comparability mode; superseded in the EA by `RAW_V2`. |
-| `L3_RAW` | Gate 80/82 fill-anchor comparability mode; superseded in the EA by `L3_V2`. |
+| `NO_LIMIT_RAW` | Gate 80/82 fill-anchor comparability mode; superseded in the EA by `RAW`. |
+| `L3_RAW` | Gate 80/82 fill-anchor comparability mode; superseded in the EA by `GRID_CAP`. |
 
 ## Pine Price-Anchor Contract
 

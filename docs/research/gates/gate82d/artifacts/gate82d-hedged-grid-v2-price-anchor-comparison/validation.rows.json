@@ -1,0 +1,105 @@
+[
+  {
+    "check": "gate74b_verdict",
+    "value": "PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY",
+    "passed": true,
+    "content_hash": "752E5A367A6DE2B87A8B74EF85B3A6D13739ACC4F37CC434CE01197E470B5F08"
+  },
+  {
+    "check": "gate80_verdict",
+    "value": "PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION",
+    "passed": true,
+    "content_hash": "7D02FDCE9CD10F824BAA59F7C0DCFC571D8C12D82D9BC19C8A5A206963B56DDA"
+  },
+  {
+    "check": "manifest_complete",
+    "value": "complete",
+    "passed": true,
+    "content_hash": "58484BB98CF50A38DEA1C6C88792FC4258F02D1CF9E01219A78F962161F1996E"
+  },
+  {
+    "check": "same_manifest_as_gate80",
+    "value": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "expected": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "passed": true,
+    "content_hash": "D6C2BD6BB1FF0AAE41FED9AFD211C7CA90A93C610C1E010E0CDD1D1FEED68682"
+  },
+  {
+    "check": "same_warehouse_hash_as_gate80",
+    "value": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "expected": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "passed": true,
+    "content_hash": "5DC507D0D64B851697AC9ADCC193A888E7651A608A1A615F71E2F66F95039759"
+  },
+  {
+    "check": "week_count",
+    "value": 373,
+    "expected": 373,
+    "passed": true,
+    "content_hash": "328DC5B755833B89A5C69E6A25E1CE8971D0B047185BB060C25A052A124B511B"
+  },
+  {
+    "check": "pair_count",
+    "value": 28,
+    "expected": 28,
+    "passed": true,
+    "content_hash": "6E1C098B09E833AF5081ED3203176F698FEE471CEA7552DA9709D0CEC873D14B"
+  },
+  {
+    "check": "pair_week_rows",
+    "value": 10444,
+    "expected": 10444,
+    "passed": true,
+    "content_hash": "973AF34886E3DCE30262A972783605B1BE2E7CA21F0C78FA0EB2E5C0F3EF57EE"
+  },
+  {
+    "check": "raw_rows_imported_from_gate80",
+    "value": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE,FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+    "passed": true,
+    "content_hash": "327EAC5A19D95E7D6667065548E589D35D63455B2783C5478A209E72CFA30E93"
+  },
+  {
+    "check": "price_anchor_v2_rows_present",
+    "value": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR,HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+    "expected": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR,HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+    "passed": true,
+    "content_hash": "485F1230886B196FC025A177FDE62FF57EF577461DD438119594C1BAB2B075F5"
+  },
+  {
+    "check": "grid_cap_3_visible_but_not_optimized",
+    "value": "price_anchor_v2_grid_cap_3_inherited_cap_not_optimized",
+    "expected": "inherited_cap_not_optimized",
+    "passed": true,
+    "content_hash": "DD79CF9B59095306FC319AD2B53795F970DEF21339162FBE60F1786FA9EEF09D"
+  },
+  {
+    "check": "candidate_b_mutated",
+    "value": false,
+    "passed": true,
+    "content_hash": "945236FEE87C124124D1E6F141003D26E4FE1BF8572C5B3594F9EB96FB59E480"
+  },
+  {
+    "check": "cot_strength_regime_used",
+    "value": false,
+    "passed": true,
+    "content_hash": "EE2AC904B9C6CB619E8D6178E28058D378A82E231BB7DF26E07A316D57FD2C9B"
+  },
+  {
+    "check": "risk_layer_started",
+    "value": false,
+    "passed": true,
+    "content_hash": "3030F5FF25CB219358CBC44CE221F8996F653C0F60DD1DE33D581B0EF5133D7A"
+  },
+  {
+    "check": "mt5_compile_or_tester_run",
+    "value": false,
+    "passed": true,
+    "content_hash": "A08B987073852BA7BF68C4FFCDB14D617B13C6DA253CED51574D0F814AE31DDE"
+  },
+  {
+    "check": "promotion_claimed",
+    "value": false,
+    "passed": true,
+    "content_hash": "036978E59A8CCD53F638F755DF950B2C530FD2B6DE56F13343B9DBCB4F529553"
+  }
+]
