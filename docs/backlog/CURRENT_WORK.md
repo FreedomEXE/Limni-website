@@ -8,7 +8,76 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gate: Gate 85A:
+Latest active gate: Gate 86:
+`mt5-tester-speed-preflight`.
+
+Gate 86 is the MT5 speed response after Freedom stopped the first V3 EURUSD
+manual test because real-tick mode was only completing about one year per hour.
+It keeps the same active EA name, `LimniBasketHedgeEAAlphaV3`, but installs a
+faster engine build into the active Five Percent terminal.
+
+Gate 86 source/install changes:
+
+- Added tester cadence inputs:
+  `TesterCadence`, `TesterMinSecondsBetweenManage`.
+- Added refresh throttles:
+  `AdrRefreshSeconds` and `DrawdownRefreshSeconds`.
+- Cached symbol volume/point/digit specs at init.
+- Folded side counts, oldest anchor recovery, and ADR PnL into one position
+  snapshot pass instead of doing a second per-leg position scan.
+- Throttled ADR series refresh; default `AdrRefreshSeconds=3600`.
+- Throttled account drawdown refresh; default `DrawdownRefreshSeconds=60`.
+- Added local VS Code watcher/search exclusions for generated research artifact
+  JSON/CSV under `.vscode/settings.json`; that file is ignored by git and is a
+  local machine speed aid.
+
+Gate 86 verification:
+
+- Repo compile log:
+  `docs/research/gates/gate86/artifacts/limni-basket-hedge-ea-alpha-v3-gate86-repo-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Active terminal compile log:
+  `docs/research/gates/gate86/artifacts/limni-basket-hedge-ea-alpha-v3-gate86-active-terminal-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Active terminal install root:
+  `C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB`.
+- Installed active terminal files:
+  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.mq5`,
+  `MQL5/Experts/LimniBasketHedgeEAAlphaV3.ex5`, and
+  `MQL5/Experts/Include/Strategy/RawHarvestEngine.mqh`.
+- Repo source hashes match active terminal source hashes:
+  - `LimniBasketHedgeEAAlphaV3.mq5`:
+    `6845AE15B23148B48F347BA86545AE4BD3C7B8580ABFDD0D70B39C1C9156DAF9`
+  - `RawHarvestEngine.mqh`:
+    `317E35DC3A2FE756161BC61813F1331264D0A9953300657B2398E90C2FBBEC22`
+- Active terminal `.ex5` hash:
+  `6C4EEC3CFB783233402DA91311F33970705AAC5FBB9F28CC212A29C15275EC22`.
+
+Gate 86 recommended next MT5 rerun:
+
+- EA: `LimniBasketHedgeEAAlphaV3`.
+- Symbol/timeframe: `EURUSD,M1`.
+- Model for speed iteration: `1 Minute OHLC`.
+- Visual mode: off.
+- Optimization: off.
+- Execution/latency: zero latency for this comparison.
+- Inputs:
+  `CsvLogEnabled=false`, `DashboardEnabled=false`, `EnableTimer=false`,
+  `TesterCadence=RH_CADENCE_EVERY_TICK`,
+  `TesterMinSecondsBetweenManage=0`, `AdrRefreshSeconds=3600`,
+  `DrawdownRefreshSeconds=60`, `UseCurrentChartSymbolOnly=true`,
+  `LotSize=0.01`, `TargetAdrMultiple=1.0`, `SpacingAdrMultiple=0.2`.
+
+If `1 Minute OHLC` is still slow, try a rough sanity pass with
+`TesterCadence=RH_CADENCE_NEW_M1_BAR`; do not treat that rough pass as final
+parity evidence because it processes only one manage cycle per M1 bar. Final
+confirmation can still use `Every tick based on real ticks`, but it should not
+be the default design-loop model if it remains near one year per hour.
+
+Gate 86 is not a Strategy Tester result, optimization, risk layer, promotion,
+or live-readiness claim.
+
+Recent prior gate: Gate 85A:
 `eurusd-tail-trail-lifecycle-smoke`.
 
 Gate 85A ran a one-pair EURUSD warehouse/backtester-only smoke for residual

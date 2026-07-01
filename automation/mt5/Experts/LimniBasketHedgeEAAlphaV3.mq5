@@ -7,11 +7,19 @@
 
 #include <Trade/Trade.mqh>
 
+enum RawHarvestTesterCadence
+{
+  RH_CADENCE_EVERY_TICK = 0,
+  RH_CADENCE_NEW_M1_BAR = 1,
+  RH_CADENCE_NEW_M5_BAR = 5
+};
+
 input string SymbolsCsv = "";
 input bool UseCurrentChartSymbolOnly = true;
 input double LotSize = 0.01;
 input double AdrValue = 0.0;
 input int AdrLookbackDays = 14;
+input int AdrRefreshSeconds = 3600;
 input double TargetAdrMultiple = 1.0;
 input double SpacingAdrMultiple = 0.2;
 input int MaxPositionsPerSymbol = 250;
@@ -27,6 +35,9 @@ input int DashboardRefreshSeconds = 10;
 input int DashboardMaxSymbols = 8;
 input bool EnableTimer = false;
 input int TimerSeconds = 1;
+input RawHarvestTesterCadence TesterCadence = RH_CADENCE_EVERY_TICK;
+input int TesterMinSecondsBetweenManage = 0;
+input int DrawdownRefreshSeconds = 60;
 
 #include "Include/Strategy/RawHarvestEngine.mqh"
 

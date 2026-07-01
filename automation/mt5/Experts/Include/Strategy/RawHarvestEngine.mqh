@@ -12,6 +12,7 @@ struct RawHarvestSymbolState
   long magic;
   double adr;
   datetime adrBarTime;
+  datetime lastAdrCheck;
   int totalFills;
   int totalResets;
   int longNextAdverse;
@@ -20,6 +21,9 @@ struct RawHarvestSymbolState
   int shortNextFavorable;
   double longAnchor;
   double shortAnchor;
+  double unitLot;
+  double point;
+  int digits;
   string lastAction;
   string lastError;
 };
@@ -33,12 +37,21 @@ struct RawHarvestPositionSnapshot
   double shortLots;
   double openPnl;
   double openSwap;
+  double longAdrPnl;
+  double shortAdrPnl;
+  datetime longOldestTime;
+  datetime shortOldestTime;
+  double longOldestPrice;
+  double shortOldestPrice;
 };
 
 CTrade g_harvestTrade;
 RawHarvestSymbolState g_harvestSymbols[];
 datetime g_harvestStartedAt = 0;
 datetime g_harvestLastDashboard = 0;
+datetime g_harvestLastManageAt = 0;
+datetime g_harvestLastManageBar = 0;
+datetime g_harvestLastDrawdownAt = 0;
 double g_harvestPeakEquity = 0.0;
 double g_harvestMaxDrawdown = 0.0;
 string g_harvestLastAction = "";
@@ -189,6 +202,7 @@ void RH_AddSymbol(const string rawSymbol)
   g_harvestSymbols[size].magic = RH_MagicForSymbol(symbol);
   g_harvestSymbols[size].adr = 0.0;
   g_harvestSymbols[size].adrBarTime = 0;
+  g_harvestSymbols[size].lastAdrCheck = 0;
   g_harvestSymbols[size].totalFills = 0;
   g_harvestSymbols[size].totalResets = 0;
   g_harvestSymbols[size].longNextAdverse = 1;
@@ -197,6 +211,9 @@ void RH_AddSymbol(const string rawSymbol)
   g_harvestSymbols[size].shortNextFavorable = 1;
   g_harvestSymbols[size].longAnchor = 0.0;
   g_harvestSymbols[size].shortAnchor = 0.0;
+  g_harvestSymbols[size].unitLot = 0.0;
+  g_harvestSymbols[size].point = 0.0;
+  g_harvestSymbols[size].digits = 5;
   g_harvestSymbols[size].lastAction = "INIT";
   g_harvestSymbols[size].lastError = "";
 }
@@ -239,6 +256,24 @@ double RH_NormalizeVolume(const string symbol, const double requested)
   return NormalizeDouble(volume, 8);
 }
 
+bool RH_RefreshSymbolSpec(const int index)
+{
+  if(index < 0 || index >= ArraySize(g_harvestSymbols))
+    return false;
+
+  string symbol = g_harvestSymbols[index].symbol;
+  g_harvestSymbols[index].unitLot = RH_NormalizeVolume(symbol, LotSize);
+  g_harvestSymbols[index].point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+  g_harvestSymbols[index].digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+  if(g_harvestSymbols[index].unitLot <= 0.0)
+  {
+    RH_SetSymbolError(index, "INVALID_UNIT_LOT");
+    return false;
+  }
+  return true;
+}
+
 double RH_RequestedEntryPrice(const string symbol, const int side)
 {
   MqlTick tick;
@@ -266,6 +301,15 @@ bool RH_RefreshAdr(const int index, const bool force)
   }
 
   string symbol = g_harvestSymbols[index].symbol;
+  datetime now = TimeCurrent();
+  if(!force &&
+     AdrRefreshSeconds > 0 &&
+     g_harvestSymbols[index].adr > 0.0 &&
+     g_harvestSymbols[index].lastAdrCheck > 0 &&
+     now - g_harvestSymbols[index].lastAdrCheck < AdrRefreshSeconds)
+    return true;
+
+  g_harvestSymbols[index].lastAdrCheck = now;
   datetime dailyBar = iTime(symbol, PERIOD_D1, 1);
   if(!force && g_harvestSymbols[index].adr > 0.0 && dailyBar == g_harvestSymbols[index].adrBarTime)
     return true;
@@ -305,6 +349,27 @@ void RH_GetPositionSnapshot(const string symbol, const long magic, RawHarvestPos
   snapshot.shortLots = 0.0;
   snapshot.openPnl = 0.0;
   snapshot.openSwap = 0.0;
+  snapshot.longAdrPnl = 0.0;
+  snapshot.shortAdrPnl = 0.0;
+  snapshot.longOldestTime = 0;
+  snapshot.shortOldestTime = 0;
+  snapshot.longOldestPrice = 0.0;
+  snapshot.shortOldestPrice = 0.0;
+
+  int stateIndex = -1;
+  for(int s = 0; s < ArraySize(g_harvestSymbols); s++)
+  {
+    if(g_harvestSymbols[s].symbol == symbol && g_harvestSymbols[s].magic == magic)
+    {
+      stateIndex = s;
+      break;
+    }
+  }
+
+  double adr = stateIndex >= 0 ? g_harvestSymbols[stateIndex].adr : 0.0;
+  double unitLot = stateIndex >= 0 ? g_harvestSymbols[stateIndex].unitLot : RH_NormalizeVolume(symbol, LotSize);
+  MqlTick tick;
+  bool hasTick = SymbolInfoTick(symbol, tick);
 
   for(int i = 0; i < PositionsTotal(); i++)
   {
@@ -320,6 +385,8 @@ void RH_GetPositionSnapshot(const string symbol, const long magic, RawHarvestPos
     double volume = PositionGetDouble(POSITION_VOLUME);
     double profit = PositionGetDouble(POSITION_PROFIT);
     double swap = PositionGetDouble(POSITION_SWAP);
+    double open = PositionGetDouble(POSITION_PRICE_OPEN);
+    datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
     snapshot.totalCount++;
     snapshot.openPnl += profit + swap;
     snapshot.openSwap += swap;
@@ -327,11 +394,25 @@ void RH_GetPositionSnapshot(const string symbol, const long magic, RawHarvestPos
     {
       snapshot.longCount++;
       snapshot.longLots += volume;
+      if(snapshot.longOldestTime == 0 || openTime < snapshot.longOldestTime)
+      {
+        snapshot.longOldestTime = openTime;
+        snapshot.longOldestPrice = open;
+      }
+      if(hasTick && adr > 0.0 && unitLot > 0.0)
+        snapshot.longAdrPnl += ((tick.bid - open) / adr) * (volume / unitLot);
     }
     else if(type == POSITION_TYPE_SELL)
     {
       snapshot.shortCount++;
       snapshot.shortLots += volume;
+      if(snapshot.shortOldestTime == 0 || openTime < snapshot.shortOldestTime)
+      {
+        snapshot.shortOldestTime = openTime;
+        snapshot.shortOldestPrice = open;
+      }
+      if(hasTick && adr > 0.0 && unitLot > 0.0)
+        snapshot.shortAdrPnl += ((open - tick.ask) / adr) * (volume / unitLot);
     }
   }
 }
@@ -472,6 +553,19 @@ void RH_RecoverAnchorForLeg(const int index, const int side)
   }
 }
 
+void RH_RecoverAnchorFromSnapshot(const int index, const int side, const RawHarvestPositionSnapshot &snapshot)
+{
+  if(RH_GetAnchor(index, side) > 0.0)
+    return;
+
+  double oldestPrice = side == POSITION_TYPE_BUY ? snapshot.longOldestPrice : snapshot.shortOldestPrice;
+  if(oldestPrice > 0.0)
+  {
+    RH_SetAnchor(index, side, oldestPrice);
+    RH_SetSymbolAction(index, RH_SideName(side) + "_ANCHOR_RECOVERED");
+  }
+}
+
 int RH_OpenCsv(const string filename, const string header)
 {
   int handle = FileOpen(filename, FILE_READ | FILE_WRITE | FILE_CSV | FILE_ANSI, ',');
@@ -557,7 +651,7 @@ void RH_LogReset(const int index, const int side, const int positionsClosed, con
 bool RH_OpenGridFill(const int index, const int side, const string reason, int &ordersThisTick)
 {
   string symbol = g_harvestSymbols[index].symbol;
-  double volume = RH_NormalizeVolume(symbol, LotSize);
+  double volume = g_harvestSymbols[index].unitLot > 0.0 ? g_harvestSymbols[index].unitLot : RH_NormalizeVolume(symbol, LotSize);
   if(volume <= 0.0)
   {
     RH_SetSymbolError(index, "INVALID_VOLUME");
@@ -648,6 +742,13 @@ void RH_CloseAllOwnPositionsForSymbol(const int index, const string reason)
 
 void RH_UpdateDrawdown()
 {
+  datetime now = TimeCurrent();
+  if(DrawdownRefreshSeconds > 0 &&
+     g_harvestLastDrawdownAt > 0 &&
+     now - g_harvestLastDrawdownAt < DrawdownRefreshSeconds)
+    return;
+
+  g_harvestLastDrawdownAt = now;
   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
   if(g_harvestPeakEquity <= 0.0 || equity > g_harvestPeakEquity)
     g_harvestPeakEquity = equity;
@@ -655,6 +756,36 @@ void RH_UpdateDrawdown()
   double drawdown = equity - g_harvestPeakEquity;
   if(drawdown < g_harvestMaxDrawdown)
     g_harvestMaxDrawdown = drawdown;
+}
+
+bool RH_ShouldRunManageCycle()
+{
+  if(!RH_IsTester())
+    return true;
+
+  datetime now = TimeCurrent();
+  if(TesterMinSecondsBetweenManage > 0 &&
+     g_harvestLastManageAt > 0 &&
+     now - g_harvestLastManageAt < TesterMinSecondsBetweenManage)
+    return false;
+
+  ENUM_TIMEFRAMES cadenceFrame = PERIOD_CURRENT;
+  if(TesterCadence == RH_CADENCE_NEW_M1_BAR)
+    cadenceFrame = PERIOD_M1;
+  else if(TesterCadence == RH_CADENCE_NEW_M5_BAR)
+    cadenceFrame = PERIOD_M5;
+
+  if(cadenceFrame != PERIOD_CURRENT)
+  {
+    datetime barTime = iTime(_Symbol, cadenceFrame, 0);
+    if(barTime > 0 && barTime == g_harvestLastManageBar)
+      return false;
+    if(barTime > 0)
+      g_harvestLastManageBar = barTime;
+  }
+
+  g_harvestLastManageAt = now;
+  return true;
 }
 
 void RH_ManageLeg(const int index, const int side, int &ordersThisTick)
@@ -694,7 +825,7 @@ void RH_ManageLeg(const int index, const int side, int &ordersThisTick)
     return;
   }
 
-  double legAdrPnl = RH_GetLegAdrPnl(symbol, magic, side, adr);
+  double legAdrPnl = side == POSITION_TYPE_BUY ? allPositions.longAdrPnl : allPositions.shortAdrPnl;
   if(legAdrPnl >= TargetAdrMultiple)
   {
     int closed = RH_CloseLegPositions(index, side, "TARGET_RESET");
@@ -707,7 +838,7 @@ void RH_ManageLeg(const int index, const int side, int &ordersThisTick)
     return;
   }
 
-  RH_RecoverAnchorForLeg(index, side);
+  RH_RecoverAnchorFromSnapshot(index, side, allPositions);
   double anchor = RH_GetAnchor(index, side);
   if(anchor <= 0.0)
     return;
@@ -807,6 +938,8 @@ void RH_UpdateDashboard(const bool force)
 void RH_ManageAllSymbols()
 {
   RH_UpdateDrawdown();
+  if(!RH_ShouldRunManageCycle())
+    return;
 
   if(ManualFlattenNow)
   {
@@ -845,6 +978,9 @@ void RH_ManageAllSymbols()
 int RH_OnInit()
 {
   g_harvestStartedAt = TimeCurrent();
+  g_harvestLastManageAt = 0;
+  g_harvestLastManageBar = 0;
+  g_harvestLastDrawdownAt = 0;
   g_harvestPeakEquity = AccountInfoDouble(ACCOUNT_EQUITY);
   g_harvestMaxDrawdown = 0.0;
   g_harvestLastAction = "INIT";
@@ -869,6 +1005,7 @@ int RH_OnInit()
   {
     if(!RH_EnsureSymbolSelected(g_harvestSymbols[i].symbol))
       RH_SetSymbolError(i, "SYMBOL_SELECT_FAILED");
+    RH_RefreshSymbolSpec(i);
     RH_RefreshAdr(i, true);
     RH_RecoverAnchorForLeg(i, POSITION_TYPE_BUY);
     RH_RecoverAnchorForLeg(i, POSITION_TYPE_SELL);
