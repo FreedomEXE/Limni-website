@@ -33,7 +33,7 @@ const VARIANT_ID = "RAW_HEDGED_GRID_T100_S020_NO_BOUNDARY";
 const TARGET_ADR = 1;
 const SPACING_ADR = 0.2;
 const COST_FRACTIONS = [0, 0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5] as const;
-const PROFILE_NAMES = ["FAST_SMOKE", "FAST_BASKET", "STRESS_WINDOWS", "FULL_ACCEPTANCE"] as const;
+const PROFILE_NAMES = ["FAST_SMOKE", "FAST_BASKET", "STRESS_WINDOWS", "FULL_PAIR_HISTORY", "FULL_ACCEPTANCE"] as const;
 const EXPECTED_FULL_WEEKS = 373;
 const EXPECTED_FULL_PAIRS = 28;
 
@@ -786,6 +786,7 @@ function buildValidationRows(params: {
   options: Options;
 }) {
   const fullAcceptance = params.options.speedProfile === "FULL_ACCEPTANCE";
+  const fullPairHistory = params.options.speedProfile === "FULL_PAIR_HISTORY";
   return [
     withHash({ check: "gate74b_verdict", value: params.gate74b.verdict, passed: params.gate74b.verdict.startsWith("PASS_") }),
     withHash({ check: "manifest_complete", value: params.manifest.status, passed: params.manifest.status === "complete" }),
@@ -803,8 +804,11 @@ function buildValidationRows(params: {
     withHash({ check: "cost_ladder_tiers", value: COST_FRACTIONS.join(","), passed: COST_FRACTIONS.length === 9 }),
     withHash({ check: "mt5_ea_touched", value: false, passed: true }),
     withHash({ check: "promotion_claimed", value: false, passed: true }),
-    withHash({ check: "full_acceptance_week_count", value: params.selectedWeeks.length, expected: EXPECTED_FULL_WEEKS, passed: !fullAcceptance || params.selectedWeeks.length === EXPECTED_FULL_WEEKS }),
-    withHash({ check: "full_acceptance_pair_count", value: params.selectedPairs.length, expected: EXPECTED_FULL_PAIRS, passed: !fullAcceptance || params.selectedPairs.length === EXPECTED_FULL_PAIRS }),
+    withHash({ check: "full_acceptance_week_count", value: fullAcceptance ? params.selectedWeeks.length : "not_applicable", expected: fullAcceptance ? EXPECTED_FULL_WEEKS : "FULL_ACCEPTANCE only", passed: !fullAcceptance || params.selectedWeeks.length === EXPECTED_FULL_WEEKS }),
+    withHash({ check: "full_acceptance_pair_count", value: fullAcceptance ? params.selectedPairs.length : "not_applicable", expected: fullAcceptance ? EXPECTED_FULL_PAIRS : "FULL_ACCEPTANCE only", passed: !fullAcceptance || params.selectedPairs.length === EXPECTED_FULL_PAIRS }),
+    withHash({ check: "full_pair_history_week_count", value: fullPairHistory ? params.selectedWeeks.length : "not_applicable", expected: fullPairHistory ? EXPECTED_FULL_WEEKS : "FULL_PAIR_HISTORY only", passed: !fullPairHistory || params.selectedWeeks.length === EXPECTED_FULL_WEEKS }),
+    withHash({ check: "full_pair_history_has_eurusd", value: fullPairHistory ? params.selectedPairs.includes("EURUSD") : "not_applicable", expected: fullPairHistory ? true : "FULL_PAIR_HISTORY only", passed: !fullPairHistory || params.selectedPairs.includes("EURUSD") }),
+    withHash({ check: "full_pair_history_pair_count_at_least_one", value: fullPairHistory ? params.selectedPairs.length : "not_applicable", expected: fullPairHistory ? ">=1" : "FULL_PAIR_HISTORY only", passed: !fullPairHistory || params.selectedPairs.length >= 1 }),
   ];
 }
 

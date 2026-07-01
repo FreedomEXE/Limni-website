@@ -22,8 +22,10 @@ Gate 83 artifacts:
 
 - `docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_SMOKE_2026-07-01.md`
 - `docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_BASKET_SMALL_2026-07-01.md`
+- `docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FULL_EURUSD_2026-07-01.md`
 - `docs/research/gates/gate83/artifacts/fast-smoke/`
 - `docs/research/gates/gate83/artifacts/fast-basket-small/`
+- `docs/research/gates/gate83/artifacts/full-eurusd/`
 
 Gate 83 verification:
 
@@ -32,11 +34,17 @@ Gate 83 verification:
 - `FAST_BASKET` small: `AUDCAD,EURUSD,GBPUSD,USDJPY`, `1` week,
   `PASS_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_BUILT_NO_PROMOTION`;
   gross final MTM `9.561754` ADR, 50% target-cost final MTM `-34.188246` ADR.
+- `FULL_PAIR_HISTORY`: `EURUSD`, `373` weeks,
+  `PASS_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_BUILT_NO_PROMOTION`;
+  gross final MTM `2937.283889` ADR, 20% target-cost final MTM
+  `781.783889` ADR, 50% target-cost final MTM `-2451.466111` ADR,
+  max equity drawdown `-87.975012` ADR, fills `15,471`, weekly MTM PF
+  `6.594031`, weekly win rate `0.836461`.
 
 Gate 83 is not MT5 EA simplification, MT5 compile/tester work, dangerous-fill
 guard implementation, full acceptance, optimization, risk, promotion, or live
-readiness. Next likely gate is either a wider Gate 83 warehouse profile
-(`FAST_BASKET` longer or `STRESS_WINDOWS`) or a separate MT5 raw-only
+readiness. Next likely gate is either wider Gate 83 warehouse evidence
+(`STRESS_WINDOWS` or full all-pair acceptance) or a separate MT5 raw-only
 simplification gate if Freedom explicitly opens it.
 
 Recent prior gates: Gate 82B / Gate 82C / Gate 82D / Gate 82E:
