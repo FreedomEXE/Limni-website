@@ -8,16 +8,19 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 82:
-mt5-hedged-grid-visual-prototype.
+Latest active gates: Gate 82B / Gate 82C:
+weekly-boundary-anchor-contract and MT5 EA V2 boundary/anchor rework.
 
-Objective completed: build the first MT5 visual mechanics prototype for the raw
-fully hedged grid family as
-`automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5`. The EA implements
-`NO_LIMIT_RAW` and `L3_RAW`, defaults to one chart symbol, requires a hedging
-account, blocks non-tester trading unless explicitly allowed, shows an audit
-dashboard, writes CSV state/fill/reset logs, and compiled in MetaEditor with
-`0` errors and `0` warnings.
+Gate 82B froze the weekly boundary and anchor contract for the fully hedged
+MT5 EA lane. Gate 82C applies that contract to
+`automation/mt5/Experts/LimniBasketHedgeEAAlphaV1.mq5`: active modes are now
+`RAW_V2` and `L3_V2`, with Pine-style price-anchor entries, New York
+DST-aware weekly boundary helpers, compact week-tagged order comments,
+current-week cycle filtering, carried-old-week target-close handling, optional
+chart lines for anchor/entry levels, and expanded CSV audit fields.
+
+Gate 82C is source/static only so far. It has not been compiled in MetaEditor,
+installed into MT5, or run in MT5 Strategy Tester.
 
 Status: active on `codex/gate82-hedged-grid-preflight`.
 
@@ -26,16 +29,21 @@ Architecture version: `gate66_brain_cells_atoms_v3`.
 Current verdict:
 
 - `PASS_GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_BUILT_NO_PROMOTION`
+- `PASS_CONTRACT_READY_FOR_GATE82C_EA_REWORK_NO_BACKTEST_CLAIM`
+- `PASS_SOURCE_REWORK_STATIC_ONLY_NO_MT5_COMPILE_NO_TESTER_CLAIM`
 
 Current receipt:
 
 - `docs/research/gates/gate82/GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_2026-06-30.md`
+- `docs/research/gates/gate82b/GATE82B_WEEKLY_BOUNDARY_AND_ANCHOR_CONTRACT_2026-07-01.md`
+- `docs/research/gates/gate82c/GATE82C_MT5_EA_V2_BOUNDARY_ANCHOR_REWORK_2026-07-01.md`
 
-Next intended scope: one-pair MT5 Strategy Tester visual inspection only. Start
-with `UseCurrentChartSymbolOnly=true`, `Mode=NO_LIMIT_RAW`, then repeat with
-`Mode=L3_RAW`. Do not start all-28 validation, risk, live trading, Candidate B,
-Brain, COT, Strength, Regime, pair-net flatten, optimization, promotion, or
-live-readiness work until Freedom explicitly opens that next gate.
+Next intended scope: compile-only MetaEditor validation, then one-pair MT5
+Strategy Tester visual inspection if Freedom opens that scope. Start with
+`UseCurrentChartSymbolOnly=true`, `Mode=RAW_V2`, then repeat with
+`Mode=L3_V2`. Do not start all-28 validation, risk, live trading, Candidate B,
+Brain, COT, Strength, Regime, pair-net flatten, optimization, promotion, repo
+backtests, or live-readiness work until Freedom explicitly opens that next gate.
 
 Gate 74 current state:
 

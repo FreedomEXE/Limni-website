@@ -6,18 +6,26 @@
 #property version "1.000"
 
 #include <Trade/Trade.mqh>
+#include "Include/Strategy/WeeklyBoundary.mqh"
 
 enum HedgeGridMode
 {
-  NO_LIMIT_RAW = 0,
-  L3_RAW = 1
+  RAW_V2 = 0,
+  L3_V2 = 1
 };
 
-input HedgeGridMode Mode = NO_LIMIT_RAW;
+enum BoundaryTimeSource
+{
+  BOUNDARY_TIME_SERVER = 0,
+  BOUNDARY_TIME_GMT = 1
+};
+
+input HedgeGridMode Mode = RAW_V2;
 input string SymbolsCsv = "";
 input bool UseCurrentChartSymbolOnly = true;
 input double LotSize = 0.01;
 input double AdrValue = 0.0;
+input double EntryAdrMultiple = 1.0;
 input double TargetAdrMultiple = 1.0;
 input double SpacingAdrMultiple = 0.2;
 input int MaxPositionsPerSymbol = 200;
@@ -27,11 +35,15 @@ input bool ManualFlattenNow = false;
 input long MagicNumberBase = 820820;
 input int SlippagePoints = 10;
 input int MaxOrdersPerTick = 5;
+input BoundaryTimeSource WeekBoundaryTimeSource = BOUNDARY_TIME_SERVER;
+input int ServerUtcOffsetHours = 0;
+input bool EnableChartVisuals = true;
+input int VisualRefreshSeconds = 1;
 input int DashboardRefreshSeconds = 1;
 input int DashboardMaxSymbols = 28;
 input bool CsvLogEnabled = true;
 
-const string BUILD_NAME = "Limni Basket Hedge EA Alpha V1";
+const string BUILD_NAME = "Limni Basket Hedge EA Alpha V1 V2";
 const int L3_RESET_LIMIT_PER_SIDE_WEEK = 3;
 
 struct SymbolRuntime
@@ -49,6 +61,15 @@ struct SymbolRuntime
   int shortNextFavorable;
   double longAnchor;
   double shortAnchor;
+  datetime priceAnchorWeekStartGmt;
+  bool priceAnchorSeeded;
+  int priceAnchorTicks;
+  double priceAnchorHigh;
+  double priceAnchorLow;
+  double prevPriceAnchorHigh;
+  double prevPriceAnchorLow;
+  double longEntryLevel;
+  double shortEntryLevel;
   bool capHit;
   string lastAction;
   string lastError;
@@ -78,6 +99,7 @@ SymbolRuntime g_symbols[];
 datetime g_startedAt = 0;
 datetime g_lastManage = 0;
 datetime g_lastDashboard = 0;
+datetime g_lastVisual = 0;
 double g_peakEquity = 0.0;
 double g_maxDrawdown = 0.0;
 string g_lastAction = "";
@@ -112,6 +134,7 @@ int OnInit()
 
   EventSetTimer(1);
   UpdateDashboard(true);
+  UpdateChartVisuals(true);
   Print(StringFormat("%s initialized. mode=%s symbols=%d", BUILD_NAME, ModeName(), ArraySize(g_symbols)));
   return INIT_SUCCEEDED;
 }
@@ -136,6 +159,7 @@ void OnTimer()
 {
   ManageAllSymbols();
   UpdateDashboard(false);
+  UpdateChartVisuals(false);
 }
 
 //+------------------------------------------------------------------+
@@ -156,6 +180,7 @@ void ManageAllSymbols()
   for(int i = 0; i < ArraySize(g_symbols); i++)
   {
     CheckWeekBoundary(i);
+    RefreshWeeklyPriceAnchor(i);
     RecoverAnchorsIfNeeded(i);
 
     if(!g_tradeGateOk)
@@ -200,13 +225,24 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
   }
   g_symbols[index].capHit = false;
 
-  int sideCount = (side == POSITION_TYPE_BUY ? snapshot.longCount : snapshot.shortCount);
+  ManageCarriedWeekSideCycles(index, side, adr);
+
+  string weekTag = CurrentWeekTag(index);
+  PositionSnapshot weekSideSnapshot;
+  GetWeekSidePositionSnapshot(symbol, g_symbols[index].magic, side, weekTag, weekSideSnapshot);
+
+  int sideCount = weekSideSnapshot.totalCount;
   int sideWeeklyResets = (side == POSITION_TYPE_BUY ? g_symbols[index].longWeeklyResets : g_symbols[index].shortWeeklyResets);
-  if(Mode == L3_RAW && sideWeeklyResets >= L3_RESET_LIMIT_PER_SIDE_WEEK)
+  if(Mode == L3_V2 && sideWeeklyResets >= L3_RESET_LIMIT_PER_SIDE_WEEK)
     return;
 
   if(sideCount <= 0)
   {
+    if(!IsEntryWindowOpenForSymbol(index))
+      return;
+    if(!ShouldOpenInitialSide(index, side, adr))
+      return;
+
     if(OpenGridFill(index, side, "INITIAL", ordersThisTick))
     {
       double filled = g_trade.ResultPrice();
@@ -218,10 +254,16 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
     return;
   }
 
-  double legAdrPnl = GetLegAdrPnl(symbol, g_symbols[index].magic, side, adr);
+  double legAdrPnl = GetWeekSideAdrPnl(symbol, g_symbols[index].magic, side, adr, weekTag);
   if(legAdrPnl >= TargetAdrMultiple)
   {
-    int positionsClosed = CloseLegPositions(index, side, "TARGET_RESET");
+    if(!IsActionWindowOpenForSymbol(index))
+    {
+      SetSymbolAction(index, SideName(side) + "_TARGET_HELD_OUTSIDE_ACTION_WINDOW");
+      return;
+    }
+
+    int positionsClosed = CloseLegPositionsForWeek(index, side, weekTag, "TARGET_RESET");
     if(positionsClosed > 0)
     {
       IncrementReset(index, side);
@@ -248,6 +290,9 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
   double directedAdr = (side == POSITION_TYPE_BUY)
     ? (mark - anchor) / adr
     : (anchor - mark) / adr;
+
+  if(!IsEntryWindowOpenForSymbol(index))
+    return;
 
   while(MaxOrdersPerTick <= 0 || ordersThisTick < MaxOrdersPerTick)
   {
@@ -297,7 +342,7 @@ bool OpenGridFill(const int index, const int side, const string reason, int &ord
   g_trade.SetExpertMagicNumber(g_symbols[index].magic);
   g_trade.SetTypeFillingBySymbol(symbol);
 
-  string comment = "G82|" + ModeName() + "|" + SideName(side) + "|" + reason;
+  string comment = BuildOrderComment(index, side, reason);
   ResetLastError();
   bool ok = false;
   if(side == POSITION_TYPE_BUY)
@@ -363,6 +408,123 @@ int CloseLegPositions(const int index, const int side, const string reason)
     g_lastAction = symbol + ":" + SideName(side) + "_" + reason;
   }
   return closed;
+}
+
+//+------------------------------------------------------------------+
+int CloseLegPositionsForWeek(const int index, const int side, const string weekTag, const string reason)
+{
+  ulong tickets[];
+  ArrayResize(tickets, 0);
+  string symbol = g_symbols[index].symbol;
+  long magic = g_symbols[index].magic;
+
+  for(int i = PositionsTotal() - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0 || !PositionSelectByTicket(ticket))
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != magic)
+      continue;
+    if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+    if(!PositionHasWeekTag(weekTag))
+      continue;
+
+    int size = ArraySize(tickets);
+    ArrayResize(tickets, size + 1);
+    tickets[size] = ticket;
+  }
+
+  int closed = 0;
+  for(int i = 0; i < ArraySize(tickets); i++)
+  {
+    g_trade.SetExpertMagicNumber(magic);
+    if(g_trade.PositionClose(tickets[i], SlippagePoints))
+      closed++;
+    else
+      SetSymbolError(index, "CLOSE_FAILED_" + IntegerToString((int)g_trade.ResultRetcode()));
+  }
+
+  if(closed > 0)
+  {
+    SetSymbolAction(index, SideName(side) + "_" + reason + "_W" + weekTag);
+    g_lastAction = symbol + ":" + SideName(side) + "_" + reason + "_W" + weekTag;
+  }
+  return closed;
+}
+
+//+------------------------------------------------------------------+
+void ManageCarriedWeekSideCycles(const int index, const int side, const double adr)
+{
+  if(!IsActionWindowOpenForSymbol(index))
+    return;
+
+  string currentTag = CurrentWeekTag(index);
+  string tags[];
+  ArrayResize(tags, 0);
+  string symbol = g_symbols[index].symbol;
+  long magic = g_symbols[index].magic;
+
+  for(int i = 0; i < PositionsTotal(); i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0 || !PositionSelectByTicket(ticket))
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != magic)
+      continue;
+    if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+
+    string tag = PositionWeekTag();
+    if(tag == "" || tag == currentTag)
+      continue;
+    AddUniqueTag(tags, tag);
+  }
+
+  for(int t = 0; t < ArraySize(tags); t++)
+  {
+    double carriedAdrPnl = GetWeekSideAdrPnl(symbol, magic, side, adr, tags[t]);
+    if(carriedAdrPnl < TargetAdrMultiple)
+      continue;
+
+    int positionsClosed = CloseLegPositionsForWeek(index, side, tags[t], "CARRY_TARGET_CLOSE");
+    if(positionsClosed > 0)
+    {
+      g_symbols[index].totalResets++;
+      LogReset(index, SideName(side) + "_CARRY_TARGET_CLOSE", positionsClosed, "CARRIED_WEEK_LEG_ADR_TARGET_HIT_W" + tags[t]);
+      SetSymbolAction(index, SideName(side) + "_CARRY_TARGET_CLOSE_W" + tags[t]);
+    }
+  }
+}
+
+//+------------------------------------------------------------------+
+void AddUniqueTag(string &tags[], const string tag)
+{
+  for(int i = 0; i < ArraySize(tags); i++)
+  {
+    if(tags[i] == tag)
+      return;
+  }
+  int size = ArraySize(tags);
+  ArrayResize(tags, size + 1);
+  tags[size] = tag;
+}
+
+//+------------------------------------------------------------------+
+string PositionWeekTag()
+{
+  string comment = PositionGetString(POSITION_COMMENT);
+  string parts[];
+  int count = StringSplit(comment, '|', parts);
+  if(count < 5)
+    return "";
+  if(parts[0] != "G82C")
+    return "";
+  return parts[3];
 }
 
 //+------------------------------------------------------------------+
@@ -457,7 +619,7 @@ void AddSymbol(const string symbol)
   ArrayResize(g_symbols, size + 1);
   g_symbols[size].symbol = clean;
   g_symbols[size].magic = MagicForSymbol(clean);
-  g_symbols[size].weekStartGmt = GetWeekStartGmt(TimeGMT());
+  g_symbols[size].weekStartGmt = LimniGetWeekStartGmt(BoundaryNowGmt());
   g_symbols[size].longWeeklyResets = 0;
   g_symbols[size].shortWeeklyResets = 0;
   g_symbols[size].totalResets = 0;
@@ -468,6 +630,7 @@ void AddSymbol(const string symbol)
   g_symbols[size].shortNextFavorable = 1;
   g_symbols[size].longAnchor = 0.0;
   g_symbols[size].shortAnchor = 0.0;
+  ResetWeeklyPriceAnchor(size, g_symbols[size].weekStartGmt);
   g_symbols[size].capHit = false;
   g_symbols[size].lastAction = "INIT";
   g_symbols[size].lastError = "";
@@ -488,130 +651,137 @@ long MagicForSymbol(const string symbol)
   long hash = 0;
   for(int i = 0; i < StringLen(symbol); i++)
     hash = (hash * 131 + StringGetCharacter(symbol, i)) % 900000;
-  return MagicNumberBase + (Mode == L3_RAW ? 1000000 : 0) + hash;
+  return MagicNumberBase + (Mode == L3_V2 ? 1000000 : 0) + hash;
 }
 
 //+------------------------------------------------------------------+
 void CheckWeekBoundary(const int index)
 {
-  datetime currentWeek = GetWeekStartGmt(TimeGMT());
+  datetime currentWeek = LimniGetWeekStartGmt(BoundaryNowGmt());
   if(g_symbols[index].weekStartGmt == currentWeek)
     return;
 
   g_symbols[index].weekStartGmt = currentWeek;
   g_symbols[index].longWeeklyResets = 0;
   g_symbols[index].shortWeeklyResets = 0;
+  ResetWeeklyPriceAnchor(index, currentWeek);
   SetSymbolAction(index, "WEEK_BOUNDARY_RESET");
   LogReset(index, "WEEK_BOUNDARY", 0, "WEEKLY_L3_COUNTER_RESET_NO_FLATTEN");
   SaveSymbolState(index);
 }
 
 //+------------------------------------------------------------------+
-datetime GetWeekStartGmt(datetime nowGmt)
+datetime BoundaryNowGmt()
 {
-  bool dst = IsUsdDstUtc(nowGmt);
-  int offset = dst ? -4 : -5;
-  datetime etNow = nowGmt + offset * 3600;
-  MqlDateTime et;
-  TimeToStruct(etNow, et);
-  int daysSinceSunday = et.day_of_week;
-  datetime sunday = etNow - daysSinceSunday * 86400;
-  MqlDateTime s;
-  TimeToStruct(sunday, s);
-  s.hour = 19;
-  s.min = 0;
-  s.sec = 0;
-  datetime sundayEt = StructToTime(s);
-  if(etNow < sundayEt)
-    sundayEt -= 7 * 86400;
-  bool dstLocal = IsUsdDstLocal(s.year, s.mon, s.day, s.hour);
-  int localOffset = dstLocal ? -4 : -5;
-  return sundayEt - localOffset * 3600;
+  if(WeekBoundaryTimeSource == BOUNDARY_TIME_GMT)
+    return TimeGMT();
+  return TimeCurrent() - ServerUtcOffsetHours * 3600;
 }
 
 //+------------------------------------------------------------------+
-bool IsUsdDstUtc(datetime nowGmt)
+bool IsEntryWindowOpenForSymbol(const int index)
 {
-  MqlDateTime dt;
-  TimeToStruct(nowGmt, dt);
-  int year = dt.year;
-  int startDay = NthSunday(year, 3, 2);
-  int endDay = NthSunday(year, 11, 1);
-
-  MqlDateTime start;
-  start.year = year;
-  start.mon = 3;
-  start.day = startDay;
-  start.hour = 7;
-  start.min = 0;
-  start.sec = 0;
-
-  MqlDateTime end;
-  end.year = year;
-  end.mon = 11;
-  end.day = endDay;
-  end.hour = 6;
-  end.min = 0;
-  end.sec = 0;
-
-  datetime startUtc = StructToTime(start);
-  datetime endUtc = StructToTime(end);
-  return nowGmt >= startUtc && nowGmt < endUtc;
+  return LimniIsEntryWindowOpen(BoundaryNowGmt(), g_symbols[index].weekStartGmt);
 }
 
 //+------------------------------------------------------------------+
-bool IsUsdDstLocal(int year, int mon, int day, int hour)
+bool IsActionWindowOpenForSymbol(const int index)
 {
-  int startDay = NthSunday(year, 3, 2);
-  int endDay = NthSunday(year, 11, 1);
-  if(mon < 3 || mon > 11)
+  return LimniIsActionWindowOpen(BoundaryNowGmt(), g_symbols[index].weekStartGmt);
+}
+
+//+------------------------------------------------------------------+
+void ResetWeeklyPriceAnchor(const int index, const datetime weekStartGmt)
+{
+  g_symbols[index].priceAnchorWeekStartGmt = weekStartGmt;
+  g_symbols[index].priceAnchorSeeded = false;
+  g_symbols[index].priceAnchorTicks = 0;
+  g_symbols[index].priceAnchorHigh = 0.0;
+  g_symbols[index].priceAnchorLow = 0.0;
+  g_symbols[index].prevPriceAnchorHigh = 0.0;
+  g_symbols[index].prevPriceAnchorLow = 0.0;
+  g_symbols[index].longEntryLevel = 0.0;
+  g_symbols[index].shortEntryLevel = 0.0;
+  ClearAnchor(index, POSITION_TYPE_BUY);
+  ClearAnchor(index, POSITION_TYPE_SELL);
+}
+
+//+------------------------------------------------------------------+
+void RefreshWeeklyPriceAnchor(const int index)
+{
+  if(index < 0 || index >= ArraySize(g_symbols))
+    return;
+
+  string symbol = g_symbols[index].symbol;
+  MqlTick tick;
+  if(!SymbolInfoTick(symbol, tick))
+    return;
+
+  datetime nowGmt = BoundaryNowGmt();
+  if(nowGmt < g_symbols[index].weekStartGmt)
+    return;
+
+  double high = MathMax(tick.bid, tick.ask);
+  double low = MathMin(tick.bid, tick.ask);
+  if(high <= 0.0 || low <= 0.0)
+    return;
+
+  if(g_symbols[index].priceAnchorWeekStartGmt != g_symbols[index].weekStartGmt)
+    ResetWeeklyPriceAnchor(index, g_symbols[index].weekStartGmt);
+
+  if(!g_symbols[index].priceAnchorSeeded)
+  {
+    g_symbols[index].priceAnchorHigh = high;
+    g_symbols[index].priceAnchorLow = low;
+    g_symbols[index].prevPriceAnchorHigh = high;
+    g_symbols[index].prevPriceAnchorLow = low;
+    g_symbols[index].priceAnchorTicks = 0;
+    g_symbols[index].priceAnchorSeeded = true;
+    SetSymbolAction(index, "WEEK_PRICE_ANCHOR_SEEDED");
+    return;
+  }
+
+  g_symbols[index].prevPriceAnchorHigh = g_symbols[index].priceAnchorHigh;
+  g_symbols[index].prevPriceAnchorLow = g_symbols[index].priceAnchorLow;
+  g_symbols[index].priceAnchorHigh = MathMax(g_symbols[index].priceAnchorHigh, high);
+  g_symbols[index].priceAnchorLow = MathMin(g_symbols[index].priceAnchorLow, low);
+  g_symbols[index].priceAnchorTicks++;
+
+  double adr = GetAdrValue(symbol);
+  if(adr > 0.0 && PriceAnchorReady(index))
+  {
+    g_symbols[index].longEntryLevel = g_symbols[index].prevPriceAnchorHigh - adr * EntryAdrMultiple;
+    g_symbols[index].shortEntryLevel = g_symbols[index].prevPriceAnchorLow + adr * EntryAdrMultiple;
+  }
+}
+
+//+------------------------------------------------------------------+
+bool PriceAnchorReady(const int index)
+{
+  return g_symbols[index].priceAnchorSeeded &&
+         g_symbols[index].priceAnchorTicks >= 1 &&
+         g_symbols[index].prevPriceAnchorHigh > 0.0 &&
+         g_symbols[index].prevPriceAnchorLow > 0.0;
+}
+
+//+------------------------------------------------------------------+
+bool ShouldOpenInitialSide(const int index, const int side, const double adr)
+{
+  if(adr <= 0.0 || !PriceAnchorReady(index))
     return false;
-  if(mon > 3 && mon < 11)
-    return true;
-  if(mon == 3)
-  {
-    if(day > startDay)
-      return true;
-    if(day < startDay)
-      return false;
-    return hour >= 2;
-  }
-  if(mon == 11)
-  {
-    if(day < endDay)
-      return true;
-    if(day > endDay)
-      return false;
-    return hour < 2;
-  }
-  return false;
-}
 
-//+------------------------------------------------------------------+
-int NthSunday(int year, int mon, int nth)
-{
-  int count = 0;
-  for(int day = 1; day <= 31; day++)
-  {
-    MqlDateTime dt;
-    dt.year = year;
-    dt.mon = mon;
-    dt.day = day;
-    dt.hour = 0;
-    dt.min = 0;
-    dt.sec = 0;
-    datetime t = StructToTime(dt);
-    if(t == 0)
-      continue;
-    TimeToStruct(t, dt);
-    if(dt.day_of_week == 0)
-    {
-      count++;
-      if(count == nth)
-        return day;
-    }
-  }
-  return 1;
+  string symbol = g_symbols[index].symbol;
+  double trigger = RequestedEntryPrice(symbol, side);
+  if(trigger <= 0.0)
+    return false;
+
+  double entry = (side == POSITION_TYPE_BUY ? g_symbols[index].longEntryLevel : g_symbols[index].shortEntryLevel);
+  if(entry <= 0.0)
+    return false;
+
+  if(side == POSITION_TYPE_BUY)
+    return trigger <= entry;
+  return trigger >= entry;
 }
 
 //+------------------------------------------------------------------+
@@ -723,6 +893,58 @@ void GetPositionSnapshot(const string symbol, const long magic, PositionSnapshot
 }
 
 //+------------------------------------------------------------------+
+bool PositionHasWeekTag(const string weekTag)
+{
+  if(weekTag == "")
+    return false;
+  return PositionWeekTag() == weekTag;
+}
+
+//+------------------------------------------------------------------+
+void GetWeekSidePositionSnapshot(const string symbol, const long magic, const int side, const string weekTag, PositionSnapshot &snapshot)
+{
+  snapshot.totalCount = 0;
+  snapshot.longCount = 0;
+  snapshot.shortCount = 0;
+  snapshot.longLots = 0.0;
+  snapshot.shortLots = 0.0;
+  snapshot.openPnl = 0.0;
+  snapshot.openSwap = 0.0;
+
+  for(int i = 0; i < PositionsTotal(); i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0 || !PositionSelectByTicket(ticket))
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != magic)
+      continue;
+    if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+    if(!PositionHasWeekTag(weekTag))
+      continue;
+
+    double volume = PositionGetDouble(POSITION_VOLUME);
+    double profit = PositionGetDouble(POSITION_PROFIT);
+    double swap = PositionGetDouble(POSITION_SWAP);
+    snapshot.totalCount++;
+    snapshot.openPnl += profit + swap;
+    snapshot.openSwap += swap;
+    if(side == POSITION_TYPE_BUY)
+    {
+      snapshot.longCount++;
+      snapshot.longLots += volume;
+    }
+    else
+    {
+      snapshot.shortCount++;
+      snapshot.shortLots += volume;
+    }
+  }
+}
+
+//+------------------------------------------------------------------+
 double GetLegAdrPnl(const string symbol, const long magic, const int side, const double adr)
 {
   double pnl = 0.0;
@@ -744,6 +966,43 @@ double GetLegAdrPnl(const string symbol, const long magic, const int side, const
     if((long)PositionGetInteger(POSITION_MAGIC) != magic)
       continue;
     if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+
+    double open = PositionGetDouble(POSITION_PRICE_OPEN);
+    double volume = PositionGetDouble(POSITION_VOLUME);
+    double units = volume / unitLot;
+    if(side == POSITION_TYPE_BUY)
+      pnl += ((mark - open) / adr) * units;
+    else
+      pnl += ((open - mark) / adr) * units;
+  }
+  return pnl;
+}
+
+//+------------------------------------------------------------------+
+double GetWeekSideAdrPnl(const string symbol, const long magic, const int side, const double adr, const string weekTag)
+{
+  double pnl = 0.0;
+  double unitLot = NormalizeVolume(symbol, LotSize);
+  if(unitLot <= 0.0 || adr <= 0.0)
+    return 0.0;
+
+  double mark = MarkPrice(symbol, side);
+  if(mark <= 0.0)
+    return 0.0;
+
+  for(int i = 0; i < PositionsTotal(); i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0 || !PositionSelectByTicket(ticket))
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != magic)
+      continue;
+    if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+    if(!PositionHasWeekTag(weekTag))
       continue;
 
     double open = PositionGetDouble(POSITION_PRICE_OPEN);
@@ -820,6 +1079,7 @@ void RecoverAnchorForLeg(const int index, const int side)
 
   string symbol = g_symbols[index].symbol;
   long magic = g_symbols[index].magic;
+  string weekTag = CurrentWeekTag(index);
   datetime oldestTime = 0;
   double oldestPrice = 0.0;
 
@@ -833,6 +1093,8 @@ void RecoverAnchorForLeg(const int index, const int side)
     if((long)PositionGetInteger(POSITION_MAGIC) != magic)
       continue;
     if((int)PositionGetInteger(POSITION_TYPE) != side)
+      continue;
+    if(!PositionHasWeekTag(weekTag))
       continue;
 
     datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
@@ -964,6 +1226,45 @@ void UpdateDashboard(const bool force)
 }
 
 //+------------------------------------------------------------------+
+void UpdateChartVisuals(const bool force)
+{
+  if(!EnableChartVisuals)
+    return;
+
+  datetime now = TimeCurrent();
+  if(!force && VisualRefreshSeconds > 0 && g_lastVisual != 0 && (now - g_lastVisual) < VisualRefreshSeconds)
+    return;
+  g_lastVisual = now;
+
+  for(int i = 0; i < ArraySize(g_symbols); i++)
+  {
+    if(g_symbols[i].symbol != _Symbol)
+      continue;
+
+    string prefix = "LimniG82C_" + SafeFilePart(g_symbols[i].symbol) + "_";
+    DrawHLine(prefix + "AnchorHigh", g_symbols[i].priceAnchorHigh, clrSlateGray, STYLE_DOT, 1);
+    DrawHLine(prefix + "AnchorLow", g_symbols[i].priceAnchorLow, clrSlateGray, STYLE_DOT, 1);
+    DrawHLine(prefix + "LongEntry", g_symbols[i].longEntryLevel, clrLimeGreen, STYLE_SOLID, 2);
+    DrawHLine(prefix + "ShortEntry", g_symbols[i].shortEntryLevel, clrTomato, STYLE_SOLID, 2);
+  }
+}
+
+//+------------------------------------------------------------------+
+void DrawHLine(const string name, const double price, const color lineColor, const ENUM_LINE_STYLE style, const int width)
+{
+  if(price <= 0.0)
+    return;
+
+  if(ObjectFind(0, name) < 0)
+    ObjectCreate(0, name, OBJ_HLINE, 0, 0, price);
+  ObjectSetDouble(0, name, OBJPROP_PRICE, price);
+  ObjectSetInteger(0, name, OBJPROP_COLOR, lineColor);
+  ObjectSetInteger(0, name, OBJPROP_STYLE, style);
+  ObjectSetInteger(0, name, OBJPROP_WIDTH, width);
+  ObjectSetInteger(0, name, OBJPROP_BACK, false);
+}
+
+//+------------------------------------------------------------------+
 string BuildDashboardText()
 {
   ClosedSnapshot closedAll;
@@ -1065,6 +1366,13 @@ string BuildSymbolDashboardLine(const int index)
           " | target " + Price(symbol, targetDistance) +
           " | spacing " + Price(symbol, spacingDistance) +
           " | magic " + IntegerToString((int)g_symbols[index].magic) + "\n";
+  line += "  Week " + CurrentWeekTag(index) +
+          " | EntryWin " + (IsEntryWindowOpenForSymbol(index) ? "OPEN" : "CLOSED") +
+          " | ActionWin " + (IsActionWindowOpenForSymbol(index) ? "OPEN" : "CLOSED") + "\n";
+  line += "  Anchor H " + Price(symbol, g_symbols[index].priceAnchorHigh) +
+          " L " + Price(symbol, g_symbols[index].priceAnchorLow) +
+          " | LEntry " + Price(symbol, g_symbols[index].longEntryLevel) +
+          " | SEntry " + Price(symbol, g_symbols[index].shortEntryLevel) + "\n";
   line += "  L " + IntegerToString(positions.longCount) + "/" + Lots(positions.longLots) +
           " WReset " + IntegerToString(g_symbols[index].longWeeklyResets) +
           " | S " + IntegerToString(positions.shortCount) + "/" + Lots(positions.shortLots) +
@@ -1158,7 +1466,7 @@ void LogSymbolState(const int index)
 
   string filename = "limni_basket_hedge_alpha_v1_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
-                  "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
+                  "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,week_tag,boundary_now_gmt,entry_window_open,action_window_open,anchor_high,anchor_low,long_entry_level,short_entry_level,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
   if(h == INVALID_HANDLE)
     return;
   FileWrite(h,
@@ -1171,6 +1479,14 @@ void LogSymbolState(const int index)
             adr,
             adr * TargetAdrMultiple,
             adr * SpacingAdrMultiple,
+            CurrentWeekTag(index),
+            TimeToString(BoundaryNowGmt(), TIME_DATE | TIME_SECONDS),
+            IsEntryWindowOpenForSymbol(index) ? 1 : 0,
+            IsActionWindowOpenForSymbol(index) ? 1 : 0,
+            g_symbols[index].priceAnchorHigh,
+            g_symbols[index].priceAnchorLow,
+            g_symbols[index].longEntryLevel,
+            g_symbols[index].shortEntryLevel,
             positions.longCount,
             positions.shortCount,
             positions.longLots,
@@ -1200,13 +1516,15 @@ void LogFill(const int index, const string action, const int side, const double 
   double spread = point > 0.0 ? (tick.ask - tick.bid) / point : 0.0;
   string filename = "limni_basket_hedge_alpha_v1_fills_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
-                  "timestamp,symbol,mode,action,side,volume,requested_price,filled_price,bid,ask,spread,order_id,deal_id,position_id,commission,swap,realized_pnl,reason");
+                  "timestamp,symbol,mode,week_tag,order_comment,action,side,volume,requested_price,filled_price,bid,ask,spread,order_id,deal_id,position_id,commission,swap,realized_pnl,reason");
   if(h == INVALID_HANDLE)
     return;
   FileWrite(h,
             Timestamp(),
             symbol,
             ModeName(),
+            CurrentWeekTag(index),
+            BuildOrderComment(index, side, reason),
             action,
             SideName(side),
             volume,
@@ -1238,13 +1556,14 @@ void LogReset(const int index, const string resetType, const int positionsClosed
   double closedNet = closed.profit + closed.commission + closed.swap;
   string filename = "limni_basket_hedge_alpha_v1_resets_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
-                  "timestamp,symbol,mode,reset_type,weekly_reset_count,total_reset_count,closed_pnl_at_reset,open_pnl_at_reset,commission_at_reset,swap_at_reset,total_mtm_at_reset,positions_closed,reason");
+                  "timestamp,symbol,mode,week_tag,reset_type,weekly_reset_count,total_reset_count,closed_pnl_at_reset,open_pnl_at_reset,commission_at_reset,swap_at_reset,total_mtm_at_reset,positions_closed,reason");
   if(h == INVALID_HANDLE)
     return;
   FileWrite(h,
             Timestamp(),
             symbol,
             ModeName(),
+            CurrentWeekTag(index),
             resetType,
             g_symbols[index].longWeeklyResets + g_symbols[index].shortWeeklyResets,
             g_symbols[index].totalResets,
@@ -1290,6 +1609,22 @@ void LoadSymbolState(const int index)
     g_symbols[index].longNextFavorable = MathMax(1, (int)GlobalVariableGet(key + "LongNextFavorable"));
     g_symbols[index].shortNextAdverse = MathMax(1, (int)GlobalVariableGet(key + "ShortNextAdverse"));
     g_symbols[index].shortNextFavorable = MathMax(1, (int)GlobalVariableGet(key + "ShortNextFavorable"));
+    if(GlobalVariableCheck(key + "PriceAnchorWeekStart"))
+    {
+      g_symbols[index].priceAnchorWeekStartGmt = (datetime)GlobalVariableGet(key + "PriceAnchorWeekStart");
+      g_symbols[index].priceAnchorSeeded = GlobalVariableGet(key + "PriceAnchorSeeded") > 0.0;
+      g_symbols[index].priceAnchorTicks = (int)GlobalVariableGet(key + "PriceAnchorTicks");
+      g_symbols[index].priceAnchorHigh = GlobalVariableGet(key + "PriceAnchorHigh");
+      g_symbols[index].priceAnchorLow = GlobalVariableGet(key + "PriceAnchorLow");
+      g_symbols[index].prevPriceAnchorHigh = GlobalVariableGet(key + "PrevPriceAnchorHigh");
+      g_symbols[index].prevPriceAnchorLow = GlobalVariableGet(key + "PrevPriceAnchorLow");
+      g_symbols[index].longEntryLevel = GlobalVariableGet(key + "LongEntryLevel");
+      g_symbols[index].shortEntryLevel = GlobalVariableGet(key + "ShortEntryLevel");
+    }
+    else
+    {
+      ResetWeeklyPriceAnchor(index, g_symbols[index].weekStartGmt);
+    }
   }
   CheckWeekBoundary(index);
 }
@@ -1309,6 +1644,15 @@ void SaveSymbolState(const int index)
   GlobalVariableSet(key + "LongNextFavorable", g_symbols[index].longNextFavorable);
   GlobalVariableSet(key + "ShortNextAdverse", g_symbols[index].shortNextAdverse);
   GlobalVariableSet(key + "ShortNextFavorable", g_symbols[index].shortNextFavorable);
+  GlobalVariableSet(key + "PriceAnchorWeekStart", (double)g_symbols[index].priceAnchorWeekStartGmt);
+  GlobalVariableSet(key + "PriceAnchorSeeded", g_symbols[index].priceAnchorSeeded ? 1.0 : 0.0);
+  GlobalVariableSet(key + "PriceAnchorTicks", g_symbols[index].priceAnchorTicks);
+  GlobalVariableSet(key + "PriceAnchorHigh", g_symbols[index].priceAnchorHigh);
+  GlobalVariableSet(key + "PriceAnchorLow", g_symbols[index].priceAnchorLow);
+  GlobalVariableSet(key + "PrevPriceAnchorHigh", g_symbols[index].prevPriceAnchorHigh);
+  GlobalVariableSet(key + "PrevPriceAnchorLow", g_symbols[index].prevPriceAnchorLow);
+  GlobalVariableSet(key + "LongEntryLevel", g_symbols[index].longEntryLevel);
+  GlobalVariableSet(key + "ShortEntryLevel", g_symbols[index].shortEntryLevel);
 }
 
 //+------------------------------------------------------------------+
@@ -1322,13 +1666,53 @@ string StateKey(const int index, const string suffix)
 //+------------------------------------------------------------------+
 string ModeName()
 {
-  return Mode == L3_RAW ? "L3_RAW" : "NO_LIMIT_RAW";
+  return Mode == L3_V2 ? "L3_V2" : "RAW_V2";
+}
+
+//+------------------------------------------------------------------+
+string ModeCode()
+{
+  return Mode == L3_V2 ? "L2" : "R2";
 }
 
 //+------------------------------------------------------------------+
 string SideName(const int side)
 {
   return side == POSITION_TYPE_BUY ? "LONG" : "SHORT";
+}
+
+//+------------------------------------------------------------------+
+string SideCode(const int side)
+{
+  return side == POSITION_TYPE_BUY ? "B" : "S";
+}
+
+//+------------------------------------------------------------------+
+string ReasonCode(const string reason)
+{
+  if(reason == "INITIAL")
+    return "I";
+  int adversePrefix = StringLen("ADVERSE_RECOVERY_L");
+  if(StringFind(reason, "ADVERSE_RECOVERY_L") == 0)
+    return "A" + StringSubstr(reason, adversePrefix);
+  int favorablePrefix = StringLen("FAVORABLE_EXPANSION_L");
+  if(StringFind(reason, "FAVORABLE_EXPANSION_L") == 0)
+    return "F" + StringSubstr(reason, favorablePrefix);
+  if(reason == "TARGET_RESET")
+    return "TR";
+  return StringSubstr(reason, 0, 4);
+}
+
+//+------------------------------------------------------------------+
+string CurrentWeekTag(const int index)
+{
+  return LimniCompactWeekTag(g_symbols[index].weekStartGmt);
+}
+
+//+------------------------------------------------------------------+
+string BuildOrderComment(const int index, const int side, const string reason)
+{
+  return "G82C|" + ModeCode() + "|" + SideCode(side) + "|" + CurrentWeekTag(index) + "|" + ReasonCode(reason);
 }
 
 //+------------------------------------------------------------------+
