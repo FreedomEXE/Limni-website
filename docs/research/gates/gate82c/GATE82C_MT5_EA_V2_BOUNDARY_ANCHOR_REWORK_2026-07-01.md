@@ -18,13 +18,13 @@ runtime, promote a strategy, or make live-readiness claims.
 | Area | Change |
 | --- | --- |
 | Mode names | Replaced prototype-facing `NO_LIMIT_RAW` / `L3_RAW` with active user-facing modes `RAW` / `GRID_CAP`. |
-| Weekly boundary | Added `automation/mt5/Experts/Include/Strategy/WeeklyBoundary.mqh` for New York DST-aware Sunday 19:00 ET canonical week math and execution/action windows. |
+| Weekly boundary | Added `automation/mt5/Experts/Include/Strategy/WeeklyBoundary.mqh` for New York DST-aware Sunday 20:00 ET canonical trade-week math and trade-window checks. |
 | Time source | Added `WeekBoundaryTimeSource` and `ServerUtcOffsetHours` so tester/server-time handling is explicit and auditable. |
 | Pine price anchor | Added weekly anchor high/low state, previous-anchor snapshots, and V2 first-entry levels from `prevAnchorHigh - ADR * EntryAdrMultiple` and `prevAnchorLow + ADR * EntryAdrMultiple`. |
-| Entry/action windows | New entries require the Sunday 20:00 ET to Friday 09:00 ET entry window; target closes require the Sunday 20:00 ET to Friday 11:00 ET action window. |
+| Trade window | Entries, grid fills, and target closes require the same Sunday 20:00 ET to Friday 11:00 ET trade window. Outside that window grids wait and resume in the next open trade window. |
 | Grid-cap semantics | `GRID_CAP` keeps the fully hedged lane's inherited side-local three target-reset cap per symbol-side per canonical week. The cap value is not optimized for price-anchor V2. |
 | Week/cycle identity | New orders receive compact comments with mode, side, week tag, and reason code so current-week cycles can be filtered independently from carried old inventory. |
-| Carryover behavior | Old tagged week positions remain included in account/symbol MTM and can close if their carried week-side cycle recovers to target during an action window; they do not pollute the new week anchor or reset counters. |
+| Carryover behavior | Old tagged week positions remain included in account/symbol MTM and can close if their carried week-side cycle recovers to target during an open trade window; they do not pollute the new week anchor or reset counters. |
 | Visuals | Added optional chart H-lines for weekly anchor high/low and V2 long/short entry levels, throttled by `VisualRefreshSeconds`. |
 | CSV audit | Symbol/fill/reset logs now include week tags and V2 anchor/window fields where relevant. |
 

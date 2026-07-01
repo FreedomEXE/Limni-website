@@ -108,7 +108,7 @@ datetime LimniGetWeekStartGmt(datetime nowGmt)
 
   MqlDateTime sunday;
   TimeToStruct(sundayEt, sunday);
-  sunday.hour = 19;
+  sunday.hour = 20;
   sunday.min = 0;
   sunday.sec = 0;
   sundayEt = StructToTime(sunday);
@@ -135,18 +135,21 @@ datetime LimniWeekEtToGmt(datetime weekStartGmt, int dayOffset, int hourEt, int 
   return LimniNewYorkLocalToGmt(targetEt);
 }
 
-bool LimniIsEntryWindowOpen(datetime nowGmt, datetime weekStartGmt)
+bool LimniIsTradeWindowOpen(datetime nowGmt, datetime weekStartGmt)
 {
   datetime executionOpenGmt = LimniWeekEtToGmt(weekStartGmt, 0, 20, 0);
-  datetime entryCutoffGmt = LimniWeekEtToGmt(weekStartGmt, 5, 9, 0);
-  return nowGmt >= executionOpenGmt && nowGmt < entryCutoffGmt;
+  datetime executionCloseGmt = LimniWeekEtToGmt(weekStartGmt, 5, 11, 0);
+  return nowGmt >= executionOpenGmt && nowGmt < executionCloseGmt;
+}
+
+bool LimniIsEntryWindowOpen(datetime nowGmt, datetime weekStartGmt)
+{
+  return LimniIsTradeWindowOpen(nowGmt, weekStartGmt);
 }
 
 bool LimniIsActionWindowOpen(datetime nowGmt, datetime weekStartGmt)
 {
-  datetime executionOpenGmt = LimniWeekEtToGmt(weekStartGmt, 0, 20, 0);
-  datetime actionCloseGmt = LimniWeekEtToGmt(weekStartGmt, 5, 11, 0);
-  return nowGmt >= executionOpenGmt && nowGmt < actionCloseGmt;
+  return LimniIsTradeWindowOpen(nowGmt, weekStartGmt);
 }
 
 string LimniCompactWeekTag(datetime weekStartGmt)

@@ -238,7 +238,7 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
 
   if(sideCount <= 0)
   {
-    if(!IsEntryWindowOpenForSymbol(index))
+    if(!IsTradeWindowOpenForSymbol(index))
       return;
     if(!ShouldOpenInitialSide(index, side, adr))
       return;
@@ -257,9 +257,9 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
   double legAdrPnl = GetWeekSideAdrPnl(symbol, g_symbols[index].magic, side, adr, weekTag);
   if(legAdrPnl >= TargetAdrMultiple)
   {
-    if(!IsActionWindowOpenForSymbol(index))
+    if(!IsTradeWindowOpenForSymbol(index))
     {
-      SetSymbolAction(index, SideName(side) + "_TARGET_HELD_OUTSIDE_ACTION_WINDOW");
+      SetSymbolAction(index, SideName(side) + "_TARGET_HELD_OUTSIDE_TRADE_WINDOW");
       return;
     }
 
@@ -291,7 +291,7 @@ void ManageLeg(const int index, const int side, int &ordersThisTick)
     ? (mark - anchor) / adr
     : (anchor - mark) / adr;
 
-  if(!IsEntryWindowOpenForSymbol(index))
+  if(!IsTradeWindowOpenForSymbol(index))
     return;
 
   while(MaxOrdersPerTick <= 0 || ordersThisTick < MaxOrdersPerTick)
@@ -458,7 +458,7 @@ int CloseLegPositionsForWeek(const int index, const int side, const string weekT
 //+------------------------------------------------------------------+
 void ManageCarriedWeekSideCycles(const int index, const int side, const double adr)
 {
-  if(!IsActionWindowOpenForSymbol(index))
+  if(!IsTradeWindowOpenForSymbol(index))
     return;
 
   string currentTag = CurrentWeekTag(index);
@@ -681,13 +681,19 @@ datetime BoundaryNowGmt()
 //+------------------------------------------------------------------+
 bool IsEntryWindowOpenForSymbol(const int index)
 {
-  return LimniIsEntryWindowOpen(BoundaryNowGmt(), g_symbols[index].weekStartGmt);
+  return IsTradeWindowOpenForSymbol(index);
 }
 
 //+------------------------------------------------------------------+
 bool IsActionWindowOpenForSymbol(const int index)
 {
-  return LimniIsActionWindowOpen(BoundaryNowGmt(), g_symbols[index].weekStartGmt);
+  return IsTradeWindowOpenForSymbol(index);
+}
+
+//+------------------------------------------------------------------+
+bool IsTradeWindowOpenForSymbol(const int index)
+{
+  return LimniIsTradeWindowOpen(BoundaryNowGmt(), g_symbols[index].weekStartGmt);
 }
 
 //+------------------------------------------------------------------+
@@ -719,6 +725,8 @@ void RefreshWeeklyPriceAnchor(const int index)
 
   datetime nowGmt = BoundaryNowGmt();
   if(nowGmt < g_symbols[index].weekStartGmt)
+    return;
+  if(!IsTradeWindowOpenForSymbol(index))
     return;
 
   double high = MathMax(tick.bid, tick.ask);
@@ -1367,8 +1375,7 @@ string BuildSymbolDashboardLine(const int index)
           " | spacing " + Price(symbol, spacingDistance) +
           " | magic " + IntegerToString((int)g_symbols[index].magic) + "\n";
   line += "  Week " + CurrentWeekTag(index) +
-          " | EntryWin " + (IsEntryWindowOpenForSymbol(index) ? "OPEN" : "CLOSED") +
-          " | ActionWin " + (IsActionWindowOpenForSymbol(index) ? "OPEN" : "CLOSED") + "\n";
+          " | TradeWin " + (IsTradeWindowOpenForSymbol(index) ? "OPEN" : "CLOSED") + "\n";
   line += "  Anchor H " + Price(symbol, g_symbols[index].priceAnchorHigh) +
           " L " + Price(symbol, g_symbols[index].priceAnchorLow) +
           " | LEntry " + Price(symbol, g_symbols[index].longEntryLevel) +
@@ -1466,7 +1473,7 @@ void LogSymbolState(const int index)
 
   string filename = "limni_basket_hedge_alpha_v2_symbol_state_" + SafeFilePart(symbol) + "_" + ModeName() + ".csv";
   int h = OpenCsv(filename,
-                  "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,week_tag,boundary_now_gmt,entry_window_open,action_window_open,anchor_high,anchor_low,long_entry_level,short_entry_level,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
+                  "timestamp,symbol,mode,bid,ask,spread,adr_value,target_distance,spacing_distance,week_tag,boundary_now_gmt,trade_window_open,anchor_high,anchor_low,long_entry_level,short_entry_level,long_count,short_count,long_lots,short_lots,total_position_count,weekly_reset_count,total_reset_count,symbol_closed_pnl,symbol_open_pnl,symbol_commission,symbol_swap,symbol_total_mtm,last_action,last_error");
   if(h == INVALID_HANDLE)
     return;
   FileWrite(h,
@@ -1481,8 +1488,7 @@ void LogSymbolState(const int index)
             adr * SpacingAdrMultiple,
             CurrentWeekTag(index),
             TimeToString(BoundaryNowGmt(), TIME_DATE | TIME_SECONDS),
-            IsEntryWindowOpenForSymbol(index) ? 1 : 0,
-            IsActionWindowOpenForSymbol(index) ? 1 : 0,
+            IsTradeWindowOpenForSymbol(index) ? 1 : 0,
             g_symbols[index].priceAnchorHigh,
             g_symbols[index].priceAnchorLow,
             g_symbols[index].longEntryLevel,

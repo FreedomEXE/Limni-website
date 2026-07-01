@@ -8,9 +8,10 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest active gates: Gate 82B / Gate 82C / Gate 82D:
+Latest active gates: Gate 82B / Gate 82C / Gate 82D / Gate 82E:
 weekly-boundary-anchor-contract, MT5 EA V2 boundary/anchor rework, and
-warehouse price-anchor V2 comparison.
+warehouse price-anchor V2 comparison, followed by a single trade-window
+boundary correction.
 
 Gate 82B froze the weekly boundary and anchor contract for the fully hedged
 MT5 EA lane. Gate 82C applies that contract to
@@ -19,6 +20,11 @@ MT5 EA lane. Gate 82C applies that contract to
 DST-aware weekly boundary helpers, compact week-tagged order comments,
 current-week cycle filtering, carried-old-week target-close handling, optional
 chart lines for anchor/entry levels, and expanded CSV audit fields.
+
+Gate 82E corrected the active source contract to one canonical trade window:
+Sunday 20:00 ET through Friday 11:00 ET. Outside that window there are no
+entries, no grid fills, no target closes, and no price-anchor updates. Open
+grids simply wait and resume when the next trade window opens.
 
 Gate 82D replayed the price-anchor V2 rows from the Gate 74B warehouse and
 kept the old Gate 80 raw fill-anchor rows imported in the same advanced metric
@@ -38,12 +44,13 @@ Gate 82D result:
   return/DD `32.882627`, final open inventory `-73.994656` ADR.
 
 Interpretation: price-anchor V2 materially reduced final open inventory, but
-did not match the old raw fill-anchor harvest/advanced metrics in this first
-warehouse replay. The inherited grid cap of 3 is documented as a starting point
-only; it has not been optimized for the new anchor logic.
+Gate 82D is not final replacement evidence because it did not replay both old
+raw fill-anchor and new price-anchor variants under the corrected single
+trade-window contract. The inherited grid cap of 3 is documented as a starting
+point only; it has not been optimized for the new anchor logic.
 
-Gate 82C/82D have not been compiled in MetaEditor, installed into MT5, or run
-in MT5 Strategy Tester.
+Gate 82C/82D/82E have not been compiled in MetaEditor, installed into MT5, or
+run in MT5 Strategy Tester.
 
 Status: active on `codex/gate82-hedged-grid-preflight`.
 
@@ -55,6 +62,7 @@ Current verdict:
 - `PASS_CONTRACT_READY_FOR_GATE82C_EA_REWORK_NO_BACKTEST_CLAIM`
 - `PASS_SOURCE_REWORK_STATIC_ONLY_NO_MT5_COMPILE_NO_TESTER_CLAIM`
 - `PASS_GATE82D_PRICE_ANCHOR_V2_WAREHOUSE_COMPARISON_BUILT_NO_PROMOTION`
+- `PASS_GATE82E_SINGLE_TRADE_WINDOW_SOURCE_CORRECTED_NO_COMPILE_NO_TESTER_NO_COMPARISON_CLAIM`
 
 Current receipt:
 
@@ -62,14 +70,17 @@ Current receipt:
 - `docs/research/gates/gate82b/GATE82B_WEEKLY_BOUNDARY_AND_ANCHOR_CONTRACT_2026-07-01.md`
 - `docs/research/gates/gate82c/GATE82C_MT5_EA_V2_BOUNDARY_ANCHOR_REWORK_2026-07-01.md`
 - `docs/research/gates/gate82d/GATE82D_HEDGED_GRID_V2_PRICE_ANCHOR_COMPARISON_2026-07-01.md`
+- `docs/research/gates/gate82e/GATE82E_SINGLE_TRADE_WINDOW_BOUNDARY_CORRECTION_2026-07-01.md`
 
-Next intended scope: decide whether to use MT5 next for visual/weekly-boundary
-inspection only, or open a separate warehouse cap/anchor sensitivity gate before
-more MT5. If MT5 is opened, start compile-only MetaEditor validation, then
-one-pair Strategy Tester visual inspection with `UseCurrentChartSymbolOnly=true`,
-`Mode=RAW`, then `Mode=GRID_CAP`. Do not start all-28 validation, risk, live
-trading, Candidate B, Brain, COT, Strength, Regime, pair-net flatten,
-optimization, promotion, repo backtests beyond the opened Gate 82D artifact, or
+Next intended scope: open a boundary-normalized warehouse comparison before any
+replacement decision. That comparison must replay old raw fill-anchor and new
+price-anchor variants fresh under the same Sunday 20:00 ET to Friday 11:00 ET
+trade window; raw versus raw V2 should differ only by weekly anchor logic. If
+MT5 is opened instead, treat it as compile-only plus one-pair visual boundary
+inspection with `UseCurrentChartSymbolOnly=true`, `Mode=RAW`, then
+`Mode=GRID_CAP`. Do not start all-28 validation, risk, live trading,
+Candidate B, Brain, COT, Strength, Regime, pair-net flatten, optimization,
+promotion, repo backtests beyond explicitly opened boundary-normalized work, or
 live-readiness work until Freedom explicitly opens that next gate.
 
 Gate 74 current state:

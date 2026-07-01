@@ -15,6 +15,12 @@ Generated: `2026-07-01T06:00:37.534Z`
 - `GRID_CAP_3` uses the inherited side-local three target-reset cap only as a starting point; this gate does not optimize the cap.
 - No Candidate B mutation, COT, Strength, Regime, risk layer, MT5 compile/tester run, all-28 runtime, optimization, promotion, or live-readiness claim.
 
+Post-run caveat: Gate 82E corrected the active weekly boundary contract to one
+trade window, Sunday 20:00 ET through Friday 11:00 ET, with no entries, grid
+fills, or target closes outside that window. Gate 82D did not replay both old
+raw fill-anchor and new price-anchor rows under that corrected single-window
+contract, so it is diagnostic evidence only and not replacement evidence.
+
 ## Variant Comparison
 
 | variant_id | final_equity_adr | closed_adr | final_open_unrealized_adr | worst_open_unrealized_adr | max_drawdown_adr | return_dd_ratio | weekly_mtm_profit_factor | weekly_sharpe | weekly_sortino | weekly_win_rate | monthly_win_rate | worst_weekly_mtm_loss_adr | worst_13_week_aggregate_mtm_loss_adr | fills | resets | pair_net_flatten_reset_count | active_side_week_count | max_open_position_inventory_count | gate81_style_stressed_cost_final_equity_adr | metric_semantics | gate80_reference_rule_id |

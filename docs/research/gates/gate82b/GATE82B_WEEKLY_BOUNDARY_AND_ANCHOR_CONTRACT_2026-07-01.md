@@ -32,7 +32,7 @@ MT5 EA prototype:
 | Gate 82 MT5 prototype receipt | `L3_RAW` stops a side after three target resets for that symbol-side in the current MT5 week. |
 | Current EA | `longWeeklyResets` and `shortWeeklyResets` are independent counters. |
 | Pine indicator | Entry levels are derived from weekly anchor high/low, not from an immediate market-fill anchor. |
-| Engine week contract | Canonical week identity is Sunday 19:00 ET; execution windows are separate from logical week identity. |
+| Engine week contract | Canonical trade week identity is Sunday 20:00 ET; the same trade window governs entries, grid fills, and target closes. |
 
 Important distinction: older directional research rows use pair-reset naming
 such as `STOP_AFTER_3_PAIR_RESETS_WEEK`. The current fully hedged EA lane is
@@ -44,17 +44,18 @@ experiment.
 
 | Field | Contract |
 | --- | --- |
-| Canonical week key | Sunday 19:00 New York local time, converted to UTC. |
+| Canonical week key | Sunday 20:00 New York local time, converted to UTC. |
 | Timezone | `America/New_York` semantics with DST. Do not use fixed EST. |
-| Price/market anchor start | FX anchor tracking may begin at the market-open anchor window before execution. |
-| Execution start | Sunday 20:00 New York local time for strategy orders. |
-| Entry cutoff | Friday 09:00 New York local time for new entries. |
-| Action close cutoff | Friday 11:00 New York local time. Must be explicit in code as action-window close, not silently mixed with canonical market close. |
+| Price/market anchor start | First observed tick inside the trade window; do not seed/update the weekly price anchor before Sunday 20:00 ET. |
+| Trade window open | Sunday 20:00 New York local time. |
+| Trade window close | Friday 11:00 New York local time. |
+| Outside trade window | No new entries, no grid fills, and no target closes. Open grids simply wait and resume when the next trade window opens. |
 | Canonical market close | Separate from execution close; FX market truth closes Friday 17:00 New York local time where needed for price/canonical data. |
 | Weekly boundary action | Start a new week state; reset V2 anchor state and weekly reset counters; do not flatten solely because the week changed. |
 | Carryover inventory | Old positions remain real inventory and count in MTM, margin, dashboard, and logs. They keep their original audit lineage and must not pollute the new week's anchor, first-entry levels, or weekly reset counters. |
-| V2 raw behavior | Pine-style weekly price anchor entries, no weekly reset cap. |
-| V2 L3 behavior | Pine-style weekly price anchor entries, side-local maximum of three target resets per symbol-side per canonical week. |
+| `RAW` behavior | Fill-anchor/current raw lifecycle under the same trade-window contract. |
+| `RAW_V2` / price-anchor behavior | Pine-style weekly price anchor entries under the same trade-window contract. |
+| `GRID_CAP` behavior | Price-anchor behavior with a side-local reset cap per symbol-side per canonical week. The inherited cap of 3 is not yet optimized. |
 | Legacy comparability | Gate 80/82 raw fill-anchor evidence remains historical evidence only. V2 does not relabel that evidence. |
 
 ## Mode Contract
@@ -79,7 +80,7 @@ Historical mapping:
 
 For each symbol and canonical week:
 
-1. Seed the weekly anchor once the anchor window opens.
+1. Seed the weekly anchor once the trade window opens.
 2. Track `anchorHigh` and `anchorLow` from observed chart/market prices.
 3. Use the previous anchor values when deriving first entry levels so the
    current bar/tick cannot both update the anchor and trigger from that update.
@@ -100,7 +101,7 @@ The EA should be kept fast in tests and useful live:
 | Area | Contract |
 | --- | --- |
 | Main EA | Owns lifecycle orchestration only: init, tick/timer dispatch, symbol loop, trade calls. |
-| Time include | Owns New York week/window conversion, DST, and action-window checks. |
+| Time include | Owns New York week/window conversion, DST, and trade-window checks. |
 | State/grid include | Owns side anchor state, next adverse/favorable levels, V2 entry readiness, and reset counters. |
 | Logging include | Owns CSV file names, headers, and write helpers. Must be cheap to bypass when disabled. |
 | Visual include | Owns chart objects/dashboard. Must be optional and throttled. |
