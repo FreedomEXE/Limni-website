@@ -1,7 +1,7 @@
 # Response Notification with Modern Neural TTS (edge-tts)
 param(
     [string]$Message = "Response ready",
-    [string]$Voice = "en-GB-RyanNeural",  # Codex default. Options: RyanNeural, LibbyNeural, MaisieNeural, SoniaNeural
+    [string]$Voice = "en-GB-RyanNeural",
     [ValidateSet("Codex", "Freedom", "System")]
     [string]$Speaker = "Codex",
     [switch]$NoGreeting
@@ -10,7 +10,6 @@ param(
 if ($NoGreeting) {
     $fullMessage = "$Speaker summary. $Message"
 } else {
-    # Random greeting selection
     $greetings = @(
         "Hello Freedom",
         "Hey Freedom",
@@ -22,65 +21,20 @@ if ($NoGreeting) {
     $fullMessage = "$greeting. $Message"
 }
 
-Write-Host "[Voice] Using modern neural voice: $Voice" -ForegroundColor Cyan
+Write-Host "[Voice] Queuing neural voice: $Voice" -ForegroundColor Cyan
 Write-Host "[Speaking] $fullMessage" -ForegroundColor Green
 
-# Generate temp audio file
-$tempAudio = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.mp3'
+$scriptDir = (Resolve-Path -LiteralPath (Split-Path -Parent $MyInvocation.MyCommand.Path)).Path
+$worker = (Resolve-Path -LiteralPath (Join-Path $scriptDir "voice-playback-worker.ps1")).Path
 
-try {
-    # Generate speech with edge-tts (using SSL-bypass script)
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $ttsOutput = & python "$scriptDir/edge-tts-fix.py" $Voice $fullMessage $tempAudio 2>&1
-    $ttsExitCode = $LASTEXITCODE
+$escapedWorker = $worker.Replace("'", "''")
+$escapedVoice = $Voice.Replace("'", "''")
+$escapedText = $fullMessage.Replace("'", "''")
+$command = "& '$escapedWorker' -Voice '$escapedVoice' -Text '$escapedText'"
+$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
 
-    if ($ttsExitCode -ne 0 -or -not (Test-Path $tempAudio) -or (Get-Item $tempAudio).Length -le 0) {
-        $errorText = ($ttsOutput | Out-String).Trim()
-        if ([string]::IsNullOrWhiteSpace($errorText)) {
-            $errorText = "edge-tts exited with code $ttsExitCode and did not produce audio."
-        }
-        throw $errorText
-    }
-
-    if (Test-Path $tempAudio) {
-        # Play audio (Windows Media Player)
-        Add-Type -AssemblyName presentationCore
-        $mediaPlayer = New-Object System.Windows.Media.MediaPlayer
-
-        # Convert to absolute path for URI
-        $absolutePath = (Resolve-Path $tempAudio).Path
-        $mediaPlayer.Open([uri]$absolutePath)
-
-        # MediaPlayer opens files asynchronously. Wait briefly so duration and
-        # playback are ready before starting; otherwise short greetings can play
-        # and the process may stop before the rest of the message is heard.
-        for ($i = 0; $i -lt 30 -and -not $mediaPlayer.NaturalDuration.HasTimeSpan; $i++) {
-            Start-Sleep -Milliseconds 100
-        }
-
-        $mediaPlayer.Play()
-
-        if ($mediaPlayer.NaturalDuration.HasTimeSpan) {
-            $actualSeconds = [Math]::Ceiling($mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds)
-        } else {
-            # Conservative fallback for neural TTS pace when metadata is unavailable.
-            $actualSeconds = [Math]::Ceiling($fullMessage.Length / 8)
-        }
-
-        # Add a larger buffer so async playback never gets cut off mid-message.
-        $waitDuration = [Math]::Max(12, $actualSeconds + 10)
-        Start-Sleep -Seconds $waitDuration
-
-        $mediaPlayer.Stop()
-        $mediaPlayer.Close()
-    }
-} catch {
-    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "[INFO] Make sure Python and edge-tts are installed. Run: .\automation\voice\setup-modern-voice.ps1" -ForegroundColor Yellow
-} finally {
-    # Cleanup
-    if (Test-Path $tempAudio) {
-        Start-Sleep -Milliseconds 500
-        Remove-Item $tempAudio -ErrorAction SilentlyContinue
-    }
-}
+Start-Process `
+    -FilePath "powershell.exe" `
+    -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-STA", "-EncodedCommand", $encoded) `
+    -WorkingDirectory $scriptDir `
+    -WindowStyle Hidden | Out-Null

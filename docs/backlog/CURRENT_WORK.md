@@ -8,17 +8,80 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Latest completed gate: Gate 81:
-hedged-broker-real-feasibility-preflight.
+Latest active gates: Gate 82B / Gate 82C / Gate 82D / Gate 82E:
+weekly-boundary-anchor-contract, MT5 EA V2 boundary/anchor rework, and
+warehouse price-anchor V2 comparison, followed by a single trade-window
+boundary correction.
 
-Objective completed: use Gate 80 receipts only to test whether the fully hedged
-T100/S020/L3 gross baseline has enough cost, swap, margin-proxy, and order-count
-buffer to justify a one-pair MT5 mechanics prototype without rerunning the full
-warehouse replay.
+Gate 82B froze the weekly boundary and anchor contract for the fully hedged
+MT5 EA lane. Gate 82C applies that contract to
+`automation/mt5/Experts/LimniBasketHedgeEAAlphaV2.mq5`: active modes are now
+`RAW` and `GRID_CAP`, with Pine-style price-anchor entries, New York
+DST-aware weekly boundary helpers, compact week-tagged order comments,
+current-week cycle filtering, carried-old-week target-close handling, optional
+chart lines for anchor/entry levels, and expanded CSV audit fields.
 
-Status: active on `codex/gate50-macro-source-promotion-proof`.
+Gate 82E corrected the active source contract to one canonical trade window:
+Sunday 20:00 ET through Friday 11:00 ET. Outside that window there are no
+entries, no grid fills, no target closes, and no price-anchor updates. Open
+grids simply wait and resume when the next trade window opens.
+
+Gate 82D replayed the price-anchor V2 rows from the Gate 74B warehouse and
+kept the old Gate 80 raw fill-anchor rows imported in the same advanced metric
+schema. The output includes return/drawdown, weekly MTM PF, Sharpe, Sortino,
+weekly/monthly win rates, worst-week and 13-week losses, drawdown, open
+inventory, fills/resets, and stressed-cost final equity for all rows.
+
+Gate 82D result:
+
+- Old `HEDGED_GRID_T100_S020_L3_RAW`: final equity `53646.297719` ADR,
+  return/DD `76.024249`, final open inventory `-224.656426` ADR.
+- Old `HEDGED_GRID_T100_S020_NO_LIMIT_RAW`: final equity `82549.112283` ADR,
+  return/DD `70.730541`, final open inventory `-256.322899` ADR.
+- V2 `RAW` price-anchor: final equity `31861.651847` ADR, return/DD
+  `28.061151`, final open inventory `-78.510557` ADR.
+- V2 `GRID_CAP_3` price-anchor: final equity `28128.243783` ADR,
+  return/DD `32.882627`, final open inventory `-73.994656` ADR.
+
+Interpretation: price-anchor V2 materially reduced final open inventory, but
+Gate 82D is not final replacement evidence because it did not replay both old
+raw fill-anchor and new price-anchor variants under the corrected single
+trade-window contract. The inherited grid cap of 3 is documented as a starting
+point only; it has not been optimized for the new anchor logic.
+
+Gate 82C/82D/82E have not been compiled in MetaEditor, installed into MT5, or
+run in MT5 Strategy Tester.
+
+Status: active on `codex/gate82-hedged-grid-preflight`.
 
 Architecture version: `gate66_brain_cells_atoms_v3`.
+
+Current verdict:
+
+- `PASS_GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_BUILT_NO_PROMOTION`
+- `PASS_CONTRACT_READY_FOR_GATE82C_EA_REWORK_NO_BACKTEST_CLAIM`
+- `PASS_SOURCE_REWORK_STATIC_ONLY_NO_MT5_COMPILE_NO_TESTER_CLAIM`
+- `PASS_GATE82D_PRICE_ANCHOR_V2_WAREHOUSE_COMPARISON_BUILT_NO_PROMOTION`
+- `PASS_GATE82E_SINGLE_TRADE_WINDOW_SOURCE_CORRECTED_NO_COMPILE_NO_TESTER_NO_COMPARISON_CLAIM`
+
+Current receipt:
+
+- `docs/research/gates/gate82/GATE82_MT5_HEDGED_GRID_VISUAL_PROTOTYPE_2026-06-30.md`
+- `docs/research/gates/gate82b/GATE82B_WEEKLY_BOUNDARY_AND_ANCHOR_CONTRACT_2026-07-01.md`
+- `docs/research/gates/gate82c/GATE82C_MT5_EA_V2_BOUNDARY_ANCHOR_REWORK_2026-07-01.md`
+- `docs/research/gates/gate82d/GATE82D_HEDGED_GRID_V2_PRICE_ANCHOR_COMPARISON_2026-07-01.md`
+- `docs/research/gates/gate82e/GATE82E_SINGLE_TRADE_WINDOW_BOUNDARY_CORRECTION_2026-07-01.md`
+
+Next intended scope: open a boundary-normalized warehouse comparison before any
+replacement decision. That comparison must replay old raw fill-anchor and new
+price-anchor variants fresh under the same Sunday 20:00 ET to Friday 11:00 ET
+trade window; raw versus raw V2 should differ only by weekly anchor logic. If
+MT5 is opened instead, treat it as compile-only plus one-pair visual boundary
+inspection with `UseCurrentChartSymbolOnly=true`, `Mode=RAW`, then
+`Mode=GRID_CAP`. Do not start all-28 validation, risk, live trading,
+Candidate B, Brain, COT, Strength, Regime, pair-net flatten, optimization,
+promotion, repo backtests beyond explicitly opened boundary-normalized work, or
+live-readiness work until Freedom explicitly opens that next gate.
 
 Gate 74 current state:
 
@@ -327,10 +390,30 @@ Gate 81 current state:
   no AUDNZD exclusion, no risk layer, no Regime/fair-value layer, no MT5/live
   portfolio runtime, no live readiness, and no promotion.
 
-No next gate is open. Gate 75B broad matrix, all-28 MT5/runtime, risk layer,
-signal retuning, pair exclusions, AUDNZD exclusion, fair-value pruning,
-promotion, and live/app work remain closed unless Freedom explicitly opens the
-next scope.
+Gate 82 current state:
+
+- Gate 82 preflight verdict:
+  `PASS_FOUR_VARIANT_HEDGED_GRID_DIAGNOSTIC_BUILT_NO_PROMOTION`.
+- Gate 82 preflight used the same Gate 74B/Gate 80 warehouse lineage:
+  `gate74b_trade_leg_path_ECDE7C4A6553`, `373` weeks, `28` pairs, and
+  `10,444` pair-week rows.
+- Raw L3 and raw no-limit hedged rows were imported from Gate 80 artifacts,
+  not rerun:
+  `HEDGED_GRID_T100_S020_L3_RAW` at `53646.297719` final equity ADR and
+  `HEDGED_GRID_T100_S020_NO_LIMIT_RAW` at `82549.112283` final equity ADR.
+- Pair-net `+1 ADR` flatten/reset reduced final and worst open inventory, but
+  also destroyed too much harvest versus raw anchors. L3 pair-net ended at
+  `18485.96236` final equity ADR versus raw L3 `53646.297719`; no-limit
+  pair-net ended at `49969.699611` versus raw no-limit `82549.112283`.
+- Gate 82 preflight applied no Candidate B mutation, no COT, no Strength, no
+  Regime, no risk layer, no MT5 code, no all-28 runtime/deployment work, no
+  parameter sweep, no threshold optimization, no promotion, and no live-capital
+  claim.
+
+Next intended scope: one-pair MT5 fully hedged visual mechanics prototype under
+`automation/`, using this preflight as evidence. Do not start all-28 runtime,
+risk layer, app/runtime integration, Candidate B/macro research, pair pruning,
+promotion, or live readiness in this gate.
 
 Gate 73 reference:
 
@@ -384,7 +467,7 @@ Gate 73 reference:
 - Gate 73A recommendation: next design should be runner-preserving profit
   protection, not another broad fixed-target matrix.
 
-Gate 73-81 commands:
+Gate 73-82 commands:
 
 - `npm run engine:gate73a:weekly-basket-path-anatomy`
 - `npm run engine:gate73b:trade-leg-anatomy-preflight`
@@ -402,6 +485,8 @@ Gate 73-81 commands:
 - `npm run engine:gate79:flip-loss-adverse-inventory-root-cause-audit`
 - `npm run engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution`
 - `npm run engine:gate81:hedged-broker-real-feasibility-preflight`
+- `npm run engine:gate82:hedged-grid-four-variant-preflight`
+- `npm run engine:gate82d:hedged-grid-v2-price-anchor-comparison`
 
 Current verdicts:
 
@@ -437,6 +522,8 @@ Current verdicts:
   `PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION`
 - Gate 81:
   `PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION`
+- Gate 82:
+  `PASS_FOUR_VARIANT_HEDGED_GRID_DIAGNOSTIC_BUILT_NO_PROMOTION`
 
 Gate 72 reference:
 
@@ -542,6 +629,8 @@ all 28 signal outcomes.
   scripts mirrored by original path.
 
 ## Active Gate Docs
+
+`docs/research/gates/gate82_preflight/GATE82_HEDGED_GRID_FOUR_VARIANT_PREFLIGHT_2026-06-30.md`
 
 `docs/research/gates/gate81/GATE81_HEDGED_BROKER_REAL_FEASIBILITY_PREFLIGHT_2026-06-30.md`
 

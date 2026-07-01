@@ -1,0 +1,17 @@
+metric,definition,content_hash
+final_equity_adr,cumulative closed ADR plus final week-end open unrealized ADR,EA1A36C4C0B7765B9F91C434943428A7F4EDB3DFD24AE8009FF1A6A036A01E03
+closed_adr,sum of realized non-sample-end closes in ADR units,3E8BE1C4F86603091ED885084306491F81961B6BF3F65E1CCFC33C4A7D659D95
+final_open_unrealized_adr,week-end open unrealized ADR at the final replay week,8663045C89BBA9E108D9CC9B2D4036AEFEF886D60D35C26BBF8088DD3812948B
+worst_open_unrealized_adr,most negative week-end open unrealized ADR across the replay,063BAE121912D2DB5CF23D7F35D33F0962341518A96FB6198A0E246F743386AD
+max_drawdown_adr,max peak-to-trough drawdown of weekly mark-to-market equity snapshots,6241E859D7A0E2A761E077E40E783C1A33597936F0E7F0D51B3FAEA343EFA609
+return_dd_ratio,final equity ADR divided by absolute max drawdown ADR,CAA25377BC2A9918CDA4F23842699497D1E8893B1BB8BE5AF279F21A473169BB
+weekly_mtm_profit_factor,profit factor over weekly mark-to-market equity deltas,DC38BF6A787D8A5D887DB49C61A3D20FE456A6A14C0A02D09BBCA1B05DD705CE
+weekly_sharpe,ADR-normalized mean weekly MTM delta divided by weekly standard deviation; diagnostic only,8100A8FFBE2214BF5F2CAD1E6434D8A9F9A2B24D39224A4DB989EBAF4A72CD37
+weekly_sortino,ADR-normalized mean weekly MTM delta divided by downside weekly standard deviation; diagnostic only,3EFCB65C3478EAF7A5CC6EFD836CCD1C89BD81ED1B1A3F1FF86D4473DD1E9C3C
+weekly_win_rate,share of replay weeks with positive weekly MTM delta,9482532EADF5C4BC72030A0F1FDF87C9EA5E9D3A1EA4881E307D25F3E0FD3D03
+monthly_win_rate,share of calendar months with positive summed weekly MTM delta,995244C66850794520F779ED7C88FB57D6871F3D7485800C6CDF3ACE59E3BC24
+fills,"sum of open and closed cycle fill quantities, including initial fills and sample-end open inventory fills",73BC3482CEC1B89C16A9527F3B89078E24FAB69498251E78CA6E01E496D25796
+resets,side target resets plus pair-net flatten resets; pair-net flatten increments once per full pair flatten,5AC6B3AEB3423611B866B79B0407167B2E80221D983DC9EBE13E8653A7FBF7D1
+pair_net_flatten_reset_count,count of full long+short pair flatten/reset events triggered by total pair-cycle MTM at +1 ADR,4124C25BBE26007F8A71C46318A1664DF3773A5A5D5C205FF33DB46478793CBA
+active_side_week_count,count of pair/week/side slots that opened at least one cycle,A1F6FA0E527EA64CBF430F5963E78030BF3FD2B82CCD9D364FDF3849E1B10333
+gate81_style_stressed_cost_final_equity_adr,gross final equity less 0.05 ADR per fill and 0.01 ADR per active side-week,F62F1B0E27AFCF0730E3C8BB3EE6C8AD1783F340DE2A8643AFA8BDAFF793AA6F

@@ -1,0 +1,17 @@
+gate_id Gate 82D: hedged-grid-v2-price-anchor-comparison
+command npm run engine:gate82d:hedged-grid-v2-price-anchor-comparison
+generated_at 2026-07-01T06:00:37.541Z
+git_commit c2e418bb52212b91273160429fa396ed6a604f8e
+comparison_json 50463E1D63C8B1C4BE041AE0A7B252D72B9601CFB33BDBB30C4FBDB4BC9F1024 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/v2-price-anchor-comparison.rows.json
+comparison_csv DE0B590D165EE3A7DCDD20750A7D58B49BE21097CEF970BDB3ECBE1A23012B5F docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/v2-price-anchor-comparison.rows.csv
+weekly_equity_json 9CACDF01E7A28E6274E88AB738ADDD0898F611EFB2504AB72917FD63D66CAED2 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/weekly-equity.rows.json
+weekly_equity_csv C8843D6E823DFE5101551442813C2E66BD2B589AC9F481546E11A0FF2DA63E0D docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/weekly-equity.rows.csv
+close_reason_json F2B72DB674263BC6240648CB5B8604137AFEA401A9A27D470BC3ACCA5B6F43D1 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/close-reason-breakdown.rows.json
+close_reason_csv C34F1263FBE4C58D319B4F33223CF84757D097E5CB51827E21C5479D6259A4FE docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/close-reason-breakdown.rows.csv
+validation_json A301F5E38716921682488FF0CF457E746A63067A2940000342CCB62AA4ECD079 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/validation.rows.json
+validation_csv 91A8F113BF963C2F07627F1D0A2DDE4621386DAADC77EDB5BAF17AC0C9D47B62 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/validation.rows.csv
+metric_definitions_json 454C469A81F0AF3D1ADE4BDD0BCC34F4FCC9A81655BA95564F96ECF56D5A180C docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/metric-definitions.rows.json
+metric_definitions_csv 1C4384C48CD2EC2AACAF113D3AA3DB38D4409E6B75F6B217F0CDC295803B6FDE docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/metric-definitions.rows.csv
+command_receipt 08105D791E05C04B9F1E1C733AC7C322CD0BC203C663C030C5FE418F59026C43 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/command-receipt.json
+summary 099ADD11C6DCE27A6254FD5B980B34028EB7F693FF57ECC2A293925393E60871 docs/research/gates/gate82d/artifacts/gate82d-hedged-grid-v2-price-anchor-comparison/gate82d-price-anchor-summary.json
+report B859C9DE4C185D2AE97AB73898841E67FFE68578AE1F97A02AF5DD81717DEE95 docs/research/gates/gate82d/GATE82D_HEDGED_GRID_V2_PRICE_ANCHOR_COMPARISON_2026-07-01.md

@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                   LimniBasketEA |
+//|                                           LimniBasketEAAlphaV1 |
 //|                                    COT-based weekly basket EA   |
 //+------------------------------------------------------------------+
 #property strict
@@ -6124,7 +6124,7 @@ void UpdateDashboard()
   color headingColor = C'15,118,110';
 
   SetLabelText(DASH_BANNER, FormatStrategyBanner(), headingColor);
-  SetLabelText(DASH_TITLE, "Limni Basket EA | " + userLabel, C'15,23,42');
+  SetLabelText(DASH_TITLE, "Limni Basket EA Alpha V1 | " + userLabel, C'15,23,42');
   SetLabelText(DASH_MAP_TITLE, " ", headingColor);
   if(compact)
   {
