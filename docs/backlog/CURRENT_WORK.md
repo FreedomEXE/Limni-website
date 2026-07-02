@@ -6,38 +6,111 @@ Persistent memory stays in
 `C:/Users/User/Documents/GitHub/freedom-ops/.codex/`; this file tracks the
 current Limni work plan so Freedom does not have to reconstruct it from chat.
 
-## Active Gate
+## Hot Recovery Override
 
-Latest active gate: Gate 86:
-`mt5-tester-speed-preflight`.
+Current state: Gate 89 `continuous-raw-truth-simulator` is complete as a
+diagnostic/research gate. Gate 90 is the next research boundary and should start
+from Freedom's grid-activation/filter ideas.
 
-Gate 86 is the MT5 speed response after Freedom stopped the first V3 EURUSD
-manual test because real-tick mode was only completing about one year per hour.
-It keeps the same active EA name, `LimniBasketHedgeEAAlphaV3`, but installs a
-faster engine build into the active Five Percent terminal.
+Gate 89 outputs:
 
-Gate 86 source/install changes:
+- Simulator command:
+  `npm run engine:gate89:continuous-raw-truth-simulator`.
+- Script:
+  `engine/scripts/verification/build-gate89-continuous-raw-truth-simulator.ts`.
+- EURUSD calibrated report:
+  `docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_EURUSD_CONVERTED_OHLC_HIGH_LOW_2026-07-01.md`.
+- Corrected all-pair report:
+  `docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_ALL_PAIRS_CONVERTED_OHLC_HIGH_LOW_2026-07-01.md`.
 
-- Added tester cadence inputs:
-  `TesterCadence`, `TesterMinSecondsBetweenManage`.
-- Added refresh throttles:
-  `AdrRefreshSeconds` and `DrawdownRefreshSeconds`.
-- Cached symbol volume/point/digit specs at init.
-- Folded side counts, oldest anchor recovery, and ADR PnL into one position
-  snapshot pass instead of doing a second per-leg position scan.
-- Throttled ADR series refresh; default `AdrRefreshSeconds=3600`.
-- Throttled account drawdown refresh; default `DrawdownRefreshSeconds=60`.
-- Added local VS Code watcher/search exclusions for generated research artifact
-  JSON/CSV under `.vscode/settings.json`; that file is ignored by git and is a
-  local machine speed aid.
+Gate 89 read:
 
-Gate 86 verification:
+- EURUSD warehouse truth is close enough to the MT5 reference to trust the
+  simulator shape for research: warehouse net `$232.18` vs MT5 `$174.51`,
+  commission `-$400.20` vs `-$400.80`, swap `-$3,837.17` vs `-$4,144.01`,
+  max open `184` vs `170`, terminal positions `161` vs `149`.
+- Corrected all-pair run: final balance `$41,659.80`, net `+$31,659.80`,
+  but max equity drawdown `-$99,000.32`, max open positions `2,856`, and
+  terminal positions `2,421`.
+- The first all-pair run was invalid because cross-pair quote PnL was treated
+  as USD. The corrected simulator converts quote-currency PnL to USD using
+  same-week USD conversion legs.
+- Raw multi-pair harvest has real gross edge, but always-on double-sided grids
+  are not deployable because stale inventory, swap/carry drag, terminal
+  liquidation, and drawdown are too large.
 
+Next gate: Gate 90 `grid-activation-accuracy-one-sided-selection`.
+
+Gate 90 scope:
+
+- Figure out when a grid should activate at all.
+- Prefer one-sided activation first: long-only or short-only.
+- Do not assume double-sided is default.
+- Treat double-sided only as a later candidate for in-between/ambiguous states
+  after one-sided selection has measurable evidence.
+- Start from Freedom's ideas; keep the first pass warehouse/research only.
+- Evaluate activation accuracy, side accuracy, inventory age, max open
+  positions, drawdown, swap/carry drag, and terminal-liquidation exposure.
+
+Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
+optimization, pair-specific swap ingestion, margin stopout simulator, app/live
+integration, promotion, live-readiness, and double-sided in-between policy.
+
+## Historical Active Gate
+
+Latest active gate: Gate 88:
+`mt5-lifecycle-protection-controls`.
+
+Gate 88 is the MT5 lifecycle-controls response after EURUSD HWM target
+shrinking did not solve the known stale-inventory choke. It keeps the active EA
+name `LimniBasketHedgeEAAlphaV3` and adds optional protection controls without
+changing the raw harvest defaults.
+
+Gate 88 source/install changes:
+
+- Added optional LWM reset inputs:
+  `EquityLwmResetEnabled`, `EquityLwmLossLimitMoney`, and
+  `EquityLwmResetCooldownSeconds`.
+- Added optional max-age reset inputs:
+  `MaxAgeResetEnabled` and `MaxAgeDays`.
+- Added optional equity trail-lock inputs:
+  `EquityTrailLockEnabled`, `EquityTrailActivationMoney`, and
+  `EquityTrailGivebackMoney`.
+- Added `EquityTrailUnlockWhenFlat=true` after trail-lock-only testing showed
+  the first lock could otherwise stop new trading permanently.
+- All Gate 88 controls are OFF by default.
+- Main EA stayed thin: only inputs were added in
+  `LimniBasketHedgeEAAlphaV3.mq5`; behavior lives in
+  `RawHarvestEngine.mqh`.
+- HWM and LWM flatten all managed positions and restart the account-equity
+  cycle when their thresholds are hit.
+- Max-age flatten/restart closes all managed positions when the oldest managed
+  position reaches `MaxAgeDays`.
+- Equity trail lock does not flatten. It arms after cycle equity reaches the
+  activation threshold, then blocks new initials and grid adds after giveback
+  from cycle high while allowing normal target resets to close existing legs.
+- If trail lock is active and the managed book becomes flat,
+  `EquityTrailUnlockWhenFlat=true` resets the cycle and allows trading to start
+  again.
+- Reset controls write `limni_basket_hedge_alpha_v3_lifecycle_resets.csv`;
+  HWM also keeps the Gate 87 HWM reset CSV; trail lock writes
+  `limni_basket_hedge_alpha_v3_trailing_locks.csv`.
+
+Gate 88 verification:
+
+- Report:
+  `docs/research/gates/gate88/GATE88_MT5_LIFECYCLE_PROTECTION_CONTROLS_2026-07-01.md`.
 - Repo compile log:
-  `docs/research/gates/gate86/artifacts/limni-basket-hedge-ea-alpha-v3-gate86-repo-compile-log.txt`;
+  `docs/research/gates/gate88/artifacts/limni-basket-hedge-ea-alpha-v3-gate88-repo-compile-log.txt`;
   `0` errors, `0` warnings.
 - Active terminal compile log:
-  `docs/research/gates/gate86/artifacts/limni-basket-hedge-ea-alpha-v3-gate86-active-terminal-compile-log.txt`;
+  `docs/research/gates/gate88/artifacts/limni-basket-hedge-ea-alpha-v3-gate88-active-terminal-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Trail-unlock patch repo compile log:
+  `docs/research/gates/gate88/artifacts/limni-basket-hedge-ea-alpha-v3-gate88-trail-unlock-repo-compile-log.txt`;
+  `0` errors, `0` warnings.
+- Trail-unlock patch active terminal compile log:
+  `docs/research/gates/gate88/artifacts/limni-basket-hedge-ea-alpha-v3-gate88-trail-unlock-active-terminal-compile-log.txt`;
   `0` errors, `0` warnings.
 - Active terminal install root:
   `C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB`.
@@ -47,35 +120,110 @@ Gate 86 verification:
   `MQL5/Experts/Include/Strategy/RawHarvestEngine.mqh`.
 - Repo source hashes match active terminal source hashes:
   - `LimniBasketHedgeEAAlphaV3.mq5`:
-    `6845AE15B23148B48F347BA86545AE4BD3C7B8580ABFDD0D70B39C1C9156DAF9`
+    `4E264DE33A47E43CC96614044D6C993C490BB75C20625A7246626A0DE188A386`
   - `RawHarvestEngine.mqh`:
-    `317E35DC3A2FE756161BC61813F1331264D0A9953300657B2398E90C2FBBEC22`
+    `E2AB2C32024123D052F31847EEA432ED1E2A564E3A4401607C87607362CA481D`.
 - Active terminal `.ex5` hash:
-  `6C4EEC3CFB783233402DA91311F33970705AAC5FBB9F28CC212A29C15275EC22`.
+  `CFB4F70143BCE6FCCEDE1C33546007D04FE604C7FD62ADF4B0AF9E04AD975073`.
 
-Gate 86 recommended next MT5 rerun:
+Gate 88 recommended EURUSD isolation ladder:
+
+- EA: `LimniBasketHedgeEAAlphaV3`.
+- Chart symbol/timeframe: `EURUSD,M1`.
+- Model: `1 Minute OHLC`.
+- Common inputs:
+  `UseCurrentChartSymbolOnly=true`, `CsvLogEnabled=false`,
+  `EquityHwmCsvLogEnabled=true`, `DashboardEnabled=false`,
+  `EnableTimer=false`, `TesterCadence=RH_CADENCE_NEW_M1_BAR`,
+  `TesterMinSecondsBetweenManage=0`, `AdrRefreshSeconds=3600`,
+  `DrawdownRefreshSeconds=60`, `LotSize=0.01`,
+  `TargetAdrMultiple=1.0`, `SpacingAdrMultiple=0.2`.
+- Test LWM by itself first:
+  `EquityLwmResetEnabled=true`; keep HWM, max-age, and trail lock OFF.
+- Then test max-age by itself:
+  `MaxAgeResetEnabled=true`; keep HWM, LWM, and trail lock OFF.
+- Then test trail lock by itself:
+  `EquityTrailLockEnabled=true`, `EquityTrailUnlockWhenFlat=true`; keep HWM,
+  LWM, and max-age OFF.
+- Only combine controls after isolated behavior is understood.
+
+Manual findings feeding Gate 88: `$500`, `$100`, `$10`, and likely `$1` fixed
+HWM targets did not solve the EURUSD lifecycle. `$10` almost survived but failed
+in 2025 with equity falling from roughly `$15,000` back toward `$10,000`.
+Treat fixed-dollar thresholds and fixed `LotSize=0.01` as temporary smoke-test
+scaffolding; later research should consider percent-equity or ADR-normalized
+targets and equity-scaled sizing only after a lifecycle control shows merit.
+
+Gate 88 is not a Strategy Tester result, optimized target, adaptive basket
+selector, Candidate B/COT/Strength/Regime layer, risk layer, lot-sizing change,
+promotion, or live-readiness claim.
+
+## Next Gate
+
+Next planned gate: Gate 89:
+`mt5-warehouse-raw-parity-bridge`.
+
+Freedom will produce one raw MT5 reference test to compare against the
+warehouse before any further optimization. The point is to prove that the
+warehouse can reproduce MT5 closely enough to trust wide matrix research.
+
+Gate 89 raw MT5 reference target:
 
 - EA: `LimniBasketHedgeEAAlphaV3`.
 - Symbol/timeframe: `EURUSD,M1`.
-- Model for speed iteration: `1 Minute OHLC`.
-- Visual mode: off.
-- Optimization: off.
-- Execution/latency: zero latency for this comparison.
-- Inputs:
-  `CsvLogEnabled=false`, `DashboardEnabled=false`, `EnableTimer=false`,
-  `TesterCadence=RH_CADENCE_EVERY_TICK`,
+- Model: expected `1 Minute OHLC` unless Freedom intentionally chooses another
+  model and records it.
+- Visual mode OFF, optimization OFF, zero latency.
+- Raw lifecycle OFF:
+  `EquityHwmResetEnabled=false`, `EquityLwmResetEnabled=false`,
+  `MaxAgeResetEnabled=false`, `EquityTrailLockEnabled=false`.
+- Baseline harvest settings:
+  `UseCurrentChartSymbolOnly=true`, `LotSize=0.01`,
+  `TargetAdrMultiple=1.0`, `SpacingAdrMultiple=0.2`,
+  `EnableTimer=false`, `DashboardEnabled=false`,
+  `TesterCadence=RH_CADENCE_NEW_M1_BAR`,
   `TesterMinSecondsBetweenManage=0`, `AdrRefreshSeconds=3600`,
-  `DrawdownRefreshSeconds=60`, `UseCurrentChartSymbolOnly=true`,
-  `LotSize=0.01`, `TargetAdrMultiple=1.0`, `SpacingAdrMultiple=0.2`.
+  `DrawdownRefreshSeconds=60`.
+- Save the MT5 HTML report and exact input settings. If feasible, also save
+  deals/orders and EA CSV logs; if CSV makes the run too slow, prioritize the
+  HTML report plus exact settings first.
 
-If `1 Minute OHLC` is still slow, try a rough sanity pass with
-`TesterCadence=RH_CADENCE_NEW_M1_BAR`; do not treat that rough pass as final
-parity evidence because it processes only one manage cycle per M1 bar. Final
-confirmation can still use `Every tick based on real ticks`, but it should not
-be the default design-loop model if it remains near one year per hour.
+Gate 89 acceptance target is not tick-perfect matching. The warehouse needs to
+match the MT5 failure shape closely enough: final equity direction, drawdown
+scale, trade/fill count magnitude, reset count magnitude, failure timing,
+stale inventory buildup, cost/swap drag direction, and end-of-test open
+liquidation behavior.
 
-Gate 86 is not a Strategy Tester result, optimization, risk layer, promotion,
-or live-readiness claim.
+If parity holds, move optimization back to the warehouse and run matrices to
+decide whether raw no-direction grid harvest is feasible, whether it only works
+as multi-pair/basket behavior, or whether multi-pair also fails and the design
+must go back to the drawing board. If parity fails, fix the warehouse model
+before trusting warehouse optimization.
+
+Recent prior gate: Gate 87:
+`mt5-static-basket-hwm-reset-smoke`.
+
+Gate 87 added optional account-equity HWM reset mechanics. The HWM reset is OFF
+by default and closes all managed positions once account equity reaches cycle
+start plus target money, then resets anchors and starts a new cycle from
+post-close equity. Gate 87 compiled and installed with `0` errors and `0`
+warnings, but Freedom's EURUSD HWM ladder showed HWM alone was insufficient.
+
+Parked later gate: add Candidate B directional harvest logic to the MT5 EA/MQH
+path and test whether choosing one side from weekly direction has merit on the
+same MT5 execution surface. Keep this closed for now; continue raw both-side HWM
+first because it is simpler. If opened later, do not start with forced
+loss-making weekly flips. Prefer cycle-boundary direction refresh after HWM
+reset, or profit-only / stop-adding-new-exposure handling for stale direction.
+
+Recent prior gate: Gate 86:
+`mt5-tester-speed-preflight`.
+
+Gate 86 compiled and installed the faster V3 speed build. The following manual
+MT5 EURUSD run then failed as a deployable lifecycle result: `$174.51` net
+profit, `1.01` profit factor, `78.61%` equity drawdown, `149` end-of-test open
+positions liquidated, and heavy swap/carry drag. That result motivates Gate 87
+HWM lifecycle testing; it does not prove the EA stopped harvesting.
 
 Recent prior gate: Gate 85A:
 `eurusd-tail-trail-lifecycle-smoke`.

@@ -98,6 +98,7 @@
     "engine:gate82d:hedged-grid-v2-price-anchor-comparison": "tsx engine/scripts/verification/build-gate82d-hedged-grid-v2-price-anchor-comparison.ts",
     "engine:gate83:raw-hedged-grid-speed-simplification": "tsx engine/scripts/verification/build-gate83-raw-hedged-grid-speed-simplification.ts",
     "engine:gate85a:eurusd-tail-trail-lifecycle-smoke": "tsx engine/scripts/verification/build-gate85a-eurusd-tail-trail-lifecycle-smoke.ts",
+    "engine:gate89:continuous-raw-truth-simulator": "tsx engine/scripts/verification/build-gate89-continuous-raw-truth-simulator.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

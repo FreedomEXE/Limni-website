@@ -1,0 +1,27 @@
+[
+  {
+    "variant_id": "RAW_HEDGED_GRID_T100_S020_CONTINUOUS_TRUTH",
+    "week_open_utc": "2020-01-06T00:00:00.000Z",
+    "pairs_replayed": 28,
+    "closed_price_pnl_usd": 47435.42517,
+    "realized_commission_usd": -94.02,
+    "realized_swap_usd": -39.534812,
+    "realized_net_usd": 47301.870358,
+    "open_price_pnl_usd": -56334.469284,
+    "open_swap_usd": -6.97117,
+    "equity_usd": 960.429904,
+    "balance_usd": 57301.870358,
+    "equity_delta_usd": -9039.570096,
+    "open_positions": 319,
+    "long_positions": 111,
+    "short_positions": 208,
+    "fills_opened": 1567,
+    "target_reset_count": 290,
+    "max_open_positions_to_date": 320,
+    "max_long_positions_to_date": 120,
+    "max_short_positions_to_date": 208,
+    "max_add_depth_to_date": 22,
+    "position_days_closed_to_date": 873.469443,
+    "content_hash": "22DB265ACA0D07A6F8774E98ADF49558B13A71D740B21C9F4FD67709091DDEF2"
+  }
+]

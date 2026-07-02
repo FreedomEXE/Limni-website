@@ -38,6 +38,19 @@ input int TimerSeconds = 1;
 input RawHarvestTesterCadence TesterCadence = RH_CADENCE_EVERY_TICK;
 input int TesterMinSecondsBetweenManage = 0;
 input int DrawdownRefreshSeconds = 60;
+input bool EquityHwmResetEnabled = false;
+input double EquityHwmResetTargetMoney = 500.0;
+input int EquityHwmResetCooldownSeconds = 60;
+input bool EquityHwmCsvLogEnabled = true;
+input bool EquityLwmResetEnabled = false;
+input double EquityLwmLossLimitMoney = 500.0;
+input int EquityLwmResetCooldownSeconds = 60;
+input bool MaxAgeResetEnabled = false;
+input int MaxAgeDays = 30;
+input bool EquityTrailLockEnabled = false;
+input double EquityTrailActivationMoney = 250.0;
+input double EquityTrailGivebackMoney = 100.0;
+input bool EquityTrailUnlockWhenFlat = true;
 
 #include "Include/Strategy/RawHarvestEngine.mqh"
 

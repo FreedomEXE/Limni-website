@@ -1,0 +1,25 @@
+{
+  "gate_id": "Gate 89: continuous-raw-truth-simulator",
+  "command": "npm run engine:gate89:continuous-raw-truth-simulator",
+  "durable_command": "npm run engine:gate89:continuous-raw-truth-simulator -- --only-pair=EURUSD --week-from=2020-01-05 --week-to=2025-12-28 --artifact-dir=docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd --report-path=docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_EURUSD_2026-07-01.md",
+  "git_commit": "1dd8377993d59e1a94890878f45491f1d69c6dc7",
+  "generated_at": "2026-07-01T22:26:34.152Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd",
+    "reportPath": "docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_EURUSD_2026-07-01.md",
+    "manifestId": null,
+    "onlyPair": "EURUSD",
+    "pairs": null,
+    "weekFrom": "2020-01-05",
+    "weekTo": "2025-12-28",
+    "maxWeeks": null,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "logProgress": true
+  }
+}

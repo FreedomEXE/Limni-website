@@ -1,0 +1,32 @@
+[
+  {
+    "metric": "continuous_carried_position_truth_replay",
+    "definition": "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation",
+    "content_hash": "16EA7DFBC2337177695F0655A00E8BBCE2138BAABB76D0DD24321F721F8C0C1E"
+  },
+  {
+    "metric": "closed_price_pnl_usd",
+    "definition": "target-reset price PnL before swap and commission",
+    "content_hash": "D4FA673AA5AF5E93442680A122EC1CCEA83D65548C1F587A00A4825D2B8E6C6B"
+  },
+  {
+    "metric": "total_commission_usd",
+    "definition": "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report",
+    "content_hash": "E1A2EAC2AC167CF0A73B8E98D0BE62B3CE9796B7CED79D28997FA2AB214FA949"
+  },
+  {
+    "metric": "total_swap_usd",
+    "definition": "position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates",
+    "content_hash": "E517BC4E5F48E44D54EDD90E8D479DA04C75B77DA2DDAA87A13FA7BD9B4B3A04"
+  },
+  {
+    "metric": "end_liquidation_price_pnl_usd",
+    "definition": "price PnL from all positions still open at the final warehouse mark",
+    "content_hash": "33E97BBB72805A1BD4A6FA0A0BFA6A4DF84B2F29CCDF3EAD05142B4B8D3C0C63"
+  },
+  {
+    "metric": "max_open_positions",
+    "definition": "maximum simultaneous fill count across carried side grids",
+    "content_hash": "A94FEBA70FC36C3C649A27D1C61561B6042252954A69C1FCD3DECD2A7398A110"
+  }
+]

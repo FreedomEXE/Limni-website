@@ -1,0 +1,12 @@
+gate_id Gate 89: continuous-raw-truth-simulator
+command npm run engine:gate89:continuous-raw-truth-simulator
+generated_at 2026-07-01T22:30:13.054Z
+git_commit 1dd8377993d59e1a94890878f45491f1d69c6dc7
+summary_json 56B31E7147FA536BBB24C43DF6BD7B4256C1D773AC1D16006441AACAE5DB6B2C docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/continuous-truth-summary.rows.json
+weekly_json 9DD46CFFEF429922457B94F615CA85BFBDB30D7A0AF95B6ACC56734A8274008D docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/weekly-continuous-truth.rows.json
+close_events_json 66F49260ED8AC1F558ED56BD139F15A81FA4F5F3DC100928CF9E06F9CF35FB95 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/close-events.rows.json
+validation_json 61DFC930A1617379D9DBC8AF90762311FE53DF65698D32D69878B4062DC70D31 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/validation.rows.json
+metric_definitions_json C5CF9B78DFD992468F81BF7C1688EFDA82CEFA36D22AD1A9DBAD96B56CC7B836 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/metric-definitions.rows.json
+command_receipt 07EABEFCA1BEEC88C46B28473CA57745C79E01E6553FC70E12ECBC5D8950E891 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/command-receipt.json
+run_summary_json 4667543B98B477D74B2104464B34BBD068759C9C3E985DDBA3B33C2ABB599032 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-current-adr/gate89-run-summary.json
+report 8EB57B81344269797BC51CA94FA9E21BA634F9205E85163515CE62B39AC00DA2 docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_EURUSD_CURRENT_ADR_2026-07-01.md

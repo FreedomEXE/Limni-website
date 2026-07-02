@@ -54,6 +54,17 @@ datetime g_harvestLastManageBar = 0;
 datetime g_harvestLastDrawdownAt = 0;
 double g_harvestPeakEquity = 0.0;
 double g_harvestMaxDrawdown = 0.0;
+double g_harvestCycleStartEquity = 0.0;
+double g_harvestCycleHighEquity = 0.0;
+datetime g_harvestLastEquityHwmResetAt = 0;
+int g_harvestEquityHwmResetCount = 0;
+datetime g_harvestLastEquityLwmResetAt = 0;
+int g_harvestEquityLwmResetCount = 0;
+datetime g_harvestLastMaxAgeResetAt = 0;
+int g_harvestMaxAgeResetCount = 0;
+bool g_harvestTrailArmed = false;
+bool g_harvestTrailLocked = false;
+int g_harvestTrailLockCount = 0;
 string g_harvestLastAction = "";
 string g_harvestLastError = "";
 
@@ -648,6 +659,180 @@ void RH_LogReset(const int index, const int side, const int positionsClosed, con
   FileClose(h);
 }
 
+void RH_GetBasketSnapshot(int &totalPositions,
+                          int &longPositions,
+                          int &shortPositions,
+                          double &openPnl,
+                          double &openSwap,
+                          int &totalFills,
+                          int &totalLegResets)
+{
+  totalPositions = 0;
+  longPositions = 0;
+  shortPositions = 0;
+  openPnl = 0.0;
+  openSwap = 0.0;
+  totalFills = 0;
+  totalLegResets = 0;
+
+  for(int i = 0; i < ArraySize(g_harvestSymbols); i++)
+  {
+    RawHarvestPositionSnapshot snapshot;
+    RH_GetPositionSnapshot(g_harvestSymbols[i].symbol, g_harvestSymbols[i].magic, snapshot);
+    totalPositions += snapshot.totalCount;
+    longPositions += snapshot.longCount;
+    shortPositions += snapshot.shortCount;
+    openPnl += snapshot.openPnl;
+    openSwap += snapshot.openSwap;
+    totalFills += g_harvestSymbols[i].totalFills;
+    totalLegResets += g_harvestSymbols[i].totalResets;
+  }
+}
+
+datetime RH_OldestManagedPositionTime()
+{
+  datetime oldest = 0;
+  for(int i = 0; i < ArraySize(g_harvestSymbols); i++)
+  {
+    RawHarvestPositionSnapshot snapshot;
+    RH_GetPositionSnapshot(g_harvestSymbols[i].symbol, g_harvestSymbols[i].magic, snapshot);
+    if(snapshot.longOldestTime > 0 && (oldest == 0 || snapshot.longOldestTime < oldest))
+      oldest = snapshot.longOldestTime;
+    if(snapshot.shortOldestTime > 0 && (oldest == 0 || snapshot.shortOldestTime < oldest))
+      oldest = snapshot.shortOldestTime;
+  }
+  return oldest;
+}
+
+void RH_LogEquityHwmReset(const string reason,
+                          const double cycleStartEquity,
+                          const double triggerEquity,
+                          const double postCloseEquity,
+                          const int positionsBefore,
+                          const int longPositionsBefore,
+                          const int shortPositionsBefore,
+                          const double openPnlBefore,
+                          const double openSwapBefore,
+                          const int positionsClosed,
+                          const int totalFills,
+                          const int totalLegResets)
+{
+  if(!CsvLogEnabled && !EquityHwmCsvLogEnabled)
+    return;
+
+  int h = RH_OpenCsv("limni_basket_hedge_alpha_v3_equity_hwm_resets.csv",
+                     "timestamp,reset_count,reason,cycle_start_equity,trigger_equity,post_close_equity,target_money,cycle_profit_at_trigger,positions_before,long_positions_before,short_positions_before,open_pnl_before,open_swap_before,positions_closed,symbols,total_fills,total_leg_resets,max_drawdown");
+  if(h == INVALID_HANDLE)
+    return;
+
+  FileWrite(h,
+            RH_Timestamp(),
+            g_harvestEquityHwmResetCount,
+            reason,
+            cycleStartEquity,
+            triggerEquity,
+            postCloseEquity,
+            EquityHwmResetTargetMoney,
+            triggerEquity - cycleStartEquity,
+            positionsBefore,
+            longPositionsBefore,
+            shortPositionsBefore,
+            openPnlBefore,
+            openSwapBefore,
+            positionsClosed,
+            ArraySize(g_harvestSymbols),
+            totalFills,
+            totalLegResets,
+            g_harvestMaxDrawdown);
+  FileClose(h);
+}
+
+void RH_LogLifecycleReset(const string reason,
+                          const int resetCount,
+                          const double cycleStartEquity,
+                          const double triggerEquity,
+                          const double postCloseEquity,
+                          const int positionsBefore,
+                          const int longPositionsBefore,
+                          const int shortPositionsBefore,
+                          const double openPnlBefore,
+                          const double openSwapBefore,
+                          const int positionsClosed,
+                          const int totalFills,
+                          const int totalLegResets,
+                          const datetime oldestPositionTime)
+{
+  if(!CsvLogEnabled && !EquityHwmCsvLogEnabled)
+    return;
+
+  int h = RH_OpenCsv("limni_basket_hedge_alpha_v3_lifecycle_resets.csv",
+                     "timestamp,reset_count,reason,cycle_start_equity,trigger_equity,post_close_equity,cycle_pnl_at_trigger,positions_before,long_positions_before,short_positions_before,open_pnl_before,open_swap_before,positions_closed,symbols,total_fills,total_leg_resets,oldest_position_time,max_drawdown");
+  if(h == INVALID_HANDLE)
+    return;
+
+  FileWrite(h,
+            RH_Timestamp(),
+            resetCount,
+            reason,
+            cycleStartEquity,
+            triggerEquity,
+            postCloseEquity,
+            triggerEquity - cycleStartEquity,
+            positionsBefore,
+            longPositionsBefore,
+            shortPositionsBefore,
+            openPnlBefore,
+            openSwapBefore,
+            positionsClosed,
+            ArraySize(g_harvestSymbols),
+            totalFills,
+            totalLegResets,
+            oldestPositionTime > 0 ? TimeToString(oldestPositionTime, TIME_DATE | TIME_SECONDS) : "",
+            g_harvestMaxDrawdown);
+  FileClose(h);
+}
+
+void RH_LogTrailLock(const string reason,
+                     const double cycleStartEquity,
+                     const double peakEquity,
+                     const double triggerEquity,
+                     const int positionsBefore,
+                     const int longPositionsBefore,
+                     const int shortPositionsBefore,
+                     const double openPnlBefore,
+                     const double openSwapBefore,
+                     const int totalFills,
+                     const int totalLegResets)
+{
+  if(!CsvLogEnabled && !EquityHwmCsvLogEnabled)
+    return;
+
+  int h = RH_OpenCsv("limni_basket_hedge_alpha_v3_trailing_locks.csv",
+                     "timestamp,lock_count,reason,cycle_start_equity,cycle_peak_equity,trigger_equity,activation_money,giveback_money,positions_before,long_positions_before,short_positions_before,open_pnl_before,open_swap_before,symbols,total_fills,total_leg_resets,max_drawdown");
+  if(h == INVALID_HANDLE)
+    return;
+
+  FileWrite(h,
+            RH_Timestamp(),
+            g_harvestTrailLockCount,
+            reason,
+            cycleStartEquity,
+            peakEquity,
+            triggerEquity,
+            EquityTrailActivationMoney,
+            EquityTrailGivebackMoney,
+            positionsBefore,
+            longPositionsBefore,
+            shortPositionsBefore,
+            openPnlBefore,
+            openSwapBefore,
+            ArraySize(g_harvestSymbols),
+            totalFills,
+            totalLegResets,
+            g_harvestMaxDrawdown);
+  FileClose(h);
+}
+
 bool RH_OpenGridFill(const int index, const int side, const string reason, int &ordersThisTick)
 {
   string symbol = g_harvestSymbols[index].symbol;
@@ -734,10 +919,130 @@ int RH_CloseLegPositions(const int index, const int side, const string reason)
   return closed;
 }
 
-void RH_CloseAllOwnPositionsForSymbol(const int index, const string reason)
+int RH_CloseAllOwnPositionsForSymbol(const int index, const string reason)
 {
-  RH_CloseLegPositions(index, POSITION_TYPE_BUY, reason);
-  RH_CloseLegPositions(index, POSITION_TYPE_SELL, reason);
+  int closed = 0;
+  closed += RH_CloseLegPositions(index, POSITION_TYPE_BUY, reason);
+  closed += RH_CloseLegPositions(index, POSITION_TYPE_SELL, reason);
+  return closed;
+}
+
+void RH_ResetAllLegStates()
+{
+  for(int i = 0; i < ArraySize(g_harvestSymbols); i++)
+  {
+    RH_ResetLegState(i, POSITION_TYPE_BUY);
+    RH_ResetLegState(i, POSITION_TYPE_SELL);
+  }
+}
+
+int RH_CloseAllManagedPositions(const string reason)
+{
+  int closed = 0;
+  for(int i = 0; i < ArraySize(g_harvestSymbols); i++)
+    closed += RH_CloseAllOwnPositionsForSymbol(i, reason);
+  return closed;
+}
+
+void RH_ResetCycleState(const double equity)
+{
+  RH_ResetAllLegStates();
+  g_harvestCycleStartEquity = equity;
+  g_harvestCycleHighEquity = equity;
+  g_harvestTrailArmed = false;
+  g_harvestTrailLocked = false;
+}
+
+int RH_ResetCounterForReason(const string reason)
+{
+  if(reason == "EQUITY_HWM_RESET")
+  {
+    g_harvestEquityHwmResetCount++;
+    return g_harvestEquityHwmResetCount;
+  }
+  if(reason == "EQUITY_LWM_RESET")
+  {
+    g_harvestEquityLwmResetCount++;
+    return g_harvestEquityLwmResetCount;
+  }
+  if(reason == "MAX_AGE_RESET")
+  {
+    g_harvestMaxAgeResetCount++;
+    return g_harvestMaxAgeResetCount;
+  }
+  return 0;
+}
+
+bool RH_CloseAndRestartCycle(const string reason)
+{
+  double triggerEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+  double cycleStartEquity = g_harvestCycleStartEquity > 0.0 ? g_harvestCycleStartEquity : triggerEquity;
+  int positionsBefore = 0;
+  int longPositionsBefore = 0;
+  int shortPositionsBefore = 0;
+  int totalFills = 0;
+  int totalLegResets = 0;
+  double openPnlBefore = 0.0;
+  double openSwapBefore = 0.0;
+  RH_GetBasketSnapshot(positionsBefore,
+                       longPositionsBefore,
+                       shortPositionsBefore,
+                       openPnlBefore,
+                       openSwapBefore,
+                       totalFills,
+                       totalLegResets);
+
+  if(positionsBefore <= 0)
+  {
+    RH_ResetCycleState(triggerEquity);
+    g_harvestLastAction = reason + "_NO_POSITIONS";
+    return false;
+  }
+
+  datetime oldestPositionTime = RH_OldestManagedPositionTime();
+  int closed = RH_CloseAllManagedPositions(reason);
+  if(closed <= 0)
+  {
+    g_harvestLastAction = reason + "_CLOSE_FAILED";
+    return false;
+  }
+
+  int resetCount = RH_ResetCounterForReason(reason);
+  double postCloseEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+  RH_ResetCycleState(postCloseEquity);
+  g_harvestLastAction = reason + "_" + IntegerToString(resetCount);
+
+  RH_LogLifecycleReset(reason,
+                       resetCount,
+                       cycleStartEquity,
+                       triggerEquity,
+                       postCloseEquity,
+                       positionsBefore,
+                       longPositionsBefore,
+                       shortPositionsBefore,
+                       openPnlBefore,
+                       openSwapBefore,
+                       closed,
+                       totalFills,
+                       totalLegResets,
+                       oldestPositionTime);
+
+  if(reason == "EQUITY_HWM_RESET")
+  {
+    RH_LogEquityHwmReset(reason,
+                         cycleStartEquity,
+                         triggerEquity,
+                         postCloseEquity,
+                         positionsBefore,
+                         longPositionsBefore,
+                         shortPositionsBefore,
+                         openPnlBefore,
+                         openSwapBefore,
+                         closed,
+                         totalFills,
+                         totalLegResets);
+  }
+  return true;
 }
 
 void RH_UpdateDrawdown()
@@ -756,6 +1061,198 @@ void RH_UpdateDrawdown()
   double drawdown = equity - g_harvestPeakEquity;
   if(drawdown < g_harvestMaxDrawdown)
     g_harvestMaxDrawdown = drawdown;
+}
+
+bool RH_CheckEquityHwmReset()
+{
+  if(!EquityHwmResetEnabled || EquityHwmResetTargetMoney <= 0.0)
+    return false;
+
+  datetime now = TimeCurrent();
+  if(EquityHwmResetCooldownSeconds > 0 &&
+     g_harvestLastEquityHwmResetAt > 0 &&
+     now - g_harvestLastEquityHwmResetAt < EquityHwmResetCooldownSeconds)
+    return false;
+
+  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+  if(g_harvestCycleStartEquity <= 0.0)
+    g_harvestCycleStartEquity = equity;
+  if(g_harvestCycleHighEquity <= 0.0 || equity > g_harvestCycleHighEquity)
+    g_harvestCycleHighEquity = equity;
+
+  double cycleStartEquity = g_harvestCycleStartEquity;
+  double cycleProfit = equity - cycleStartEquity;
+  if(cycleProfit < EquityHwmResetTargetMoney)
+    return false;
+
+  if(RH_CloseAndRestartCycle("EQUITY_HWM_RESET"))
+  {
+    g_harvestLastEquityHwmResetAt = now;
+    return true;
+  }
+  return false;
+}
+
+bool RH_CheckEquityLwmReset()
+{
+  if(!EquityLwmResetEnabled || EquityLwmLossLimitMoney <= 0.0)
+    return false;
+
+  datetime now = TimeCurrent();
+  if(EquityLwmResetCooldownSeconds > 0 &&
+     g_harvestLastEquityLwmResetAt > 0 &&
+     now - g_harvestLastEquityLwmResetAt < EquityLwmResetCooldownSeconds)
+    return false;
+
+  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+  if(g_harvestCycleStartEquity <= 0.0)
+    g_harvestCycleStartEquity = equity;
+  if(g_harvestCycleHighEquity <= 0.0 || equity > g_harvestCycleHighEquity)
+    g_harvestCycleHighEquity = equity;
+
+  double cycleLoss = g_harvestCycleStartEquity - equity;
+  if(cycleLoss < EquityLwmLossLimitMoney)
+    return false;
+
+  if(RH_CloseAndRestartCycle("EQUITY_LWM_RESET"))
+  {
+    g_harvestLastEquityLwmResetAt = now;
+    return true;
+  }
+  return false;
+}
+
+bool RH_CheckMaxAgeReset()
+{
+  if(!MaxAgeResetEnabled || MaxAgeDays <= 0)
+    return false;
+
+  datetime oldest = RH_OldestManagedPositionTime();
+  if(oldest <= 0)
+    return false;
+
+  datetime now = TimeCurrent();
+  if(g_harvestLastMaxAgeResetAt > 0 &&
+     now - g_harvestLastMaxAgeResetAt < 60)
+    return false;
+
+  long maxAgeSeconds = (long)MaxAgeDays * 86400;
+  if(now - oldest < maxAgeSeconds)
+    return false;
+
+  if(RH_CloseAndRestartCycle("MAX_AGE_RESET"))
+  {
+    g_harvestLastMaxAgeResetAt = now;
+    return true;
+  }
+  return false;
+}
+
+bool RH_TrailLockBlocksNewAdds()
+{
+  return EquityTrailLockEnabled && g_harvestTrailLocked;
+}
+
+bool RH_UnlockTrailLockWhenFlat()
+{
+  if(!EquityTrailLockEnabled || !EquityTrailUnlockWhenFlat || !g_harvestTrailLocked)
+    return false;
+
+  int totalPositions = 0;
+  int longPositions = 0;
+  int shortPositions = 0;
+  int totalFills = 0;
+  int totalLegResets = 0;
+  double openPnl = 0.0;
+  double openSwap = 0.0;
+  RH_GetBasketSnapshot(totalPositions,
+                       longPositions,
+                       shortPositions,
+                       openPnl,
+                       openSwap,
+                       totalFills,
+                       totalLegResets);
+
+  if(totalPositions > 0)
+    return false;
+
+  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+  RH_LogTrailLock("EQUITY_TRAIL_UNLOCK_FLAT",
+                  g_harvestCycleStartEquity,
+                  g_harvestCycleHighEquity,
+                  equity,
+                  totalPositions,
+                  longPositions,
+                  shortPositions,
+                  openPnl,
+                  openSwap,
+                  totalFills,
+                  totalLegResets);
+  RH_ResetCycleState(equity);
+  g_harvestLastAction = "TRAIL_UNLOCK_FLAT";
+  return true;
+}
+
+void RH_UpdateEquityTrailLock()
+{
+  if(!EquityTrailLockEnabled || EquityTrailActivationMoney <= 0.0 || EquityTrailGivebackMoney <= 0.0)
+    return;
+  if(g_harvestTrailLocked)
+    return;
+
+  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+  if(g_harvestCycleStartEquity <= 0.0)
+    g_harvestCycleStartEquity = equity;
+  if(g_harvestCycleHighEquity <= 0.0 || equity > g_harvestCycleHighEquity)
+    g_harvestCycleHighEquity = equity;
+
+  double cycleProfit = equity - g_harvestCycleStartEquity;
+  if(!g_harvestTrailArmed)
+  {
+    if(cycleProfit >= EquityTrailActivationMoney)
+    {
+      g_harvestTrailArmed = true;
+      g_harvestCycleHighEquity = equity;
+      g_harvestLastAction = "TRAIL_LOCK_ARMED";
+    }
+    return;
+  }
+
+  if(equity > g_harvestCycleHighEquity)
+    g_harvestCycleHighEquity = equity;
+
+  if(g_harvestCycleHighEquity - equity < EquityTrailGivebackMoney)
+    return;
+
+  int positionsBefore = 0;
+  int longPositionsBefore = 0;
+  int shortPositionsBefore = 0;
+  int totalFills = 0;
+  int totalLegResets = 0;
+  double openPnlBefore = 0.0;
+  double openSwapBefore = 0.0;
+  RH_GetBasketSnapshot(positionsBefore,
+                       longPositionsBefore,
+                       shortPositionsBefore,
+                       openPnlBefore,
+                       openSwapBefore,
+                       totalFills,
+                       totalLegResets);
+
+  g_harvestTrailLocked = true;
+  g_harvestTrailLockCount++;
+  g_harvestLastAction = "TRAIL_LOCK_" + IntegerToString(g_harvestTrailLockCount);
+  RH_LogTrailLock("EQUITY_TRAIL_LOCK",
+                  g_harvestCycleStartEquity,
+                  g_harvestCycleHighEquity,
+                  equity,
+                  positionsBefore,
+                  longPositionsBefore,
+                  shortPositionsBefore,
+                  openPnlBefore,
+                  openSwapBefore,
+                  totalFills,
+                  totalLegResets);
 }
 
 bool RH_ShouldRunManageCycle()
@@ -813,6 +1310,12 @@ void RH_ManageLeg(const int index, const int side, int &ordersThisTick)
   int sideCount = side == POSITION_TYPE_BUY ? allPositions.longCount : allPositions.shortCount;
   if(sideCount <= 0)
   {
+    if(RH_TrailLockBlocksNewAdds())
+    {
+      RH_SetSymbolAction(index, "TRAIL_LOCK_NO_INITIAL");
+      return;
+    }
+
     if(RH_OpenGridFill(index, side, "INITIAL", ordersThisTick))
     {
       double filled = g_harvestTrade.ResultPrice();
@@ -842,6 +1345,12 @@ void RH_ManageLeg(const int index, const int side, int &ordersThisTick)
   double anchor = RH_GetAnchor(index, side);
   if(anchor <= 0.0)
     return;
+
+  if(RH_TrailLockBlocksNewAdds())
+  {
+    RH_SetSymbolAction(index, "TRAIL_LOCK_NO_ADD");
+    return;
+  }
 
   double mark = RH_MarkPrice(symbol, side);
   if(mark <= 0.0)
@@ -911,6 +1420,15 @@ void RH_UpdateDashboard(const bool force)
           " | Resets " + IntegerToString(totalResets) + "\n";
   text += "Open PnL " + DoubleToString(openPnl, 2) +
           " | Max DD " + DoubleToString(g_harvestMaxDrawdown, 2) + "\n";
+  if(EquityHwmResetEnabled || EquityLwmResetEnabled || MaxAgeResetEnabled || EquityTrailLockEnabled)
+  {
+    text += "Lifecycle HWM " + IntegerToString(g_harvestEquityHwmResetCount) +
+            " LWM " + IntegerToString(g_harvestEquityLwmResetCount) +
+            " Age " + IntegerToString(g_harvestMaxAgeResetCount) +
+            " Trail " + (g_harvestTrailLocked ? "LOCKED" : (g_harvestTrailArmed ? "ARMED" : "OFF")) + "\n";
+    text += "Cycle " + DoubleToString(g_harvestCycleStartEquity, 2) +
+            " High " + DoubleToString(g_harvestCycleHighEquity, 2) + "\n";
+  }
   text += "Last " + g_harvestLastAction + "\n";
   if(g_harvestLastError != "")
     text += "Error " + g_harvestLastError + "\n";
@@ -956,6 +1474,27 @@ void RH_ManageAllSymbols()
     return;
   }
 
+  if(RH_CheckEquityLwmReset())
+  {
+    RH_UpdateDashboard(true);
+    return;
+  }
+
+  if(RH_CheckEquityHwmReset())
+  {
+    RH_UpdateDashboard(true);
+    return;
+  }
+
+  if(RH_CheckMaxAgeReset())
+  {
+    RH_UpdateDashboard(true);
+    return;
+  }
+
+  bool trailUnlocked = RH_UnlockTrailLockWhenFlat();
+  RH_UpdateEquityTrailLock();
+
   int ordersThisTick = 0;
   for(int i = 0; i < ArraySize(g_harvestSymbols); i++)
   {
@@ -972,7 +1511,7 @@ void RH_ManageAllSymbols()
       break;
   }
 
-  RH_UpdateDashboard(false);
+  RH_UpdateDashboard(trailUnlocked);
 }
 
 int RH_OnInit()
@@ -983,6 +1522,17 @@ int RH_OnInit()
   g_harvestLastDrawdownAt = 0;
   g_harvestPeakEquity = AccountInfoDouble(ACCOUNT_EQUITY);
   g_harvestMaxDrawdown = 0.0;
+  g_harvestCycleStartEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+  g_harvestCycleHighEquity = g_harvestCycleStartEquity;
+  g_harvestLastEquityHwmResetAt = 0;
+  g_harvestEquityHwmResetCount = 0;
+  g_harvestLastEquityLwmResetAt = 0;
+  g_harvestEquityLwmResetCount = 0;
+  g_harvestLastMaxAgeResetAt = 0;
+  g_harvestMaxAgeResetCount = 0;
+  g_harvestTrailArmed = false;
+  g_harvestTrailLocked = false;
+  g_harvestTrailLockCount = 0;
   g_harvestLastAction = "INIT";
   g_harvestLastError = "";
 
