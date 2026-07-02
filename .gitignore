@@ -67,6 +67,11 @@ automation/sentiment-scraper/*.log
 # Debug
 *.tsbuildinfo
 
+# Research runner intermediate artifacts
+docs/research/gates/gate90/artifacts/oos-session-window-5w-*/
+docs/research/gates/gate90/artifacts/gate90c-combined-variant-smoke-*/
+docs/research/gates/gate90/artifacts/gate90c-full-window-*/
+
 # Python
 __pycache__/
 *.pyc

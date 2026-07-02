@@ -57,6 +57,8 @@ type SessionMode = "continuous" | "ny_daily_window";
 type ActivationRuleId =
   | "raw_both"
   | "candidate_b"
+  | "candidate_b_david_contra_confirm"
+  | "candidate_b_david_contra_conflict_candidate"
   | "david_contra"
   | "david_with"
   | "stoch_contra"
@@ -273,6 +275,16 @@ type SummaryRow = {
   max_equity_drawdown_usd: number;
   max_balance_drawdown_usd: number;
   weekly_equity_profit_factor: number | null;
+  close_event_count: number;
+  close_event_win_count: number;
+  close_event_loss_count: number;
+  close_event_flat_count: number;
+  close_event_profit_factor: number | null;
+  close_event_win_pct: number | null;
+  close_event_gross_profit_usd: number;
+  close_event_gross_loss_abs_usd: number;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
   activation_checks: number;
   activation_blocked_long: number;
   activation_blocked_short: number;
@@ -386,6 +398,14 @@ type RuntimeStats = {
   activationBlockedExpansion: number;
   activationStartedLong: number;
   activationStartedShort: number;
+  closeEventCount: number;
+  closeEventWinCount: number;
+  closeEventLossCount: number;
+  closeEventFlatCount: number;
+  closeEventGrossProfitUsd: number;
+  closeEventGrossLossAbsUsd: number;
+  targetCloseNetUsd: number;
+  sessionFlattenCloseNetUsd: number;
   closeEvents: CloseEvent[];
   weeklyRows: WeeklyTruthRow[];
   terminalInventoryRows: TerminalInventoryRow[];
@@ -577,6 +597,8 @@ function parseActivationRuleId(value: string): ActivationRuleId {
   if (
     value === "raw_both" ||
     value === "candidate_b" ||
+    value === "candidate_b_david_contra_confirm" ||
+    value === "candidate_b_david_contra_conflict_candidate" ||
     value === "david_contra" ||
     value === "david_with" ||
     value === "stoch_contra" ||
@@ -585,14 +607,14 @@ function parseActivationRuleId(value: string): ActivationRuleId {
   ) {
     return value;
   }
-  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, david_contra, david_with, stoch_contra, david_stoch_confirm, or david_stoch_release`);
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, or david_stoch_release`);
 }
 
 function parseActivationRuleIds(value: string): ActivationRuleId[] {
   const expanded = value === "core" || value === "all_core"
     ? "raw_both,david_contra,david_with,stoch_contra,david_stoch_confirm,david_stoch_release"
     : value === "candidate_compare"
-      ? "raw_both,candidate_b,david_contra,david_stoch_release"
+      ? "raw_both,candidate_b,david_contra,candidate_b_david_contra_confirm,candidate_b_david_contra_conflict_candidate,david_stoch_release"
     : value;
   const ids = expanded.split(",").map((part) => parseActivationRuleId(part.trim())).filter(Boolean);
   const unique = [...new Set(ids)];
@@ -1081,13 +1103,25 @@ function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, runti
   updateM1SignalBook(book, row, index, runtimeOptions.signalSettings);
 }
 
+function davidContraSide(signal: SignalSnapshot) {
+  if (signal.david_state === "UP") return "SHORT";
+  if (signal.david_state === "DOWN") return "LONG";
+  return null;
+}
+
 function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side: Side, settings: SignalSettings, candidateBSide: Side) {
   if (ruleId === "raw_both") return true;
   if (ruleId === "candidate_b") return side === candidateBSide;
   if (ruleId === "david_contra") {
-    if (signal.david_state === "UP") return side === "SHORT";
-    if (signal.david_state === "DOWN") return side === "LONG";
-    return false;
+    return side === davidContraSide(signal);
+  }
+  if (ruleId === "candidate_b_david_contra_confirm") {
+    const davidSide = davidContraSide(signal);
+    return davidSide !== null && side === candidateBSide && side === davidSide;
+  }
+  if (ruleId === "candidate_b_david_contra_conflict_candidate") {
+    const davidSide = davidContraSide(signal);
+    return davidSide !== null && side === candidateBSide && side !== davidSide;
   }
   if (ruleId === "david_with") {
     if (signal.david_state === "UP") return side === "LONG";
@@ -1166,6 +1200,12 @@ function fillSwapUsd(fill: Fill, timestampMs: number, options: Options) {
   return per001LotDay * (fill.lot_size / 0.01) * fillAgeDays(fill, timestampMs);
 }
 
+function profitFactorFromGross(grossProfitUsd: number, grossLossAbsUsd: number) {
+  if (grossLossAbsUsd > 0) return round(grossProfitUsd / grossLossAbsUsd, 6);
+  if (grossProfitUsd > 0) return Number.POSITIVE_INFINITY;
+  return null;
+}
+
 function createBook(pair: string): PairBook {
   return {
     pair,
@@ -1210,6 +1250,14 @@ function createStats(): RuntimeStats {
     activationBlockedExpansion: 0,
     activationStartedLong: 0,
     activationStartedShort: 0,
+    closeEventCount: 0,
+    closeEventWinCount: 0,
+    closeEventLossCount: 0,
+    closeEventFlatCount: 0,
+    closeEventGrossProfitUsd: 0,
+    closeEventGrossLossAbsUsd: 0,
+    targetCloseNetUsd: 0,
+    sessionFlattenCloseNetUsd: 0,
     closeEvents: [],
     weeklyRows: [],
     terminalInventoryRows: [],
@@ -1468,6 +1516,21 @@ function closeCycle(options: {
     completed_reset_ordinal: options.completedResetOrdinal,
     max_fill_age_days: round6(maxFillAgeDays),
   };
+  options.stats.closeEventCount += 1;
+  if (event.net_usd > 0) {
+    options.stats.closeEventWinCount += 1;
+    options.stats.closeEventGrossProfitUsd = round6(options.stats.closeEventGrossProfitUsd + event.net_usd);
+  } else if (event.net_usd < 0) {
+    options.stats.closeEventLossCount += 1;
+    options.stats.closeEventGrossLossAbsUsd = round6(options.stats.closeEventGrossLossAbsUsd + Math.abs(event.net_usd));
+  } else {
+    options.stats.closeEventFlatCount += 1;
+  }
+  if (options.closeReason === "target") {
+    options.stats.targetCloseNetUsd = round6(options.stats.targetCloseNetUsd + event.net_usd);
+  } else if (options.closeReason === "session_flatten") {
+    options.stats.sessionFlattenCloseNetUsd = round6(options.stats.sessionFlattenCloseNetUsd + event.net_usd);
+  }
   if (!options.runtimeOptions.summaryOnly) options.stats.closeEvents.push(event);
   return event;
 }
@@ -1885,6 +1948,9 @@ function summarize(options: {
   const settings = options.runtimeOptions.signalSettings;
   const longChecks = options.stats.activationAllowedLong + options.stats.activationBlockedLong;
   const shortChecks = options.stats.activationAllowedShort + options.stats.activationBlockedShort;
+  const closeWinPct = options.stats.closeEventCount
+    ? round2((options.stats.closeEventWinCount / options.stats.closeEventCount) * 100)
+    : null;
   return withHash({
     variant_id,
     activation_rule_id: options.activationRuleId,
@@ -1940,6 +2006,16 @@ function summarize(options: {
     max_equity_drawdown_usd: round2(equityDd.drawdown),
     max_balance_drawdown_usd: round2(balanceDd.drawdown),
     weekly_equity_profit_factor: profitFactor(equityDeltas),
+    close_event_count: options.stats.closeEventCount,
+    close_event_win_count: options.stats.closeEventWinCount,
+    close_event_loss_count: options.stats.closeEventLossCount,
+    close_event_flat_count: options.stats.closeEventFlatCount,
+    close_event_profit_factor: profitFactorFromGross(options.stats.closeEventGrossProfitUsd, options.stats.closeEventGrossLossAbsUsd),
+    close_event_win_pct: closeWinPct,
+    close_event_gross_profit_usd: round2(options.stats.closeEventGrossProfitUsd),
+    close_event_gross_loss_abs_usd: round2(options.stats.closeEventGrossLossAbsUsd),
+    target_close_net_usd: round2(options.stats.targetCloseNetUsd),
+    session_flatten_close_net_usd: round2(options.stats.sessionFlattenCloseNetUsd),
     activation_checks: options.stats.activationChecks,
     activation_blocked_long: options.stats.activationBlockedLong,
     activation_blocked_short: options.stats.activationBlockedShort,
@@ -2024,6 +2100,10 @@ function metricRows() {
     { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
     { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
     { metric: "grid_add_mode", definition: "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor" },
+    { metric: "close_event_profit_factor", definition: "gross winning close-cycle net USD divided by absolute gross losing close-cycle net USD; computed even in summary-only mode without retaining close-event rows" },
+    { metric: "close_event_win_pct", definition: "winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included" },
+    { metric: "target_close_net_usd", definition: "aggregate net USD from close cycles closed by target reset, including price PnL, commission, and swap" },
+    { metric: "session_flatten_close_net_usd", definition: "aggregate net USD from close cycles force-closed by the configured session flatten boundary, including price PnL, commission, and swap" },
     { metric: "activation_started_long/short", definition: "number of initial side cycles started after the activation gate allowed that side" },
     { metric: "activation_blocked_long/short", definition: "number of missing-side start checks rejected by the activation gate" },
     { metric: "activation_blocked_expansion", definition: "number of missing-side start checks where the signal allowed the side but price was not far enough from the David MA" },
@@ -2073,6 +2153,12 @@ function renderReport(options: {
     "max_open_positions",
     "max_add_depth",
     "max_equity_drawdown_usd",
+    "weekly_equity_profit_factor",
+    "close_event_count",
+    "close_event_profit_factor",
+    "close_event_win_pct",
+    "target_close_net_usd",
+    "session_flatten_close_net_usd",
     "activation_started_long",
     "activation_started_short",
     "activation_blocked_long",

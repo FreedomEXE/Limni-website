@@ -68,6 +68,18 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90_SESSION_WINDOW_DAILY_FLATTEN_COMPARISON_2026-07-02.md`.
 - Session-window full scorecard:
   `docs/research/gates/gate90/GATE90_SESSION_WINDOW_FULL_SCORECARD_2026-07-02.md`.
+- Random OOS session-window scorecard:
+  `docs/research/gates/gate90/GATE90_OOS_SESSION_WINDOW_RANDOM_5W_SCORECARD_2026-07-02.md`.
+- Random OOS aggregate artifacts:
+  `docs/research/gates/gate90/artifacts/oos-session-window-random-5w-scorecard.csv`
+  and
+  `docs/research/gates/gate90/artifacts/oos-session-window-random-5w-aggregate-scorecard.csv`.
+- Gate 90C full-window matrix design:
+  `docs/research/gates/gate90/GATE90C_FULL_WINDOW_MATRIX_DESIGN_2026-07-02.md`.
+- Gate 90C combined-variant smoke report:
+  `docs/research/gates/gate90/GATE90C_COMBINED_VARIANT_SMOKE_ALLPAIRS_1W_2026-07-02.md`.
+- Gate 90C command-plan CSV:
+  `docs/research/gates/gate90/artifacts/gate90c-full-window-matrix-command-plan.csv`.
 
 Gate 90 read:
 
@@ -199,27 +211,68 @@ Gate 90 read:
   save and push the current state, then run random out-of-sample windows instead
   of immediately running the full seven-year history. Only after that decide
   whether to refactor the current EA or build a new MT5 EA from scratch.
+- Gate 90B random OOS session-window validation completed across four
+  deterministic 5-week windows: OOS1 `2025-12-29..2026-01-26`, OOS2
+  `2023-11-13..2023-12-11`, OOS3 `2024-06-30T23:00..2024-07-28T23:00`, and
+  OOS4 `2022-01-10..2022-02-07`. Receipt check: 16 run summaries, all exactly
+  5 selected weeks.
+- OOS `david_contra` stayed profitable in every tested cell/window:
+  ADR `0.025` / MA25 net `+$6,502.27`, event PF `2.308`, weekly PF `79.617`,
+  max open `80`; ADR `0.05` / MA25 net `+$4,655.75`, event PF `1.730`,
+  weekly PF `8.939`, max open `84`; ADR `0.075` / MA25 net `+$3,038.49`,
+  event PF `1.376`, weekly PF `3.885`, max open `93`; ADR `0.10` / MA50 net
+  `+$1,702.32`, event PF `1.187`, weekly PF `2.317`, max open `113`.
+- OOS `raw_both` remains the highest-net no-direction benchmark, led by
+  ADR `0.025` / MA25 net `+$12,187.28`, event PF `2.475`, max open `105`;
+  benchmark only, not a promotion candidate.
+- OOS `candidate_b` did better than expected and beat `david_contra` on net
+  from ADR `0.05` upward, while using fewer entries and lower max-open than
+  raw both. This upgrades Candidate B from low-faith idea to controlled overlay
+  follow-up, but not to primary trigger or broad COT redesign.
+- OOS session controls removed terminal inventory (`0` terminal positions in
+  aggregate rows), but did not fully eliminate swap or multi-day max fill age:
+  `david_contra` aggregate swap ranged from `-$101.61` to `-$173.69`, and max
+  fill age stayed near `3.08` days. Audit the session-flatten lifecycle
+  semantics before assuming daily flatten fully bounds overnight/swap exposure.
+- Gate 90C prep added two activation rules:
+  `candidate_b_david_contra_confirm` requires Candidate B and David contra to
+  agree on side; `candidate_b_david_contra_conflict_candidate` trades Candidate
+  B's side only when it conflicts with David contra.
+- Gate 90C prep added summary-only close-cycle aggregates to the runner:
+  `close_event_profit_factor`, `close_event_win_pct`, close event counts,
+  close-event gross profit/loss, `target_close_net_usd`, and
+  `session_flatten_close_net_usd`. This allows the full-window matrix to run
+  without retaining massive close-event files for every cell.
+- Gate 90C all-pair one-week smoke passed on
+  `2026-05-03T23:00:00.000Z..2026-05-03T23:00:00.000Z`: `candidate_b`
+  net `+$131.24`, event PF `2.666859`, max open `23`; `david_contra`
+  net `+$164.36`, event PF `1.948972`, max open `55`;
+  `candidate_b_david_contra_confirm` net `+$116.35`, event PF `8.455620`,
+  max open `8`; `candidate_b_david_contra_conflict_candidate` net `+$72.11`,
+  event PF `2.142201`, max open `19`.
+- Gate 90C full-window design covers full Gate 74B history
+  `2019-04-14..2026-05-31`, all 28 pairs, summary-only, with `6` signal ADR
+  bricks x `5` MA periods x `5` grid spacings = `150` runner commands. Each
+  command batches `7` activation rules, for `1,050` expected summary rows.
 
 Next action:
 
-- Review the full session-window scorecard with Freedom before moving on.
-- If accepted, run random out-of-sample session-window windows before any
-  further optimization. Keep ADR `0.025`, `0.05`, `0.075`, and `0.10` cells in
-  view, with special attention to whether ADR `0.10` remains healthier out of
-  sample.
-- After OOS evidence, consider a simple red-news blackout boundary around
-  scheduled high-impact events while keeping the same session-window cells and
-  raw/david/stoch/Candidate B comparison set.
-- Do not open pair filters, COT/Candidate B redesign, one-year windows, or
-  full-history windows until the full scorecard and OOS plan are accepted.
-- Do not refactor the current EA or start a new EA until the OOS session-window
-  evidence is reviewed.
+- Review the Gate 90C full-window matrix design with Freedom.
+- If accepted, run the 150-command summary-only Gate 90C matrix from the
+  command-plan CSV, then build a single aggregate scorecard.
+- Interpret Gate 90C with the known caveat that session-flatten lifecycle
+  semantics still need explanation because OOS had nonzero swap and max fill
+  age under `ny_daily_window`.
+- Keep Candidate B/COT as controlled direction-overlay evidence only; do not
+  open broad COT/Candidate B redesign yet.
+- Do not refactor the current EA or start a new EA until the OOS scorecard and
+  Gate 90C matrix evidence are reviewed.
 
-Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
-optimization outside the Gate 90 ADR-clock execution surface, pair-specific
-swap ingestion, margin stopout simulator, app/live integration, promotion,
-live-readiness, broad COT/Candidate B regime redesign, and double-sided
-in-between policy.
+Frozen until explicitly reopened: MT5 lifecycle optimization, target
+optimization outside the Gate 90 ADR-clock execution surface, spacing searches
+outside the Gate 90C matrix, pair-specific swap ingestion, margin stopout
+simulator, app/live integration, promotion, live-readiness, broad COT/Candidate
+B regime redesign, and double-sided in-between policy.
 
 ## Historical Active Gate
 
