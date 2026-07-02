@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T20:31:58.906Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json DF1989927A5AC675D68E1B3116B64E7A9CB9CE413C18B7BA26169F6895F05715 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/activation-summary.rows.json
+weekly_json 883B72056FCB0449C599495ED05A5F1BD1E5F60CFF5CB3C78AB29A52CA17F15D docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/terminal-inventory.rows.json
+validation_json 40B72CC972E7DDCCF3238CC805B2AE9391B906BA7F5B4A8377F3EC59E1596A71 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/metric-definitions.rows.json
+command_receipt 1F752A3D3088C1AEAA2F2626A655A6BFA25BEF29C4F282DD65A2FA22561C69B8 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/command-receipt.json
+run_summary_json 587B287B58538A099B5814853161E1099B07812F2EE9741CB0FEF8EB8885F5E5 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr010_ma75_s2-exp010-rsi506040/gate90-run-summary.json
+report F3630259E276BBE7253E88406FC4D5A41DDC24ED74A8395C619388A3DB49F957 docs/research/gates/gate90/GATE90C_CLOSE_BAND_2019_NONSTOCH_ADR010_MA75_S2_EXP010_RSI506040_2026-07-02.md

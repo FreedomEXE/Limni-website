@@ -80,6 +80,20 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90C_COMBINED_VARIANT_SMOKE_ALLPAIRS_1W_2026-07-02.md`.
 - Gate 90C command-plan CSV:
   `docs/research/gates/gate90/artifacts/gate90c-full-window-matrix-command-plan.csv`.
+- Gate 90C runtime-blocker report:
+  `docs/research/gates/gate90/GATE90C_FULL_WINDOW_MATRIX_RUNTIME_BLOCKER_2026-07-02.md`.
+- Gate 90C fast decision 26-week scorecard:
+  `docs/research/gates/gate90/GATE90C_FAST_DECISION_26W_SCORECARD_2026-07-02.md`.
+- Gate 90C fast decision aggregate artifacts:
+  `docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-scorecard.csv`
+  and
+  `docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-scorecard.json`.
+- Gate 90C 2019 close-mode non-stoch band scorecard:
+  `docs/research/gates/gate90/GATE90C_CLOSE_BAND_2019_NONSTOCH_SCORECARD_2026-07-02.md`.
+- Gate 90C 2019 close-mode non-stoch aggregate artifacts:
+  `docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-scorecard.csv`
+  and
+  `docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-scorecard.json`.
 
 Gate 90 read:
 
@@ -254,19 +268,80 @@ Gate 90 read:
   `2019-04-14..2026-05-31`, all 28 pairs, summary-only, with `6` signal ADR
   bricks x `5` MA periods x `5` grid spacings = `150` runner commands. Each
   command batches `7` activation rules, for `1,050` expected summary rows.
+- Gate 90C matrix attempt from the command-plan CSV was blocked by runtime:
+  row `1/150` (`0.025` ADR brick / MA25 / spacing `0.10`) remained active for
+  about `30` minutes without producing `activation-summary.rows.*`,
+  `weekly-activation-truth.rows.*`, or `gate90-run-summary.json`. The run was
+  stopped and recorded as a runtime blocker, not a completed matrix or
+  correctness failure.
+- Gate 90C runner speed repair is complete for the research path:
+  per-tick open-position stats now use incremental counters instead of scanning
+  all books on every tick, and USD conversion marks are computed lazily from
+  source legs instead of prebuilding every USD-pair tick conversion bucket.
+- Targeted speed-patch verification preserved results on a one-week OHLC
+  parity check for ADR `0.025` / MA25 / spacing `0.10`: `7` activation rows,
+  `21` compared fields, `PARITY_OK`.
+- Because the full 150-command / 1,050-row foreground run remained too large
+  for immediate decision-making, Gate 90C produced a bounded fast decision
+  surface over `2025-12-08..2026-05-31` with all 28 pairs, OHLC high/low,
+  ADR-event clock, NY daily window, David MA reversion target, adverse-only
+  adds, min MA expansion `0.10 ADR`, and all `7` activation rules.
+- Gate 90C fast decision scorecard covers `7` predeclared cells x `7`
+  activation rules = `49` summary rows. Cells: ADR `0.025` / MA25 with
+  spacing `0.10`, `0.15`, `0.20`; ADR `0.05` / MA25 with spacing `0.10`,
+  `0.20`; ADR `0.10` / MA50 with spacing `0.10`, `0.20`.
+- Fast decision read: `david_contra` is the first build-shape candidate in
+  this surface. `raw_both` remains the highest-net no-direction benchmark only.
+  `candidate_b` is competitive but remains a controlled overlay/comparison,
+  not a broad COT redesign or primary trigger.
+- Primary build-shape read: ADR `0.025` / MA25 / spacing `0.15` /
+  `david_contra` is the current balanced MT5-build candidate from Gate 90C:
+  net `+$7,997.71`, close-event PF `2.652541`, close-event win `85.53%`,
+  weekly equity PF `288.177297`, max equity DD `-$27.85`, entries `37,919`,
+  max open `72`, max add depth `18`, session-flatten close net `-$4,180.86`,
+  swap `-$120.52`.
+- Aggressive benchmark read: ADR `0.025` / MA25 / spacing `0.10` /
+  `david_contra` has higher net `+$9,556.15` and close-event PF `2.545217`,
+  but higher exposure with entries `46,995`, max open `95`, max add depth
+  `25`, and session-flatten close net `-$5,448.40`.
+- Conservative reference read: ADR `0.10` / MA50 / spacing `0.20` /
+  `david_contra` is lower-cadence but not leading: net `+$4,186.53`,
+  close-event PF `1.529563`, max open `96`, max add depth `29`. ADR `0.10` /
+  MA50 / spacing `0.10` has worse pressure with max open `179` and max add
+  depth `58`.
+- After Freedom flagged ADR `0.025` / MA25 / spacing `0.10` as too aggressive
+  for live, Gate 90C stopped the full-year run at the 2019 checkpoint and
+  tested a larger close-mode non-stoch band: ADR bricks `0.05`, `0.075`,
+  `0.10`; MA periods `50`, `75`; spacing `0.20`, `0.30`; and activation rules
+  `raw_both`, `david_contra`, `candidate_b`,
+  `candidate_b_david_contra_confirm`, and
+  `candidate_b_david_contra_conflict_candidate`. Total: `60` summary rows.
+- 2019 non-stoch band read: `candidate_b` owns the highest static return rows,
+  led by ADR `0.075` / MA50 / spacing `0.20` at `+17.01%` return, `-7.70%`
+  max DD, `21,960` fills, max open `90`, max depth `14`. The best risk-shaped
+  family is `candidate_b_david_contra_conflict_candidate`, led by ADR `0.05` /
+  MA75 / spacing `0.20` at `+11.16%` return, `-2.10%` max DD, `12,256` fills,
+  max open `58`, max depth `15`.
+- Current decision read: do not start an MT5 build from one static ADR / MA /
+  spacing tuple. The next evidence gate should build a bounded weekly adaptive
+  grid-profile selector using ADR/range/MA z-score style features plus recent
+  fill pressure and flatten drag.
 
 Next action:
 
-- Review the Gate 90C full-window matrix design with Freedom.
-- If accepted, run the 150-command summary-only Gate 90C matrix from the
-  command-plan CSV, then build a single aggregate scorecard.
+- Review the 2019 non-stoch band scorecard with Freedom.
+- If continuing year-by-year, rerun the same non-stoch band for 2020 before
+  expanding settings further.
+- Open the next research design as a bounded weekly adaptive grid-profile
+  selector, not as broad optimization and not as MT5 EA implementation.
+- Do not rerun the same 150-command foreground matrix as-is.
 - Interpret Gate 90C with the known caveat that session-flatten lifecycle
   semantics still need explanation because OOS had nonzero swap and max fill
   age under `ny_daily_window`.
 - Keep Candidate B/COT as controlled direction-overlay evidence only; do not
   open broad COT/Candidate B redesign yet.
-- Do not refactor the current EA or start a new EA until the OOS scorecard and
-  Gate 90C matrix evidence are reviewed.
+- Do not refactor the current EA or start a new EA until Gate 90C execution
+  evidence is produced and reviewed.
 
 Frozen until explicitly reopened: MT5 lifecycle optimization, target
 optimization outside the Gate 90 ADR-clock execution surface, spacing searches

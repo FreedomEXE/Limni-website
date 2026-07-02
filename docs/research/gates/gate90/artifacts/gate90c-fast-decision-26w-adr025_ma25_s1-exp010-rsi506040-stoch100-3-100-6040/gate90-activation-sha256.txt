@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T18:26:42.018Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json B3EDC6E8096B3D36136C490B54A784070955C75614044E58AB542D42AC2C2702 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json BA8EF70C05940DAB14FE27933AE456885B480ED0A89CD4580C29FDA883EED0A6 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
+validation_json BC53CEE7F1D57E8E5B6D9295EFE0A7FD254CC369F1DFDE0EC2042E001E99DEA7 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 9A74AD40DFD66264C6AFF757D63BA086B5A08D69C0FB9BAD52F822627B2CF3CD docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 96C88CCFC074A071E4BA3CC796981C886ED72BD065699F84ABCA74512570C1A3 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s1-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report DE629A2D00BD336F04C940FA0495F5B31C786035C92596F1D915C72AFBF7D8A1 docs/research/gates/gate90/GATE90C_FAST_DECISION_26W_ADR025_MA25_S1_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

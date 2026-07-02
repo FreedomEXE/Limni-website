@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T18:11:41.426Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json 02BAEED851FD4DB41B984A94A1FB7FDB8723017BA29437E579123890EE723B1A docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/activation-summary.rows.json
+weekly_json F31329FA07EFC5B0EB357A048557A4B37CBC95613876E1CD3771908A2EC48B6C docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/terminal-inventory.rows.json
+validation_json CA81148632DF34030B6A301DF2E50F0235FAE149651EF77F2419C2226C240A04 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/metric-definitions.rows.json
+command_receipt 8BBAAFD89CE56509F7796B3ADC0B44E51CFB3FAD2ABB9FC3F77A4FFCBD2759EB docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/command-receipt.json
+run_summary_json F1A3E14C37ABE5D9D1BD53BE088DE48AC6A9A10011E33353FC9EF2AF9A421B01 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/gate90-run-summary.json
+report 675B95EB1DECBCA16F97FC5EB951903F46326391CE8C52FC65D4E12974FD5E8A docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-adr025_ma25_s1-after-incremental-counts/report.md

@@ -145,6 +145,13 @@ type ConversionRates = {
   getUsdPerCurrency: (currency: string, timestampUtc: string, tickIndex: number) => number | null;
 };
 
+type ConversionSource = {
+  row: ReplayRow;
+  mode: BarPathMode;
+  timestampIndex: Map<string, number>;
+  inverted: boolean;
+};
+
 type CloseEvent = {
   variant_id: string;
   pair: string;
@@ -387,6 +394,9 @@ type RuntimeStats = {
   maxOpenPositions: number;
   maxLongPositions: number;
   maxShortPositions: number;
+  currentOpenPositions: number;
+  currentLongPositions: number;
+  currentShortPositions: number;
   maxAddDepth: number;
   maxFillAgeDays: number;
   positionDays: number;
@@ -690,10 +700,6 @@ function quoteCurrency(pair: string) {
   return pair.slice(3, 6);
 }
 
-function conversionKey(timestampUtc: string, tickIndex: number) {
-  return `${timestampUtc}|${tickIndex}`;
-}
-
 function emptyConversionRates(): ConversionRates {
   return {
     getUsdPerCurrency(currency) {
@@ -877,36 +883,60 @@ function directedBarPath(row: ReplayRow, index: number, mode: BarPathMode) {
   return close >= open ? [open, low, high, close] : [open, high, low, close];
 }
 
-function buildConversionRates(rows: ReplayRow[], mode: BarPathMode): ConversionRates {
-  const rates = new Map<string, Map<string, number>>();
-  const setRate = (timestampUtc: string, tickIndex: number, currency: string, usdPerCurrency: number) => {
-    if (!Number.isFinite(usdPerCurrency) || usdPerCurrency <= 0) return;
-    const key = conversionKey(timestampUtc, tickIndex);
-    const bucket = rates.get(key) ?? new Map<string, number>();
-    bucket.set(currency, usdPerCurrency);
-    rates.set(key, bucket);
-  };
+function directedAdrAtTick(row: ReplayRow, index: number, mode: BarPathMode, tickIndex: number) {
+  const payload = row.path_payload;
+  if (mode === "close") return tickIndex === 0 ? payload.directed_close_adr[index]! : null;
+  if (tickIndex < 0 || tickIndex > 3) return null;
+  const open = payload.directed_open_adr[index]!;
+  const high = payload.directed_high_adr[index]!;
+  const low = payload.directed_low_adr[index]!;
+  const close = payload.directed_close_adr[index]!;
+  if (mode === "ohlc_high_low") {
+    if (tickIndex === 0) return open;
+    if (tickIndex === 1) return high;
+    if (tickIndex === 2) return low;
+    return close;
+  }
+  if (mode === "ohlc_low_high") {
+    if (tickIndex === 0) return open;
+    if (tickIndex === 1) return low;
+    if (tickIndex === 2) return high;
+    return close;
+  }
+  if (tickIndex === 0) return open;
+  const highBeforeLow = close < open;
+  if (tickIndex === 1) return highBeforeLow ? high : low;
+  if (tickIndex === 2) return highBeforeLow ? low : high;
+  return close;
+}
 
+function buildConversionRates(rows: ReplayRow[], mode: BarPathMode): ConversionRates {
+  const sources = new Map<string, ConversionSource>();
   for (const row of rows) {
     const base = baseCurrency(row.pair);
     const quote = quoteCurrency(row.pair);
     if (base !== "USD" && quote !== "USD") continue;
-    const timestamps = row.path_payload.timestamp_utc;
-    for (let index = 0; index < timestamps.length; index += 1) {
-      const timestampUtc = timestamps[index]!;
-      const directedMarks = directedBarPath(row, index, mode);
-      for (let tickIndex = 0; tickIndex < directedMarks.length; tickIndex += 1) {
-        const markPrice = markPriceFromDirectedAdr(row, directedMarks[tickIndex]!);
-        if (quote === "USD") setRate(timestampUtc, tickIndex, base, markPrice);
-        else if (base === "USD") setRate(timestampUtc, tickIndex, quote, 1 / markPrice);
-      }
-    }
+    const currency = quote === "USD" ? base : quote;
+    sources.set(currency, {
+      row,
+      mode,
+      timestampIndex: new Map(row.path_payload.timestamp_utc.map((timestampUtc, index) => [timestampUtc, index])),
+      inverted: base === "USD",
+    });
   }
 
   return {
     getUsdPerCurrency(currency, timestampUtc, tickIndex) {
       if (currency === "USD") return 1;
-      return rates.get(conversionKey(timestampUtc, tickIndex))?.get(currency) ?? null;
+      const source = sources.get(currency);
+      if (!source) return null;
+      const index = source.timestampIndex.get(timestampUtc);
+      if (index === undefined) return null;
+      const directedAdr = directedAdrAtTick(source.row, index, source.mode, tickIndex);
+      if (directedAdr === null) return null;
+      const markPrice = markPriceFromDirectedAdr(source.row, directedAdr);
+      if (!Number.isFinite(markPrice) || markPrice <= 0) return null;
+      return source.inverted ? 1 / markPrice : markPrice;
     },
   };
 }
@@ -1239,6 +1269,9 @@ function createStats(): RuntimeStats {
     maxOpenPositions: 0,
     maxLongPositions: 0,
     maxShortPositions: 0,
+    currentOpenPositions: 0,
+    currentLongPositions: 0,
+    currentShortPositions: 0,
     maxAddDepth: 0,
     maxFillAgeDays: 0,
     positionDays: 0,
@@ -1301,11 +1334,22 @@ function pairOpenCount(book: PairBook) {
   return (book.long?.fills.length ?? 0) + (book.short?.fills.length ?? 0);
 }
 
-function observeStats(stats: RuntimeStats, books: Map<string, PairBook>) {
-  const counts = openPositionCounts(books);
-  stats.maxOpenPositions = Math.max(stats.maxOpenPositions, counts.total);
-  stats.maxLongPositions = Math.max(stats.maxLongPositions, counts.long);
-  stats.maxShortPositions = Math.max(stats.maxShortPositions, counts.short);
+function observeStats(stats: RuntimeStats, _books: Map<string, PairBook>) {
+  stats.maxOpenPositions = Math.max(stats.maxOpenPositions, stats.currentOpenPositions);
+  stats.maxLongPositions = Math.max(stats.maxLongPositions, stats.currentLongPositions);
+  stats.maxShortPositions = Math.max(stats.maxShortPositions, stats.currentShortPositions);
+}
+
+function adjustOpenPositionStats(stats: RuntimeStats, side: Side, delta: number) {
+  stats.currentOpenPositions += delta;
+  if (side === "LONG") stats.currentLongPositions += delta;
+  else stats.currentShortPositions += delta;
+  if (stats.currentOpenPositions < 0 || stats.currentLongPositions < 0 || stats.currentShortPositions < 0) {
+    throw new Error("Gate 90 open-position stats went negative; replay bookkeeping is inconsistent");
+  }
+  stats.maxOpenPositions = Math.max(stats.maxOpenPositions, stats.currentOpenPositions);
+  stats.maxLongPositions = Math.max(stats.maxLongPositions, stats.currentLongPositions);
+  stats.maxShortPositions = Math.max(stats.maxShortPositions, stats.currentShortPositions);
 }
 
 function openFill(options: {
@@ -1337,6 +1381,7 @@ function openFill(options: {
   options.cycle.fills.push(fill);
   options.cycle.entry_price_inverse_sum += 1 / options.markPrice;
   options.cycle.quantity_sum += 1;
+  adjustOpenPositionStats(options.stats, options.cycle.side, 1);
   options.stats.realizedCommissionUsd = round6(options.stats.realizedCommissionUsd + commission);
   options.stats.fillsOpened += 1;
   options.stats.maxAddDepth = Math.max(options.stats.maxAddDepth, options.levelIndex);
@@ -1479,6 +1524,7 @@ function closeCycle(options: {
     commissionUsd += fill.commission_usd;
   }
   const pricePnlAdr = cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  adjustOpenPositionStats(options.stats, options.cycle.side, -options.cycle.fills.length);
   if (options.closeReason === "end_of_test") {
     options.stats.endLiquidationPricePnlUsd = round6(options.stats.endLiquidationPricePnlUsd + pricePnlUsd);
     options.stats.endLiquidationSwapUsd = round6(options.stats.endLiquidationSwapUsd + swapUsd);

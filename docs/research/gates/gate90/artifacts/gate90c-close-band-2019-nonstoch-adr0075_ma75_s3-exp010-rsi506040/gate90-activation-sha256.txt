@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T20:24:09.663Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json 6502FFD07CD4993C8FEA5B2D3842E015E0BB2B5AC168CEB74007CCCD4B14F8B0 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/activation-summary.rows.json
+weekly_json 4A0B3A90B0AA32AE0E9BF0A6ECA2D9EAC5F8836F4029F278B78A161158A0FEE3 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/terminal-inventory.rows.json
+validation_json 5879E1F154F44CB14AB2ECFD99304BA1D5511505BF479DAF0E696E1588E0494C docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/metric-definitions.rows.json
+command_receipt F0A80CE153F34B62B2768D60AAAE8B404BC9CC76565C3BB81C3C05CD3E18CA70 docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/command-receipt.json
+run_summary_json 5F4BA5AD43C08857F6484907E5DEFB283EFBD83EA87C260977E523068B4209BB docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-adr0075_ma75_s3-exp010-rsi506040/gate90-run-summary.json
+report 064865062B254E848F8D05DB5E647F22F8913D7FAD1D4E2FB97F383292CE7023 docs/research/gates/gate90/GATE90C_CLOSE_BAND_2019_NONSTOCH_ADR0075_MA75_S3_EXP010_RSI506040_2026-07-02.md
