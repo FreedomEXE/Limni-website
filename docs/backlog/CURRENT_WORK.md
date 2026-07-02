@@ -330,8 +330,8 @@ Gate 90 read:
 Next action:
 
 - Review the 2019 non-stoch band scorecard with Freedom.
-- If continuing year-by-year, rerun the same non-stoch band for 2020 before
-  expanding settings further.
+- Do not continue with 2020/year-by-year tests or restart the full matrix as the
+  next action; Freedom wants algorithm design review first.
 - Open the next research design as a bounded weekly adaptive grid-profile
   selector, not as broad optimization and not as MT5 EA implementation.
 - Do not rerun the same 150-command foreground matrix as-is.
