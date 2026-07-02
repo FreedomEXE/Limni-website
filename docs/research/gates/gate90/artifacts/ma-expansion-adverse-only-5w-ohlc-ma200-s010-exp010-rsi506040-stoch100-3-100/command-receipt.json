@@ -1,0 +1,50 @@
+{
+  "gate_id": "Gate 90: grid-activation-accuracy-one-sided-selection",
+  "command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection",
+  "durable_command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection -- --all-pairs --week-from=2026-05-03 --week-to=2026-05-31 --activation-rules=raw_both,david_contra,david_stoch_release --bar-path-mode=ohlc_high_low --target-mode=david_ma_reversion --target-adr=1 --spacing-adr=0.1 --min-ma-expansion-adr=0.1 --grid-add-mode=adverse_only --david-ma-period=200 --david-rsi-period=50 --david-rsi-overbought=60 --david-rsi-oversold=40 --stoch-k-period=100 --stoch-d-period=3 --stoch-slowing=100 --stoch-overbought=80 --stoch-oversold=20 --summary-only --artifact-dir=docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-5w-ohlc-ma200-s010-exp010-rsi506040-stoch100-3-100 --report-path=docs/research/gates/gate90/GATE90_MA_EXPANSION_ADVERSE_ONLY_5W_OHLC_MA200_S010_EXP010_RSI506040_STOCH100_3_100_2026-07-02.md",
+  "git_commit": "7d85457a666ff53890b05966300e1a8ef6b734dc",
+  "generated_at": "2026-07-02T11:06:38.414Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-5w-ohlc-ma200-s010-exp010-rsi506040-stoch100-3-100",
+    "reportPath": "docs/research/gates/gate90/GATE90_MA_EXPANSION_ADVERSE_ONLY_5W_OHLC_MA200_S010_EXP010_RSI506040_STOCH100_3_100_2026-07-02.md",
+    "manifestId": null,
+    "onlyPair": null,
+    "pairs": null,
+    "allPairs": true,
+    "weekFrom": "2026-05-03",
+    "weekTo": "2026-05-31",
+    "maxWeeks": null,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "targetAdr": 1,
+    "spacingAdr": 0.1,
+    "minMaExpansionAdr": 0.1,
+    "gridAddMode": "adverse_only",
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "barPathMode": "ohlc_high_low",
+    "activationRuleId": "raw_both",
+    "activationRuleIds": [
+      "raw_both",
+      "david_contra",
+      "david_stoch_release"
+    ],
+    "targetMode": "david_ma_reversion",
+    "logProgress": false,
+    "summaryOnly": true,
+    "signalSettings": {
+      "davidMaPeriod": 200,
+      "davidRsiPeriod": 50,
+      "davidRsiOverbought": 60,
+      "davidRsiOversold": 40,
+      "stochKPeriod": 100,
+      "stochDPeriod": 3,
+      "stochSlowing": 100,
+      "stochOverbought": 80,
+      "stochOversold": 20
+    }
+  }
+}

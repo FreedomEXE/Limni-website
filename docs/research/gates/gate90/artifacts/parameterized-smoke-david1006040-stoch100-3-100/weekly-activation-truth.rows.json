@@ -1,0 +1,27 @@
+[
+  {
+    "variant_id": "RAW_GRID_T100_S020_GATE90_DAVID_CONTRA",
+    "week_open_utc": "2020-01-06T00:00:00.000Z",
+    "pairs_replayed": 1,
+    "closed_price_pnl_usd": 18.570016,
+    "realized_commission_usd": -1.38,
+    "realized_swap_usd": 0.003188,
+    "realized_net_usd": 17.193204,
+    "open_price_pnl_usd": -30.18001,
+    "open_swap_usd": -2.474683,
+    "equity_usd": 9984.538511,
+    "balance_usd": 10017.193204,
+    "equity_delta_usd": -15.461489,
+    "open_positions": 14,
+    "long_positions": 11,
+    "short_positions": 3,
+    "fills_opened": 23,
+    "target_reset_count": 3,
+    "max_open_positions_to_date": 14,
+    "max_long_positions_to_date": 11,
+    "max_short_positions_to_date": 3,
+    "max_add_depth_to_date": 10,
+    "position_days_closed_to_date": 4.224306,
+    "content_hash": "BC7573BBD4D4C5367B35ED3E5B3502A593DB86FD4ADB26A2AB8C1DC13A96E616"
+  }
+]

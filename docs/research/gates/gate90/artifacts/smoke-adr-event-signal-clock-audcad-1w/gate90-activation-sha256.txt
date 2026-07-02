@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T12:50:28.592Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 321674D36DA6B9319F6B4B54FCF5D682C7330B07BAF11E2CDE4FA365B4D2F224 docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/activation-summary.rows.json
+weekly_json 643FF0B79F8498A04A8385331C2D6C41DAC36CBF950178813CCB2B2356D0929C docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/close-events.rows.json
+validation_json 919B03938DDE311BF94735BAECA417199A0AFABB78E94128D2BA153F365341E3 docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/validation.rows.json
+metric_definitions_json 99FD70742C0BAF6069DCEEE0DD36208137E8916DE2BC93D695B3C67B9DAA06C0 docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/metric-definitions.rows.json
+command_receipt 29B8155AB6FD461DCB6F18A277D35E67A8AE4419A1E3D4283D3AAA727FBEDCDF docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/command-receipt.json
+run_summary_json 70FA2270DC4BBEF4EC5CD3E3B663719FB5B7A325F3376FEB089948FB9FE22371 docs/research/gates/gate90/artifacts/smoke-adr-event-signal-clock-audcad-1w/gate90-run-summary.json
+report AB966BABBE474B539EE77BFB78A1EA705BB2FF62D52C77C1EC66F758AC156939 docs/research/gates/gate90/GATE90_SMOKE_ADR_EVENT_SIGNAL_CLOCK_AUDCAD_1W_2026-07-02.md

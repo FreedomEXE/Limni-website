@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T12:51:59.888Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 9FAA669773A578D7E131004928C1011A987DE716FC2CD455569D5C3A580E0182 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json 25FCADC8C2F7D0AD1CF2E6FA9E8C7DE3089681F163903CCAEEE3F45302CF512C docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+validation_json 60DB12EBD0570BF5B0C1DC145ACAEE51CC0A38DD5F0E2E2419A51B44FD7E7B12 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 99FD70742C0BAF6069DCEEE0DD36208137E8916DE2BC93D695B3C67B9DAA06C0 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 136851867CFE6C04AD889BCA88C33ABC48E9AA3B671B49DFB4FEB326696C1466 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json CA6DD414BB07013D08D19E328AED7725CB6047245AAF9A99578A6F1856D138E9 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-m1-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 6A4E069077DC4046D9C65EEDBD03E43E1CEC73AC1807BB937C3A511285EBDB65 docs/research/gates/gate90/GATE90_SIGNAL_CLOCK_COMPARISON_5W_OHLC_M1_MA100_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

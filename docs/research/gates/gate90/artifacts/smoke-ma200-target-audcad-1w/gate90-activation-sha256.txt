@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T10:32:37.437Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 8BF460AB6E036CD69449FBBB85E5835BB1370FF0263413994D887D885FDAC169 docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/activation-summary.rows.json
+weekly_json 6F27A1D03D00859E16E3CAEB7955B9F2181D01818C3217921E63AEFA57257261 docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/close-events.rows.json
+validation_json 66B875450D352372A704BD2A50680F7AC5E3C3843E167D43CAE8D77B8996B7DA docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/metric-definitions.rows.json
+command_receipt 2735283E5A007DDC29BD028656A5381EA95C5EF5E5DB7C000B9BE105447258DD docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/command-receipt.json
+run_summary_json A37F059BD60CA79634315E84D64532CBCA7C466BFC4FD1D889FAB8EC729A28EC docs/research/gates/gate90/artifacts/smoke-ma200-target-audcad-1w/gate90-run-summary.json
+report C06940697198856DC3C51E59BB5E65C0EB9EB053C67847A939A4635FB508F1CA docs/research/gates/gate90/GATE90_SMOKE_MA200_TARGET_AUDCAD_1W_2026-07-02.md

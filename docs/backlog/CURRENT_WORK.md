@@ -10,9 +10,9 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 Current state: Gate 89 `continuous-raw-truth-simulator` is complete as a
 diagnostic/research gate. Gate 90
-`grid-activation-accuracy-one-sided-selection` is parked as a saved diagnostic
-research point after the corrected David MA / stochastic full-history warehouse
-read and a fast Candidate B generic-cost recheck.
+`grid-activation-accuracy-one-sided-selection` is active as warehouse-only
+execution-engine research, with the latest checkpoint focused on ADR movement
+signal clocks instead of arbitrary M1/M5/M15/H1 signal timeframes.
 
 Gate 89 outputs:
 
@@ -60,6 +60,8 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_26W_RECENT_CLOSE_DAVID1006040_STOCH100_3_100_2026-07-02.md`
   and
   `docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_5W_RECENT_OHLC_DAVID1006040_STOCH100_3_100_2026-07-02.md`.
+- ADR-clock handoff report:
+  `docs/research/gates/gate90/GATE90_ADR_CLOCK_EXECUTION_RESEARCH_HANDOFF_2026-07-02.md`.
 
 Gate 90 read:
 
@@ -76,11 +78,12 @@ Gate 90 read:
 - Stochastic settings corrected by Freedom: `K=100`, `D=3`, slowing `100`,
   Low/High, Simple, main line only, OB/OS `80/20`.
 - Gate 90 runner now supports CLI signal settings, comma-separated
-  `--activation-rules`, `--summary-only`, and shared signal replay so broad
-  variant tests can be changed by command instead of code edits.
-- David MA/Stoch signals were calculated on the Gate 74B `1m` path warehouse:
-  one reconstructed closed M1 bar per warehouse point, no higher-timeframe
-  aggregation.
+  `--activation-rules`, `--summary-only`, shared signal replay, MA-reversion
+  target mode, ADR spacing controls, MA-expansion start gating, adverse-only
+  grid adds, and `--signal-clock=m1|adr_event`.
+- M1/OHLC remains the execution tape. `--signal-clock=adr_event` builds David
+  MA / RSI / Stoch state from timestamped ADR movement bars, controlled by
+  `--signal-adr-brick`.
 - Added `candidate_b` as a Gate 90 one-sided activation rule using locked Gate
   74B `candidate_b_side`; it only controls missing side-cycle starts and does
   not force weekly flip closes.
@@ -113,17 +116,42 @@ Gate 90 read:
   A 5-week recent OHLC screen had `candidate_b` positive at `+$384.94`, but it
   still trailed the stronger candidates. Current parking read from Freedom:
   treat these activation families as weak/diagnostic for now.
+- Later Gate 90 execution-engine research found a stronger structure:
+  MA-reversion TP, spacing `0.20 ADR`, min MA expansion `0.10 ADR`,
+  `adverse_only` grid adds, David `LWMA100` with RSI `50/60/40`, and Stoch
+  used only as OB/OS state filter.
+- `david_stoch_release` is rejected from primary matrices. It is too
+  timing-fragile and deletes most opportunity.
+- Required primary comparisons for future matrices:
+  `raw_both`, `david_contra`, `candidate_b`, `stoch_contra`, and
+  `david_stoch_confirm`.
+- Current 5-week OHLC M1 signal-clock baseline on the above execution surface:
+  `raw_both` net `+$2,728.09`, entries `8,043`, max open `176`, terminal `139`;
+  `david_contra` net `+$2,161.21`, entries `5,947`, max open `168`, terminal
+  `117`; `candidate_b` net `+$1,191.12`, entries `3,863`, max open `106`,
+  terminal `90`.
+- Current 5-week OHLC ADR-event signal-clock checks:
+  ADR `0.10` / MA50 / `david_contra` net `+$1,422.93`, entries `2,078`,
+  max open `113`, terminal `77`; ADR `0.05` / MA50 / `david_contra`
+  net `+$1,546.45`, entries `3,400`, max open `109`, terminal `99`.
+- Interpretation: M1 still wins on net under the tested settings, but ADR-event
+  bars are the preferred research direction because they replace arbitrary
+  chart timeframes with ADR movement clocks. The next work should tune ADR
+  event bricks and MA periods together, then add terminal inventory attribution
+  before one-year or full-history runs.
 
 Next action:
 
-- Pause Gate 90 activation-family optimization. Freedom has more activation
-  ideas to map next; keep the first question focused on timeframe/signal
-  construction before opening a new implementation scope.
+- Continue Gate 90 ADR-clock research from the handoff report. Start with ADR
+  bricks `0.025`, `0.05`, `0.075`, `0.10` and David MA periods `25`, `50`,
+  `75`, `100`, keeping execution fixed first. Add terminal inventory
+  attribution/cleanup before one-year and full-history windows.
 
 Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
-optimization, pair-specific swap ingestion, margin stopout simulator, app/live
-integration, promotion, live-readiness, David/Stoch parameter optimization, and
-double-sided in-between policy.
+optimization outside the Gate 90 ADR-clock execution surface, pair-specific
+swap ingestion, margin stopout simulator, app/live integration, promotion,
+live-readiness, broad COT/Candidate B regime redesign, and double-sided
+in-between policy.
 
 ## Historical Active Gate
 

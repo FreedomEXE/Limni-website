@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T11:01:34.858Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json BBA5493B6ACD4AF6B3780C09F73B6BD0B97CA8CF306D3DA88D3FC2BD00DF99AE docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/activation-summary.rows.json
+weekly_json 7CC126B3C92E0EBF0720A19C1C4E94389E38B3AD3177B41BC70CA3FC47660A90 docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/close-events.rows.json
+validation_json 51E728750EF361A80B9C29C4CBE2D6F97292E6AF8E9D91A0AE19EDEC925B5E32 docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/validation.rows.json
+metric_definitions_json 29430730DBFE50DD3C8435CEA48E6C0102B546126072E0FA58F96E2502FECE36 docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/metric-definitions.rows.json
+command_receipt 50CC618B72E5BDB1B99925EBFD0D432298F9C4EC81122FC35FE4FECD03307D2D docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/command-receipt.json
+run_summary_json F1E61428AB12C0C5AAD14D5DC5FA15FBD1ABF73BF84D700CE1E78FB0CD86A2BC docs/research/gates/gate90/artifacts/smoke-ma-expansion-adverse-only-audcad-1w/gate90-run-summary.json
+report 768974A6942E2C951D7FD02ADC7AF4EE03C98C8095DCEF715FFB8AD23F4133E9 docs/research/gates/gate90/GATE90_SMOKE_MA_EXPANSION_ADVERSE_ONLY_AUDCAD_1W_2026-07-02.md

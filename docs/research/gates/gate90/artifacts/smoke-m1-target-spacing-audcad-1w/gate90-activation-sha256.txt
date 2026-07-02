@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T10:17:04.426Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 397EE3C3B3A17EF8769C43CE528E7C14086792A4B30761396F7798E2328EC9E3 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/activation-summary.rows.json
+weekly_json 46DF997A4D7443C24F6AD92A9BAB6D38665B94AEF8C457B55DEBC8073C3E3D03 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/close-events.rows.json
+validation_json 16821AD0A34CA391EA7B65BB969C3F9D9038B738A5C790BF80D96DA2926C3C88 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/metric-definitions.rows.json
+command_receipt 4F90466CCB07B528450ACB02D0DD01A94B22B205AD9314FFA72CA675AB581939 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/command-receipt.json
+run_summary_json B8E46664568D82695E98F4F64783E2C4926A1AFA3811DA6CD02B75F590263003 docs/research/gates/gate90/artifacts/smoke-m1-target-spacing-audcad-1w/gate90-run-summary.json
+report E740973FDEBBE1BC269E5540100B539846D135B1B5A5EADA8C6EA81D3857FE61 docs/research/gates/gate90/GATE90_SMOKE_M1_TARGET_SPACING_AUDCAD_1W_2026-07-02.md

@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T12:55:30.751Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 91BCF9EB97D60851766B5BCA5112B1BA6CA646B993F0D34A176214CDF1AEAD35 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json AE9874F8B1B33BAED97EEECA8F7F317321FF4FB8CEF716BAC866644EE7A5D087 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+validation_json 73DBDB6A84A8F77B70A9861E7E689DC17007F6FC4ED2CE399069D466673EC3D6 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 99FD70742C0BAF6069DCEEE0DD36208137E8916DE2BC93D695B3C67B9DAA06C0 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 8B89ED75983A1DF4F60A46ED8A0623F32A712E7B4910DB2567FA142842D41BC8 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 215D932BD6F49C266D1957D1A93B1ECFD9EF2DA7C8E7A6862E235DBF37D3FF3F docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr005_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 107151004A34432E85B2E2DD49BE213A1C31BB5E5056D8778961C925C11C5DF2 docs/research/gates/gate90/GATE90_ADR_EVENT_PERIOD_LADDER_5W_OHLC_ADR005_MA50_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

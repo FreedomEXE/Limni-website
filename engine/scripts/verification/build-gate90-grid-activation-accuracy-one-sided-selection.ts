@@ -29,8 +29,8 @@ const COMMAND = "npm run engine:gate90:grid-activation-accuracy-one-sided-select
 const DEFAULT_GATE74B_DIR = "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization";
 const DEFAULT_ARTIFACT_DIR = "docs/research/gates/gate90/artifacts/grid-activation-accuracy-one-sided-selection";
 const DEFAULT_REPORT_PATH = `docs/research/gates/gate90/GATE90_GRID_ACTIVATION_ACCURACY_ONE_SIDED_SELECTION_${GATE_DATE}.md`;
-const TARGET_ADR = 1;
-const SPACING_ADR = 0.2;
+const DEFAULT_TARGET_ADR = 1;
+const DEFAULT_SPACING_ADR = 0.2;
 const DEFAULT_LOT_SIZE = 0.01;
 const STANDARD_FX_CONTRACT_UNITS = 100_000;
 const DEFAULT_SIGNAL_SETTINGS = {
@@ -50,6 +50,9 @@ type FillKind = "initial" | "adverse_recovery" | "favorable_expansion";
 type CloseReason = "target" | "end_of_test";
 type BarPathMode = "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
 type DavidState = "UP" | "DOWN";
+type TargetMode = "fixed_adr" | "david_ma_reversion";
+type GridAddMode = "adverse_and_favorable" | "adverse_only";
+type SignalClock = "m1" | "adr_event";
 type ActivationRuleId =
   | "raw_both"
   | "candidate_b"
@@ -194,6 +197,13 @@ type SummaryRow = {
   stochastic_settings: string;
   symbol_universe: string;
   bar_path_mode: BarPathMode;
+  signal_clock: SignalClock;
+  signal_adr_brick: number;
+  target_mode: TargetMode;
+  target_adr: number;
+  spacing_adr: number;
+  min_ma_expansion_adr: number;
+  grid_add_mode: GridAddMode;
   date_range: string;
   price_bundle_id: string | null;
   warehouse_manifest_id: string;
@@ -226,6 +236,7 @@ type SummaryRow = {
   activation_checks: number;
   activation_blocked_long: number;
   activation_blocked_short: number;
+  activation_blocked_expansion: number;
   activation_started_long: number;
   activation_started_short: number;
   activation_long_allow_pct: number | null;
@@ -263,13 +274,20 @@ type Options = {
   maxWeeks: number | null;
   initialDepositUsd: number;
   lotSize: number;
+  targetAdr: number;
+  spacingAdr: number;
+  minMaExpansionAdr: number;
+  gridAddMode: GridAddMode;
   commissionPerEntryPer001LotUsd: number;
   longSwapPer001LotDayUsd: number;
   shortSwapPer001LotDayUsd: number;
   maxPositionsPerPair: number;
   barPathMode: BarPathMode;
+  signalClock: SignalClock;
+  signalAdrBrick: number;
   activationRuleId: ActivationRuleId;
   activationRuleIds: ActivationRuleId[];
+  targetMode: TargetMode;
   logProgress: boolean;
   summaryOnly: boolean;
   signalSettings: SignalSettings;
@@ -303,6 +321,7 @@ type RuntimeStats = {
   activationAllowedShort: number;
   activationBlockedLong: number;
   activationBlockedShort: number;
+  activationBlockedExpansion: number;
   activationStartedLong: number;
   activationStartedShort: number;
   closeEvents: CloseEvent[];
@@ -320,6 +339,7 @@ type ClosedBar = {
 type SignalSnapshot = {
   david_state: DavidState | null;
   david_raw_state: DavidState | null;
+  david_ma: number | null;
   rsi: number | null;
   stoch_main: number | null;
   stoch_release_side: Side | null;
@@ -338,6 +358,7 @@ type SignalBook = {
   davidState: DavidState | null;
   davidRawState: DavidState | null;
   lastSignal: SignalSnapshot;
+  eventOpen: number | null;
 };
 
 const MT5_REFERENCE = {
@@ -368,13 +389,20 @@ function parseOptions(): Options {
     maxWeeks: args.get("--max-weeks") ? Number(args.get("--max-weeks")) : null,
     initialDepositUsd: Number(args.get("--initial-deposit-usd") ?? 10_000),
     lotSize: Number(args.get("--lot-size") ?? DEFAULT_LOT_SIZE),
+    targetAdr: Number(args.get("--target-adr") ?? DEFAULT_TARGET_ADR),
+    spacingAdr: Number(args.get("--spacing-adr") ?? DEFAULT_SPACING_ADR),
+    minMaExpansionAdr: Number(args.get("--min-ma-expansion-adr") ?? 0),
+    gridAddMode: parseGridAddMode(args.get("--grid-add-mode") ?? "adverse_and_favorable"),
     commissionPerEntryPer001LotUsd: Number(args.get("--commission-per-entry-per-001-lot-usd") ?? 0.06),
     longSwapPer001LotDayUsd: Number(args.get("--long-swap-per-001-lot-day-usd") ?? -0.0917),
     shortSwapPer001LotDayUsd: Number(args.get("--short-swap-per-001-lot-day-usd") ?? 0.01),
     maxPositionsPerPair: Number(args.get("--max-positions-per-pair") ?? 250),
     barPathMode: parseBarPathMode(args.get("--bar-path-mode") ?? args.get("--bar-path") ?? "ohlc_high_low"),
+    signalClock: parseSignalClock(args.get("--signal-clock") ?? "m1"),
+    signalAdrBrick: Number(args.get("--signal-adr-brick") ?? 0.1),
     activationRuleId: activationRuleIds[0]!,
     activationRuleIds,
+    targetMode: parseTargetMode(args.get("--target-mode") ?? "fixed_adr"),
     logProgress: process.argv.includes("--log-progress"),
     summaryOnly,
     signalSettings: parseSignalSettings(args),
@@ -418,6 +446,21 @@ function parseSignalSettings(args: Map<string, string>): SignalSettings {
 function parseBarPathMode(value: string): BarPathMode {
   if (value === "close" || value === "ohlc_high_low" || value === "ohlc_low_high" || value === "ohlc_directional") return value;
   throw new Error(`Unsupported --bar-path-mode=${value}; expected close, ohlc_high_low, ohlc_low_high, or ohlc_directional`);
+}
+
+function parseTargetMode(value: string): TargetMode {
+  if (value === "fixed_adr" || value === "david_ma_reversion") return value;
+  throw new Error(`Unsupported --target-mode=${value}; expected fixed_adr or david_ma_reversion`);
+}
+
+function parseGridAddMode(value: string): GridAddMode {
+  if (value === "adverse_and_favorable" || value === "adverse_only") return value;
+  throw new Error(`Unsupported --grid-add-mode=${value}; expected adverse_and_favorable or adverse_only`);
+}
+
+function parseSignalClock(value: string): SignalClock {
+  if (value === "m1" || value === "adr_event") return value;
+  throw new Error(`Unsupported --signal-clock=${value}; expected m1 or adr_event`);
 }
 
 function parseActivationRuleId(value: string): ActivationRuleId {
@@ -541,6 +584,13 @@ function renderDurableCommand(options: Options) {
     `--week-to=${options.weekTo ?? ""}`,
     `--activation-rules=${options.activationRuleIds.join(",")}`,
     `--bar-path-mode=${options.barPathMode}`,
+    `--signal-clock=${options.signalClock}`,
+    `--signal-adr-brick=${options.signalAdrBrick}`,
+    `--target-mode=${options.targetMode}`,
+    `--target-adr=${options.targetAdr}`,
+    `--spacing-adr=${options.spacingAdr}`,
+    `--min-ma-expansion-adr=${options.minMaExpansionAdr}`,
+    `--grid-add-mode=${options.gridAddMode}`,
     `--david-ma-period=${options.signalSettings.davidMaPeriod}`,
     `--david-rsi-period=${options.signalSettings.davidRsiPeriod}`,
     `--david-rsi-overbought=${options.signalSettings.davidRsiOverbought}`,
@@ -628,10 +678,12 @@ function createSignalBook(pair: string): SignalBook {
     lastSignal: {
       david_state: null,
       david_raw_state: null,
+      david_ma: null,
       rsi: null,
       stoch_main: null,
       stoch_release_side: null,
     },
+    eventOpen: null,
   };
 }
 
@@ -678,7 +730,7 @@ function updateRsi(book: SignalBook, close: number, settings: SignalSettings) {
 }
 
 function updateDavidState(book: SignalBook, settings: SignalSettings) {
-  if (book.bars.length < settings.davidMaPeriod + 1) return;
+  if (book.bars.length < settings.davidMaPeriod + 1) return null;
   const closes = book.bars.map((bar) => bar.close);
   const currentMa = lwma(closes.slice(-settings.davidMaPeriod));
   const previousMa = lwma(closes.slice(-settings.davidMaPeriod - 1, -1));
@@ -687,15 +739,16 @@ function updateDavidState(book: SignalBook, settings: SignalSettings) {
 
   if (book.davidState === null) {
     book.davidState = rawState;
-    return;
+    return currentMa;
   }
-  if (rawState === book.davidState) return;
+  if (rawState === book.davidState) return currentMa;
 
   if (rawState === "DOWN") {
     if (book.lastRsi !== null && book.lastRsi < settings.davidRsiOversold) book.davidState = "DOWN";
-    return;
+    return currentMa;
   }
   if (book.lastRsi !== null && book.lastRsi > settings.davidRsiOverbought) book.davidState = "UP";
+  return currentMa;
 }
 
 function updateStochastic(book: SignalBook, bar: ClosedBar, settings: SignalSettings) {
@@ -734,14 +787,13 @@ function closedBarFromRow(row: ReplayRow, index: number): ClosedBar {
   };
 }
 
-function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, settings: SignalSettings) {
-  const bar = closedBarFromRow(row, index);
+function updateSignalWithClosedBar(book: SignalBook, bar: ClosedBar, settings: SignalSettings) {
   book.bars.push(bar);
   const maxHistory = signalHistoryLimit(settings);
   if (book.bars.length > maxHistory) book.bars.shift();
   const previousStoch = book.stochMain.at(-1) ?? null;
   updateRsi(book, bar.close, settings);
-  updateDavidState(book, settings);
+  const davidMa = updateDavidState(book, settings);
   const stoch = updateStochastic(book, bar, settings);
   let stochReleaseSide: Side | null = null;
   if (previousStoch !== null && stoch !== null) {
@@ -751,12 +803,55 @@ function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, setti
   book.lastSignal = {
     david_state: book.davidState,
     david_raw_state: book.davidRawState,
+    david_ma: davidMa,
     rsi: book.lastRsi,
     stoch_main: stoch,
     stoch_release_side: stochReleaseSide,
   };
   if (book.rawK.length > maxHistory) book.rawK.shift();
   if (book.stochMain.length > maxHistory) book.stochMain.shift();
+}
+
+function updateM1SignalBook(book: SignalBook, row: ReplayRow, index: number, settings: SignalSettings) {
+  updateSignalWithClosedBar(book, closedBarFromRow(row, index), settings);
+}
+
+function closePriceMoveAdr(from: number, to: number, currentAdrPct: number) {
+  if (from <= 0 || currentAdrPct <= 0) return 0;
+  return ((to - from) / from) * 100 / currentAdrPct;
+}
+
+function updateAdrEventSignalBook(book: SignalBook, row: ReplayRow, index: number, settings: SignalSettings, signalAdrBrick: number) {
+  const m1Bar = closedBarFromRow(row, index);
+  if (signalAdrBrick <= 0 || row.pair_adr_pct <= 0) return;
+  if (book.eventOpen === null) {
+    book.eventOpen = m1Bar.close;
+    return;
+  }
+
+  let moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  while (Math.abs(moveAdr) >= signalAdrBrick) {
+    const direction = moveAdr > 0 ? 1 : -1;
+    const eventOpen = book.eventOpen;
+    const eventClose = eventOpen * (1 + direction * signalAdrBrick * row.pair_adr_pct / 100);
+    updateSignalWithClosedBar(book, {
+      timestamp_utc: m1Bar.timestamp_utc,
+      open: eventOpen,
+      high: Math.max(eventOpen, eventClose),
+      low: Math.min(eventOpen, eventClose),
+      close: eventClose,
+    }, settings);
+    book.eventOpen = eventClose;
+    moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  }
+}
+
+function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, runtimeOptions: Options) {
+  if (runtimeOptions.signalClock === "adr_event") {
+    updateAdrEventSignalBook(book, row, index, runtimeOptions.signalSettings, runtimeOptions.signalAdrBrick);
+    return;
+  }
+  updateM1SignalBook(book, row, index, runtimeOptions.signalSettings);
 }
 
 function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side: Side, settings: SignalSettings, candidateBSide: Side) {
@@ -789,6 +884,15 @@ function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side
     return false;
   }
   return false;
+}
+
+function maExpansionAllows(signal: SignalSnapshot, side: Side, markPrice: number, currentAdrPct: number, minExpansionAdr: number) {
+  if (minExpansionAdr <= 0) return true;
+  if (signal.david_ma === null || currentAdrPct <= 0) return false;
+  const expansionAdr = side === "LONG"
+    ? ((signal.david_ma - markPrice) / signal.david_ma) * 100 / currentAdrPct
+    : ((markPrice - signal.david_ma) / signal.david_ma) * 100 / currentAdrPct;
+  return expansionAdr >= minExpansionAdr;
 }
 
 function directedMoveFromCycle(cycle: Cycle, markPrice: number, currentAdrPct: number) {
@@ -872,6 +976,7 @@ function createStats(): RuntimeStats {
     activationAllowedShort: 0,
     activationBlockedLong: 0,
     activationBlockedShort: 0,
+    activationBlockedExpansion: 0,
     activationStartedLong: 0,
     activationStartedShort: 0,
     closeEvents: [],
@@ -1021,7 +1126,7 @@ function addGridFills(options: {
   runtimeOptions: Options;
 }) {
   const directed = directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct);
-  while (directed <= -SPACING_ADR * options.cycle.next_adverse_fill_level) {
+  while (directed <= -options.runtimeOptions.spacingAdr * options.cycle.next_adverse_fill_level) {
     const level = options.cycle.next_adverse_fill_level;
     const opened = openFill({
       ...options,
@@ -1031,16 +1136,32 @@ function addGridFills(options: {
     if (!opened) break;
     options.cycle.next_adverse_fill_level += 1;
   }
-  while (directed >= SPACING_ADR * options.cycle.next_favorable_fill_level) {
-    const level = options.cycle.next_favorable_fill_level;
-    const opened = openFill({
-      ...options,
-      kind: "favorable_expansion",
-      levelIndex: level,
-    });
-    if (!opened) break;
-    options.cycle.next_favorable_fill_level += 1;
+  if (options.runtimeOptions.gridAddMode === "adverse_and_favorable") {
+    while (directed >= options.runtimeOptions.spacingAdr * options.cycle.next_favorable_fill_level) {
+      const level = options.cycle.next_favorable_fill_level;
+      const opened = openFill({
+        ...options,
+        kind: "favorable_expansion",
+        levelIndex: level,
+      });
+      if (!opened) break;
+      options.cycle.next_favorable_fill_level += 1;
+    }
   }
+}
+
+function targetReached(options: {
+  cycle: Cycle;
+  signal: SignalSnapshot;
+  markPrice: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const pnlAdr = round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct));
+  if (options.runtimeOptions.targetMode === "fixed_adr") return pnlAdr >= options.runtimeOptions.targetAdr;
+  const ma = options.signal.david_ma;
+  if (ma === null || pnlAdr <= 0) return false;
+  return options.cycle.side === "LONG" ? options.markPrice >= ma : options.markPrice <= ma;
 }
 
 function closeCycle(options: {
@@ -1137,14 +1258,23 @@ function replayTick(options: {
   for (const side of ["LONG", "SHORT"] as const) {
     let cycle = sideCycle(book, side);
     if (!cycle) {
-      const allowed = options.activationRuleId === "raw_both"
+      const signalAllowed = options.activationRuleId === "raw_both"
         ? true
         : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
+      const expansionAllowed = signalAllowed && maExpansionAllows(
+        options.signal,
+        side,
+        options.markPrice,
+        options.row.pair_adr_pct,
+        options.runtimeOptions.minMaExpansionAdr,
+      );
+      const allowed = signalAllowed && expansionAllowed;
       options.stats.activationChecks += 1;
       if (side === "LONG" && allowed) options.stats.activationAllowedLong += 1;
       if (side === "SHORT" && allowed) options.stats.activationAllowedShort += 1;
       if (side === "LONG" && !allowed) options.stats.activationBlockedLong += 1;
       if (side === "SHORT" && !allowed) options.stats.activationBlockedShort += 1;
+      if (signalAllowed && !expansionAllowed) options.stats.activationBlockedExpansion += 1;
       if (!allowed) continue;
       cycle = startCycle({
         stats: options.stats,
@@ -1161,7 +1291,13 @@ function replayTick(options: {
       continue;
     }
     observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
-    if (round6(cycleNetPnlAdr(cycle, options.markPrice, options.row.pair_adr_pct)) >= TARGET_ADR) {
+    if (targetReached({
+      cycle,
+      signal: options.signal,
+      markPrice: options.markPrice,
+      currentAdrPct: options.row.pair_adr_pct,
+      runtimeOptions: options.runtimeOptions,
+    })) {
       const completedResetOrdinal = incrementSideReset(book, side);
       closeCycle({
         stats: options.stats,
@@ -1228,7 +1364,7 @@ function replayRowForVariants(options: {
         });
       }
     }
-    updateSignalBook(signalBook, options.row, index, options.runtimeOptions.signalSettings);
+    updateSignalBook(signalBook, options.row, index, options.runtimeOptions);
   }
 }
 
@@ -1380,6 +1516,13 @@ function summarize(options: {
     stochastic_settings: stochasticSettingsLabel(settings),
     symbol_universe: options.selectedPairs.join(","),
     bar_path_mode: options.runtimeOptions.barPathMode,
+    signal_clock: options.runtimeOptions.signalClock,
+    signal_adr_brick: options.runtimeOptions.signalAdrBrick,
+    target_mode: options.runtimeOptions.targetMode,
+    target_adr: options.runtimeOptions.targetAdr,
+    spacing_adr: options.runtimeOptions.spacingAdr,
+    min_ma_expansion_adr: options.runtimeOptions.minMaExpansionAdr,
+    grid_add_mode: options.runtimeOptions.gridAddMode,
     date_range: `${options.selectedWeeks.at(0) ?? "none"}..${options.selectedWeeks.at(-1) ?? "none"}`,
     price_bundle_id: options.manifest.price_bundle_id ?? null,
     warehouse_manifest_id: options.manifest.manifest_id,
@@ -1412,6 +1555,7 @@ function summarize(options: {
     activation_checks: options.stats.activationChecks,
     activation_blocked_long: options.stats.activationBlockedLong,
     activation_blocked_short: options.stats.activationBlockedShort,
+    activation_blocked_expansion: options.stats.activationBlockedExpansion,
     activation_started_long: options.stats.activationStartedLong,
     activation_started_short: options.stats.activationStartedShort,
     activation_long_allow_pct: longChecks ? round2((options.stats.activationAllowedLong / longChecks) * 100) : null,
@@ -1438,7 +1582,14 @@ function validationRows(options: {
     { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
     { check: "continuous_carried_inventory", value: true, expected: true, passed: true },
     { check: "weekly_sample_end_close_disabled", value: true, expected: true, passed: true },
-    { check: "target_reset_uses_price_adr_pnl", value: true, expected: true, passed: true },
+    { check: "target_reset_uses_selected_target_mode", value: options.runtimeOptions.targetMode, expected: "fixed_adr_or_david_ma_reversion", passed: true },
+    { check: "target_mode", value: options.runtimeOptions.targetMode, expected: "explicit", passed: true },
+    { check: "target_adr", value: options.runtimeOptions.targetAdr, expected: ">0", passed: options.runtimeOptions.targetAdr > 0 },
+    { check: "spacing_adr", value: options.runtimeOptions.spacingAdr, expected: ">0", passed: options.runtimeOptions.spacingAdr > 0 },
+    { check: "signal_clock", value: options.runtimeOptions.signalClock, expected: "explicit", passed: true },
+    { check: "signal_adr_brick", value: options.runtimeOptions.signalAdrBrick, expected: ">0", passed: options.runtimeOptions.signalAdrBrick > 0 },
+    { check: "min_ma_expansion_adr", value: options.runtimeOptions.minMaExpansionAdr, expected: ">=0", passed: options.runtimeOptions.minMaExpansionAdr >= 0 },
+    { check: "grid_add_mode", value: options.runtimeOptions.gridAddMode, expected: "explicit", passed: true },
     { check: "bar_path_mode", value: options.runtimeOptions.barPathMode, expected: "explicit", passed: true },
     { check: "quote_currency_pnl_converted_to_usd", value: true, expected: true, passed: true },
     { check: "swap_triggers_target_reset", value: false, expected: false, passed: true },
@@ -1459,14 +1610,19 @@ function metricRows() {
   return [
     { metric: "continuous_carried_position_truth_replay", definition: "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation" },
     { metric: "bar_path_mode", definition: "intrabar path used for each warehouse M1 bar; close mode uses close-only marks, OHLC modes synthesize four tester-like marks per bar" },
+    { metric: "signal_clock", definition: "clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes" },
+    { metric: "signal_adr_brick", definition: "ADR movement required to complete one synthetic signal bar when signal_clock is adr_event" },
     { metric: "closed_price_pnl_usd", definition: "target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected" },
     { metric: "total_commission_usd", definition: "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report" },
     { metric: "total_swap_usd", definition: "position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates" },
     { metric: "end_liquidation_price_pnl_usd", definition: "price PnL from all positions still open at the final warehouse mark" },
     { metric: "max_open_positions", definition: "maximum simultaneous fill count across carried side grids" },
     { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
+    { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
+    { metric: "grid_add_mode", definition: "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor" },
     { metric: "activation_started_long/short", definition: "number of initial side cycles started after the activation gate allowed that side" },
     { metric: "activation_blocked_long/short", definition: "number of missing-side start checks rejected by the activation gate" },
+    { metric: "activation_blocked_expansion", definition: "number of missing-side start checks where the signal allowed the side but price was not far enough from the David MA" },
   ].map((row) => withHash(row));
 }
 
@@ -1484,6 +1640,13 @@ function renderReport(options: {
     "signal_settings_id",
     "symbol_universe",
     "bar_path_mode",
+    "signal_clock",
+    "signal_adr_brick",
+    "target_mode",
+    "target_adr",
+    "spacing_adr",
+    "min_ma_expansion_adr",
+    "grid_add_mode",
     "weeks_replayed",
     "pairs_replayed",
     "final_balance_usd",
@@ -1501,6 +1664,7 @@ function renderReport(options: {
     "activation_started_short",
     "activation_blocked_long",
     "activation_blocked_short",
+    "activation_blocked_expansion",
     "activation_long_allow_pct",
     "activation_short_allow_pct",
     "summary_only",
@@ -1524,12 +1688,13 @@ Generated: \`${new Date().toISOString()}\`
 - Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
 - David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
 - Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.
+- Signal clock: \`${options.runtimeOptions.signalClock}\`, ADR event brick \`${options.runtimeOptions.signalAdrBrick}\`.
 - Summary-only output: \`${options.runtimeOptions.summaryOnly}\`.
 - Activation uses closed warehouse bars and controls only missing side-cycle starts.
-- Target \`${TARGET_ADR}\` ADR, spacing \`${SPACING_ADR}\` ADR, lot size \`${options.runtimeOptions.lotSize}\`.
+- Target mode \`${options.runtimeOptions.targetMode}\`, fixed target \`${options.runtimeOptions.targetAdr}\` ADR used only by fixed_adr mode, spacing \`${options.runtimeOptions.spacingAdr}\` ADR, minimum MA expansion \`${options.runtimeOptions.minMaExpansionAdr}\` ADR, grid add mode \`${options.runtimeOptions.gridAddMode}\`, lot size \`${options.runtimeOptions.lotSize}\`.
 - Bar path mode: \`${options.runtimeOptions.barPathMode}\`.
 - Carries side-grid positions across warehouse week boundaries.
-- Target resets are based on price ADR PnL only, matching the EA leg-reset decision.
+- Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA.
 - Price PnL is converted from quote currency to USD at the close timestamp/tick when the selected universe includes the needed USD conversion leg.
 - Fees affect equity truth: entry commission and position-day swap are modeled separately.
 - Terminal liquidation is explicit and reported separately.
