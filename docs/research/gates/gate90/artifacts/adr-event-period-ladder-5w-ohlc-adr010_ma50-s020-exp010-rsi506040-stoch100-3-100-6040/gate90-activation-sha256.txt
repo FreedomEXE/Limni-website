@@ -1,12 +1,13 @@
 gate_id Gate 90: grid-activation-accuracy-one-sided-selection
 command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
-generated_at 2026-07-02T12:56:42.398Z
-git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+generated_at 2026-07-02T13:33:39.950Z
+git_commit d29a71c0105dc9133b3415a228d1796e9dedb693
 summary_json B784D77F825B3D319D5F8FA6FD91133516EAE02EBC43610DDD79805E0BD06BF4 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
 weekly_json 602845EE2032349E7E58BF4FC8364CDECF0A709FFEEB2EB7505CDB43ACC7CFED docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
 close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 8563024418BCD496AA291E8B8512E7E2C8253A6B0FEB029B761D7DA9CF6A836A docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
 validation_json 7487A9946A8E4EF4167088B9BEB4B7DF7AE7CCF642B8084ADAC6D56BCBD1B335 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
-metric_definitions_json 99FD70742C0BAF6069DCEEE0DD36208137E8916DE2BC93D695B3C67B9DAA06C0 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
-command_receipt D96DAAA3A392D863CB20ED756C97FCA084C7D6FCAC61766F975DB1389F2C46BC docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
-run_summary_json 1CF49FCA3DC6DFFCF8D7D3DA326D3B16C204B11996AD16DDD5FCC94A9F3260F8 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
-report 0142C714055C7CD319264A3ACD89CBDAC1066DB087FD285B0E9CBA25AFFA0A2B docs/research/gates/gate90/GATE90_ADR_EVENT_PERIOD_LADDER_5W_OHLC_ADR010_MA50_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md
+metric_definitions_json 3E2825BEA3A6C7F4A21FF337A53782A705E07AF6C6BC98911526D2C89A27003E docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt F511424C32DAA4AB588BF9F98D2DD82A1DF7AB92B396C0D0142325EBD3EE8C66 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 59BE8B8EC361103C64503BE1180C26D028D65CCA34067FF5BEE927E98B0E7281 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 8226399FCD3E0B19084766DB34F46C6BDE28A6DF5F1F8FA3867B2693490CC8DA docs/research/gates/gate90/GATE90_ADR_EVENT_PERIOD_LADDER_5W_OHLC_ADR010_MA50_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

@@ -365,6 +365,7 @@
       "content_hash": "C3524220CBF4AB8A5038F90513BD40163737DE5414231FD1EEB4AFB7A04B68EB"
     }
   ],
+  "terminal_inventory_rows": 92,
   "validation_rows": [
     {
       "check": "gate74b_verdict",

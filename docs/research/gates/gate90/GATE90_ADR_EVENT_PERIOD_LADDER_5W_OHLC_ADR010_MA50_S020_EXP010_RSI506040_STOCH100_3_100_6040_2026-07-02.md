@@ -1,6 +1,6 @@
 # Gate 90 Grid Activation Accuracy One-Sided Selection
 
-Generated: `2026-07-02T12:56:42.396Z`
+Generated: `2026-07-02T13:33:39.947Z`
 
 ## Verdict
 
@@ -55,6 +55,8 @@ Generated: `2026-07-02T12:56:42.396Z`
 | total_commission_usd | entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report |
 | total_swap_usd | position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates |
 | end_liquidation_price_pnl_usd | price PnL from all positions still open at the final warehouse mark |
+| terminal_inventory_rows | one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL |
+| side_exit_distance_to_ma_adr | side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA |
 | max_open_positions | maximum simultaneous fill count across carried side grids |
 | activation_rule_id | one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes |
 | min_ma_expansion_adr | minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA |
@@ -100,6 +102,8 @@ Generated: `2026-07-02T12:56:42.396Z`
 - weeklyCsv: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.csv`
 - closeEventsJson: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json`
 - closeEventsCsv: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.csv`
+- terminalInventoryJson: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json`
+- terminalInventoryCsv: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.csv`
 - validationJson: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json`
 - validationCsv: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.csv`
 - metricDefinitionsJson: `docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json`

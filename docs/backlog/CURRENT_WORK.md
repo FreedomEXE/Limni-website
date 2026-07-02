@@ -62,6 +62,12 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_5W_RECENT_OHLC_DAVID1006040_STOCH100_3_100_2026-07-02.md`.
 - ADR-clock handoff report:
   `docs/research/gates/gate90/GATE90_ADR_CLOCK_EXECUTION_RESEARCH_HANDOFF_2026-07-02.md`.
+- ADR-event brick/MA ladder with terminal attribution:
+  `docs/research/gates/gate90/GATE90_ADR_EVENT_BRICK_MA_LADDER_TERMINAL_ATTRIBUTION_2026-07-02.md`.
+- Session-window daily flatten comparison:
+  `docs/research/gates/gate90/GATE90_SESSION_WINDOW_DAILY_FLATTEN_COMPARISON_2026-07-02.md`.
+- Session-window full scorecard:
+  `docs/research/gates/gate90/GATE90_SESSION_WINDOW_FULL_SCORECARD_2026-07-02.md`.
 
 Gate 90 read:
 
@@ -134,18 +140,80 @@ Gate 90 read:
   ADR `0.10` / MA50 / `david_contra` net `+$1,422.93`, entries `2,078`,
   max open `113`, terminal `77`; ADR `0.05` / MA50 / `david_contra`
   net `+$1,546.45`, entries `3,400`, max open `109`, terminal `99`.
-- Interpretation: M1 still wins on net under the tested settings, but ADR-event
-  bars are the preferred research direction because they replace arbitrary
-  chart timeframes with ADR movement clocks. The next work should tune ADR
-  event bricks and MA periods together, then add terminal inventory attribution
-  before one-year or full-history runs.
+- Gate 90 ADR-event brick/MA ladder completed the fixed 5-week OHLC surface
+  across bricks `0.025`, `0.05`, `0.075`, `0.10` and MA periods `25`, `50`,
+  `75`, `100`, with `terminal-inventory.rows.*` added to the runner.
+- Best `raw_both` benchmark row: ADR `0.025` / MA25 net `+$3,105.52`,
+  entries `9,420`, max open `185`, terminal `112`, terminal price PnL
+  `-$486.08`. Benchmark only; still no-direction.
+- Best `david_contra` net row: ADR `0.05` / MA25 net `+$1,664.13`,
+  entries `4,077`, max open `102`, terminal `89`, terminal price PnL
+  `-$232.99`.
+- Best current `david_contra` balance row: ADR `0.075` / MA25 net
+  `+$1,528.62`, entries `3,297`, max open `120`, terminal `82`, terminal
+  price PnL `-$101.11`.
+- Terminal attribution shows concentrated recurring `david_contra` damage,
+  led by `GBPNZD SHORT` aggregate terminal net `-$1,016.29`, then
+  `EURNZD SHORT` `-$478.41`, `NZDUSD LONG` `-$439.15`, `USDJPY SHORT`
+  `-$249.41`, and `GBPCHF SHORT` `-$243.90` across the 16-cell ladder.
+- Runner now supports session controls:
+  `--session-mode=continuous|ny_daily_window`, `--session-time-zone`,
+  `--session-trade-start-et`, `--session-trade-end-et`,
+  `--session-flatten-et`, `--session-sunday-start-et`, and manual
+  `--session-flatten-overrides-et=YYYY-MM-DD=HH:mm,...`.
+- In `ny_daily_window`, starts/adds are allowed only inside the clean New York
+  window, targets can still close whenever ticks exist, no new Sunday activity
+  starts before `20:00 ET`, Friday evening reopen is blocked, and unresolved
+  cycles are closed as `session_flatten`.
+- Session-window focused 5-week comparison completed with daily flatten at
+  `16:00 ET`, clean activity cutoff at `15:45 ET`, reopen at `18:05 ET`, and
+  Sunday start at `20:00 ET`.
+- Session-window key rows: `raw_both` ADR `0.025` / MA25 net `+$1,234.83`,
+  entries `9,283`, max open `80`, terminal `0`; `david_contra` ADR `0.025` /
+  MA25 net `+$667.18`, entries `5,314`, max open `56`, terminal `0`;
+  `david_contra` ADR `0.05` / MA25 net `+$552.10`, entries `4,025`, max open
+  `73`, terminal `0`; `david_contra` ADR `0.10` / MA50 net `+$540.88`,
+  entries `2,317`, max open `93`, terminal `0`.
+- Interpretation: the daily window removes terminal inventory and mostly
+  eliminates swap exposure, but it converts unresolved grid inventory into
+  realized session-flatten losses. This is a healthier live-shaped execution
+  boundary, but it lowers net materially versus continuous carry. Explicit
+  spread and slippage are still not modeled.
+- Candidate B did not beat `david_contra` in the focused session-window cells.
+  Keep it as a later regime/bias candidate, not the primary rescue mechanism.
+- Full-stat session-window reruns were completed without `--summary-only`, so
+  `close-events.rows.*` are available for event-level PF, win rate, payoff, and
+  flatten attribution. Full scorecard key rows:
+  `raw_both ADR0.025/MA25` net `+$1,234.83`, event PF `1.7838`, weekly PF
+  `31.7642`, max equity DD `-$40.14`, net/equity-DD `30.7631`;
+  best `david_contra` is `ADR0.025/MA25` net `+$667.18`, event PF `1.7505`,
+  weekly PF `125.7262`, max equity DD `-$5.35`, net/equity-DD `124.7065`;
+  best event PF row is `ADR0.025/MA25 stoch_contra` with event PF `1.882`,
+  net `+$497.80`, max open `42`.
+- Current read after Freedom's spread/slippage comment: inside the clean
+  session window, ordinary spread/slippage is not the primary blocker. The next
+  external risk to model is scheduled high-impact red-news blackout behavior.
+- Freedom's latest direction: the numbers remain promising. Keep ADR `0.025`
+  in the research set because it is attractive, but expect a final live shape
+  may prefer ADR `0.10` bricks for sturdier execution. Before optimizing more,
+  save and push the current state, then run random out-of-sample windows instead
+  of immediately running the full seven-year history. Only after that decide
+  whether to refactor the current EA or build a new MT5 EA from scratch.
 
 Next action:
 
-- Continue Gate 90 ADR-clock research from the handoff report. Start with ADR
-  bricks `0.025`, `0.05`, `0.075`, `0.10` and David MA periods `25`, `50`,
-  `75`, `100`, keeping execution fixed first. Add terminal inventory
-  attribution/cleanup before one-year and full-history windows.
+- Review the full session-window scorecard with Freedom before moving on.
+- If accepted, run random out-of-sample session-window windows before any
+  further optimization. Keep ADR `0.025`, `0.05`, `0.075`, and `0.10` cells in
+  view, with special attention to whether ADR `0.10` remains healthier out of
+  sample.
+- After OOS evidence, consider a simple red-news blackout boundary around
+  scheduled high-impact events while keeping the same session-window cells and
+  raw/david/stoch/Candidate B comparison set.
+- Do not open pair filters, COT/Candidate B redesign, one-year windows, or
+  full-history windows until the full scorecard and OOS plan are accepted.
+- Do not refactor the current EA or start a new EA until the OOS session-window
+  evidence is reviewed.
 
 Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
 optimization outside the Gate 90 ADR-clock execution surface, pair-specific

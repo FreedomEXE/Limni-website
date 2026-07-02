@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T14:03:35.159Z
+git_commit d29a71c0105dc9133b3415a228d1796e9dedb693
+summary_json AE7EB24E2CA253F163E13DC22939F2AC0918B8D3204C75D2BDD3B07A10F8A135 docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json 18E8B21CB03B774B0FF20E04973B4320F800621DAD12B32F602744640347979D docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
+validation_json B4E629A7C0EBBA6F86A1E8DE92D46703A1B56E413CBBC1B4CE02CCB6DBBCD394 docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json BD4EA1CF9A2C022C8A4FFA7E0BEFBF339A180A96BF5A4A23E67A90B4BEBA071E docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt B889E9320F284BEB442CDC7AD5F8C47908D29F9E5AA1130738F7326C8726301A docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 1B86FEBAF14809A46B152331B0A4A13144F783A4F67E35099666944224392596 docs/research/gates/gate90/artifacts/session-window-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 211CC6867A41D3D5D80B715316EAC7CE43DD1DA0C9A6098E0F69257303E1DF42 docs/research/gates/gate90/GATE90_SESSION_WINDOW_5W_OHLC_ADR0025_MA25_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

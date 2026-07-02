@@ -47,12 +47,13 @@ const DEFAULT_SIGNAL_SETTINGS = {
 
 type Side = "LONG" | "SHORT";
 type FillKind = "initial" | "adverse_recovery" | "favorable_expansion";
-type CloseReason = "target" | "end_of_test";
+type CloseReason = "target" | "session_flatten" | "end_of_test";
 type BarPathMode = "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
 type DavidState = "UP" | "DOWN";
 type TargetMode = "fixed_adr" | "david_ma_reversion";
 type GridAddMode = "adverse_and_favorable" | "adverse_only";
 type SignalClock = "m1" | "adr_event";
+type SessionMode = "continuous" | "ny_daily_window";
 type ActivationRuleId =
   | "raw_both"
   | "candidate_b"
@@ -164,6 +165,34 @@ type CloseEvent = {
   max_fill_age_days: number;
 };
 
+type TerminalInventoryRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  cycle_id: string;
+  pair: string;
+  side: Side;
+  terminal_timestamp_utc: string;
+  anchor_week_open_utc: string;
+  start_timestamp_utc: string;
+  fill_count: number;
+  adverse_fill_count: number;
+  expansion_fill_count: number;
+  max_add_depth: number;
+  max_fill_age_days: number;
+  avg_fill_age_days: number;
+  terminal_mark_price: number;
+  terminal_david_ma: number | null;
+  side_exit_distance_to_ma_adr: number | null;
+  directed_move_from_anchor_adr: number;
+  price_pnl_adr: number;
+  liquidation_price_pnl_usd: number;
+  liquidation_swap_usd: number;
+  entry_commission_usd: number;
+  liquidation_net_usd: number;
+  min_pnl_adr: number;
+  max_pnl_adr: number;
+};
+
 type WeeklyTruthRow = {
   variant_id: string;
   week_open_utc: string;
@@ -199,6 +228,13 @@ type SummaryRow = {
   bar_path_mode: BarPathMode;
   signal_clock: SignalClock;
   signal_adr_brick: number;
+  session_mode: SessionMode;
+  session_time_zone: string;
+  session_trade_start_et: string;
+  session_trade_end_et: string;
+  session_flatten_et: string;
+  session_sunday_start_et: string;
+  session_flatten_overrides_et: string;
   target_mode: TargetMode;
   target_adr: number;
   spacing_adr: number;
@@ -221,6 +257,10 @@ type SummaryRow = {
   total_commission_usd: number;
   total_swap_usd: number;
   target_reset_count: number;
+  session_flatten_count: number;
+  session_flatten_positions: number;
+  session_flatten_price_pnl_usd: number;
+  session_flatten_swap_usd: number;
   entries_opened: number;
   closed_positions: number;
   end_liquidation_positions: number;
@@ -249,7 +289,7 @@ type SummaryRow = {
   mt5_reference_end_liquidation_positions: number | null;
   net_delta_vs_mt5_usd: number | null;
   summary_only: boolean;
-  metric_semantics: "continuous_carried_position_truth_replay";
+  metric_semantics: "continuous_carried_position_truth_replay" | "session_window_position_truth_replay";
   content_hash?: string;
 };
 
@@ -285,6 +325,13 @@ type Options = {
   barPathMode: BarPathMode;
   signalClock: SignalClock;
   signalAdrBrick: number;
+  sessionMode: SessionMode;
+  sessionTimeZone: string;
+  sessionTradeStartEtMinutes: number;
+  sessionTradeEndEtMinutes: number;
+  sessionFlattenEtMinutes: number;
+  sessionSundayStartEtMinutes: number;
+  sessionFlattenOverridesEt: Record<string, number>;
   activationRuleId: ActivationRuleId;
   activationRuleIds: ActivationRuleId[];
   targetMode: TargetMode;
@@ -300,12 +347,27 @@ type RuntimeVariantState = {
   previousEquityUsd: number;
 };
 
+type LocalSessionParts = {
+  dateKey: string;
+  weekday: number;
+  minutes: number;
+};
+
+type SessionTickState = {
+  canOpenOrAdd: boolean;
+  shouldFlatten: boolean;
+};
+
 type RuntimeStats = {
   realizedPricePnlUsd: number;
   realizedCommissionUsd: number;
   realizedSwapUsd: number;
   endLiquidationPricePnlUsd: number;
   endLiquidationSwapUsd: number;
+  sessionFlattenPricePnlUsd: number;
+  sessionFlattenSwapUsd: number;
+  sessionFlattenCount: number;
+  sessionFlattenPositions: number;
   targetResetCount: number;
   fillsOpened: number;
   closedPositions: number;
@@ -326,6 +388,7 @@ type RuntimeStats = {
   activationStartedShort: number;
   closeEvents: CloseEvent[];
   weeklyRows: WeeklyTruthRow[];
+  terminalInventoryRows: TerminalInventoryRow[];
 };
 
 type ClosedBar = {
@@ -400,6 +463,13 @@ function parseOptions(): Options {
     barPathMode: parseBarPathMode(args.get("--bar-path-mode") ?? args.get("--bar-path") ?? "ohlc_high_low"),
     signalClock: parseSignalClock(args.get("--signal-clock") ?? "m1"),
     signalAdrBrick: Number(args.get("--signal-adr-brick") ?? 0.1),
+    sessionMode: parseSessionMode(args.get("--session-mode") ?? "continuous"),
+    sessionTimeZone: args.get("--session-time-zone") ?? "America/New_York",
+    sessionTradeStartEtMinutes: parseTimeOfDayMinutes(args.get("--session-trade-start-et") ?? "18:05", "--session-trade-start-et"),
+    sessionTradeEndEtMinutes: parseTimeOfDayMinutes(args.get("--session-trade-end-et") ?? "15:45", "--session-trade-end-et"),
+    sessionFlattenEtMinutes: parseTimeOfDayMinutes(args.get("--session-flatten-et") ?? "16:00", "--session-flatten-et"),
+    sessionSundayStartEtMinutes: parseTimeOfDayMinutes(args.get("--session-sunday-start-et") ?? "20:00", "--session-sunday-start-et"),
+    sessionFlattenOverridesEt: parseSessionFlattenOverrides(args.get("--session-flatten-overrides-et") ?? ""),
     activationRuleId: activationRuleIds[0]!,
     activationRuleIds,
     targetMode: parseTargetMode(args.get("--target-mode") ?? "fixed_adr"),
@@ -461,6 +531,46 @@ function parseGridAddMode(value: string): GridAddMode {
 function parseSignalClock(value: string): SignalClock {
   if (value === "m1" || value === "adr_event") return value;
   throw new Error(`Unsupported --signal-clock=${value}; expected m1 or adr_event`);
+}
+
+function parseSessionMode(value: string): SessionMode {
+  if (value === "continuous" || value === "ny_daily_window") return value;
+  throw new Error(`Unsupported --session-mode=${value}; expected continuous or ny_daily_window`);
+}
+
+function parseTimeOfDayMinutes(value: string, flag: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!match) throw new Error(`Unsupported ${flag}=${value}; expected HH:mm in 24-hour local session time`);
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function parseSessionFlattenOverrides(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  const overrides: Record<string, number> = {};
+  for (const part of trimmed.split(",")) {
+    const entry = part.trim();
+    if (!entry) continue;
+    const [dateKey, time, extra] = entry.split("=");
+    if (!dateKey || !time || extra !== undefined || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      throw new Error(`Unsupported --session-flatten-overrides-et entry=${entry}; expected YYYY-MM-DD=HH:mm`);
+    }
+    overrides[dateKey] = parseTimeOfDayMinutes(time, "--session-flatten-overrides-et");
+  }
+  return overrides;
+}
+
+function formatTimeOfDay(minutes: number) {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function sessionFlattenOverridesLabel(overrides: Record<string, number>) {
+  return Object.entries(overrides)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([dateKey, minutes]) => `${dateKey}=${formatTimeOfDay(minutes)}`)
+    .join(",");
 }
 
 function parseActivationRuleId(value: string): ActivationRuleId {
@@ -586,6 +696,15 @@ function renderDurableCommand(options: Options) {
     `--bar-path-mode=${options.barPathMode}`,
     `--signal-clock=${options.signalClock}`,
     `--signal-adr-brick=${options.signalAdrBrick}`,
+    `--session-mode=${options.sessionMode}`,
+    `--session-time-zone=${options.sessionTimeZone}`,
+    `--session-trade-start-et=${formatTimeOfDay(options.sessionTradeStartEtMinutes)}`,
+    `--session-trade-end-et=${formatTimeOfDay(options.sessionTradeEndEtMinutes)}`,
+    `--session-flatten-et=${formatTimeOfDay(options.sessionFlattenEtMinutes)}`,
+    `--session-sunday-start-et=${formatTimeOfDay(options.sessionSundayStartEtMinutes)}`,
+    ...(sessionFlattenOverridesLabel(options.sessionFlattenOverridesEt)
+      ? [`--session-flatten-overrides-et=${sessionFlattenOverridesLabel(options.sessionFlattenOverridesEt)}`]
+      : []),
     `--target-mode=${options.targetMode}`,
     `--target-adr=${options.targetAdr}`,
     `--spacing-adr=${options.spacingAdr}`,
@@ -604,6 +723,114 @@ function renderDurableCommand(options: Options) {
     `--artifact-dir=${toRepoRelative(options.artifactDir)}`,
     `--report-path=${toRepoRelative(options.reportPath)}`,
   ].join(" ");
+}
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+const sessionFormatters = new Map<string, Intl.DateTimeFormat>();
+const localSessionPartsCache = new Map<string, LocalSessionParts>();
+
+function sessionFormatter(timeZone: string) {
+  const cached = sessionFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  sessionFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+function localSessionParts(timestampMs: number, timeZone: string): LocalSessionParts {
+  const cacheKey = `${timeZone}|${Math.floor(timestampMs / 60_000)}`;
+  const cached = localSessionPartsCache.get(cacheKey);
+  if (cached) return cached;
+  const parts = Object.fromEntries(
+    sessionFormatter(timeZone)
+      .formatToParts(new Date(timestampMs))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+  const weekday = WEEKDAY_INDEX[parts.weekday ?? ""];
+  if (weekday === undefined) throw new Error(`Could not resolve ${timeZone} weekday for ${new Date(timestampMs).toISOString()}`);
+  const parsed: LocalSessionParts = {
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+    weekday,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+  localSessionPartsCache.set(cacheKey, parsed);
+  return parsed;
+}
+
+function sessionFlattenMinutesForDate(options: Options, dateKey: string) {
+  return options.sessionFlattenOverridesEt[dateKey] ?? options.sessionFlattenEtMinutes;
+}
+
+function sessionTickState(options: Options, timestampMs: number): SessionTickState {
+  if (options.sessionMode === "continuous") return { canOpenOrAdd: true, shouldFlatten: false };
+  const local = localSessionParts(timestampMs, options.sessionTimeZone);
+  const flattenMinutes = sessionFlattenMinutesForDate(options, local.dateKey);
+  const morningCutoff = Math.min(options.sessionTradeEndEtMinutes, flattenMinutes);
+  const hasFlattenOverride = Object.prototype.hasOwnProperty.call(options.sessionFlattenOverridesEt, local.dateKey);
+
+  let canOpenOrAdd = false;
+  if (local.weekday === 0) {
+    canOpenOrAdd = local.minutes >= options.sessionSundayStartEtMinutes;
+  } else if (local.weekday >= 1 && local.weekday <= 4) {
+    canOpenOrAdd = local.minutes < morningCutoff || local.minutes >= options.sessionTradeStartEtMinutes;
+  } else if (local.weekday === 5) {
+    canOpenOrAdd = local.minutes < morningCutoff;
+  }
+
+  let shouldFlatten = false;
+  if (local.weekday >= 1 && local.weekday <= 4) {
+    shouldFlatten = local.minutes >= flattenMinutes && local.minutes < options.sessionTradeStartEtMinutes;
+  } else if (local.weekday === 5) {
+    shouldFlatten = local.minutes >= flattenMinutes;
+  } else if (hasFlattenOverride) {
+    shouldFlatten = local.minutes >= flattenMinutes && local.minutes < options.sessionTradeStartEtMinutes;
+  }
+
+  return { canOpenOrAdd, shouldFlatten };
+}
+
+function dateKeyDayNumber(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000);
+}
+
+function sessionFlattenElapsedSince(options: Options, previousTimestampMs: number | null, currentTimestampMs: number) {
+  if (options.sessionMode === "continuous" || previousTimestampMs === null || currentTimestampMs <= previousTimestampMs) return false;
+  const previous = localSessionParts(previousTimestampMs, options.sessionTimeZone);
+  const current = localSessionParts(currentTimestampMs, options.sessionTimeZone);
+  const currentFlattenMinutes = sessionFlattenMinutesForDate(options, current.dateKey);
+  if (previous.dateKey === current.dateKey) {
+    return previous.minutes < currentFlattenMinutes && current.minutes >= currentFlattenMinutes;
+  }
+
+  const previousFlattenMinutes = sessionFlattenMinutesForDate(options, previous.dateKey);
+  const previousDayCanFlatten = previous.weekday >= 1 && previous.weekday <= 5;
+  if (previousDayCanFlatten && previous.minutes < previousFlattenMinutes) return true;
+
+  const dayDelta = dateKeyDayNumber(current.dateKey) - dateKeyDayNumber(previous.dateKey);
+  if (dayDelta > 1) return true;
+
+  const currentDayCanFlatten = current.weekday >= 1 && current.weekday <= 5;
+  return currentDayCanFlatten && current.minutes >= currentFlattenMinutes;
 }
 
 function markPriceFromDirectedAdr(row: ReplayRow, directedAdr: number) {
@@ -961,6 +1188,10 @@ function createStats(): RuntimeStats {
     realizedSwapUsd: 0,
     endLiquidationPricePnlUsd: 0,
     endLiquidationSwapUsd: 0,
+    sessionFlattenPricePnlUsd: 0,
+    sessionFlattenSwapUsd: 0,
+    sessionFlattenCount: 0,
+    sessionFlattenPositions: 0,
     targetResetCount: 0,
     fillsOpened: 0,
     closedPositions: 0,
@@ -981,6 +1212,7 @@ function createStats(): RuntimeStats {
     activationStartedShort: 0,
     closeEvents: [],
     weeklyRows: [],
+    terminalInventoryRows: [],
   };
 }
 
@@ -1203,6 +1435,11 @@ function closeCycle(options: {
     options.stats.endLiquidationPricePnlUsd = round6(options.stats.endLiquidationPricePnlUsd + pricePnlUsd);
     options.stats.endLiquidationSwapUsd = round6(options.stats.endLiquidationSwapUsd + swapUsd);
     options.stats.endLiquidationPositions += options.cycle.fills.length;
+  } else if (options.closeReason === "session_flatten") {
+    options.stats.sessionFlattenPricePnlUsd = round6(options.stats.sessionFlattenPricePnlUsd + pricePnlUsd);
+    options.stats.sessionFlattenSwapUsd = round6(options.stats.sessionFlattenSwapUsd + swapUsd);
+    options.stats.sessionFlattenCount += 1;
+    options.stats.sessionFlattenPositions += options.cycle.fills.length;
   } else {
     options.stats.targetResetCount += 1;
   }
@@ -1235,6 +1472,77 @@ function closeCycle(options: {
   return event;
 }
 
+function terminalInventoryRow(options: {
+  activationRuleId: ActivationRuleId;
+  cycle: Cycle;
+  signal: SignalSnapshot | null;
+  markPrice: number;
+  currentAdrPct: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}): TerminalInventoryRow {
+  observeCycle(options.cycle, options.markPrice, options.currentAdrPct);
+  let pricePnlUsd = 0;
+  let swapUsd = 0;
+  let commissionUsd = 0;
+  let ageSum = 0;
+  let maxFillAgeDays = 0;
+  let maxAddDepth = 0;
+  for (const fill of options.cycle.fills) {
+    const age = fillAgeDays(fill, options.timestampMs);
+    ageSum += age;
+    maxFillAgeDays = Math.max(maxFillAgeDays, age);
+    maxAddDepth = Math.max(maxAddDepth, fill.level_index);
+    pricePnlUsd += fillPnlUsd({
+      pair: options.cycle.pair,
+      side: options.cycle.side,
+      fill,
+      markPrice: options.markPrice,
+      timestampUtc: options.timestampUtc,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+    });
+    swapUsd += fillSwapUsd(fill, options.timestampMs, options.runtimeOptions);
+    commissionUsd += fill.commission_usd;
+  }
+  const davidMa = options.signal?.david_ma ?? null;
+  const sideExitDistanceToMaAdr = davidMa !== null && davidMa > 0 && options.currentAdrPct > 0
+    ? options.cycle.side === "LONG"
+      ? ((davidMa - options.markPrice) / davidMa) * 100 / options.currentAdrPct
+      : ((options.markPrice - davidMa) / davidMa) * 100 / options.currentAdrPct
+    : null;
+  return {
+    variant_id: options.cycle.variant_id,
+    activation_rule_id: options.activationRuleId,
+    cycle_id: options.cycle.cycle_id,
+    pair: options.cycle.pair,
+    side: options.cycle.side,
+    terminal_timestamp_utc: options.timestampUtc,
+    anchor_week_open_utc: options.cycle.anchor_week_open_utc,
+    start_timestamp_utc: options.cycle.start_timestamp_utc,
+    fill_count: options.cycle.fills.length,
+    adverse_fill_count: options.cycle.fills.filter((fill) => fill.kind === "adverse_recovery").length,
+    expansion_fill_count: options.cycle.fills.filter((fill) => fill.kind === "favorable_expansion").length,
+    max_add_depth: maxAddDepth,
+    max_fill_age_days: round6(maxFillAgeDays),
+    avg_fill_age_days: round6(options.cycle.fills.length ? ageSum / options.cycle.fills.length : 0),
+    terminal_mark_price: round6(options.markPrice),
+    terminal_david_ma: davidMa === null ? null : round6(davidMa),
+    side_exit_distance_to_ma_adr: sideExitDistanceToMaAdr === null ? null : round6(sideExitDistanceToMaAdr),
+    directed_move_from_anchor_adr: round6(directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct)),
+    price_pnl_adr: round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct)),
+    liquidation_price_pnl_usd: round6(pricePnlUsd),
+    liquidation_swap_usd: round6(swapUsd),
+    entry_commission_usd: round6(commissionUsd),
+    liquidation_net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
+    min_pnl_adr: round6(options.cycle.min_pnl_adr),
+    max_pnl_adr: round6(options.cycle.max_pnl_adr),
+  };
+}
+
 function replayTick(options: {
   stats: RuntimeStats;
   books: Map<string, PairBook>;
@@ -1247,17 +1555,97 @@ function replayTick(options: {
   conversionRates: ConversionRates;
   runtimeOptions: Options;
   activationRuleId: ActivationRuleId;
+  sessionState: SessionTickState;
 }) {
   const book = options.books.get(options.row.pair) ?? createBook(options.row.pair);
   options.books.set(options.row.pair, book);
   const variant_id = variantId(options.activationRuleId);
+  const previousTimestampMs = book.last_timestamp_utc === null
+    ? null
+    : Date.parse(book.last_timestamp_utc) + (book.last_tick_index ?? 0);
+  const missedSessionFlatten = !options.sessionState.shouldFlatten
+    && sessionFlattenElapsedSince(options.runtimeOptions, previousTimestampMs, options.timestampMs);
   book.last_mark_price = options.markPrice;
   book.last_adr_pct = options.row.pair_adr_pct;
   book.last_timestamp_utc = options.timestampUtc;
   book.last_tick_index = options.tickIndex;
   for (const side of ["LONG", "SHORT"] as const) {
     let cycle = sideCycle(book, side);
-    if (!cycle) {
+    if (cycle) {
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
+      if (missedSessionFlatten) {
+        closeCycle({
+          stats: options.stats,
+          cycle,
+          closeReason: "session_flatten",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal: null,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      if (targetReached({
+        cycle,
+        signal: options.signal,
+        markPrice: options.markPrice,
+        currentAdrPct: options.row.pair_adr_pct,
+        runtimeOptions: options.runtimeOptions,
+      })) {
+        const completedResetOrdinal = incrementSideReset(book, side);
+        closeCycle({
+          stats: options.stats,
+          cycle,
+          closeReason: "target",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      if (options.sessionState.shouldFlatten) {
+        closeCycle({
+          stats: options.stats,
+          cycle,
+          closeReason: "session_flatten",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal: null,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      if (!options.sessionState.canOpenOrAdd) continue;
+      addGridFills({
+        stats: options.stats,
+        book,
+        cycle,
+        markPrice: options.markPrice,
+        timestampUtc: options.timestampUtc,
+        timestampMs: options.timestampMs,
+        currentAdrPct: options.row.pair_adr_pct,
+        runtimeOptions: options.runtimeOptions,
+      });
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
+      continue;
+    }
+    if (options.sessionState.canOpenOrAdd) {
       const signalAllowed = options.activationRuleId === "raw_both"
         ? true
         : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
@@ -1290,42 +1678,6 @@ function replayTick(options: {
       setSideCycle(book, side, cycle);
       continue;
     }
-    observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
-    if (targetReached({
-      cycle,
-      signal: options.signal,
-      markPrice: options.markPrice,
-      currentAdrPct: options.row.pair_adr_pct,
-      runtimeOptions: options.runtimeOptions,
-    })) {
-      const completedResetOrdinal = incrementSideReset(book, side);
-      closeCycle({
-        stats: options.stats,
-        cycle,
-        closeReason: "target",
-        markPrice: options.markPrice,
-        currentAdrPct: options.row.pair_adr_pct,
-        timestampUtc: options.timestampUtc,
-        timestampMs: options.timestampMs,
-        tickIndex: options.tickIndex,
-        conversionRates: options.conversionRates,
-        runtimeOptions: options.runtimeOptions,
-        completedResetOrdinal,
-      });
-      setSideCycle(book, side, null);
-      continue;
-    }
-    addGridFills({
-      stats: options.stats,
-      book,
-      cycle,
-      markPrice: options.markPrice,
-      timestampUtc: options.timestampUtc,
-      timestampMs: options.timestampMs,
-      currentAdrPct: options.row.pair_adr_pct,
-      runtimeOptions: options.runtimeOptions,
-    });
-    observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
   }
   observeStats(options.stats, options.books);
 }
@@ -1348,6 +1700,7 @@ function replayRowForVariants(options: {
     for (let tickIndex = 0; tickIndex < directedMarks.length; tickIndex += 1) {
       const timestampMs = baseTimestampMs + tickIndex;
       const markPrice = markPriceFromDirectedAdr(options.row, directedMarks[tickIndex]!);
+      const sessionState = sessionTickState(options.runtimeOptions, timestampMs);
       for (const variantState of options.variantStates) {
         replayTick({
           stats: variantState.stats,
@@ -1361,6 +1714,7 @@ function replayRowForVariants(options: {
           conversionRates: options.conversionRates,
           runtimeOptions: options.runtimeOptions,
           activationRuleId: variantState.activationRuleId,
+          sessionState,
         });
       }
     }
@@ -1441,17 +1795,40 @@ function addWeeklySnapshot(options: {
   return equity;
 }
 
-function liquidateEnd(options: { stats: RuntimeStats; books: Map<string, PairBook>; conversionRates: ConversionRates; runtimeOptions: Options }) {
+function liquidateEnd(options: {
+  activationRuleId: ActivationRuleId;
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  signalBooks: Map<string, SignalBook>;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
   for (const book of options.books.values()) {
     if (book.last_mark_price === null || book.last_timestamp_utc === null) continue;
     const currentAdrPct = book.last_adr_pct ?? 1;
+    const signal = options.signalBooks.get(book.pair)?.lastSignal ?? null;
     for (const side of ["LONG", "SHORT"] as const) {
       const cycle = sideCycle(book, side);
       if (!cycle) continue;
+      const closeReason: CloseReason = options.runtimeOptions.sessionMode === "ny_daily_window" ? "session_flatten" : "end_of_test";
+      if (closeReason === "end_of_test") {
+        options.stats.terminalInventoryRows.push(terminalInventoryRow({
+          activationRuleId: options.activationRuleId,
+          cycle,
+          signal,
+          markPrice: book.last_mark_price,
+          currentAdrPct,
+          timestampUtc: book.last_timestamp_utc,
+          timestampMs: Date.parse(book.last_timestamp_utc),
+          tickIndex: book.last_tick_index ?? 0,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+        }));
+      }
       closeCycle({
         stats: options.stats,
         cycle,
-        closeReason: "end_of_test",
+        closeReason,
         markPrice: book.last_mark_price,
         currentAdrPct,
         timestampUtc: book.last_timestamp_utc,
@@ -1518,6 +1895,13 @@ function summarize(options: {
     bar_path_mode: options.runtimeOptions.barPathMode,
     signal_clock: options.runtimeOptions.signalClock,
     signal_adr_brick: options.runtimeOptions.signalAdrBrick,
+    session_mode: options.runtimeOptions.sessionMode,
+    session_time_zone: options.runtimeOptions.sessionTimeZone,
+    session_trade_start_et: formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes),
+    session_trade_end_et: formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes),
+    session_flatten_et: formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes),
+    session_sunday_start_et: formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes),
+    session_flatten_overrides_et: sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt),
     target_mode: options.runtimeOptions.targetMode,
     target_adr: options.runtimeOptions.targetAdr,
     spacing_adr: options.runtimeOptions.spacingAdr,
@@ -1540,6 +1924,10 @@ function summarize(options: {
     total_commission_usd: round2(options.stats.realizedCommissionUsd),
     total_swap_usd: round2(options.stats.realizedSwapUsd),
     target_reset_count: options.stats.targetResetCount,
+    session_flatten_count: options.stats.sessionFlattenCount,
+    session_flatten_positions: options.stats.sessionFlattenPositions,
+    session_flatten_price_pnl_usd: round2(options.stats.sessionFlattenPricePnlUsd),
+    session_flatten_swap_usd: round2(options.stats.sessionFlattenSwapUsd),
     entries_opened: options.stats.fillsOpened,
     closed_positions: options.stats.closedPositions,
     end_liquidation_positions: options.stats.endLiquidationPositions,
@@ -1568,7 +1956,9 @@ function summarize(options: {
     mt5_reference_end_liquidation_positions: MT5_REFERENCE.end_liquidation_positions,
     net_delta_vs_mt5_usd: round2(net - MT5_REFERENCE.net_profit_usd),
     summary_only: options.runtimeOptions.summaryOnly,
-    metric_semantics: "continuous_carried_position_truth_replay" as const,
+    metric_semantics: options.runtimeOptions.sessionMode === "continuous"
+      ? "continuous_carried_position_truth_replay" as const
+      : "session_window_position_truth_replay" as const,
   });
 }
 
@@ -1580,7 +1970,7 @@ function validationRows(options: {
 }) {
   return [
     { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
-    { check: "continuous_carried_inventory", value: true, expected: true, passed: true },
+    { check: "continuous_carried_inventory", value: options.runtimeOptions.sessionMode === "continuous", expected: "true only in continuous session mode", passed: true },
     { check: "weekly_sample_end_close_disabled", value: true, expected: true, passed: true },
     { check: "target_reset_uses_selected_target_mode", value: options.runtimeOptions.targetMode, expected: "fixed_adr_or_david_ma_reversion", passed: true },
     { check: "target_mode", value: options.runtimeOptions.targetMode, expected: "explicit", passed: true },
@@ -1588,6 +1978,14 @@ function validationRows(options: {
     { check: "spacing_adr", value: options.runtimeOptions.spacingAdr, expected: ">0", passed: options.runtimeOptions.spacingAdr > 0 },
     { check: "signal_clock", value: options.runtimeOptions.signalClock, expected: "explicit", passed: true },
     { check: "signal_adr_brick", value: options.runtimeOptions.signalAdrBrick, expected: ">0", passed: options.runtimeOptions.signalAdrBrick > 0 },
+    { check: "session_mode", value: options.runtimeOptions.sessionMode, expected: "explicit continuous_or_ny_daily_window", passed: true },
+    { check: "session_time_zone", value: options.runtimeOptions.sessionTimeZone, expected: "IANA time zone", passed: true },
+    { check: "session_trade_start_et", value: formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_trade_end_et", value: formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_flatten_et", value: formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_sunday_start_et", value: formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_flatten_overrides_et", value: sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt), expected: "optional YYYY-MM-DD=HH:mm list", passed: true },
+    { check: "session_endpoint_open_cycles_close_as_session_flatten", value: options.runtimeOptions.sessionMode === "ny_daily_window", expected: "true only in ny_daily_window", passed: true },
     { check: "min_ma_expansion_adr", value: options.runtimeOptions.minMaExpansionAdr, expected: ">=0", passed: options.runtimeOptions.minMaExpansionAdr >= 0 },
     { check: "grid_add_mode", value: options.runtimeOptions.gridAddMode, expected: "explicit", passed: true },
     { check: "bar_path_mode", value: options.runtimeOptions.barPathMode, expected: "explicit", passed: true },
@@ -1609,13 +2007,19 @@ function validationRows(options: {
 function metricRows() {
   return [
     { metric: "continuous_carried_position_truth_replay", definition: "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation" },
+    { metric: "session_window_position_truth_replay", definition: "keeps side grid state open inside the configured session window, allows target closes whenever ticks exist, and force-closes unresolved cycles at session flatten" },
     { metric: "bar_path_mode", definition: "intrabar path used for each warehouse M1 bar; close mode uses close-only marks, OHLC modes synthesize four tester-like marks per bar" },
     { metric: "signal_clock", definition: "clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes" },
     { metric: "signal_adr_brick", definition: "ADR movement required to complete one synthetic signal bar when signal_clock is adr_event" },
+    { metric: "session_mode", definition: "continuous keeps the original carried-position replay; ny_daily_window allows starts/adds only inside the configured New York session and force-closes remaining cycles at the daily flatten boundary" },
+    { metric: "session_flatten_count", definition: "number of side cycles closed by the configured daily session flatten boundary, a missed no-tick boundary, or the session-mode endpoint cleanup rather than a target reset or final end-of-test liquidation" },
+    { metric: "session_flatten_price_pnl_usd", definition: "price PnL from cycles force-closed by the configured daily session flatten boundary" },
     { metric: "closed_price_pnl_usd", definition: "target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected" },
     { metric: "total_commission_usd", definition: "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report" },
     { metric: "total_swap_usd", definition: "position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates" },
     { metric: "end_liquidation_price_pnl_usd", definition: "price PnL from all positions still open at the final warehouse mark" },
+    { metric: "terminal_inventory_rows", definition: "one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL" },
+    { metric: "side_exit_distance_to_ma_adr", definition: "side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA" },
     { metric: "max_open_positions", definition: "maximum simultaneous fill count across carried side grids" },
     { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
     { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
@@ -1642,6 +2046,11 @@ function renderReport(options: {
     "bar_path_mode",
     "signal_clock",
     "signal_adr_brick",
+    "session_mode",
+    "session_trade_start_et",
+    "session_trade_end_et",
+    "session_flatten_et",
+    "session_sunday_start_et",
     "target_mode",
     "target_adr",
     "spacing_adr",
@@ -1655,6 +2064,10 @@ function renderReport(options: {
     "end_liquidation_price_pnl_usd",
     "total_commission_usd",
     "total_swap_usd",
+    "session_flatten_count",
+    "session_flatten_positions",
+    "session_flatten_price_pnl_usd",
+    "session_flatten_swap_usd",
     "entries_opened",
     "end_liquidation_positions",
     "max_open_positions",
@@ -1682,21 +2095,25 @@ Generated: \`${new Date().toISOString()}\`
 
 ## Scope
 
-- Continuous warehouse truth replay with one-sided activation gates.
+- Warehouse truth replay with one-sided activation gates and explicit session mode controls.
 - Variants: \`${options.runtimeOptions.activationRuleIds.map((ruleId) => variantId(ruleId)).join(",")}\`.
 - Activation rules: \`${options.runtimeOptions.activationRuleIds.join(",")}\`.
 - Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
 - David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
 - Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.
 - Signal clock: \`${options.runtimeOptions.signalClock}\`, ADR event brick \`${options.runtimeOptions.signalAdrBrick}\`.
+- Session mode: \`${options.runtimeOptions.sessionMode}\`, time zone \`${options.runtimeOptions.sessionTimeZone}\`, trade window start \`${formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes)}\`, trade cutoff \`${formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes)}\`, flatten \`${formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes)}\`, Sunday start \`${formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes)}\`, flatten overrides \`${sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt) || "none"}\`.
 - Summary-only output: \`${options.runtimeOptions.summaryOnly}\`.
 - Activation uses closed warehouse bars and controls only missing side-cycle starts.
 - Target mode \`${options.runtimeOptions.targetMode}\`, fixed target \`${options.runtimeOptions.targetAdr}\` ADR used only by fixed_adr mode, spacing \`${options.runtimeOptions.spacingAdr}\` ADR, minimum MA expansion \`${options.runtimeOptions.minMaExpansionAdr}\` ADR, grid add mode \`${options.runtimeOptions.gridAddMode}\`, lot size \`${options.runtimeOptions.lotSize}\`.
 - Bar path mode: \`${options.runtimeOptions.barPathMode}\`.
-- Carries side-grid positions across warehouse week boundaries.
+- Continuous mode carries side-grid positions across warehouse week boundaries; session-window mode carries only until target reset, session flatten, or terminal liquidation.
 - Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA.
+- In \`ny_daily_window\`, target closes are still allowed whenever a tick exists, but starts/adds are blocked outside the configured clean session and unresolved cycles are force-closed at the flatten boundary.
+- In \`ny_daily_window\`, any cycle still open at the selected test endpoint is closed as a session flatten at the last available mark; this prevents endpoint terminal inventory from masquerading as a live overnight hold.
 - Price PnL is converted from quote currency to USD at the close timestamp/tick when the selected universe includes the needed USD conversion leg.
 - Fees affect equity truth: entry commission and position-day swap are modeled separately.
+- Explicit bid/ask spread and slippage are not modeled in this runner yet.
 - Terminal liquidation is explicit and reported separately.
 - No MT5 implementation, target/spacing optimization, pair-specific swap ingestion, margin stopout simulator, app/live integration, promotion, live-readiness, or double-sided in-between policy.
 
@@ -1710,6 +2127,7 @@ ${summaryTable}
 - Long swap: \`${options.runtimeOptions.longSwapPer001LotDayUsd}\` USD per 0.01-lot day.
 - Short swap: \`${options.runtimeOptions.shortSwapPer001LotDayUsd}\` USD per 0.01-lot day.
 - Swap rates are MT5-report-derived EURUSD averages for calibration; all-pair use is diagnostic until pair-specific broker swap rates are supplied.
+- Spread and slippage are excluded here; the daily session window is a structural exposure test, not a full execution-cost model.
 
 ## Metric Definitions
 
@@ -1814,7 +2232,14 @@ async function main() {
   }
 
   for (const variantState of variantStates) {
-    liquidateEnd({ stats: variantState.stats, books: variantState.books, conversionRates: finalConversionRates, runtimeOptions: options });
+    liquidateEnd({
+      activationRuleId: variantState.activationRuleId,
+      stats: variantState.stats,
+      books: variantState.books,
+      signalBooks: sharedSignalBooks,
+      conversionRates: finalConversionRates,
+      runtimeOptions: options,
+    });
     observeStats(variantState.stats, variantState.books);
   }
   const summaryRows = variantStates.map((variantState) => summarize({
@@ -1828,6 +2253,7 @@ async function main() {
   }));
   const weeklyRows = variantStates.flatMap((variantState) => variantState.stats.weeklyRows);
   const closeEvents = variantStates.flatMap((variantState) => variantState.stats.closeEvents);
+  const terminalInventoryRows = variantStates.flatMap((variantState) => variantState.stats.terminalInventoryRows);
   const validations = validationRows({ gate74b, selectedWeeks, selectedPairs, runtimeOptions: options });
   const metrics = metricRows();
   const verdict = "PASS_GATE90_GRID_ACTIVATION_ONE_SIDED_SELECTION_BUILT_DIAGNOSTIC_ONLY";
@@ -1839,6 +2265,8 @@ async function main() {
     weeklyCsv: path.join(options.artifactDir, "weekly-activation-truth.rows.csv"),
     closeEventsJson: path.join(options.artifactDir, "close-events.rows.json"),
     closeEventsCsv: path.join(options.artifactDir, "close-events.rows.csv"),
+    terminalInventoryJson: path.join(options.artifactDir, "terminal-inventory.rows.json"),
+    terminalInventoryCsv: path.join(options.artifactDir, "terminal-inventory.rows.csv"),
     validationJson: path.join(options.artifactDir, "validation.rows.json"),
     validationCsv: path.join(options.artifactDir, "validation.rows.csv"),
     metricDefinitionsJson: path.join(options.artifactDir, "metric-definitions.rows.json"),
@@ -1852,6 +2280,7 @@ async function main() {
   await writeRows(paths.summaryJson, paths.summaryCsv, summaryRows);
   await writeRows(paths.weeklyJson, paths.weeklyCsv, weeklyRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
   await writeRows(paths.closeEventsJson, paths.closeEventsCsv, closeEvents.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.terminalInventoryJson, paths.terminalInventoryCsv, terminalInventoryRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
   await writeRows(paths.validationJson, paths.validationCsv, validations);
   await writeRows(paths.metricDefinitionsJson, paths.metricDefinitionsCsv, metrics);
   await writeJson(paths.commandReceipt, {
@@ -1872,6 +2301,7 @@ async function main() {
     selected_weeks: selectedWeeks.length,
     selected_pairs: selectedPairs,
     summary_rows: summaryRows,
+    terminal_inventory_rows: terminalInventoryRows.length,
     validation_rows: validations,
   });
   await writeText(options.reportPath, renderReport({
@@ -1886,6 +2316,7 @@ async function main() {
     { label: "summary_json", path: paths.summaryJson },
     { label: "weekly_json", path: paths.weeklyJson },
     { label: "close_events_json", path: paths.closeEventsJson },
+    { label: "terminal_inventory_json", path: paths.terminalInventoryJson },
     { label: "validation_json", path: paths.validationJson },
     { label: "metric_definitions_json", path: paths.metricDefinitionsJson },
     { label: "command_receipt", path: paths.commandReceipt },

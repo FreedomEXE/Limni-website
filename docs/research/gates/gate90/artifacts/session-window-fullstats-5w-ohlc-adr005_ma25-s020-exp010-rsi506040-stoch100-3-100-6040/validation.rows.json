@@ -1,0 +1,226 @@
+[
+  {
+    "check": "gate74b_verdict",
+    "value": "PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY",
+    "expected": "PASS_GATE74B",
+    "passed": true,
+    "content_hash": "4A9421FC8E2D8C6E15956595F739F44278369DF696A358771ABE68BADA16C282"
+  },
+  {
+    "check": "continuous_carried_inventory",
+    "value": false,
+    "expected": "true only in continuous session mode",
+    "passed": true,
+    "content_hash": "FFD962F612F08D56BEEAFDC8BD528148D9FFFB42C59D6C8E99B4B66D7AA229DD"
+  },
+  {
+    "check": "weekly_sample_end_close_disabled",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "515D23601F0BA5204B938B73641B523074B29D0B67302BAFDF4E102718F523D1"
+  },
+  {
+    "check": "target_reset_uses_selected_target_mode",
+    "value": "david_ma_reversion",
+    "expected": "fixed_adr_or_david_ma_reversion",
+    "passed": true,
+    "content_hash": "4E7DBCA6F90A72C7FA25F3CB22400BAC99ED0352B17FF2ECA797848FD9EB8F31"
+  },
+  {
+    "check": "target_mode",
+    "value": "david_ma_reversion",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "24313F40173FCBD3CE5F858AA384A8178C778C9B500F25EC047DBC5E21D8E4D8"
+  },
+  {
+    "check": "target_adr",
+    "value": 1,
+    "expected": ">0",
+    "passed": true,
+    "content_hash": "F14AE9F84690FEDD6E1A37B8029A52EDAA66E35CC602499FAE70345EEF2B8A23"
+  },
+  {
+    "check": "spacing_adr",
+    "value": 0.2,
+    "expected": ">0",
+    "passed": true,
+    "content_hash": "0F95FBB1EEE724D8D275970B10BAA63517F2F0C1F5FE87096888A053F1B99434"
+  },
+  {
+    "check": "signal_clock",
+    "value": "adr_event",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "2E5360C3BE755408BD39C5679686F6FD9C2A547B85CD6005EAA723B278C208FD"
+  },
+  {
+    "check": "signal_adr_brick",
+    "value": 0.05,
+    "expected": ">0",
+    "passed": true,
+    "content_hash": "04F7F856A46F733EC3DE8491145CAFD0C4B054AF00FAFAA112ECF1471CE63BAA"
+  },
+  {
+    "check": "session_mode",
+    "value": "ny_daily_window",
+    "expected": "explicit continuous_or_ny_daily_window",
+    "passed": true,
+    "content_hash": "FD374B28547B531E2FA980D7CF5BE7B4383EF4A23EBC73E85BFFBACA42AA1C48"
+  },
+  {
+    "check": "session_time_zone",
+    "value": "America/New_York",
+    "expected": "IANA time zone",
+    "passed": true,
+    "content_hash": "A525C37D53237A88F7BC4782022C44DFB3103D3186FBB48B9A655911D8BC85F1"
+  },
+  {
+    "check": "session_trade_start_et",
+    "value": "18:05",
+    "expected": "HH:mm",
+    "passed": true,
+    "content_hash": "80D359C362EA16601CC092F9801B1EC745BF07E6911F9AACC1DB08344915DFCD"
+  },
+  {
+    "check": "session_trade_end_et",
+    "value": "15:45",
+    "expected": "HH:mm",
+    "passed": true,
+    "content_hash": "86536F2249E6C2F350A28B8FE12D36E910095C04B17BEF81FCF8AEC212FC46E4"
+  },
+  {
+    "check": "session_flatten_et",
+    "value": "16:00",
+    "expected": "HH:mm",
+    "passed": true,
+    "content_hash": "3C0E48669D3AEE45D699063BCF052B7FBE9B92353038BBCBFC8B9D81DFA9B244"
+  },
+  {
+    "check": "session_sunday_start_et",
+    "value": "20:00",
+    "expected": "HH:mm",
+    "passed": true,
+    "content_hash": "7648DECFD0654D273597AABB10415D8EBD4891D386ABD1BBEB2E35FC0213ACDB"
+  },
+  {
+    "check": "session_flatten_overrides_et",
+    "value": "",
+    "expected": "optional YYYY-MM-DD=HH:mm list",
+    "passed": true,
+    "content_hash": "6683EB9A9C5E68EF8429C9269AB41766927BBB32882576403C609C1AE46D9807"
+  },
+  {
+    "check": "session_endpoint_open_cycles_close_as_session_flatten",
+    "value": true,
+    "expected": "true only in ny_daily_window",
+    "passed": true,
+    "content_hash": "F88913799BDBEC2E01CC2CF1D3C588B39AD7E07E806EAD6A81371B2543E0E84E"
+  },
+  {
+    "check": "min_ma_expansion_adr",
+    "value": 0.1,
+    "expected": ">=0",
+    "passed": true,
+    "content_hash": "484AD90A3DBFFA2BE93E4D78217819E501FDDE817DE1BFBA19DBFC579251A2D1"
+  },
+  {
+    "check": "grid_add_mode",
+    "value": "adverse_only",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "014865F81BD1E4B604763F2169F8D0AC0B6C2242BF270B21EAB6A20291D17DDE"
+  },
+  {
+    "check": "bar_path_mode",
+    "value": "ohlc_high_low",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "D7662FC79B46AB6334122CDF1E594406A6D6CB84FC9AB9B437CDC6559BF46735"
+  },
+  {
+    "check": "quote_currency_pnl_converted_to_usd",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "F7A15A95F98153C5A08A778EDE21FFC1C279900C5C032239D4BACBBFE8EB4D89"
+  },
+  {
+    "check": "swap_triggers_target_reset",
+    "value": false,
+    "expected": false,
+    "passed": true,
+    "content_hash": "93E1DD425FAAD5072618DDC878AB3887AF2876D747398D6C8DBAEDC6BAAC0249"
+  },
+  {
+    "check": "activation_rule_ids",
+    "value": "raw_both,david_contra,candidate_b,stoch_contra,david_stoch_confirm",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "F6A03924436CACE85397EBADAC2375B31CA76EB26C4029A73E38F0794B18D37F"
+  },
+  {
+    "check": "activation_controls_initial_cycle_start_only",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "749785F8129265AE045898B832B2733A4EE972998BEB85FB1842C9A3D6CC859F"
+  },
+  {
+    "check": "david_ma_settings",
+    "value": "LWMA25_RSI50_60_40",
+    "expected": "explicit CLI/default settings",
+    "passed": true,
+    "content_hash": "152429071E6E0BF96CD5E33BDE79CE528AC32A61C3AC60B1B9B5187CFBF4FA11"
+  },
+  {
+    "check": "stochastic_settings",
+    "value": "100_3_100_60_40_low_high_simple_main_only",
+    "expected": "explicit CLI/default settings",
+    "passed": true,
+    "content_hash": "7588B7DCC8358EF30A52E5FFF85049358036E9DD2A0438018E2A46CB3B74D477"
+  },
+  {
+    "check": "summary_only",
+    "value": false,
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "D01A4FF982E9CE616B1DDD0FE43723F2E9C447B86B9CBE55370B212D3B392CD3"
+  },
+  {
+    "check": "commission_per_entry_per_001_lot_usd",
+    "value": 0.06,
+    "expected": 0.06,
+    "passed": true,
+    "content_hash": "FE3F374121A703E0D22F4DB1E9284FB882CE3F4260AEBEF733DCDFA1AB632033"
+  },
+  {
+    "check": "eurusd_long_swap_per_001_lot_day_usd",
+    "value": -0.0917,
+    "expected": "MT5-derived approx",
+    "passed": true,
+    "content_hash": "761DAA39F61168C51C12BA9710F5FCA049F715CB9EE1726E190FFDC049F116D9"
+  },
+  {
+    "check": "eurusd_short_swap_per_001_lot_day_usd",
+    "value": 0.01,
+    "expected": "MT5-derived approx",
+    "passed": true,
+    "content_hash": "C1386EA02784412EA757DA00226F73E20BF9569FB5B556AF732DBD6DC9D319C5"
+  },
+  {
+    "check": "selected_week_count",
+    "value": 5,
+    "expected": ">=1",
+    "passed": true,
+    "content_hash": "8286204BFC85774FC9196FFF174C074E6C690A59903BDA83D48D9C09658C0C7B"
+  },
+  {
+    "check": "selected_pair_count",
+    "value": 28,
+    "expected": ">=1",
+    "passed": true,
+    "content_hash": "6CE9D38D37A11D89DC777AEFA36246E50B9D3229E089C828FCBF3356D80A78B3"
+  }
+]

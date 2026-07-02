@@ -40,6 +40,16 @@
     "content_hash": "33E97BBB72805A1BD4A6FA0A0BFA6A4DF84B2F29CCDF3EAD05142B4B8D3C0C63"
   },
   {
+    "metric": "terminal_inventory_rows",
+    "definition": "one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL",
+    "content_hash": "443A7EDADAE119647FE011CD559227AC8F5D074EEC98F345579A0C346776F150"
+  },
+  {
+    "metric": "side_exit_distance_to_ma_adr",
+    "definition": "side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA",
+    "content_hash": "132BE3D00A35485837AE160CCF2BE2B26778E887377D04870504EDB886377CE1"
+  },
+  {
     "metric": "max_open_positions",
     "definition": "maximum simultaneous fill count across carried side grids",
     "content_hash": "A94FEBA70FC36C3C649A27D1C61561B6042252954A69C1FCD3DECD2A7398A110"

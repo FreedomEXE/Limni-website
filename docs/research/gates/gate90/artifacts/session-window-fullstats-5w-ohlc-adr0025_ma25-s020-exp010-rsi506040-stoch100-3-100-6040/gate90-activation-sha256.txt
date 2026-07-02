@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T14:16:14.706Z
+git_commit d29a71c0105dc9133b3415a228d1796e9dedb693
+summary_json A3270436A7141F3B5CF8A982EFA125404CA3898EE5DFF82F897B57584DCA1E0C docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json 18E8B21CB03B774B0FF20E04973B4320F800621DAD12B32F602744640347979D docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json A9486D8D365A18981ED131EE1C005B26A1952FD31BC34765B1B4FFFC41E0701E docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
+validation_json C829506EA3ACAA22B0B18F7F897E9D4C5736C21C12A1E2952003A23702034A23 docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json BD4EA1CF9A2C022C8A4FFA7E0BEFBF339A180A96BF5A4A23E67A90B4BEBA071E docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 4AF0B0D0E1095B93935B9A643ECC514A3B2F38D51322AAE337114C885ACD8EB5 docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json B4FD2E7199AA0D9CB2362D370F97EE8332CF1C58415E25A9B3B120DA4B9AE65B docs/research/gates/gate90/artifacts/session-window-fullstats-5w-ohlc-adr0025_ma25-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 794FBC853D5ADEDBD78DB5B06939CCCC9D9C40B7D4F6BA652A99D8FA76C28952 docs/research/gates/gate90/GATE90_SESSION_WINDOW_FULLSTATS_5W_OHLC_ADR0025_MA25_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md
