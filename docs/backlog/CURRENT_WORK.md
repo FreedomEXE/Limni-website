@@ -12,7 +12,7 @@ Current state: Gate 89 `continuous-raw-truth-simulator` is complete as a
 diagnostic/research gate. Gate 90
 `grid-activation-accuracy-one-sided-selection` is parked as a saved diagnostic
 research point after the corrected David MA / stochastic full-history warehouse
-read.
+read and a fast Candidate B generic-cost recheck.
 
 Gate 89 outputs:
 
@@ -56,6 +56,10 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90_GRID_ACTIVATION_ACCURACY_ONE_SIDED_SELECTION_FIRST_PASS_2026-07-02.md`.
 - Corrected David/Stoch full-history selection report:
   `docs/research/gates/gate90/GATE90_DAVID_RSI1006040_STOCH100_3_100_FULL_HISTORY_SELECTION_2026-07-02.md`.
+- Fast Candidate B generic-cost reports:
+  `docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_26W_RECENT_CLOSE_DAVID1006040_STOCH100_3_100_2026-07-02.md`
+  and
+  `docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_5W_RECENT_OHLC_DAVID1006040_STOCH100_3_100_2026-07-02.md`.
 
 Gate 90 read:
 
@@ -74,6 +78,12 @@ Gate 90 read:
 - Gate 90 runner now supports CLI signal settings, comma-separated
   `--activation-rules`, `--summary-only`, and shared signal replay so broad
   variant tests can be changed by command instead of code edits.
+- David MA/Stoch signals were calculated on the Gate 74B `1m` path warehouse:
+  one reconstructed closed M1 bar per warehouse point, no higher-timeframe
+  aggregation.
+- Added `candidate_b` as a Gate 90 one-sided activation rule using locked Gate
+  74B `candidate_b_side`; it only controls missing side-cycle starts and does
+  not force weekly flip closes.
 - Full close-only optimizer screen over all available Gate 74B history:
   `373` weeks, `28` pairs, `2019-04-14T23:00:00.000Z..2026-05-31T23:00:00.000Z`.
   Ranking by net: `david_stoch_release` `+$64,354.26`, max equity DD
@@ -96,16 +106,19 @@ Gate 90 read:
   Candidate B on the same costed continuous simulator.
 - No broad David/Stoch parameter optimization matrix was run. The completed
   matrix was a rule matrix around Freedom's corrected handpicked settings.
+- Fast Candidate B generic-cost recheck was weak. 26-week recent close-only
+  screen (`2025-12-08..2026-05-31`, all 28 pairs) had `candidate_b`
+  net `-$2,194.71`, PF `0.871184`, max equity DD `-$5,014.25`; by comparison
+  `david_stoch_release` was `+$9,050.03`, PF `2.52717`, max DD `-$1,996.77`.
+  A 5-week recent OHLC screen had `candidate_b` positive at `+$384.94`, but it
+  still trailed the stronger candidates. Current parking read from Freedom:
+  treat these activation families as weak/diagnostic for now.
 
 Next action:
 
-- Open the next warehouse-only comparison gate for Candidate B with the same
-  Gate 89/Gate 90 continuous carried-position semantics, commission, swap,
-  quote-currency-to-USD conversion, explicit terminal liquidation, and OHLC
-  finalist path mode.
-- Compare costed Candidate B directly against raw both-side, `david_contra`,
-  and `david_stoch_release` before deciding whether Candidate B should return
-  as the main research path.
+- Pause Gate 90 activation-family optimization. Freedom has more activation
+  ideas to map next; keep the first question focused on timeframe/signal
+  construction before opening a new implementation scope.
 
 Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
 optimization, pair-specific swap ingestion, margin stopout simulator, app/live

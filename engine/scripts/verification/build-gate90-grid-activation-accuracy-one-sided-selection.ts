@@ -52,6 +52,7 @@ type BarPathMode = "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_direction
 type DavidState = "UP" | "DOWN";
 type ActivationRuleId =
   | "raw_both"
+  | "candidate_b"
   | "david_contra"
   | "david_with"
   | "stoch_contra"
@@ -422,6 +423,7 @@ function parseBarPathMode(value: string): BarPathMode {
 function parseActivationRuleId(value: string): ActivationRuleId {
   if (
     value === "raw_both" ||
+    value === "candidate_b" ||
     value === "david_contra" ||
     value === "david_with" ||
     value === "stoch_contra" ||
@@ -430,12 +432,14 @@ function parseActivationRuleId(value: string): ActivationRuleId {
   ) {
     return value;
   }
-  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, david_contra, david_with, stoch_contra, david_stoch_confirm, or david_stoch_release`);
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, david_contra, david_with, stoch_contra, david_stoch_confirm, or david_stoch_release`);
 }
 
 function parseActivationRuleIds(value: string): ActivationRuleId[] {
   const expanded = value === "core" || value === "all_core"
     ? "raw_both,david_contra,david_with,stoch_contra,david_stoch_confirm,david_stoch_release"
+    : value === "candidate_compare"
+      ? "raw_both,candidate_b,david_contra,david_stoch_release"
     : value;
   const ids = expanded.split(",").map((part) => parseActivationRuleId(part.trim())).filter(Boolean);
   const unique = [...new Set(ids)];
@@ -755,8 +759,9 @@ function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, setti
   if (book.stochMain.length > maxHistory) book.stochMain.shift();
 }
 
-function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side: Side, settings: SignalSettings) {
+function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side: Side, settings: SignalSettings, candidateBSide: Side) {
   if (ruleId === "raw_both") return true;
+  if (ruleId === "candidate_b") return side === candidateBSide;
   if (ruleId === "david_contra") {
     if (signal.david_state === "UP") return side === "SHORT";
     if (signal.david_state === "DOWN") return side === "LONG";
@@ -1134,7 +1139,7 @@ function replayTick(options: {
     if (!cycle) {
       const allowed = options.activationRuleId === "raw_both"
         ? true
-        : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings);
+        : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
       options.stats.activationChecks += 1;
       if (side === "LONG" && allowed) options.stats.activationAllowedLong += 1;
       if (side === "SHORT" && allowed) options.stats.activationAllowedShort += 1;

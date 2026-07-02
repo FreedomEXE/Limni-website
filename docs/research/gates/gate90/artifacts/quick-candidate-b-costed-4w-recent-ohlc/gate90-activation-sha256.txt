@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T09:50:23.283Z
+git_commit 568d72c41872e92dd50040745fc25c232ca5a388
+summary_json FFBA80C40EBF6FC8FE828243F104E641DDEF9B31C53587CC811BE192B43A87D5 docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/activation-summary.rows.json
+weekly_json 04769868AF62F0DC2BDE1F76FE00FB1159698F91117D60EF5886BEE09B20C069 docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/close-events.rows.json
+validation_json 0E8255F2799BC92F68C41A8910B0F3EE3938FCC70E091EACC9BAC65A11F7CF2B docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/metric-definitions.rows.json
+command_receipt FC4163B353AD92A9740FE83D110203FA9CA1CF17D92AF28010DC9A02C5EC63AB docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/command-receipt.json
+run_summary_json E0F00CAA9A688A7541CF5E83789540AC4B030FE61E2E63074E2818857F2D3B0D docs/research/gates/gate90/artifacts/quick-candidate-b-costed-4w-recent-ohlc/gate90-run-summary.json
+report 9F68D3A26B8F92F038CD774025D020654A1A697BA3093B7B83900ACF259DEBE6 docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_4W_RECENT_OHLC_2026-07-02.md

@@ -24,6 +24,32 @@ Next research comparison should return to Candidate B and add the proper
 Gate 89/Gate 90 fee model before judging whether directional selection beats
 the David/Stoch one-sided activation candidates.
 
+Follow-up fast Candidate B read:
+
+- Added `candidate_b` as a Gate 90 one-sided activation rule using the locked
+  Gate 74B `candidate_b_side`; it controls missing side-cycle starts only and
+  does not force weekly flip closes.
+- Same generic Gate 90 cost model was used: `0.06` USD entry commission per
+  `0.01` lot, EURUSD-derived long/short swap, quote-to-USD PnL conversion, and
+  explicit terminal liquidation.
+- 26-week recent close-only screen (`2025-12-08..2026-05-31`) was weak:
+  `candidate_b` net `-$2,194.71`, PF `0.871184`, max equity DD `-$5,014.25`;
+  `david_stoch_release` net `+$9,050.03`, PF `2.52717`, max equity DD
+  `-$1,996.77`.
+- 5-week recent OHLC screen had `candidate_b` positive at `+$384.94`, but it
+  still trailed the stronger David/Stoch candidates.
+- Current parking read: treat Candidate B, David/Stoch, and raw always-on
+  activation as weak/diagnostic for now; do not promote or optimize from this
+  evidence.
+
+Signal-calculation note:
+
+- David MA/Stoch signals were calculated from the Gate 74B `1m` path warehouse.
+  The runner reconstructs one closed bar per warehouse M1 point, updates
+  RSI/LWMA/Stoch once per M1 bar, and uses the previous completed signal state
+  for that bar's activation decision.
+- No higher-timeframe David/Stoch aggregation was used in these tests.
+
 ## Scope
 
 - Gate 90 warehouse activation research only.
