@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T03:22:36.831Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json 5F52558535354D6B45F7CCC54F6575F821C8B301E550FE95CB9173D080E2C72D docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/activation-summary.rows.json
+weekly_json 24F06D051AA6F513342E17952E7221073821DD5AC08B52F643E95233B9817528 docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/close-events.rows.json
+validation_json DD693080901139000BBB4911B095372E6C106421709D46B4794A0EA1957689AF docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/metric-definitions.rows.json
+command_receipt CE17F9EBB8D8D6C690A7EECED58519E48738646D23175786C2602AC81C48AED3 docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/command-receipt.json
+run_summary_json ABD7995C7C2B6DC2697F852F923C9625FDAFF05F90A17B8126BCA552043FA329 docs/research/gates/gate90/artifacts/matrix-timing-4w-allpairs-core-ohlc-shared-signal-david1006040-stoch100-3-100/gate90-run-summary.json
+report 613DDA4541B1002DA678315F47C58E796558EFF7AD9BEF65DD7AEC48909EB07A docs/research/gates/gate90/GATE90_MATRIX_TIMING_4W_ALLPAIRS_CORE_OHLC_SHARED_SIGNAL_DAVID1006040_STOCH100_3_100_2026-07-02.md

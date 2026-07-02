@@ -1,0 +1,28 @@
+{
+  "gate_id": "Gate 90: grid-activation-accuracy-one-sided-selection",
+  "command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection",
+  "durable_command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection -- --only-pair=EURUSD --week-from=2020-01-05 --week-to=2025-12-28 --activation-rule=raw_both --bar-path-mode=ohlc_high_low --artifact-dir=docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w --report-path=docs/research/gates/gate90/GATE90_NPM_SMOKE_RAW_BOTH_EURUSD_1W_2026-07-02.md",
+  "git_commit": "a905e9806391ddc439bbac43230809860edde1b8",
+  "generated_at": "2026-07-02T02:39:03.929Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w",
+    "reportPath": "docs/research/gates/gate90/GATE90_NPM_SMOKE_RAW_BOTH_EURUSD_1W_2026-07-02.md",
+    "manifestId": null,
+    "onlyPair": "EURUSD",
+    "pairs": null,
+    "allPairs": false,
+    "weekFrom": "2020-01-05",
+    "weekTo": "2025-12-28",
+    "maxWeeks": 1,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "barPathMode": "ohlc_high_low",
+    "activationRuleId": "raw_both",
+    "logProgress": false
+  }
+}

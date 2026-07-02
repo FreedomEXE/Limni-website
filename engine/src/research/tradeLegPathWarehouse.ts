@@ -921,3 +921,52 @@ export async function readTradeLegPathWarehousePairSeries(options: {
       );
   return rows.map(mapPairWeekSummaryRow);
 }
+
+export async function readTradeLegPathWarehouseWeekRows(options: {
+  manifestId: string;
+  weekOpenUtc: string;
+  pairs?: string[];
+}): Promise<TradeLegPathReplayPairWeek[]> {
+  await ensureTradeLegPathWarehouseSchema();
+  const normalizedWeek = normalizeWeeks([options.weekOpenUtc])[0]!;
+  const pairs = options.pairs?.map((pair) => pair.toUpperCase()) ?? null;
+  const rows = pairs
+    ? await query<PairWeekSummaryDbRow>(
+        `SELECT week_open_utc, pair, candidate_b_side, final_direction,
+                candidate_row_key, decision_hash, direction_streak_id,
+                flip_boundary_utc, flip_week_open_utc, entry_timestamp_utc,
+                friday_cutoff_timestamp_utc, pair_adr_pct, adr_was_default,
+                entry_price, expected_bar_count, actual_bar_count, point_count,
+                coverage_state, first_bar_utc, last_bar_utc,
+                first_green_timestamp_utc, first_red_timestamp_utc,
+                mfe_adr, mfe_timestamp_utc, mae_adr, mae_timestamp_utc,
+                friday_close_adr, first_touch_indexes_json,
+                path_payload_compressed, path_hash, first_touch_hash,
+                summary_hash, content_hash
+           FROM research_trade_leg_path_pair_weeks
+          WHERE manifest_id = $1
+            AND week_open_utc = $2::timestamptz
+            AND pair = ANY($3::text[])
+          ORDER BY pair ASC`,
+        [options.manifestId, normalizedWeek, pairs],
+      )
+    : await query<PairWeekSummaryDbRow>(
+        `SELECT week_open_utc, pair, candidate_b_side, final_direction,
+                candidate_row_key, decision_hash, direction_streak_id,
+                flip_boundary_utc, flip_week_open_utc, entry_timestamp_utc,
+                friday_cutoff_timestamp_utc, pair_adr_pct, adr_was_default,
+                entry_price, expected_bar_count, actual_bar_count, point_count,
+                coverage_state, first_bar_utc, last_bar_utc,
+                first_green_timestamp_utc, first_red_timestamp_utc,
+                mfe_adr, mfe_timestamp_utc, mae_adr, mae_timestamp_utc,
+                friday_close_adr, first_touch_indexes_json,
+                path_payload_compressed, path_hash, first_touch_hash,
+                summary_hash, content_hash
+           FROM research_trade_leg_path_pair_weeks
+          WHERE manifest_id = $1
+            AND week_open_utc = $2::timestamptz
+          ORDER BY pair ASC`,
+        [options.manifestId, normalizedWeek],
+      );
+  return rows.map(mapPairWeekSummaryRow);
+}

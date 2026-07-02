@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T02:19:27.043Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json 56078E8DF23F6E12F75D2B7C62877DB30920805D03920DBB641133A60478CC5A docs/research/gates/gate90/artifacts/one-year-2020-raw_both/activation-summary.rows.json
+weekly_json B0EC4DB05F25480CAE9BA8221746243BF900A6BB46F7C265B6ABB5C4563DF8C3 docs/research/gates/gate90/artifacts/one-year-2020-raw_both/weekly-activation-truth.rows.json
+close_events_json E30BF498EEB5E5A20DD5C8F87E7F5B6D4398806EF4034DB343DEF8301E15536F docs/research/gates/gate90/artifacts/one-year-2020-raw_both/close-events.rows.json
+validation_json 554971904C84DE36CEF25B564A370591D7C0398438B7BE8D137B13603E3C95FE docs/research/gates/gate90/artifacts/one-year-2020-raw_both/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/one-year-2020-raw_both/metric-definitions.rows.json
+command_receipt A6C0D999D63764869BE19B1304F38796B9C84C7B32370634D7DFA8B1B5D77B29 docs/research/gates/gate90/artifacts/one-year-2020-raw_both/command-receipt.json
+run_summary_json AAAFC94063183DC9E6D4B0069C1F6D026C9DDAE90EBD40164CE6299CF1413FB6 docs/research/gates/gate90/artifacts/one-year-2020-raw_both/gate90-run-summary.json
+report 5D820D22375E85B693B402A9400F2640D0723D637695CD93B1024AAED777E3A1 docs/research/gates/gate90/GATE90_ONE_YEAR_2020_RAW_BOTH_ALL_PAIRS_2026-07-02.md

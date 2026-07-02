@@ -9,8 +9,10 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 ## Hot Recovery Override
 
 Current state: Gate 89 `continuous-raw-truth-simulator` is complete as a
-diagnostic/research gate. Gate 90 is the next research boundary and should start
-from Freedom's grid-activation/filter ideas.
+diagnostic/research gate. Gate 90
+`grid-activation-accuracy-one-sided-selection` is parked as a saved diagnostic
+research point after the corrected David MA / stochastic full-history warehouse
+read.
 
 Gate 89 outputs:
 
@@ -39,22 +41,76 @@ Gate 89 read:
   are not deployable because stale inventory, swap/carry drag, terminal
   liquidation, and drawdown are too large.
 
-Next gate: Gate 90 `grid-activation-accuracy-one-sided-selection`.
+Latest research gate: Gate 90 `grid-activation-accuracy-one-sided-selection`.
 
-Gate 90 scope:
+Gate 90 outputs:
+
+- Command:
+  `npm run engine:gate90:grid-activation-accuracy-one-sided-selection`.
+- Script:
+  `engine/scripts/verification/build-gate90-grid-activation-accuracy-one-sided-selection.ts`.
+- Week-batch warehouse reader:
+  `readTradeLegPathWarehouseWeekRows()` in
+  `engine/src/research/tradeLegPathWarehouse.ts`.
+- Main first-pass report:
+  `docs/research/gates/gate90/GATE90_GRID_ACTIVATION_ACCURACY_ONE_SIDED_SELECTION_FIRST_PASS_2026-07-02.md`.
+- Corrected David/Stoch full-history selection report:
+  `docs/research/gates/gate90/GATE90_DAVID_RSI1006040_STOCH100_3_100_FULL_HISTORY_SELECTION_2026-07-02.md`.
+
+Gate 90 read:
 
 - Figure out when a grid should activate at all.
 - Prefer one-sided activation first: long-only or short-only.
 - Do not assume double-sided is default.
 - Treat double-sided only as a later candidate for in-between/ambiguous states
   after one-sided selection has measurable evidence.
-- Start from Freedom's ideas; keep the first pass warehouse/research only.
-- Evaluate activation accuracy, side accuracy, inventory age, max open
-  positions, drawdown, swap/carry drag, and terminal-liquidation exposure.
+- David MA source was found in the active MT5 terminal at
+  `C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB/MQL5/Indicators/David_MA_Color_V1f_Updated.mq5`.
+- David settings corrected by Freedom: template `LWMA35`, close price, RSI
+  period `100`, overbought `60`, oversold `40`. This is not an MA-period `100`
+  test.
+- Stochastic settings corrected by Freedom: `K=100`, `D=3`, slowing `100`,
+  Low/High, Simple, main line only, OB/OS `80/20`.
+- Gate 90 runner now supports CLI signal settings, comma-separated
+  `--activation-rules`, `--summary-only`, and shared signal replay so broad
+  variant tests can be changed by command instead of code edits.
+- Full close-only optimizer screen over all available Gate 74B history:
+  `373` weeks, `28` pairs, `2019-04-14T23:00:00.000Z..2026-05-31T23:00:00.000Z`.
+  Ranking by net: `david_stoch_release` `+$64,354.26`, max equity DD
+  `-$61,940.24`, max open `1,450`, terminal `1,179`; `david_contra`
+  `+$42,745.14`, DD `-$74,632.66`, max open `2,037`, terminal `1,799`;
+  `david_stoch_confirm` `+$17,111.74`; `stoch_contra` `+$6,243.95`;
+  `raw_both` `-$82,982.99`; `david_with` `-$94,624.65`.
+- Exact OHLC finalist run on the same `373` week / `28` pair span:
+  `raw_both` net `+$48,141.70`, max equity DD `-$119,605.92`,
+  max open `2,856`, terminal `2,558`; `david_contra` net `+$123,539.90`,
+  DD `-$65,451.04`, max open `1,884`, terminal `1,689`;
+  `david_stoch_release` net `+$80,156.40`, DD `-$54,509.25`,
+  max open `1,286`, terminal `968`; `david_stoch_confirm` net `+$56,335.77`,
+  DD `-$70,035.51`, max open `1,554`, terminal `1,533`.
+- Current read: `david_contra` is the highest-harvest exact OHLC rule;
+  `david_stoch_release` is the leading protection/deployment-shape candidate.
+  `david_with` is rejected for this setting family.
+- Parking read: the David/Stoch activation family is useful evidence, but its
+  profit-factor shape is not strong enough to keep optimizing before testing
+  Candidate B on the same costed continuous simulator.
+- No broad David/Stoch parameter optimization matrix was run. The completed
+  matrix was a rule matrix around Freedom's corrected handpicked settings.
+
+Next action:
+
+- Open the next warehouse-only comparison gate for Candidate B with the same
+  Gate 89/Gate 90 continuous carried-position semantics, commission, swap,
+  quote-currency-to-USD conversion, explicit terminal liquidation, and OHLC
+  finalist path mode.
+- Compare costed Candidate B directly against raw both-side, `david_contra`,
+  and `david_stoch_release` before deciding whether Candidate B should return
+  as the main research path.
 
 Frozen until explicitly reopened: MT5 lifecycle optimization, target/spacing
 optimization, pair-specific swap ingestion, margin stopout simulator, app/live
-integration, promotion, live-readiness, and double-sided in-between policy.
+integration, promotion, live-readiness, David/Stoch parameter optimization, and
+double-sided in-between policy.
 
 ## Historical Active Gate
 

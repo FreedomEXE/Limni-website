@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T02:39:03.938Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json 7190AC033C5921DEF70F7BE49451B00B93B30F5ECF00E3ED8A2A404C6B303D07 docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/activation-summary.rows.json
+weekly_json 64A10C11D603A07D8E34176EF19B468645EB055CC6B3F2718DC0D9B7746CE540 docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/weekly-activation-truth.rows.json
+close_events_json 79D1983C58FAE40BF3298F0C0A54A40A9DF538070ADD846C369B051C8ECCE8FC docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/close-events.rows.json
+validation_json B53ED4FEE5A2EDEAAAC87EC42CD031F7173E5C697CF3CE3B1A7E858195C8471D docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/metric-definitions.rows.json
+command_receipt C0C4DA79945111D4C17FB25BFE981EEF8BF73889E8C188C499807DC2C68D95FD docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/command-receipt.json
+run_summary_json C340F75A3011A9F68F4FE8BD28F235A5DDB90260CC05B17135A774D4C56FAFBD docs/research/gates/gate90/artifacts/npm-smoke-raw-both-eurusd-1w/gate90-run-summary.json
+report B663EDBFD315E9EFD21AB2D1054ACBE72341B3205FBA668A3484D671A062B618 docs/research/gates/gate90/GATE90_NPM_SMOKE_RAW_BOTH_EURUSD_1W_2026-07-02.md
