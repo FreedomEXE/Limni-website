@@ -1,0 +1,3 @@
+geometry_regime,sessions,trigger_candidates,long_trigger_candidates,short_trigger_candidates,avg_entry_path_efficiency,avg_session_range_adr,avg_entry_range_adr,range_condition_pass_sessions,harvestable_candidate_sessions,content_hash
+harvestable_chop_candidate,5,0,0,0,0.015491,0.828444,0.502649,5,5,327087724C14F4CB7E57928C68CFA881709490CFF3CCE3F7219AFAF08DAC472B
+dead_chop_cost_churn,4,4,4,0,0.069898,0.444268,0.803454,0,0,263FEE9129505646FB6B8C571EB8CD7B32F0B4064AB8B074375D71FC7BE9A3B9

@@ -1,0 +1,5 @@
+start_trace_status,rows,session_flatten_rows,target_rows,net_usd,avg_net_usd,gross_profit_usd,gross_loss_abs_usd,profit_factor,win_pct,avg_minutes_from_trigger_to_start,content_hash
+missing_start_timestamp,8738,1441,7297,2310.163852,0.264381,10366.286651,8056.122799,1.286759,86.781872,,6E501A9D5DCDF3B21145526AB0735AFD985134C827D3ACE92FD9C1E345AC809B
+invalid_start_timestamp,0,0,0,,,,,,,,8BD80D33B27632EB2DFF9A139A2651621773F214C3545FB26C99A45A19C65622
+matched_prior_trigger,0,0,0,,,,,,,,32661F2CF6D8BAAE1EFBA0E4E94C519BC8632E23FEC29209432B1D9F5794522B
+no_in_session_trigger,0,0,0,,,,,,,,992EFDFD89CE0604467EF39F1239AFAFBA3D79C2DAC7E8B6EA4D2AE086B4F9F6

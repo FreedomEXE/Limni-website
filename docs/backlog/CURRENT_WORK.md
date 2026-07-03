@@ -94,6 +94,24 @@ Gate 90 outputs:
   `docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-scorecard.csv`
   and
   `docs/research/gates/gate90/artifacts/gate90c-close-band-2019-nonstoch-scorecard.json`.
+- Gate 90D Triangle Reversion Grid proposal:
+  `docs/research/gates/gate90/GATE90D_PATH_EFFICIENCY_GRID_GEOMETRY_PROPOSAL_2026-07-02.md`.
+- Gate 90D first feature/shadow audit:
+  `docs/research/gates/gate90/GATE90D_TRIANGLE_FEATURE_SHADOW_AUDIT_2026-07-02.md`.
+- Gate 90D first audit artifacts:
+  `docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/`.
+- Gate 90D refreshed OOS4 close-event trace source:
+  `docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/`.
+- Gate 90D refreshed OOS4 start-trace audit:
+  `docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh-audit/GATE90D_START_TRACE_OOS4_REFRESH_AUDIT.md`.
+- Gate 90D Triangle v0 one-pair smoke:
+  `docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audchf-1w/GATE90D_TRIANGLE_V0_SMOKE_AUDCHF_1W.md`.
+- Gate 90D Triangle v0 one-week all-pair smoke:
+  `docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-allpairs-1w/GATE90D_TRIANGLE_V0_SMOKE_ALLPAIRS_1W.md`.
+- Gate 90D Triangle v0 2026 / 2019 comparison:
+  `docs/research/gates/gate90/GATE90D_TRIANGLE_V0_2026_2019_COMPARISON_2026-07-03.md`.
+- Gate 90D Triangle v0 no-Candidate-B diagnostic:
+  `docs/research/gates/gate90/GATE90D_TRIANGLE_V0_NO_CANDIDATE_B_DIAGNOSTIC_2026-07-03.md`.
 
 Gate 90 read:
 
@@ -323,17 +341,119 @@ Gate 90 read:
   MA75 / spacing `0.20` at `+11.16%` return, `-2.10%` max DD, `12,256` fills,
   max open `58`, max depth `15`.
 - Current decision read: do not start an MT5 build from one static ADR / MA /
-  spacing tuple. The next evidence gate should build a bounded weekly adaptive
-  grid-profile selector using ADR/range/MA z-score style features plus recent
-  fill pressure and flatten drag.
+  spacing tuple. The next evidence gate should build Gate 90D Triangle
+  Reversion Grid v0: formulaic direction, ADR/path-efficiency grid geometry,
+  and a Katarakti session sweep/rejection/displacement trigger with grid-unit
+  lockout/protection. Full seven-pair currency-family handshake is deferred and
+  log-only for now.
+- Gate 90D proposal was amended after outsider review: lock behavior is split
+  into default entry/add lockout versus optional explicit profit-stop; Candidate
+  B is required for v0 replay starts; centerline-only reversion is diagnostic
+  only; David evidence must come from independent David MA state; grid quantum
+  includes a structural cost floor; low path efficiency must be paired with an
+  ADR-normalized range condition; and replay requires a frozen, hashed
+  formula/config receipt.
+- Gate 90D first audit built the bounded feature/shadow receipt without runner
+  mutation or trading replay over OOS4 `2022-01-10..2022-02-07`, all 28 pairs:
+  `140` pair-week feature rows, `597` Katarakti trigger candidates across
+  `122` pair-weeks, `289` long and `308` short triggers. Trigger context split
+  was nearly even between Candidate B aligned (`291`) and Candidate B contra
+  aligned (`306`); `149` triggers had BB context and `101` had positive
+  log-only family context.
+- Gate 90D lock shadow read from existing full-stat OOS4 close events:
+  `8,738` close-event rows, `322` lock-preserve candidates, and `400.406879`
+  ADR of potential preserved MFE. The signal is concentrated in session-flatten
+  giveback: raw both `171.522992` ADR, David contra `88.800436` ADR, Candidate
+  B `64.613434` ADR. Target-close lock preservation was small by comparison.
+  Post-review caveat: these are protection receipts only, not proof of
+  forced-close replay behavior or in-time lockout action before session flatten.
+- Gate 90D coding pass added start-level traceability support before replay:
+  Gate 90 close-event rows now emit `activation_rule_id`, `cycle_id`, and
+  `start_timestamp_utc`; Gate 90D audit now emits `gate90d-formula-config`,
+  session-level geometry rows/summaries, and start-traceability rows/summaries.
+  The OOS4 feature audit still has `597` triggers and `8,738` lock rows, plus
+  session geometry split: `734` harvestable-chop sessions and `526` dead-chop /
+  cost-churn sessions. Formula contract hash:
+  `EA06CF43315D2A1F72BA928006046339DEF3311FAAC1C6C6E606B3C8374FA065`.
+- Gate 90D traceability smokes passed without long matrix work:
+  one-pair/one-week Gate 90 smoke produced `5` close events with the new start
+  fields; a Gate 90D trace smoke against those rows produced `4` trigger
+  candidates and classified all `5` raw starts as `no_in_session_trigger` under
+  the tightened same-entry-session matcher.
+- Gate 90D refreshed the bounded OOS4 5-week close-event source with start
+  fields across all 28 pairs and the five baseline rules only; no long matrix,
+  2020 year run, Triangle replay, MT5/live/app work, or full handshake gate was
+  started. The refreshed trace audit kept `597` trigger candidates and `8,738`
+  lock rows, with `551` close events matched to prior same-entry-session
+  Katarakti trigger candidates and `8,187` rows left as `no_in_session_trigger`.
+  Matched rows split `92` session-flatten and `459` target closes; average
+  trigger-to-start delay was `151.422868` minutes. Start-shadow scoring says
+  matched starts are higher quality than unmatched on average (`$0.457270` avg
+  net, PF `2.016007` versus `$0.251400`, PF `1.263598`), but the real split is
+  geometry: matched `harvestable_chop_candidate` starts produced `289` rows,
+  `$220.933711` net, `$0.764477` avg net, and PF `5.403558`; matched
+  `dead_chop_cost_churn` starts produced `262` rows, `$31.021942` net,
+  `$0.118404` avg net, and PF `1.156823`. Refreshed formula contract hash:
+  `15F212768865DA2076CA330C74D540B7FDD27E9F7AA3EA2F647AF62CE6569DF2`.
+- Gate 90D manual-rule and adaptive-spacing build pass added a plain-English
+  human playbook to the proposal and added adaptive spacing receipts to the
+  feature audit. The first v0 spacing receipt is
+  `gate90d_range_box_slots_cost_clamped_v0`: completed session range divided
+  into `3` target slots, clamped to `0.20..0.30 ADR`, with signal brick derived
+  as spacing `/ 4`. The refreshed audit now reports harvestable sessions with
+  average adaptive spacing `0.262674 ADR` and `734/734` adaptive range pass;
+  dead-chop sessions sit at the `0.20 ADR` floor and `0/526` adaptive range
+  pass. Updated formula contract hash:
+  `EDAC42D2519046BCC4CBA2ECB42E1524A0AC4D9670517240C19C371E3DAA227B`.
+- Gate 90D Triangle v0 replay scaffold is now callable in the Gate 90 runner as
+  `--activation-rules=triangle_v0,...`. It starts only after a completed
+  session range, sweep/rejection/displacement trigger, point-in-time
+  harvestable path geometry, and Candidate/David alignment; per-cycle spacing
+  is completed session range / `3`, clamped to `0.20..0.30 ADR`. Close-event
+  and terminal-inventory rows now carry `cycle_spacing_adr` and
+  `triangle_trigger_key`.
+- Triangle v0 smokes passed without 2020/year-by-year testing or the full
+  matrix. AUDCHF one-week smoke (`2022-01-10`) produced `3` starts, `4`
+  entries, `3` winning close events, net `+$2.15`, max open `2`, max depth `1`.
+  One-week all-pair smoke on the same week produced `19` close events, `23`
+  entries, net `+$11.77`, PF `5.427295`, max open `5`, max depth `1`, and
+  `0` missing trigger/spacing trace fields. Trace rows spanned `9` pairs with
+  spacing `0.212007..0.273538 ADR`.
+- Gate 90D Triangle v0 failed the old-window comparison as a complete entry
+  algorithm. On the 2026 fast-decision window (`2025-12-08..2026-05-31`,
+  OHLC, ADR `0.025` / MA25 / static baseline spacing `0.10`), Triangle v0
+  returned `+2.16%`, PF `5.511`, `371` fills, `283` close cycles, max open
+  `10`, max depth `9`; `david_contra` on the same surface returned `+95.56%`
+  and `candidate_b` returned `+76.15%`. On the 2019 close-mode top-return
+  surface (`2019-04-14..2019-12-30`, ADR `0.075` / MA50 / static baseline
+  spacing `0.20`), Triangle v0 returned `-0.61%`, PF `0.905`, `816` fills,
+  `474` close cycles, max open `16`, max depth `12`; `candidate_b` returned
+  `+17.01%`. Read: Triangle v0 is useful as a precision/lockout component, but
+  the strict sweep/rejection/displacement start is filtering out too much edge
+  and cannot be the final formula by itself.
+- Gate 90D no-Candidate-B diagnostic added `triangle_v0_no_candidate_b`, which
+  keeps the same Triangle trigger/geometry but removes Candidate B from the
+  direction formula and requires David-only side agreement. Result: Candidate B
+  is not the cause of Triangle v0 failure. On 2026, no-Candidate-B returned
+  `+2.19%` versus current Triangle `+2.16%`, but with more fills (`437` vs
+  `371`) and lower PF (`4.866` vs `5.511`). On 2019, no-Candidate-B worsened
+  return to `-0.74%` versus current Triangle `-0.61%`, with PF `0.865` versus
+  `0.905`. Read: the strict trigger/geometry gate is too narrow; do not scale
+  current v0.
 
 Next action:
 
-- Review the 2019 non-stoch band scorecard with Freedom.
+- Review the amended Gate 90D Triangle Reversion Grid proposal, updated
+  feature/shadow audit, refreshed OOS4 start-trace audit, first Triangle v0
+  replay smokes, and the 2026 / 2019 old-window comparison with Freedom.
 - Do not continue with 2020/year-by-year tests or restart the full matrix as the
   next action; Freedom wants algorithm design review first.
-- Open the next research design as a bounded weekly adaptive grid-profile
-  selector, not as broad optimization and not as MT5 EA implementation.
+- Next evidence pass should not merely scale current `triangle_v0`. Design v1
+  by separating harvestable grid regime from exact start trigger: strict
+  Katarakti trigger, relaxed sweep/rejection, first mean-extension touch, and
+  Candidate B / David starts gated by valid session geometry should be compared
+  inside the same bounded windows before any long replay, full matrix, or full
+  handshake gate.
 - Do not rerun the same 150-command foreground matrix as-is.
 - Interpret Gate 90C with the known caveat that session-flatten lifecycle
   semantics still need explanation because OOS had nonzero swap and max fill
@@ -347,7 +467,8 @@ Frozen until explicitly reopened: MT5 lifecycle optimization, target
 optimization outside the Gate 90 ADR-clock execution surface, spacing searches
 outside the Gate 90C matrix, pair-specific swap ingestion, margin stopout
 simulator, app/live integration, promotion, live-readiness, broad COT/Candidate
-B regime redesign, and double-sided in-between policy.
+B regime redesign, double-sided in-between policy, and full seven-pair
+currency-family handshake implementation or entry gating.
 
 ## Historical Active Gate
 

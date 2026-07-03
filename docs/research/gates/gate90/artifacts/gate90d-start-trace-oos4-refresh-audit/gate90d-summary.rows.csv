@@ -1,0 +1,3 @@
+scope,rows,weeks,pairs,trigger_candidates,pairs_with_trigger,long_triggers,short_triggers,content_hash,lock_shadow_rows,lock_preserve_candidates,shadow_preserved_adr
+trigger_feature_ledger,140,5,28,597,122,289,308,21A7DF245C8112C2B890E7EF87A8046A447051AB0C27BD0B9C584589452E9C88,,,
+lock_shadow_ledger,8738,5,28,,,,,B8C75D651298B60A252FC4F557A925DF717EF1DC2231A0A26F3F1D6F632A7235,8738,322,400.406879

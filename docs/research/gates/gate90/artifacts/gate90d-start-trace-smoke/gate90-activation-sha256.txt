@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T23:17:13.242Z
+git_commit ddc665ae2df6c9cdb1ee1f234eddc77f8ef411bb
+summary_json 2CA46783C4B72F5F5986583C0F8E00AC9E3686D266BF0A83A62D8F81B4B2DBE3 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/activation-summary.rows.json
+weekly_json 554A19A9E76A4CFDF042D69CB9ADF5138900755E46F1749B7449F80808474BAA docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/weekly-activation-truth.rows.json
+close_events_json DD2501706BA5688964A73E3FD627FA42DC92C11B35F33CEBFC66A2DABDC75568 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/terminal-inventory.rows.json
+validation_json 84617C6C1560EDFC837D9197AA5EFEAB829C906FD35171BCB908E6C1625D784D docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/validation.rows.json
+metric_definitions_json 7C339E1C28184ED286A3BE9F9B444324A0A4EBF5D5444A77F11EF9C541E188C2 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/metric-definitions.rows.json
+command_receipt AC35B44D68461933188BB6D2B36CED5C81E9E3E729807A7792AC55E4D9041294 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/command-receipt.json
+run_summary_json D97DC7948B101F2399F398F7C9F784EEB83161F0933E2DBB1C0F56C70A3CD4AC docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/gate90-run-summary.json
+report C926FE4E6CF1B3CD26BCD2472360E576373F18C8C6E368E54E68D05627859BA2 docs/research/gates/gate90/artifacts/gate90d-start-trace-smoke/GATE90D_START_TRACE_SMOKE.md

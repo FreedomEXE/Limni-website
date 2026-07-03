@@ -33,6 +33,12 @@ const DEFAULT_TARGET_ADR = 1;
 const DEFAULT_SPACING_ADR = 0.2;
 const DEFAULT_LOT_SIZE = 0.01;
 const STANDARD_FX_CONTRACT_UNITS = 100_000;
+const TRIANGLE_V0_FORMULA_ID = "gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03";
+const TRIANGLE_TARGET_GRID_SLOTS = 3;
+const TRIANGLE_MIN_SPACING_ADR = 0.2;
+const TRIANGLE_MAX_SPACING_ADR = 0.3;
+const TRIANGLE_RANGE_FLOOR_MIN_ADR = 0.5;
+const TRIANGLE_PATH_EFFICIENCY_LOW_MAX = 0.35;
 const DEFAULT_SIGNAL_SETTINGS = {
   davidMaPeriod: 35,
   davidRsiPeriod: 21,
@@ -63,7 +69,9 @@ type ActivationRuleId =
   | "david_with"
   | "stoch_contra"
   | "david_stoch_confirm"
-  | "david_stoch_release";
+  | "david_stoch_release"
+  | "triangle_v0"
+  | "triangle_v0_no_candidate_b";
 type SignalSettings = {
   davidMaPeriod: number;
   davidRsiPeriod: number;
@@ -118,6 +126,8 @@ type Cycle = {
   start_timestamp_utc: string;
   anchor_price: number;
   cycle_adr_pct: number;
+  cycle_spacing_adr: number;
+  triangle_trigger_key: string | null;
   fills: Fill[];
   entry_price_inverse_sum: number;
   quantity_sum: number;
@@ -154,9 +164,12 @@ type ConversionSource = {
 
 type CloseEvent = {
   variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  cycle_id: string;
   pair: string;
   side: Side;
   close_reason: CloseReason;
+  start_timestamp_utc: string;
   close_timestamp_utc: string;
   anchor_week_open_utc: string;
   fill_count: number;
@@ -172,6 +185,8 @@ type CloseEvent = {
   reset_ordinal_at_start: number;
   completed_reset_ordinal: number | null;
   max_fill_age_days: number;
+  cycle_spacing_adr: number;
+  triangle_trigger_key: string | null;
 };
 
 type TerminalInventoryRow = {
@@ -189,6 +204,8 @@ type TerminalInventoryRow = {
   max_add_depth: number;
   max_fill_age_days: number;
   avg_fill_age_days: number;
+  cycle_spacing_adr: number;
+  triangle_trigger_key: string | null;
   terminal_mark_price: number;
   terminal_david_ma: number | null;
   side_exit_distance_to_ma_adr: number | null;
@@ -375,6 +392,35 @@ type LocalSessionParts = {
 type SessionTickState = {
   canOpenOrAdd: boolean;
   shouldFlatten: boolean;
+};
+
+type TriangleSessionWindow = {
+  id: string;
+  rangeStartMs: number;
+  rangeEndMs: number;
+  entryStartMs: number;
+  entryEndMs: number;
+};
+
+type TriangleTrigger = {
+  trigger_key: string;
+  pair: string;
+  week_open_utc: string;
+  side: Side;
+  session_id: string;
+  entry_end_ms: number;
+  displacement_ms: number;
+  session_range_adr: number;
+  path_efficiency: number;
+  adaptive_spacing_adr: number;
+  adaptive_signal_adr_brick: number;
+  range_condition_pass: boolean;
+  geometry_regime: "harvestable_chop_candidate" | "dead_chop_cost_churn" | "other";
+};
+
+type TriangleBar = ClosedBar & {
+  index: number;
+  timestamp_ms: number;
 };
 
 type RuntimeStats = {
@@ -613,11 +659,13 @@ function parseActivationRuleId(value: string): ActivationRuleId {
     value === "david_with" ||
     value === "stoch_contra" ||
     value === "david_stoch_confirm" ||
-    value === "david_stoch_release"
+    value === "david_stoch_release" ||
+    value === "triangle_v0" ||
+    value === "triangle_v0_no_candidate_b"
   ) {
     return value;
   }
-  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, or david_stoch_release`);
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, or triangle_v0_no_candidate_b`);
 }
 
 function parseActivationRuleIds(value: string): ActivationRuleId[] {
@@ -634,6 +682,10 @@ function parseActivationRuleIds(value: string): ActivationRuleId[] {
 
 function variantId(ruleId: ActivationRuleId) {
   return `RAW_GRID_T100_S020_GATE90_${ruleId.toUpperCase()}`;
+}
+
+function isTriangleActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b";
 }
 
 function davidSettingsLabel(settings: SignalSettings) {
@@ -908,6 +960,156 @@ function directedAdrAtTick(row: ReplayRow, index: number, mode: BarPathMode, tic
   if (tickIndex === 1) return highBeforeLow ? high : low;
   if (tickIndex === 2) return highBeforeLow ? low : high;
   return close;
+}
+
+function iso(ms: number) {
+  return new Date(ms).toISOString();
+}
+
+function dayStartMs(timestampMs: number) {
+  const date = new Date(timestampMs);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function clampValue(min: number, max: number, value: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function trianglePriceMoveAdr(row: ReplayRow, from: number, to: number) {
+  if (row.entry_price === null || row.entry_price <= 0 || row.pair_adr_pct <= 0) return null;
+  return ((to - from) / row.entry_price) * 100 / row.pair_adr_pct;
+}
+
+function triangleRangeAdr(row: ReplayRow, high: number, low: number) {
+  if (row.entry_price === null || row.entry_price <= 0 || row.pair_adr_pct <= 0) return null;
+  return ((high - low) / row.entry_price) * 100 / row.pair_adr_pct;
+}
+
+function trianglePathEfficiency(bars: TriangleBar[]) {
+  if (bars.length < 2) return null;
+  const signal = Math.abs(bars.at(-1)!.close - bars[0]!.close);
+  let noise = 0;
+  for (let index = 1; index < bars.length; index += 1) noise += Math.abs(bars[index]!.close - bars[index - 1]!.close);
+  return noise > 0 ? signal / noise : null;
+}
+
+function triangleBarsFromRow(row: ReplayRow): TriangleBar[] {
+  return row.path_payload.timestamp_utc.map((timestampUtc, index) => ({
+    ...closedBarFromRow(row, index),
+    index,
+    timestamp_ms: Date.parse(timestampUtc),
+  }));
+}
+
+function triangleSessionWindows(bars: TriangleBar[]) {
+  if (!bars.length) return [] as TriangleSessionWindow[];
+  const startDay = dayStartMs(bars[0]!.timestamp_ms);
+  const endDay = dayStartMs(bars.at(-1)!.timestamp_ms) + 86_400_000;
+  const windows: TriangleSessionWindow[] = [];
+  for (let day = startDay; day <= endDay; day += 86_400_000) {
+    windows.push({
+      id: `ny|${iso(day).slice(0, 10)}`,
+      rangeStartMs: day,
+      rangeEndMs: day + 13 * 3_600_000,
+      entryStartMs: day + 13 * 3_600_000,
+      entryEndMs: day + 21 * 3_600_000,
+    });
+    windows.push({
+      id: `asia_london|${iso(day + 86_400_000).slice(0, 10)}`,
+      rangeStartMs: day + 13 * 3_600_000,
+      rangeEndMs: day + 21 * 3_600_000,
+      entryStartMs: day + 86_400_000,
+      entryEndMs: day + 86_400_000 + 13 * 3_600_000,
+    });
+  }
+  return windows;
+}
+
+function barsBetween(bars: TriangleBar[], startMs: number, endMs: number) {
+  return bars.filter((bar) => bar.timestamp_ms >= startMs && bar.timestamp_ms < endMs);
+}
+
+function triangleAdaptiveSpacing(sessionRangeAdr: number) {
+  const raw = sessionRangeAdr / TRIANGLE_TARGET_GRID_SLOTS;
+  return clampValue(TRIANGLE_MIN_SPACING_ADR, TRIANGLE_MAX_SPACING_ADR, raw);
+}
+
+function triangleDisplacementPass(row: ReplayRow, bar: TriangleBar, side: Side, requiredAdr: number) {
+  const candleRange = bar.high - bar.low;
+  if (candleRange <= 0) return false;
+  const bodyAdr = Math.abs(trianglePriceMoveAdr(row, bar.open, bar.close) ?? 0);
+  const correctDirection = side === "LONG" ? bar.close > bar.open : bar.close < bar.open;
+  if (!correctDirection || bodyAdr < requiredAdr) return false;
+  const closeZone = side === "LONG"
+    ? (bar.high - bar.close) / candleRange
+    : (bar.close - bar.low) / candleRange;
+  return closeZone <= 0.3;
+}
+
+function detectTriangleTriggers(row: ReplayRow) {
+  const triggers: TriangleTrigger[] = [];
+  const bars = triangleBarsFromRow(row);
+  for (const window of triangleSessionWindows(bars)) {
+    const rangeBars = barsBetween(bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const sessionRangeAdr = triangleRangeAdr(row, rangeHigh, rangeLow);
+    if (sessionRangeAdr === null) continue;
+    const adaptiveSpacingAdr = triangleAdaptiveSpacing(sessionRangeAdr);
+    const adaptiveSignalAdrBrick = clampValue(0.0125, 0.075, adaptiveSpacingAdr / 4);
+    const rangeFloorAdr = Math.max(TRIANGLE_RANGE_FLOOR_MIN_ADR, TRIANGLE_TARGET_GRID_SLOTS * adaptiveSpacingAdr);
+    const rangeConditionPass = sessionRangeAdr + 1e-9 >= rangeFloorAdr;
+    for (let pos = 0; pos < entryBars.length; pos += 1) {
+      const sweepBar = entryBars[pos]!;
+      const candidates: Array<{ side: Side; depthAdr: number }> = [];
+      const downDepth = triangleRangeAdr(row, rangeLow, sweepBar.low);
+      const upDepth = triangleRangeAdr(row, sweepBar.high, rangeHigh);
+      const requiredAdr = Math.max(adaptiveSignalAdrBrick, 0.25 * adaptiveSpacingAdr);
+      if (downDepth !== null && downDepth >= requiredAdr) candidates.push({ side: "LONG", depthAdr: downDepth });
+      if (upDepth !== null && upDepth >= requiredAdr) candidates.push({ side: "SHORT", depthAdr: upDepth });
+      for (const candidate of candidates) {
+        const rejection = [sweepBar, entryBars[pos + 1]]
+          .filter((bar): bar is TriangleBar => Boolean(bar))
+          .find((bar) => candidate.side === "LONG" ? bar.close > rangeLow : bar.close < rangeHigh);
+        if (!rejection) continue;
+        const displacement = [rejection, bars[rejection.index + 1]]
+          .filter((bar): bar is TriangleBar => Boolean(bar) && bar.timestamp_ms >= window.entryStartMs && bar.timestamp_ms < window.entryEndMs)
+          .find((bar) => triangleDisplacementPass(row, bar, candidate.side, requiredAdr));
+        if (!displacement) continue;
+        const pathBarsSoFar = entryBars.filter((bar) => bar.timestamp_ms <= displacement.timestamp_ms);
+        const entryPathEfficiency = trianglePathEfficiency(pathBarsSoFar);
+        if (entryPathEfficiency === null) continue;
+        const geometryRegime = entryPathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX
+          ? rangeConditionPass ? "harvestable_chop_candidate" : "dead_chop_cost_churn"
+          : "other";
+        triggers.push({
+          trigger_key: [
+            row.week_open_utc,
+            row.pair,
+            window.id,
+            candidate.side,
+            sweepBar.timestamp_utc,
+            displacement.timestamp_utc,
+          ].join("|"),
+          pair: row.pair,
+          week_open_utc: row.week_open_utc,
+          side: candidate.side,
+          session_id: window.id,
+          entry_end_ms: window.entryEndMs,
+          displacement_ms: displacement.timestamp_ms,
+          session_range_adr: round6(sessionRangeAdr),
+          path_efficiency: round6(entryPathEfficiency),
+          adaptive_spacing_adr: round6(adaptiveSpacingAdr),
+          adaptive_signal_adr_brick: round6(adaptiveSignalAdrBrick),
+          range_condition_pass: rangeConditionPass,
+          geometry_regime: geometryRegime,
+        });
+      }
+    }
+  }
+  return triggers;
 }
 
 function buildConversionRates(rows: ReplayRow[], mode: BarPathMode): ConversionRates {
@@ -1186,6 +1388,60 @@ function maExpansionAllows(signal: SignalSnapshot, side: Side, markPrice: number
   return expansionAdr >= minExpansionAdr;
 }
 
+function activeTriangleTrigger(triggers: TriangleTrigger[], side: Side, timestampMs: number) {
+  return triggers
+    .filter((trigger) =>
+      trigger.side === side &&
+      trigger.geometry_regime === "harvestable_chop_candidate" &&
+      trigger.displacement_ms <= timestampMs &&
+      timestampMs <= trigger.entry_end_ms
+    )
+    .sort((left, right) => right.displacement_ms - left.displacement_ms)[0] ?? null;
+}
+
+function triangleStartGate(options: {
+  trigger: TriangleTrigger | null;
+  signal: SignalSnapshot;
+  side: Side;
+  markPrice: number;
+  currentAdrPct: number;
+  candidateBSide: Side;
+  candidateMode: "candidate_and_david" | "david_only";
+}) {
+  if (!options.trigger) {
+    return {
+      signalAllowed: false,
+      expansionAllowed: false,
+      spacingAdr: null,
+      triggerKey: null,
+    };
+  }
+  const davidSide = davidContraSide(options.signal);
+  const davidAlignment = davidSide === null ? 0 : options.side === davidSide ? 1 : -1;
+  const candidateAlignment = options.side === options.candidateBSide ? 1 : -1;
+  const alignmentScore = options.candidateMode === "david_only"
+    ? davidAlignment
+    : 0.5 * candidateAlignment + 0.5 * davidAlignment;
+  const signalAllowed = options.candidateMode === "david_only"
+    ? davidSide !== null && davidAlignment > 0
+    : alignmentScore >= 0;
+  const requiredDistanceAdr = options.trigger.adaptive_spacing_adr
+    * (1 - 0.25 * Math.max(0, alignmentScore))
+    * (1 + 0.75 * Math.max(0, -alignmentScore));
+  return {
+    signalAllowed,
+    expansionAllowed: signalAllowed && maExpansionAllows(
+      options.signal,
+      options.side,
+      options.markPrice,
+      options.currentAdrPct,
+      requiredDistanceAdr,
+    ),
+    spacingAdr: options.trigger.adaptive_spacing_adr,
+    triggerKey: options.trigger.trigger_key,
+  };
+}
+
 function directedMoveFromCycle(cycle: Cycle, markPrice: number, currentAdrPct: number) {
   const sign = cycle.side === "LONG" ? 1 : -1;
   return ((markPrice - cycle.anchor_price) / cycle.anchor_price) * 100 * sign / currentAdrPct;
@@ -1398,6 +1654,8 @@ function startCycle(options: {
   timestampUtc: string;
   timestampMs: number;
   runtimeOptions: Options;
+  cycleSpacingAdr: number;
+  triangleTriggerKey: string | null;
 }) {
   options.book.serial += 1;
   const cycle: Cycle = {
@@ -1409,6 +1667,8 @@ function startCycle(options: {
     start_timestamp_utc: options.timestampUtc,
     anchor_price: options.markPrice,
     cycle_adr_pct: options.row.pair_adr_pct,
+    cycle_spacing_adr: options.cycleSpacingAdr,
+    triangle_trigger_key: options.triangleTriggerKey,
     fills: [],
     entry_price_inverse_sum: 0,
     quantity_sum: 0,
@@ -1451,7 +1711,8 @@ function addGridFills(options: {
   runtimeOptions: Options;
 }) {
   const directed = directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct);
-  while (directed <= -options.runtimeOptions.spacingAdr * options.cycle.next_adverse_fill_level) {
+  const spacingAdr = options.cycle.cycle_spacing_adr;
+  while (directed <= -spacingAdr * options.cycle.next_adverse_fill_level) {
     const level = options.cycle.next_adverse_fill_level;
     const opened = openFill({
       ...options,
@@ -1462,7 +1723,7 @@ function addGridFills(options: {
     options.cycle.next_adverse_fill_level += 1;
   }
   if (options.runtimeOptions.gridAddMode === "adverse_and_favorable") {
-    while (directed >= options.runtimeOptions.spacingAdr * options.cycle.next_favorable_fill_level) {
+    while (directed >= spacingAdr * options.cycle.next_favorable_fill_level) {
       const level = options.cycle.next_favorable_fill_level;
       const opened = openFill({
         ...options,
@@ -1490,6 +1751,7 @@ function targetReached(options: {
 }
 
 function closeCycle(options: {
+  activationRuleId: ActivationRuleId;
   stats: RuntimeStats;
   cycle: Cycle;
   closeReason: CloseReason;
@@ -1543,9 +1805,12 @@ function closeCycle(options: {
   options.stats.maxFillAgeDays = Math.max(options.stats.maxFillAgeDays, maxFillAgeDays);
   const event: CloseEvent = {
     variant_id: options.cycle.variant_id,
+    activation_rule_id: options.activationRuleId,
+    cycle_id: options.cycle.cycle_id,
     pair: options.cycle.pair,
     side: options.cycle.side,
     close_reason: options.closeReason,
+    start_timestamp_utc: options.cycle.start_timestamp_utc,
     close_timestamp_utc: options.timestampUtc,
     anchor_week_open_utc: options.cycle.anchor_week_open_utc,
     fill_count: options.cycle.fills.length,
@@ -1561,6 +1826,8 @@ function closeCycle(options: {
     reset_ordinal_at_start: options.cycle.reset_ordinal_at_start,
     completed_reset_ordinal: options.completedResetOrdinal,
     max_fill_age_days: round6(maxFillAgeDays),
+    cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    triangle_trigger_key: options.cycle.triangle_trigger_key,
   };
   options.stats.closeEventCount += 1;
   if (event.net_usd > 0) {
@@ -1638,6 +1905,8 @@ function terminalInventoryRow(options: {
     max_add_depth: maxAddDepth,
     max_fill_age_days: round6(maxFillAgeDays),
     avg_fill_age_days: round6(options.cycle.fills.length ? ageSum / options.cycle.fills.length : 0),
+    cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    triangle_trigger_key: options.cycle.triangle_trigger_key,
     terminal_mark_price: round6(options.markPrice),
     terminal_david_ma: davidMa === null ? null : round6(davidMa),
     side_exit_distance_to_ma_adr: sideExitDistanceToMaAdr === null ? null : round6(sideExitDistanceToMaAdr),
@@ -1665,6 +1934,7 @@ function replayTick(options: {
   runtimeOptions: Options;
   activationRuleId: ActivationRuleId;
   sessionState: SessionTickState;
+  triangleTriggers: TriangleTrigger[];
 }) {
   const book = options.books.get(options.row.pair) ?? createBook(options.row.pair);
   options.books.set(options.row.pair, book);
@@ -1684,6 +1954,7 @@ function replayTick(options: {
       observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
       if (missedSessionFlatten) {
         closeCycle({
+          activationRuleId: options.activationRuleId,
           stats: options.stats,
           cycle,
           closeReason: "session_flatten",
@@ -1708,6 +1979,7 @@ function replayTick(options: {
       })) {
         const completedResetOrdinal = incrementSideReset(book, side);
         closeCycle({
+          activationRuleId: options.activationRuleId,
           stats: options.stats,
           cycle,
           closeReason: "target",
@@ -1725,6 +1997,7 @@ function replayTick(options: {
       }
       if (options.sessionState.shouldFlatten) {
         closeCycle({
+          activationRuleId: options.activationRuleId,
           stats: options.stats,
           cycle,
           closeReason: "session_flatten",
@@ -1755,16 +2028,37 @@ function replayTick(options: {
       continue;
     }
     if (options.sessionState.canOpenOrAdd) {
-      const signalAllowed = options.activationRuleId === "raw_both"
-        ? true
-        : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
-      const expansionAllowed = signalAllowed && maExpansionAllows(
-        options.signal,
-        side,
-        options.markPrice,
-        options.row.pair_adr_pct,
-        options.runtimeOptions.minMaExpansionAdr,
-      );
+      let cycleSpacingAdr = options.runtimeOptions.spacingAdr;
+      let triangleTriggerKey: string | null = null;
+      let signalAllowed = false;
+      let expansionAllowed = false;
+      if (isTriangleActivationRule(options.activationRuleId)) {
+        const trigger = activeTriangleTrigger(options.triangleTriggers, side, options.timestampMs);
+        const gate = triangleStartGate({
+          trigger,
+          signal: options.signal,
+          side,
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          candidateBSide: options.row.candidate_b_side,
+          candidateMode: options.activationRuleId === "triangle_v0_no_candidate_b" ? "david_only" : "candidate_and_david",
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        triangleTriggerKey = gate.triggerKey;
+      } else {
+        signalAllowed = options.activationRuleId === "raw_both"
+          ? true
+          : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
+        expansionAllowed = signalAllowed && maExpansionAllows(
+          options.signal,
+          side,
+          options.markPrice,
+          options.row.pair_adr_pct,
+          options.runtimeOptions.minMaExpansionAdr,
+        );
+      }
       const allowed = signalAllowed && expansionAllowed;
       options.stats.activationChecks += 1;
       if (side === "LONG" && allowed) options.stats.activationAllowedLong += 1;
@@ -1783,6 +2077,8 @@ function replayTick(options: {
         timestampUtc: options.timestampUtc,
         timestampMs: options.timestampMs,
         runtimeOptions: options.runtimeOptions,
+        cycleSpacingAdr,
+        triangleTriggerKey,
       });
       setSideCycle(book, side, cycle);
       continue;
@@ -1801,6 +2097,9 @@ function replayRowForVariants(options: {
   const signalBook = options.sharedSignalBooks.get(options.row.pair) ?? createSignalBook(options.row.pair);
   options.sharedSignalBooks.set(options.row.pair, signalBook);
   const timestamps = options.row.path_payload.timestamp_utc;
+  const triangleTriggers = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule)
+    ? detectTriangleTriggers(options.row)
+    : [];
   for (let index = 0; index < timestamps.length; index += 1) {
     const timestampUtc = timestamps[index]!;
     const baseTimestampMs = Date.parse(timestampUtc);
@@ -1824,6 +2123,7 @@ function replayRowForVariants(options: {
           runtimeOptions: options.runtimeOptions,
           activationRuleId: variantState.activationRuleId,
           sessionState,
+          triangleTriggers,
         });
       }
     }
@@ -1935,6 +2235,7 @@ function liquidateEnd(options: {
         }));
       }
       closeCycle({
+        activationRuleId: options.activationRuleId,
         stats: options.stats,
         cycle,
         closeReason,
@@ -2090,6 +2391,7 @@ function validationRows(options: {
   selectedPairs: string[];
   runtimeOptions: Options;
 }) {
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule);
   return [
     { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
     { check: "continuous_carried_inventory", value: options.runtimeOptions.sessionMode === "continuous", expected: "true only in continuous session mode", passed: true },
@@ -2115,6 +2417,10 @@ function validationRows(options: {
     { check: "swap_triggers_target_reset", value: false, expected: false, passed: true },
     { check: "activation_rule_ids", value: options.runtimeOptions.activationRuleIds.join(","), expected: "explicit", passed: true },
     { check: "activation_controls_initial_cycle_start_only", value: true, expected: true, passed: true },
+    { check: "triangle_v0_enabled", value: triangleV0Enabled, expected: "true when activation_rule_ids includes a triangle_v0 rule", passed: true },
+    { check: "triangle_v0_formula_id", value: triangleV0Enabled ? TRIANGLE_V0_FORMULA_ID : "", expected: "visible when a triangle_v0 rule is enabled", passed: true },
+    { check: "triangle_v0_spacing_rails_adr", value: triangleV0Enabled ? `${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}` : "", expected: "range/3 clamped rails when a triangle_v0 rule is enabled", passed: true },
+    { check: "triangle_v0_traceability_columns", value: triangleV0Enabled ? "cycle_spacing_adr,triangle_trigger_key" : "", expected: "close-events and terminal-inventory rows carry trigger provenance", passed: true },
     { check: "david_ma_settings", value: davidSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "stochastic_settings", value: stochasticSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "summary_only", value: options.runtimeOptions.summaryOnly, expected: "explicit", passed: true },
@@ -2144,10 +2450,17 @@ function metricRows() {
     { metric: "side_exit_distance_to_ma_adr", definition: "side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA" },
     { metric: "max_open_positions", definition: "maximum simultaneous fill count across carried side grids" },
     { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
+    { metric: "triangle_v0", definition: "Gate 90D scaffold rule that starts only after a completed session range sweep, rejection, displacement, point-in-time harvestable path geometry, and Candidate/David alignment gate" },
+    { metric: "triangle_v0_no_candidate_b", definition: "Gate 90D diagnostic rule that keeps the Triangle trigger and geometry but removes Candidate B from the direction gate and requires David-only side agreement" },
+    { metric: "cycle_spacing_adr", definition: "actual ADR spacing assigned to the side cycle at start; triangle_v0 uses completed session range divided into target slots and clamped to the configured rails" },
+    { metric: "triangle_trigger_key", definition: "stable provenance key for the session box, side, sweep, and displacement trigger that started a triangle_v0 cycle" },
+    { metric: "triangle_v0_formula_id", definition: "scaffold formula identifier for the Gate 90D bounded Triangle v0 replay path" },
     { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
     { metric: "grid_add_mode", definition: "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor" },
     { metric: "close_event_profit_factor", definition: "gross winning close-cycle net USD divided by absolute gross losing close-cycle net USD; computed even in summary-only mode without retaining close-event rows" },
     { metric: "close_event_win_pct", definition: "winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included" },
+    { metric: "close_event_start_timestamp_utc", definition: "cycle start timestamp emitted on close-event rows for downstream start-level trigger traceability" },
+    { metric: "close_event_cycle_id", definition: "stable side-cycle identifier emitted on close-event rows so close outcomes can be matched to cycle starts" },
     { metric: "target_close_net_usd", definition: "aggregate net USD from close cycles closed by target reset, including price PnL, commission, and swap" },
     { metric: "session_flatten_close_net_usd", definition: "aggregate net USD from close cycles force-closed by the configured session flatten boundary, including price PnL, commission, and swap" },
     { metric: "activation_started_long/short", definition: "number of initial side cycles started after the activation gate allowed that side" },
@@ -2164,6 +2477,7 @@ function renderReport(options: {
   artifacts: Record<string, string>;
   runtimeOptions: Options;
 }) {
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule);
   const summaryTable = renderTable(options.summaryRows, [
     "variant_id",
     "activation_rule_id",
@@ -2230,6 +2544,9 @@ Generated: \`${new Date().toISOString()}\`
 - Warehouse truth replay with one-sided activation gates and explicit session mode controls.
 - Variants: \`${options.runtimeOptions.activationRuleIds.map((ruleId) => variantId(ruleId)).join(",")}\`.
 - Activation rules: \`${options.runtimeOptions.activationRuleIds.join(",")}\`.
+${triangleV0Enabled ? `- Triangle v0 formula id: \`${TRIANGLE_V0_FORMULA_ID}\`; starts require a completed session range, sweep/rejection/displacement trigger, point-in-time harvestable path geometry, and Candidate/David alignment.
+- Triangle v0 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v0 formula is disabled for this run."}
+${options.runtimeOptions.activationRuleIds.includes("triangle_v0_no_candidate_b") ? "- `triangle_v0_no_candidate_b` is enabled: Candidate B is removed from the Triangle direction formula and David-only side agreement is required." : ""}
 - Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
 - David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
 - Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.

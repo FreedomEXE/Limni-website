@@ -1,0 +1,2 @@
+start_trace_status,geometry_source,geometry_regime,range_condition_pass,geometry_harvestable_candidate,rows,session_flatten_rows,target_rows,net_usd,avg_net_usd,gross_profit_usd,gross_loss_abs_usd,profit_factor,win_pct,avg_price_pnl_adr,avg_max_pnl_adr,avg_minutes_from_trigger_to_start,content_hash
+missing_start_timestamp,pair_week_fallback,harvestable_chop_candidate,true,true,8738,1441,7297,2310.163852,0.264381,10366.286651,8056.122799,1.286759,86.781872,0.061476,0.222187,,E4B77D283E8229A2BABB8EC1D3FC8FAA10F2CDD1B8F49FE9B72A4EC707148997
