@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T02:34:16.945Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json CD1E7001D60C11F3D49032D5E8725EFA5EAF17B854422025E8B88C53E7909414 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/activation-summary.rows.json
+weekly_json 879BE63B30D4B8733E9238CD99C7DFCD8191BAE768C7BF4D5F3D665C2B0C93A5 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/terminal-inventory.rows.json
+validation_json A6F7274B7C0FC6BC8C41B9602283E831776EE17C9CEF96E4816ACBEB5494279E docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/validation.rows.json
+metric_definitions_json 6ED1C5F735FE036C2E5595FC128E417AD31B9FF3FDD40222843B5B6E8B96DD9B docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/metric-definitions.rows.json
+command_receipt 7A7102C2332E0A4F6DCD1C6592331708B470AC047783F797AF1E37EB4BC7AD65 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/command-receipt.json
+run_summary_json 722704EFD5F1127EC84235A891B8CC00DA8B1209A725018E40292C569EFA7AEC docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/gate90-run-summary.json
+report B17D88D0C764F6099F7472D95D3DA1D6218D5B6A8D5971F4E54463FDEFA3EE41 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/GATE90D_TRIANGLE_V1_COMPARE_2019_CLOSE_ADR0075_MA50_S020.md

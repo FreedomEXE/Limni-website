@@ -1,0 +1,162 @@
+# Gate 90 Grid Activation Accuracy One-Sided Selection
+
+Generated: `2026-07-03T02:34:16.943Z`
+
+## Verdict
+
+`PASS_GATE90_GRID_ACTIVATION_ONE_SIDED_SELECTION_BUILT_DIAGNOSTIC_ONLY`
+
+## Scope
+
+- Warehouse truth replay with one-sided activation gates and explicit session mode controls.
+- Variants: `RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_CANDIDATE_B_EXTENSION,RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_DAVID_CONTRA_EXTENSION,RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_CANDIDATE_OR_DAVID_EXTENSION,RAW_GRID_T100_S020_GATE90_TRIANGLE_V0,RAW_GRID_T100_S020_GATE90_CANDIDATE_B,RAW_GRID_T100_S020_GATE90_DAVID_CONTRA`.
+- Activation rules: `triangle_v1_candidate_b_extension,triangle_v1_david_contra_extension,triangle_v1_candidate_or_david_extension,triangle_v0,candidate_b,david_contra`.
+- Triangle v0 formula id: `gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03`; starts require a completed session range, sweep/rejection/displacement trigger, point-in-time harvestable path geometry, and Candidate/David alignment.
+- Triangle v0 spacing is per-cycle adaptive: completed session range / `3`, clamped to `0.2..0.3` ADR; close-event rows emit `cycle_spacing_adr` and `triangle_trigger_key`.
+
+- Triangle v1 formula id: `gate90d_triangle_v1_geometry_extension_start_scaffold_2026_07_03`; starts require valid harvestable session geometry, session-mid extension, and Candidate B / David direction permission. Strict Katarakti is not required for v1 starts.
+- Triangle v1 spacing is per-cycle adaptive: completed session range / `3`, clamped to `0.2..0.3` ADR; close-event rows emit `cycle_spacing_adr` and `triangle_trigger_key`.
+- Signal settings id: `DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only`.
+- David MA settings: LWMA `50`, close price, RSI `50`, overbought `60`, oversold `40`.
+- Stochastic settings: K `100`, D `3`, slowing `100`, OB/OS `60/40`, Low/High, Simple, main line only.
+- Signal clock: `adr_event`, ADR event brick `0.075`.
+- Session mode: `ny_daily_window`, time zone `America/New_York`, trade window start `18:05`, trade cutoff `15:45`, flatten `16:00`, Sunday start `20:00`, flatten overrides `none`.
+- Summary-only output: `true`.
+- Activation uses closed warehouse bars and controls only missing side-cycle starts.
+- Target mode `david_ma_reversion`, fixed target `1` ADR used only by fixed_adr mode, spacing `0.2` ADR, minimum MA expansion `0.1` ADR, grid add mode `adverse_only`, lot size `0.01`.
+- Bar path mode: `close`.
+- Continuous mode carries side-grid positions across warehouse week boundaries; session-window mode carries only until target reset, session flatten, or terminal liquidation.
+- Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA.
+- In `ny_daily_window`, target closes are still allowed whenever a tick exists, but starts/adds are blocked outside the configured clean session and unresolved cycles are force-closed at the flatten boundary.
+- In `ny_daily_window`, any cycle still open at the selected test endpoint is closed as a session flatten at the last available mark; this prevents endpoint terminal inventory from masquerading as a live overnight hold.
+- Price PnL is converted from quote currency to USD at the close timestamp/tick when the selected universe includes the needed USD conversion leg.
+- Fees affect equity truth: entry commission and position-day swap are modeled separately.
+- Explicit bid/ask spread and slippage are not modeled in this runner yet.
+- Terminal liquidation is explicit and reported separately.
+- No MT5 implementation, target/spacing optimization, pair-specific swap ingestion, margin stopout simulator, app/live integration, promotion, live-readiness, or double-sided in-between policy.
+
+## Summary
+
+| variant_id | activation_rule_id | signal_settings_id | symbol_universe | bar_path_mode | signal_clock | signal_adr_brick | session_mode | session_trade_start_et | session_trade_end_et | session_flatten_et | session_sunday_start_et | target_mode | target_adr | spacing_adr | min_ma_expansion_adr | grid_add_mode | weeks_replayed | pairs_replayed | final_balance_usd | net_profit_usd | closed_price_pnl_usd | end_liquidation_price_pnl_usd | total_commission_usd | total_swap_usd | session_flatten_count | session_flatten_positions | session_flatten_price_pnl_usd | session_flatten_swap_usd | entries_opened | end_liquidation_positions | max_open_positions | max_add_depth | max_equity_drawdown_usd | weekly_equity_profit_factor | close_event_count | close_event_profit_factor | close_event_win_pct | target_close_net_usd | session_flatten_close_net_usd | activation_started_long | activation_started_short | activation_blocked_long | activation_blocked_short | activation_blocked_expansion | activation_long_allow_pct | activation_short_allow_pct | summary_only |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_CANDIDATE_B_EXTENSION | triangle_v1_candidate_b_extension | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 10548.44 | 548.44 | 1336.78 | 0 | -654.84 | -133.5 | 1135 | 2293 | -2403.07 | -102.42 | 10914 | 0 | 53 | 12 | -141.71 | 1.987368 | 8581 | 1.181285 | 63.24 | 3191.51 | -2643.07 | 5764 | 2817 | 5544627 | 5889637 | 9868 | 0.1 | 0.05 | true |
+| RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_DAVID_CONTRA_EXTENSION | triangle_v1_david_contra_extension | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 10070.79 | 70.79 | 1125.64 | 0 | -928.2 | -126.65 | 1415 | 2930 | -3948.23 | -96.57 | 15470 | 0 | 107 | 13 | -1031.2 | 1.041578 | 12283 | 1.015018 | 63.23 | 4291.39 | -4220.6 | 6294 | 5989 | 5588921 | 5667688 | 12182 | 0.11 | 0.11 | true |
+| RAW_GRID_T100_S020_GATE90_TRIANGLE_V1_CANDIDATE_OR_DAVID_EXTENSION | triangle_v1_candidate_or_david_extension | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 10242.77 | 242.77 | 1608.66 | 0 | -1186.98 | -178.91 | 1877 | 3931 | -5048.94 | -136.46 | 19783 | 0 | 115 | 13 | -1161.78 | 1.13336 | 15588 | 1.040025 | 63.56 | 5664.03 | -5421.26 | 8214 | 7374 | 5347166 | 5536569 | 16265 | 0.15 | 0.13 | true |
+| RAW_GRID_T100_S020_GATE90_TRIANGLE_V0 | triangle_v0 | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 9938.69 | -61.31 | -0.79 | 0 | -48.96 | -11.56 | 167 | 340 | -553.07 | -8.61 | 816 | 0 | 16 | 12 | -281.28 | 0.846196 | 474 | 0.90499 | 74.68 | 520.77 | -582.08 | 271 | 203 | 6096308 | 6108124 | 73830 | 0 | 0 | true |
+| RAW_GRID_T100_S020_GATE90_CANDIDATE_B | candidate_b | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 11700.99 | 1700.99 | 3455.35 | 0 | -1317.6 | -436.76 | 2250 | 6444 | -9374.94 | -308.64 | 21960 | 0 | 90 | 14 | -769.84 | 2.034065 | 12783 | 1.158297 | 84.17 | 11771.22 | -10070.23 | 8832 | 3951 | 4260710 | 5379714 | 3497450 | 0.21 | 0.07 | true |
+| RAW_GRID_T100_S020_GATE90_DAVID_CONTRA | david_contra | DAVID_LWMA50_RSI50_60_40__STOCH_100_3_100_60_40_low_high_simple_main_only | AUDCAD,AUDCHF,AUDJPY,AUDNZD,AUDUSD,CADCHF,CADJPY,CHFJPY,EURAUD,EURCAD,EURCHF,EURGBP,EURJPY,EURNZD,EURUSD,GBPAUD,GBPCAD,GBPCHF,GBPJPY,GBPNZD,GBPUSD,NZDCAD,NZDCHF,NZDJPY,NZDUSD,USDCAD,USDCHF,USDJPY | close | adr_event | 0.075 | ny_daily_window | 18:05 | 15:45 | 16:00 | 20:00 | david_ma_reversion | 1 | 0.2 | 0.1 | adverse_only | 38 | 28 | 10881.21 | 881.21 | 2627.64 | 0 | -1404.9 | -341.53 | 2462 | 7030 | -11123.59 | -236.4 | 23415 | 0 | 142 | 21 | -1147.05 | 1.284173 | 13316 | 1.070614 | 83.64 | 12663.01 | -11781.8 | 7094 | 6222 | 4579824 | 4839269 | 3232375 | 0.15 | 0.13 | true |
+
+## Fee Model
+
+- Commission: `0.06` USD per 0.01-lot entry.
+- Long swap: `-0.0917` USD per 0.01-lot day.
+- Short swap: `0.01` USD per 0.01-lot day.
+- Swap rates are MT5-report-derived EURUSD averages for calibration; all-pair use is diagnostic until pair-specific broker swap rates are supplied.
+- Spread and slippage are excluded here; the daily session window is a structural exposure test, not a full execution-cost model.
+
+## Metric Definitions
+
+| metric | definition |
+|---|---|
+| continuous_carried_position_truth_replay | keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation |
+| session_window_position_truth_replay | keeps side grid state open inside the configured session window, allows target closes whenever ticks exist, and force-closes unresolved cycles at session flatten |
+| bar_path_mode | intrabar path used for each warehouse M1 bar; close mode uses close-only marks, OHLC modes synthesize four tester-like marks per bar |
+| signal_clock | clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes |
+| signal_adr_brick | ADR movement required to complete one synthetic signal bar when signal_clock is adr_event |
+| session_mode | continuous keeps the original carried-position replay; ny_daily_window allows starts/adds only inside the configured New York session and force-closes remaining cycles at the daily flatten boundary |
+| session_flatten_count | number of side cycles closed by the configured daily session flatten boundary, a missed no-tick boundary, or the session-mode endpoint cleanup rather than a target reset or final end-of-test liquidation |
+| session_flatten_price_pnl_usd | price PnL from cycles force-closed by the configured daily session flatten boundary |
+| closed_price_pnl_usd | target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected |
+| total_commission_usd | entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report |
+| total_swap_usd | position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates |
+| end_liquidation_price_pnl_usd | price PnL from all positions still open at the final warehouse mark |
+| terminal_inventory_rows | one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL |
+| side_exit_distance_to_ma_adr | side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA |
+| max_open_positions | maximum simultaneous fill count across carried side grids |
+| activation_rule_id | one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes |
+| triangle_v0 | Gate 90D scaffold rule that starts only after a completed session range sweep, rejection, displacement, point-in-time harvestable path geometry, and Candidate/David alignment gate |
+| triangle_v0_no_candidate_b | Gate 90D diagnostic rule that keeps the Triangle trigger and geometry but removes Candidate B from the direction gate and requires David-only side agreement |
+| triangle_v1_candidate_b_extension | Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in Candidate B side; Katarakti is not required |
+| triangle_v1_david_contra_extension | Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in David contra side; Katarakti is not required |
+| triangle_v1_candidate_or_david_extension | Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension when Candidate B or David contra permits the side |
+| cycle_spacing_adr | actual ADR spacing assigned to the side cycle at start; triangle_v0 uses completed session range divided into target slots and clamped to the configured rails |
+| triangle_trigger_key | stable provenance key for the session box, side, sweep, and displacement trigger that started a triangle_v0 cycle |
+| triangle_v0_formula_id | scaffold formula identifier for the Gate 90D bounded Triangle v0 replay path |
+| min_ma_expansion_adr | minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA |
+| grid_add_mode | adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor |
+| close_event_profit_factor | gross winning close-cycle net USD divided by absolute gross losing close-cycle net USD; computed even in summary-only mode without retaining close-event rows |
+| close_event_win_pct | winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included |
+| close_event_start_timestamp_utc | cycle start timestamp emitted on close-event rows for downstream start-level trigger traceability |
+| close_event_cycle_id | stable side-cycle identifier emitted on close-event rows so close outcomes can be matched to cycle starts |
+| target_close_net_usd | aggregate net USD from close cycles closed by target reset, including price PnL, commission, and swap |
+| session_flatten_close_net_usd | aggregate net USD from close cycles force-closed by the configured session flatten boundary, including price PnL, commission, and swap |
+| activation_started_long/short | number of initial side cycles started after the activation gate allowed that side |
+| activation_blocked_long/short | number of missing-side start checks rejected by the activation gate |
+| activation_blocked_expansion | number of missing-side start checks where the signal allowed the side but price was not far enough from the David MA |
+
+## Validation
+
+| check | value | expected | passed |
+|---|---|---|---|
+| gate74b_verdict | PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY | PASS_GATE74B | true |
+| continuous_carried_inventory | false | true only in continuous session mode | true |
+| weekly_sample_end_close_disabled | true | true | true |
+| target_reset_uses_selected_target_mode | david_ma_reversion | fixed_adr_or_david_ma_reversion | true |
+| target_mode | david_ma_reversion | explicit | true |
+| target_adr | 1 | >0 | true |
+| spacing_adr | 0.2 | >0 | true |
+| signal_clock | adr_event | explicit | true |
+| signal_adr_brick | 0.075 | >0 | true |
+| session_mode | ny_daily_window | explicit continuous_or_ny_daily_window | true |
+| session_time_zone | America/New_York | IANA time zone | true |
+| session_trade_start_et | 18:05 | HH:mm | true |
+| session_trade_end_et | 15:45 | HH:mm | true |
+| session_flatten_et | 16:00 | HH:mm | true |
+| session_sunday_start_et | 20:00 | HH:mm | true |
+| session_flatten_overrides_et |  | optional YYYY-MM-DD=HH:mm list | true |
+| session_endpoint_open_cycles_close_as_session_flatten | true | true only in ny_daily_window | true |
+| min_ma_expansion_adr | 0.1 | >=0 | true |
+| grid_add_mode | adverse_only | explicit | true |
+| bar_path_mode | close | explicit | true |
+| quote_currency_pnl_converted_to_usd | true | true | true |
+| swap_triggers_target_reset | false | false | true |
+| activation_rule_ids | triangle_v1_candidate_b_extension,triangle_v1_david_contra_extension,triangle_v1_candidate_or_david_extension,triangle_v0,candidate_b,david_contra | explicit | true |
+| activation_controls_initial_cycle_start_only | true | true | true |
+| triangle_v0_enabled | true | true when activation_rule_ids includes a triangle_v0 rule | true |
+| triangle_v0_formula_id | gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03 | visible when a triangle_v0 rule is enabled | true |
+| triangle_v0_spacing_rails_adr | 0.2..0.3 | range/3 clamped rails when a triangle_v0 rule is enabled | true |
+| triangle_v0_traceability_columns | cycle_spacing_adr,triangle_trigger_key | close-events and terminal-inventory rows carry trigger provenance | true |
+| triangle_v1_enabled | true | true when activation_rule_ids includes a triangle_v1 rule | true |
+| triangle_v1_formula_id | gate90d_triangle_v1_geometry_extension_start_scaffold_2026_07_03 | visible when a triangle_v1 rule is enabled | true |
+| triangle_v1_start_gate | valid_geometry_session_mid_extension_direction_permission | geometry plus extension plus Candidate B/David permission | true |
+| david_ma_settings | LWMA50_RSI50_60_40 | explicit CLI/default settings | true |
+| stochastic_settings | 100_3_100_60_40_low_high_simple_main_only | explicit CLI/default settings | true |
+| summary_only | true | explicit | true |
+| commission_per_entry_per_001_lot_usd | 0.06 | 0.06 | true |
+| eurusd_long_swap_per_001_lot_day_usd | -0.0917 | MT5-derived approx | true |
+| eurusd_short_swap_per_001_lot_day_usd | 0.01 | MT5-derived approx | true |
+| selected_week_count | 38 | >=1 | true |
+| selected_pair_count | 28 | >=1 | true |
+
+## Artifacts
+
+- summaryJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/activation-summary.rows.json`
+- summaryCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/activation-summary.rows.csv`
+- weeklyJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/weekly-activation-truth.rows.json`
+- weeklyCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/weekly-activation-truth.rows.csv`
+- closeEventsJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/close-events.rows.json`
+- closeEventsCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/close-events.rows.csv`
+- terminalInventoryJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/terminal-inventory.rows.json`
+- terminalInventoryCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/terminal-inventory.rows.csv`
+- validationJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/validation.rows.json`
+- validationCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/validation.rows.csv`
+- metricDefinitionsJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/metric-definitions.rows.json`
+- metricDefinitionsCsv: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/metric-definitions.rows.csv`
+- commandReceipt: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/command-receipt.json`
+- runSummaryJson: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/gate90-run-summary.json`
+- shaManifest: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/gate90-activation-sha256.txt`
+- report: `docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2019-close-adr0075-ma50-s020/GATE90D_TRIANGLE_V1_COMPARE_2019_CLOSE_ADR0075_MA50_S020.md`
+
+## Stop Line
+
+Gate 90 is warehouse activation research only. Do not optimize MT5 lifecycle controls, retune target/spacing, promote strategy logic, or open double-sided in-between policy from this run.

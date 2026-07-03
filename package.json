@@ -101,6 +101,7 @@
     "engine:gate89:continuous-raw-truth-simulator": "tsx engine/scripts/verification/build-gate89-continuous-raw-truth-simulator.ts",
     "engine:gate90:grid-activation-accuracy-one-sided-selection": "tsx engine/scripts/verification/build-gate90-grid-activation-accuracy-one-sided-selection.ts",
     "engine:gate90d:triangle-shadow-audit": "tsx engine/scripts/verification/build-gate90d-triangle-shadow-audit.ts",
+    "engine:gate90d:bad-cycle-origin-diagnostic": "tsx engine/scripts/verification/build-gate90d-bad-cycle-origin-diagnostic.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

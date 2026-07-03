@@ -8,11 +8,10 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
-Current state: Gate 89 `continuous-raw-truth-simulator` is complete as a
-diagnostic/research gate. Gate 90
-`grid-activation-accuracy-one-sided-selection` is active as warehouse-only
-execution-engine research, with the latest checkpoint focused on ADR movement
-signal clocks instead of arbitrary M1/M5/M15/H1 signal timeframes.
+Current state: Gate 90D Triangle evidence is complete as research-only
+diagnostics. Gate 91 `formulaic-triangle-grid-geometry` is the intended next
+gate and should be opened in a fresh chat. Gate 91 is about deriving a durable
+grid-geometry equation, not optimizing clamp ladders.
 
 Gate 89 outputs:
 
@@ -112,6 +111,30 @@ Gate 90 outputs:
   `docs/research/gates/gate90/GATE90D_TRIANGLE_V0_2026_2019_COMPARISON_2026-07-03.md`.
 - Gate 90D Triangle v0 no-Candidate-B diagnostic:
   `docs/research/gates/gate90/GATE90D_TRIANGLE_V0_NO_CANDIDATE_B_DIAGNOSTIC_2026-07-03.md`.
+- Gate 90D feature-ledger design-question diagnostic:
+  `docs/research/gates/gate90/GATE90D_FEATURE_LEDGER_DESIGN_QUESTION_DIAGNOSTIC_2026-07-03.md`.
+- Gate 90D Triangle v1 broad green-read diagnostic:
+  `docs/research/gates/gate90/GATE90D_TRIANGLE_V1_BROAD_GREEN_READ_2026-07-03.md`.
+- Gate 90D Triangle v1 open-price MFE / 2019 red-flag diagnostic:
+  `docs/research/gates/gate90/GATE90D_TRIANGLE_V1_OPEN_MFE_2019_RED_FLAG_DIAGNOSTIC_2026-07-03.md`.
+- Gate 90D 2019 open ADR-normalized breakdown:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_ADR_NORMALIZED_BREAKDOWN_2026-07-03.md`.
+- Gate 90D 2019 open protection sweep, no Candidate B:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_PROTECTION_SWEEP_NO_CANDIDATE_B_2026-07-03.md`.
+- Gate 90D 2019 open bad-cycle origin / trailing research:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_BAD_CYCLE_ORIGIN_AND_TRAILING_RESEARCH_2026-07-03.md`.
+- Gate 90D 2019 open live-state guard replay:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_LIVE_STATE_GUARD_REPLAY_2026-07-03.md`.
+- Gate 90D 2019 open EOD hold-red replay:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_EOD_HOLD_RED_REPLAY_2026-07-03.md`.
+- Gate 90D 2019 open EOD hold-red max-3D replay:
+  `docs/research/gates/gate90/GATE90D_2019_OPEN_EOD_HOLD_RED_MAX3D_REPLAY_2026-07-03.md`.
+- Gate 90D 2026 open pain-stop strict no-Candidate-B replay:
+  `docs/research/gates/gate90/GATE90D_2026_OPEN_PAIN_STOP_STRICT_NO_CANDIDATE_B_2026-07-03.md`.
+- Gate 91 Formulaic Triangle Grid Geometry handoff:
+  `docs/research/gates/gate91/GATE91_FORMULAIC_TRIANGLE_GRID_GEOMETRY_HANDOFF_2026-07-03.md`.
+- Gate 91 next-chat prompt:
+  `docs/research/gates/gate91/NEXT_CHAT_GATE91_FORMULAIC_TRIANGLE_GRID_GEOMETRY_PROMPT_2026-07-03.md`.
 
 Gate 90 read:
 
@@ -440,20 +463,192 @@ Gate 90 read:
   return to `-0.74%` versus current Triangle `-0.61%`, with PF `0.865` versus
   `0.905`. Read: the strict trigger/geometry gate is too narrow; do not scale
   current v0.
+- Gate 90D feature-ledger design-question/start-mode diagnostic now answers the
+  old open design-question gap before any replay freeze. It added
+  `design-question-diagnostic.rows.*`, `start-mode-diagnostic.rows.*`, and
+  `start-mode-summary.rows.*`, and defaulted the Gate 90D shadow-audit command
+  to the refreshed start-trace close-event source. The design-question ledger
+  logged `2,520` rows across archived UTC and NY-clean ET boxes; archived UTC
+  had `734` M1 harvestable rows and `561` blocked centerline-only diagnostic
+  rows, while NY-clean ET had `737` M1 harvestable rows and `737` blocked
+  centerline-only diagnostic rows. Average PE was close between box models, but
+  ADR-event PE was materially higher than M1 PE (`0.106344` vs `0.040320`
+  archived UTC; `0.105597` vs `0.040214` NY-clean ET). Start-mode diagnostics
+  then used the ADR-event harvestable denominator: archived UTC `632` sessions,
+  NY-clean ET `633` sessions. Strict sweep/rejection/displacement starts were
+  only `15` per box model; relaxed sweep/rejection rose only to `46` archived
+  UTC and `45` NY-clean ET; first session-mid extension found `623` starts in
+  both box models; Candidate B geometry starts found `367` archived UTC and
+  `363` NY-clean ET; David contra geometry starts found `368` in both box
+  models. Start-mode rows now include MFE/MAE excursion receipts using the
+  standard Maximum Favorable Excursion / Maximum Adverse Excursion framing:
+  next NY 16:00 flatten, one additional NY 16:00 flatten, full available
+  pair-week path, and `1Q`/`2Q`/`3Q` target-hit flags/timestamps. First read:
+  strict Katarakti is too sparse for v1 but not useless as a future larger-
+  target/confluence class; its `15` starts averaged `0.327999 ADR` same-day
+  MFE with `9` 1Q hits by EOD, `0.477411 ADR` next-day MFE with `11` 1Q hits,
+  and `0.617085 ADR` full-path MFE with `5` 2Q and `3` 3Q hits. Candidate B
+  and David geometry starts averaged about `0.37 ADR` same-day MFE, about
+  `0.60 ADR` next-day MFE, and about `0.78..0.79 ADR` full-path MFE. Lock
+  receipts expose `1Q` add-block rows (`2,505`), `2Q` add-block rows (`1,231`),
+  and profit-stop as receipt-only with `322` preserve candidates. Verdict:
+  `PASS_GATE90D_FEATURE_LEDGER_START_MODES_LOGGED_NO_REPLAY_NO_FULL_HANDSHAKE`.
+- Gate 90D Triangle v1 broad green-read added geometry-extension activation
+  rules to the Gate 90 runner: `triangle_v1_candidate_b_extension`,
+  `triangle_v1_david_contra_extension`, and
+  `triangle_v1_candidate_or_david_extension`. These rules keep valid Triangle
+  harvestable geometry and adaptive range/3 spacing clamped to `0.20..0.30 ADR`,
+  but they do not require strict Katarakti as the universal start trigger. Broad
+  bounded evidence is green with caveats. OOS4 5-week broad:
+  `triangle_v1_candidate_b_extension` net `+$425.92`, PF `1.741262`,
+  `2,978` entries, max open `48`; `triangle_v1_candidate_or_david_extension`
+  net `+$433.57`, PF `1.397492`, max open `62`; strict `triangle_v0` net
+  `+$63.50`; standalone `candidate_b` net `+$521.48`. 2026 old-window surface:
+  v1 Candidate-B extension net `+$6,514.20`, PF `3.230020`; v1 David extension
+  net `+$10,030.83`, PF `2.731379`; v1 Candidate-or-David extension net
+  `+$10,680.79`, PF `2.797742`; strict v0 net `+$216.19`; standalone
+  Candidate B net `+$7,615.03`; standalone David contra net `+$9,556.15`.
+  2019 old-window surface: v1 Candidate-B extension net `+$548.44`, PF
+  `1.181285`; v1 David extension net `+$70.79`, PF `1.015018`; v1
+  Candidate-or-David extension net `+$242.77`, PF `1.040025`; strict v0 stayed
+  red at `-$61.31`; standalone Candidate B remained stronger net at
+  `+$1,700.99`. Read: Triangle v1 is alive once direction, geometry, and start
+  trigger are separated, but current v1 over-harvests and over-churns,
+  especially in 2026 (`120k..210k` entries). Next work is target/churn/lock
+  quality, not promotion or broader starts. Katarakti remains a special
+  confluence/larger-target class: Katarakti trades can be v1 trades, but not all
+  v1 trades are Katarakti trades. Verdict:
+  `PASS_GATE90D_TRIANGLE_V1_BROAD_GREEN_READ_RESEARCH_ONLY_NO_PROMOTION`.
+- Gate 90D open-price MFE / 2019 red-flag diagnostic added `--bar-path-mode=open`
+  and close-cycle MFE/MAE summary receipts to the Gate 90 runner. Open mode is a
+  fast conservative proxy, not final fill truth; it misses intrabar target
+  touches that OHLC/MT5 can catch. The no-Candidate-B open diagnostics changed
+  the read materially. OOS4 open 5-week: broad v1 David-only
+  `triangle_v1_david_contra_extension` returned `-0.82%`, PF `0.896162`,
+  average MFE `0.151512 ADR`, average MAE `0.354344 ADR`, and only `19.82%`
+  `1Q` MFE hits; strict `triangle_v0_no_candidate_b` returned `+0.51%`, PF
+  `2.536091`, average MFE `0.303757 ADR`, and `51.85%` `1Q` MFE hits. 2026
+  open 26-week: broad v1 David-only returned `-11.08%`, PF `0.740719`, average
+  MFE only `0.024778 ADR`, and `0.34%` `1Q` MFE hits; standalone David contra
+  was roughly flat at `+0.46%`; strict no-Candidate-B v0 returned `-2.95%` with
+  average MAE `1.821073 ADR`. 2019 open 38-week: broad v1 David-only returned
+  `-0.74%`, PF `0.984393`, DD `-9.92%`, average MFE `0.084869 ADR`, and only
+  `9.12%` `1Q` MFE hits; standalone David contra returned `+9.30%` with DD
+  `-11.32%`; strict no-Candidate-B v0 returned `+1.17%`, PF `1.229681`, DD
+  `-2.19%`, average MFE `0.277514 ADR`, and `46.92%` `1Q` MFE hits. 2019 full
+  close-event attribution shows target closes were strongly positive
+  (`+41.51%`, PF `34.769`) but session flatten erased them (`-42.24%`, PF
+  `0.081`); worst cells concentrated in GBP/JPY and JPY pairs, led by
+  `GBPJPY SHORT` flatten `-3.76%`, `GBPUSD SHORT` `-2.27%`, and `USDJPY LONG`
+  `-1.80%`. Read: do not freeze broad v1 David-only extension as the bot; for
+  no-Candidate-B work, use David-only direction plus stricter Triangle/Katarakti
+  start quality, with bigger targets reserved for premium/Katarakti class only.
+  Verdict:
+  `PASS_GATE90D_OPEN_MFE_MAE_RECEIPTS_2019_RED_FLAG_VISIBLE_NO_PROMOTION`.
+- Gate 90D 2019 open ADR-normalized breakdown set the reporting convention for
+  this lane: headline return is ADR-normalized percent where `1 ADR = 1%`;
+  account return is secondary costed USD/equity truth. The 2019 no-Candidate-B
+  run showed broad v1 David geometry at `+177.43%` ADR but `-0.74%` account
+  return, standalone David contra at `+392.37%` ADR and `+9.30%` account
+  return, and strict Katarakti/no-Candidate-B at `+25.29%` ADR and `+1.17%`
+  account return. Strict Katarakti had the best per-cycle quality but not enough
+  total harvest. Weekly/monthly/pair breakdowns show the core 2019 problem is
+  unresolved session-flatten damage, especially around JPY-heavy pain clusters
+  such as `AUDJPY` and `GBPJPY`.
+- Gate 90D 2019 open protection sweep added protection-mode replay controls to
+  the Gate 90 runner and tested `baseline`, `lock_1q_stop_adds`,
+  `trail_1q_1q`, `trail_1q_0_5q`, `protected_flatten_1q`, and
+  `protected_flatten_1q_trail_1q` over the same no-Candidate-B 2019 surface.
+  Result: naive protection is not a free win. Strict `triangle_v0_no_candidate_b`
+  baseline remained the best strict quality row at `+25.29%` ADR, `+1.17%`
+  account, `-2.19%` DD, `689` entries, max open `13`, and PF `1.230`. Strict
+  protected flatten lowered account return to `+1.03%` and moved loss from
+  session flatten into `-$520.68` protected-flatten closes. Strict
+  `trail_1q_0_5q` returned `+0.98%` account. Standalone David baseline stayed
+  the highest 2019 harvester at `+392.37%` ADR and `+9.30%` account; its
+  `lock_1q_stop_adds` variant reduced max open `131 -> 101` but lowered account
+  return to `+7.43%`. Read: keep strict Katarakti baseline as quality anchor;
+  next classify bad-cycle origin before EOD instead of trying more blind
+  trailing variations.
+- Gate 90D bad-cycle origin / trailing research added an artifact-derived
+  MFE/MAE excursion-capture classifier over the existing 2019 open protection
+  close-event ledger. Result: trailing is a segment tool, not the main fix.
+  Strict `triangle_v0_no_candidate_b` baseline had `12` green-to-red giveback
+  losses (`-7.13%` ADR) but `78` losing cycles that never reached `1Q` MFE.
+  The ugly no-profit bucket was the real damage: `33` cycles, `-70.04%` ADR,
+  `-4.38%` account, with `0` trail-addressable losses. Worst start-date
+  clusters were `2019-10-10` (`4` ugly cycles, `-26.51%` ADR) and
+  `2019-08-01` (`4` ugly cycles, `-20.96%` ADR). Read: do not hunt for one
+  magic trailing stop; next add timestamped excursion receipts and log-only
+  heat/cluster guards before replay-freezing protection.
+- Gate 90D live-state guard replay added first MFE/MAE quantum timestamps to
+  close-event rows and replayed strict no-Candidate-B 2019 open with live-safe
+  protection modes. Result: `pain_1q_stop_adds_before_profit_0_5q` is the
+  first useful protection rule. It improved strict baseline from `+25.29%` ADR,
+  `+1.17%` account, `-2.19%` DD, PF `1.230`, `689` entries to `+32.98%` ADR,
+  `+2.29%` account, `-0.67%` DD, PF `1.712`, `529` entries. Hard
+  `pain_2q_circuit_before_profit_0_5q` was not good by itself: account return
+  fell near flat because it booked `-$369.37` in pain-circuit losses. Read:
+  if pain comes first, stop feeding the grid; do not hard-kill every ugly cycle
+  until a second condition such as heat/cluster/time/red-news is tested.
+- Gate 90D EOD hold-red replay tested closing green cycles at daily flatten
+  while carrying red cycles forward, including pain-stop and reset variants.
+  Result: hold-red is rejected for the current freeze. Uncapped hold-red fell to
+  `-5.53%` account return with `-78.74%` max DD, max open `206`, max depth `78`,
+  and max age `85.07` days. Hold-red plus pain stop lifted ADR return to about
+  `+48%`, but account return was only `+0.23..+0.25%`, max DD stayed `-4.89%`,
+  and max age reached `254.15` days. The reset-after-`+0.5Q` variant was nearly
+  identical. Read: do not carry red just because it is red; normal daily flatten
+  plus `-1Q` pain-first stop-add remains the best 2019 protection shape.
+- Gate 90D EOD hold-red max-3D replay then capped red holds at three days.
+  Result: the cap fixed the multi-month zombie problem but still did not beat
+  daily flatten. Capped hold-red without pain stop was `-38.60%` ADR,
+  `-7.65%` account, `-14.28%` DD. Capped hold-red plus pain stop was positive
+  but weak at `+20.60..20.88%` ADR, `+0.37..0.39%` account, `-1.85%` DD,
+  below daily-flatten pain stop at `+32.98%` ADR, `+2.29%` account,
+  `-0.67%` DD. Read: do not freeze hold-red, capped or uncapped.
+- Gate 90D 2026 open pain-stop replay used the 2019-winning strict
+  no-Candidate-B settings (`open`, ADR-event `0.075`, David MA `50`, daily
+  flatten, pain-first stop-add). Result: baseline was slightly red at `-5.58`
+  ADR units and `-0.12%` fixed-lot account return; pain-stop improved it to
+  `+11.06` ADR units, `+0.55%` fixed-lot account return, `-1.34%` DD, PF
+  `1.196`, entries `353`, max open `23`. Read: pain-stop travels to 2026 but
+  is weaker than 2019. Reporting convention corrected: ADR units measure
+  movement quality; fixed-lot account return is secondary cash sanity. Add raw
+  unnormalized market-return columns before final replay freeze.
+- Gate 91 is now the intended next gate: formulaic Triangle grid geometry.
+  Freedom explicitly rejected clamp-ladder optimization as the next step. Gate
+  91 should derive grid quantum, signal event clock, and reversion horizon from
+  market structure. First pass should ignore direction entirely so the geometry
+  can be tested without Candidate B, David, or fixed MA bias.
 
 Next action:
 
-- Review the amended Gate 90D Triangle Reversion Grid proposal, updated
-  feature/shadow audit, refreshed OOS4 start-trace audit, first Triangle v0
-  replay smokes, and the 2026 / 2019 old-window comparison with Freedom.
+- Open Gate 91 in a fresh chat and work only on formulaic Triangle grid
+  geometry. First task: inspect current Gate 90 runner / Triangle helpers, add a
+  new formulaic directionless geometry scaffold behind a new activation id, run
+  one-pair smoke, then bounded 2019 and 2026 A/B diagnostics. Preserve daily
+  flatten and `-1Q` before `+0.5Q` pain-stop risk layer.
 - Do not continue with 2020/year-by-year tests or restart the full matrix as the
   next action; Freedom wants algorithm design review first.
-- Next evidence pass should not merely scale current `triangle_v0`. Design v1
-  by separating harvestable grid regime from exact start trigger: strict
-  Katarakti trigger, relaxed sweep/rejection, first mean-extension touch, and
-  Candidate B / David starts gated by valid session geometry should be compared
-  inside the same bounded windows before any long replay, full matrix, or full
-  handshake gate.
+- Next evidence pass should not merely broaden current v1. Use the new
+  start-mode and broad-green receipts to design the tighter v1 shape: valid
+  harvestable geometry as parent regime, Candidate B / David as direction
+  evidence, session-mid extension as the general start family, and Katarakti as
+  confluence / larger-target evidence. Add churn controls before replay freeze:
+  minimum extension distance, neutral-alignment extra distance, heat guard via
+  `max(pair_heat, account_heat)`, target-size segmentation from MFE/MAE, and
+  1Q/2Q lockout receipts.
+- If focusing no-Candidate-B for bot simplicity, do not use the broad v1
+  David-only extension as-is. Open-price MFE says it is too loose and does not
+  earn larger targets. The next no-Candidate-B design should keep David-only
+  direction, tighten start quality toward strict Triangle/Katarakti evidence,
+  and attack session-flatten losers before expanding target size. The first
+  naive Q-protection sweep did not improve strict baseline; the bad-cycle
+  classifier says next protection instrumentation should log first `0.5Q/1Q`
+  MFE timestamps, first `1Q/2Q` MAE timestamps, peak/giveback timing,
+  `max(pair_heat, account_heat)`, and start-date/currency cluster exposure.
+  Report headline returns in ADR-normalized percent from here.
 - Do not rerun the same 150-command foreground matrix as-is.
 - Interpret Gate 90C with the known caveat that session-flatten lifecycle
   semantics still need explanation because OOS had nonzero swap and max fill

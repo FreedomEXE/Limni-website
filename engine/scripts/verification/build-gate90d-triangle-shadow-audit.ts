@@ -1,6 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import { DateTime } from "luxon";
+
 import { closePoolIfInitialized } from "@database/db/client";
 import { sha256Stable } from "@engine/research/hash";
 import {
@@ -23,16 +25,16 @@ import {
 } from "./gate65-utils";
 
 const GATE_ID = "Gate 90D: triangle-reversion-grid-shadow-audit";
-const GATE_DATE = "2026-07-02";
+const GATE_DATE = "2026-07-03";
 const COMMAND = "npm run engine:gate90d:triangle-shadow-audit";
 const DEFAULT_MANIFEST_ID = "gate74b_trade_leg_path_ECDE7C4A6553";
 const DEFAULT_WEEK_FROM = "2022-01-10T00:00:00.000Z";
 const DEFAULT_WEEK_LIMIT = 5;
-const DEFAULT_ARTIFACT_DIR = "docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w";
-const DEFAULT_REPORT_PATH = `docs/research/gates/gate90/GATE90D_TRIANGLE_FEATURE_SHADOW_AUDIT_${GATE_DATE}.md`;
+const DEFAULT_ARTIFACT_DIR = "docs/research/gates/gate90/artifacts/gate90d-design-question-diagnostic-oos4-5w";
+const DEFAULT_REPORT_PATH = `docs/research/gates/gate90/GATE90D_FEATURE_LEDGER_DESIGN_QUESTION_DIAGNOSTIC_${GATE_DATE}.md`;
 const DEFAULT_CLOSE_EVENTS_CSV =
-  "docs/research/gates/gate90/artifacts/oos-session-window-5w-oos4-adr010_ma50-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.csv";
-const FORMULA_ID = "gate90d_ltrg_v0_feature_ledger_2026_07_02";
+  "docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/close-events.rows.csv";
+const FORMULA_ID = "gate90d_ltrg_feature_ledger_design_question_diagnostic_2026_07_03";
 const PATH_EFFICIENCY_LOW_MAX = 0.35;
 const PATH_EFFICIENCY_HIGH_MIN = 0.65;
 const RANGE_FLOOR_MIN_ADR = 0.5;
@@ -46,8 +48,24 @@ const DEFAULT_MIN_SPACING_ADR = 0.2;
 const DEFAULT_MAX_SPACING_ADR = 0.3;
 const DEFAULT_MIN_SIGNAL_BRICK_ADR = 0.0125;
 const DEFAULT_MAX_SIGNAL_BRICK_ADR = 0.075;
+const START_MODE_GEOMETRY_BASIS = "adr_event_harvestable_chop_candidate";
+const DAVID_DIAGNOSTIC_SETTINGS = {
+  maPeriod: 50,
+  rsiPeriod: 50,
+  rsiOverbought: 60,
+  rsiOversold: 40,
+  signalClock: "adr_event",
+  signalAdrBrick: 0.1,
+} as const;
 
 type Side = "LONG" | "SHORT";
+type DavidState = "UP" | "DOWN";
+type StartModeId =
+  | "strict_sweep_rejection_displacement"
+  | "relaxed_sweep_rejection"
+  | "first_mean_extension_touch"
+  | "candidate_b_geometry_start"
+  | "david_contra_geometry_start";
 type ReplayRow = Pick<
   TradeLegPathReplayPairWeek,
   "week_open_utc" | "pair" | "candidate_b_side" | "pair_adr_pct" | "entry_price" | "path_payload"
@@ -85,6 +103,7 @@ type Bar = {
 
 type SessionWindow = {
   id: string;
+  boxModel: "archived_utc" | "ny_clean_et";
   session: "NY" | "ASIA_LONDON";
   rangeStartMs: number;
   rangeEndMs: number;
@@ -228,9 +247,166 @@ type LockShadowRow = {
   max_pnl_adr: number;
   cycle_quantum_adr: number;
   mfe_units: number | null;
+  lockout_1q_add_block: boolean;
+  lockout_2q_add_block: boolean;
   lock_floor_adr: number | null;
   lock_shadow_state: "no_lock_mfe" | "protected_or_above_floor" | "would_have_preserved_mfe";
   shadow_preserved_adr: number;
+  profit_stop_receipt_mode: "receipt_only";
+  profit_stop_floor_adr: number | null;
+  profit_stop_shadow_preserved_adr: number;
+  content_hash: string;
+};
+
+type DesignQuestionDiagnosticRow = {
+  row_key: string;
+  question_scope: "path_efficiency_box_heat_alignment_centerline";
+  week_open_utc: string;
+  pair: string;
+  candidate_b_side: Side;
+  box_model: "archived_utc" | "ny_clean_et";
+  session_id: string;
+  session_label: string;
+  range_start_utc: string;
+  range_end_utc: string;
+  entry_start_utc: string;
+  entry_end_utc: string;
+  session_range_adr: number | null;
+  pe_m1_1_session: number | null;
+  pe_adr_event_1_session: number | null;
+  pe_m1_5_session_avg: number | null;
+  pe_m1_fast_slow_ema: number | null;
+  entry_range_adr: number | null;
+  range_condition_pass: boolean | null;
+  geometry_regime_m1: string;
+  geometry_harvestable_candidate_m1: boolean;
+  archived_utc_trigger_candidates: number;
+  centerline_only_blocked_candidate: boolean;
+  centerline_only_diagnostic_status: "blocked_diagnostic_only" | "not_applicable";
+  neutral_alignment_allow_distance_adr: number | null;
+  neutral_alignment_penalty_distance_adr: number | null;
+  pair_heat: number | null;
+  account_heat: number | null;
+  selected_heat: number | null;
+  heat_formula: "max_pair_account";
+  profit_stop_mode: "receipt_only";
+  content_hash: string;
+};
+
+type DavidDiagnosticSnapshot = {
+  timestamp_utc: string | null;
+  david_state: DavidState | null;
+  david_raw_state: DavidState | null;
+  david_ma: number | null;
+  rsi: number | null;
+};
+
+type StartModeDiagnosticRow = {
+  row_key: string;
+  question_scope: "start_mode_inside_valid_geometry";
+  week_open_utc: string;
+  pair: string;
+  candidate_b_side: Side;
+  box_model: "archived_utc" | "ny_clean_et";
+  session_id: string;
+  session_label: string;
+  start_mode_id: StartModeId;
+  start_status: "found" | "blocked_no_start" | "blocked_no_david_side";
+  start_side: Side | null;
+  start_timestamp_utc: string | null;
+  trigger_basis:
+    | "strict_katarakti"
+    | "sweep_rejection"
+    | "session_mid_extension"
+    | "candidate_b_session_mid_extension"
+    | "david_contra_session_mid_extension";
+  valid_geometry_basis: typeof START_MODE_GEOMETRY_BASIS;
+  geometry_regime_m1: string;
+  geometry_regime_adr_event: string;
+  geometry_harvestable_candidate_m1: boolean;
+  geometry_harvestable_candidate_adr_event: boolean;
+  session_range_adr: number | null;
+  pe_m1_1_session: number | null;
+  pe_adr_event_1_session: number | null;
+  entry_range_adr: number | null;
+  adaptive_spacing_adr: number | null;
+  required_extension_adr: number | null;
+  session_mid_price: number | null;
+  start_price: number | null;
+  start_distance_from_mid_adr: number | null;
+  start_delay_minutes_from_entry_start: number | null;
+  relaxed_sweep_rejection_candidates: number;
+  strict_sweep_rejection_displacement_candidates: number;
+  candidate_b_alignment: number | null;
+  david_alignment: number | null;
+  david_state_at_start: DavidState | null;
+  david_raw_state_at_start: DavidState | null;
+  david_ma_at_start: number | null;
+  david_rsi_at_start: number | null;
+  sweep_timestamp_utc: string | null;
+  rejection_timestamp_utc: string | null;
+  displacement_timestamp_utc: string | null;
+  sweep_depth_adr: number | null;
+  displacement_body_adr: number | null;
+  eod_flatten_timestamp_utc: string | null;
+  eod_mfe_adr: number | null;
+  eod_mae_adr: number | null;
+  eod_mfe_quantum_units: number | null;
+  eod_mfe_timestamp_utc: string | null;
+  eod_mae_timestamp_utc: string | null;
+  eod_close_pnl_adr: number | null;
+  eod_hit_1q: boolean | null;
+  eod_hit_2q: boolean | null;
+  eod_hit_3q: boolean | null;
+  next_day_flatten_timestamp_utc: string | null;
+  next_day_mfe_adr: number | null;
+  next_day_mae_adr: number | null;
+  next_day_mfe_quantum_units: number | null;
+  next_day_close_pnl_adr: number | null;
+  next_day_hit_1q: boolean | null;
+  next_day_hit_2q: boolean | null;
+  next_day_hit_3q: boolean | null;
+  full_available_mfe_adr: number | null;
+  full_available_mae_adr: number | null;
+  full_available_mfe_quantum_units: number | null;
+  hold_until_profit_first_positive_timestamp_utc: string | null;
+  hold_until_profit_first_1q_timestamp_utc: string | null;
+  hold_until_profit_first_2q_timestamp_utc: string | null;
+  hold_until_profit_first_3q_timestamp_utc: string | null;
+  content_hash: string;
+};
+
+type StartModeSummaryRow = {
+  box_model: "archived_utc" | "ny_clean_et";
+  start_mode_id: StartModeId;
+  valid_geometry_sessions: number;
+  found_starts: number;
+  blocked_no_start: number;
+  blocked_no_david_side: number;
+  long_starts: number;
+  short_starts: number;
+  candidate_b_aligned_starts: number;
+  david_aligned_starts: number;
+  avg_pe_m1_1_session: number | null;
+  avg_pe_adr_event_1_session: number | null;
+  avg_session_range_adr: number | null;
+  avg_adaptive_spacing_adr: number | null;
+  avg_start_delay_minutes: number | null;
+  avg_start_distance_from_mid_adr: number | null;
+  avg_eod_mfe_adr: number | null;
+  avg_eod_mae_adr: number | null;
+  eod_hit_1q_starts: number;
+  eod_hit_2q_starts: number;
+  eod_hit_3q_starts: number;
+  avg_next_day_mfe_adr: number | null;
+  avg_next_day_mae_adr: number | null;
+  next_day_hit_1q_starts: number;
+  next_day_hit_2q_starts: number;
+  next_day_hit_3q_starts: number;
+  avg_full_available_mfe_adr: number | null;
+  full_available_hit_1q_starts: number;
+  full_available_hit_2q_starts: number;
+  full_available_hit_3q_starts: number;
   content_hash: string;
 };
 
@@ -499,6 +675,167 @@ function pathEfficiency(bars: Bar[]) {
   return noise > 0 ? signal / noise : null;
 }
 
+function adrEventBars(row: ReplayRow, bars: Bar[], brickAdr: number) {
+  if (!bars.length || brickAdr <= 0) return bars;
+  const sampled: Bar[] = [bars[0]!];
+  let lastClose = bars[0]!.close;
+  for (const bar of bars.slice(1)) {
+    const movedAdr = Math.abs(priceMoveAdr(row, lastClose, bar.close) ?? 0);
+    if (movedAdr >= brickAdr) {
+      sampled.push(bar);
+      lastClose = bar.close;
+    }
+  }
+  return sampled;
+}
+
+function closePriceMoveAdr(from: number, to: number, pairAdrPct: number) {
+  if (from <= 0 || pairAdrPct <= 0) return 0;
+  return ((to - from) / from) * 100 / pairAdrPct;
+}
+
+function lwma(values: number[]) {
+  let weighted = 0;
+  let weightSum = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    const weight = index + 1;
+    weighted += values[index]! * weight;
+    weightSum += weight;
+  }
+  return weighted / weightSum;
+}
+
+type DavidDiagnosticBook = {
+  bars: Bar[];
+  prevClose: number | null;
+  rsiWarm: Array<{ gain: number; loss: number }>;
+  rsiAvgGain: number | null;
+  rsiAvgLoss: number | null;
+  lastRsi: number | null;
+  davidState: DavidState | null;
+  davidRawState: DavidState | null;
+  eventOpen: number | null;
+  lastSignal: DavidDiagnosticSnapshot;
+};
+
+function createDavidDiagnosticBook(): DavidDiagnosticBook {
+  return {
+    bars: [],
+    prevClose: null,
+    rsiWarm: [],
+    rsiAvgGain: null,
+    rsiAvgLoss: null,
+    lastRsi: null,
+    davidState: null,
+    davidRawState: null,
+    eventOpen: null,
+    lastSignal: {
+      timestamp_utc: null,
+      david_state: null,
+      david_raw_state: null,
+      david_ma: null,
+      rsi: null,
+    },
+  };
+}
+
+function updateDiagnosticRsi(book: DavidDiagnosticBook, close: number) {
+  if (book.prevClose === null) {
+    book.prevClose = close;
+    return null;
+  }
+  const change = close - book.prevClose;
+  book.prevClose = close;
+  const gain = Math.max(change, 0);
+  const loss = Math.max(-change, 0);
+  if (book.rsiAvgGain === null || book.rsiAvgLoss === null) {
+    book.rsiWarm.push({ gain, loss });
+    if (book.rsiWarm.length < DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod) return null;
+    book.rsiAvgGain = book.rsiWarm.reduce((sum, row) => sum + row.gain, 0) / DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod;
+    book.rsiAvgLoss = book.rsiWarm.reduce((sum, row) => sum + row.loss, 0) / DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod;
+  } else {
+    book.rsiAvgGain = ((book.rsiAvgGain * (DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod - 1)) + gain) / DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod;
+    book.rsiAvgLoss = ((book.rsiAvgLoss * (DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod - 1)) + loss) / DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod;
+  }
+  book.lastRsi = book.rsiAvgLoss === 0
+    ? 100
+    : 100 - (100 / (1 + ((book.rsiAvgGain ?? 0) / book.rsiAvgLoss)));
+  return book.lastRsi;
+}
+
+function updateDiagnosticDavidState(book: DavidDiagnosticBook) {
+  if (book.bars.length < DAVID_DIAGNOSTIC_SETTINGS.maPeriod + 1) return null;
+  const closes = book.bars.map((bar) => bar.close);
+  const currentMa = lwma(closes.slice(-DAVID_DIAGNOSTIC_SETTINGS.maPeriod));
+  const previousMa = lwma(closes.slice(-DAVID_DIAGNOSTIC_SETTINGS.maPeriod - 1, -1));
+  const rawState: DavidState = previousMa > currentMa ? "DOWN" : "UP";
+  book.davidRawState = rawState;
+  if (book.davidState === null) {
+    book.davidState = rawState;
+    return currentMa;
+  }
+  if (rawState === book.davidState) return currentMa;
+  if (rawState === "DOWN") {
+    if (book.lastRsi !== null && book.lastRsi < DAVID_DIAGNOSTIC_SETTINGS.rsiOversold) book.davidState = "DOWN";
+    return currentMa;
+  }
+  if (book.lastRsi !== null && book.lastRsi > DAVID_DIAGNOSTIC_SETTINGS.rsiOverbought) book.davidState = "UP";
+  return currentMa;
+}
+
+function updateDavidDiagnosticWithEventBar(book: DavidDiagnosticBook, bar: Bar) {
+  book.bars.push(bar);
+  const maxHistory = DAVID_DIAGNOSTIC_SETTINGS.maPeriod + 2;
+  if (book.bars.length > maxHistory) book.bars.shift();
+  updateDiagnosticRsi(book, bar.close);
+  const davidMa = updateDiagnosticDavidState(book);
+  book.lastSignal = {
+    timestamp_utc: bar.timestamp_utc,
+    david_state: book.davidState,
+    david_raw_state: book.davidRawState,
+    david_ma: davidMa,
+    rsi: book.lastRsi,
+  };
+}
+
+function updateDavidDiagnosticBook(book: DavidDiagnosticBook, row: ReplayRow, m1Bar: Bar) {
+  if (book.eventOpen === null) {
+    book.eventOpen = m1Bar.close;
+    return;
+  }
+  let moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  while (Math.abs(moveAdr) >= DAVID_DIAGNOSTIC_SETTINGS.signalAdrBrick) {
+    const direction = moveAdr > 0 ? 1 : -1;
+    const eventOpen = book.eventOpen;
+    const eventClose = eventOpen * (1 + direction * DAVID_DIAGNOSTIC_SETTINGS.signalAdrBrick * row.pair_adr_pct / 100);
+    updateDavidDiagnosticWithEventBar(book, {
+      ...m1Bar,
+      open: eventOpen,
+      high: Math.max(eventOpen, eventClose),
+      low: Math.min(eventOpen, eventClose),
+      close: eventClose,
+    });
+    book.eventOpen = eventClose;
+    moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  }
+}
+
+function buildDavidDiagnosticSnapshots(row: ReplayRow, bars: Bar[]) {
+  const book = createDavidDiagnosticBook();
+  const snapshots = new Map<number, DavidDiagnosticSnapshot>();
+  for (const bar of bars) {
+    updateDavidDiagnosticBook(book, row, bar);
+    snapshots.set(bar.index, { ...book.lastSignal });
+  }
+  return snapshots;
+}
+
+function davidContraSide(snapshot: DavidDiagnosticSnapshot | null | undefined) {
+  if (snapshot?.david_state === "UP") return "SHORT";
+  if (snapshot?.david_state === "DOWN") return "LONG";
+  return null;
+}
+
 function buildSessionWindows(bars: Bar[]): SessionWindow[] {
   if (!bars.length) return [];
   const startDay = dayStartMs(bars[0]!.timestamp_ms);
@@ -507,6 +844,7 @@ function buildSessionWindows(bars: Bar[]): SessionWindow[] {
   for (let day = startDay; day <= endDay; day += 86_400_000) {
     windows.push({
       id: `ny|${iso(day).slice(0, 10)}`,
+      boxModel: "archived_utc",
       session: "NY",
       rangeStartMs: day,
       rangeEndMs: day + 13 * 3_600_000,
@@ -515,6 +853,7 @@ function buildSessionWindows(bars: Bar[]): SessionWindow[] {
     });
     windows.push({
       id: `asia_london|${iso(day + 86_400_000).slice(0, 10)}`,
+      boxModel: "archived_utc",
       session: "ASIA_LONDON",
       rangeStartMs: day + 13 * 3_600_000,
       rangeEndMs: day + 21 * 3_600_000,
@@ -523,6 +862,49 @@ function buildSessionWindows(bars: Bar[]): SessionWindow[] {
     });
   }
   return windows;
+}
+
+function nyLocalMs(date: DateTime, hour: number, minute: number) {
+  return date.set({ hour, minute, second: 0, millisecond: 0 }).toUTC().toMillis();
+}
+
+function buildNyCleanSessionWindows(bars: Bar[]): SessionWindow[] {
+  if (!bars.length) return [];
+  const startLocal = DateTime.fromMillis(bars[0]!.timestamp_ms, { zone: "utc" }).setZone("America/New_York").startOf("day").minus({ days: 1 });
+  const endLocal = DateTime.fromMillis(bars.at(-1)!.timestamp_ms, { zone: "utc" }).setZone("America/New_York").startOf("day").plus({ days: 1 });
+  const windows: SessionWindow[] = [];
+  for (let day = startLocal; day <= endLocal; day = day.plus({ days: 1 })) {
+    const morningRangeStart = nyLocalMs(day.minus({ days: 1 }), 18, 5);
+    const morningRangeEnd = nyLocalMs(day, 8, 0);
+    const morningEntryEnd = nyLocalMs(day, 15, 45);
+    windows.push({
+      id: `ny_clean_morning|${day.toISODate()}`,
+      boxModel: "ny_clean_et",
+      session: "NY",
+      rangeStartMs: morningRangeStart,
+      rangeEndMs: morningRangeEnd,
+      entryStartMs: morningRangeEnd,
+      entryEndMs: morningEntryEnd,
+    });
+    const eveningRangeStart = nyLocalMs(day, 8, 0);
+    const eveningRangeEnd = nyLocalMs(day, 15, 45);
+    const eveningEntryStart = nyLocalMs(day, 18, 5);
+    const eveningEntryEnd = nyLocalMs(day.plus({ days: 1 }), 8, 0);
+    windows.push({
+      id: `ny_clean_evening|${day.toISODate()}`,
+      boxModel: "ny_clean_et",
+      session: "ASIA_LONDON",
+      rangeStartMs: eveningRangeStart,
+      rangeEndMs: eveningRangeEnd,
+      entryStartMs: eveningEntryStart,
+      entryEndMs: eveningEntryEnd,
+    });
+  }
+  return windows;
+}
+
+function buildDiagnosticSessionWindows(bars: Bar[]) {
+  return [...buildSessionWindows(bars), ...buildNyCleanSessionWindows(bars)];
 }
 
 function barsBetween(bars: Bar[], startMs: number, endMs: number) {
@@ -759,6 +1141,42 @@ function optionalNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+type HeatMaps = {
+  pairHeat: Map<string, number>;
+  accountHeat: Map<string, number>;
+};
+
+function pressureFromCloseRows(rows: Record<string, string>[]) {
+  const fillPressure = Math.min(1, rows.length / 100);
+  const depthPressure = Math.min(1, Math.max(0, ...rows.map((row) => Number(row.adverse_fill_count ?? 0))) / 20);
+  const targetNet = rows
+    .filter((row) => row.close_reason === "target")
+    .reduce((sum, row) => sum + Math.max(0, Number(row.net_usd ?? 0)), 0);
+  const flattenNetAbs = Math.abs(rows
+    .filter((row) => row.close_reason === "session_flatten")
+    .reduce((sum, row) => sum + Number(row.net_usd ?? 0), 0));
+  const flattenPressure = targetNet > 0 ? Math.min(1, flattenNetAbs / targetNet) : flattenNetAbs > 0 ? 1 : 0;
+  return Math.max(fillPressure, depthPressure, flattenPressure);
+}
+
+function buildHeatMaps(closeEventRows: Record<string, string>[]): HeatMaps {
+  const pairGroups = new Map<string, Record<string, string>[]>();
+  const weekGroups = new Map<string, Record<string, string>[]>();
+  for (const row of closeEventRows) {
+    const week = row.anchor_week_open_utc ?? "";
+    const pair = row.pair ?? "";
+    if (!week || !pair) continue;
+    const pairKey = `${week}|${pair}`;
+    pairGroups.set(pairKey, [...(pairGroups.get(pairKey) ?? []), row]);
+    weekGroups.set(week, [...(weekGroups.get(week) ?? []), row]);
+  }
+  const pairHeat = new Map<string, number>();
+  for (const [key, rows] of pairGroups) pairHeat.set(key, pressureFromCloseRows(rows));
+  const accountHeat = new Map<string, number>();
+  for (const [week, rows] of weekGroups) accountHeat.set(week, pressureFromCloseRows(rows));
+  return { pairHeat, accountHeat };
+}
+
 function clampValue(min: number, max: number, value: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -844,6 +1262,529 @@ function geometryRegime(options: {
   };
 }
 
+type StartModeCandidate = {
+  side: Side;
+  timestampUtc: string;
+  timestampMs: number;
+  barIndex: number;
+  startPrice: number;
+  distanceFromMidAdr: number | null;
+  sweepTimestampUtc: string | null;
+  rejectionTimestampUtc: string | null;
+  displacementTimestampUtc: string | null;
+  sweepDepthAdr: number | null;
+  displacementBodyAdr: number | null;
+  davidSnapshot: DavidDiagnosticSnapshot | null;
+};
+
+function sideAlignment(left: Side | null, right: Side | null) {
+  if (!left || !right) return null;
+  return left === right ? 1 : -1;
+}
+
+function sideDistanceFromMidAdr(row: ReplayRow, side: Side, midPrice: number, price: number) {
+  const moveAdr = priceMoveAdr(row, midPrice, price);
+  if (moveAdr === null) return null;
+  return side === "LONG" ? -moveAdr : moveAdr;
+}
+
+function firstByTimestamp(candidates: StartModeCandidate[]) {
+  return [...candidates].sort((left, right) => left.timestampMs - right.timestampMs)[0] ?? null;
+}
+
+type ExcursionReceipt = {
+  horizonEndUtc: string | null;
+  mfeAdr: number | null;
+  maeAdr: number | null;
+  mfeTimestampUtc: string | null;
+  maeTimestampUtc: string | null;
+  closePnlAdr: number | null;
+  hit1q: boolean | null;
+  hit2q: boolean | null;
+  hit3q: boolean | null;
+};
+
+function nextNyFlattenMsAfter(timestampMs: number) {
+  const local = DateTime.fromMillis(timestampMs, { zone: "utc" }).setZone("America/New_York");
+  let flatten = local.set({ hour: 16, minute: 0, second: 0, millisecond: 0 });
+  if (local.toMillis() >= flatten.toMillis()) flatten = flatten.plus({ days: 1 });
+  return flatten.toUTC().toMillis();
+}
+
+function sideHighLowExcursionAdr(row: ReplayRow, side: Side, entryPrice: number, bar: Bar) {
+  const highMove = priceMoveAdr(row, entryPrice, bar.high);
+  const lowMove = priceMoveAdr(row, entryPrice, bar.low);
+  if (highMove === null || lowMove === null) return { favorable: null, adverse: null };
+  if (side === "LONG") return { favorable: highMove, adverse: -lowMove };
+  return { favorable: -lowMove, adverse: highMove };
+}
+
+function sideClosePnlAdr(row: ReplayRow, side: Side, entryPrice: number, closePrice: number) {
+  const move = priceMoveAdr(row, entryPrice, closePrice);
+  if (move === null) return null;
+  return side === "LONG" ? move : -move;
+}
+
+function excursionReceipt(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  candidate: StartModeCandidate | null;
+  horizonEndMs: number | null;
+  quantumAdr: number | null;
+}) {
+  if (!options.candidate || options.horizonEndMs === null) {
+    return {
+      horizonEndUtc: options.horizonEndMs === null ? null : iso(options.horizonEndMs),
+      mfeAdr: null,
+      maeAdr: null,
+      mfeTimestampUtc: null,
+      maeTimestampUtc: null,
+      closePnlAdr: null,
+      hit1q: null,
+      hit2q: null,
+      hit3q: null,
+    } satisfies ExcursionReceipt;
+  }
+  const horizonBars = options.bars.filter((bar) =>
+    bar.index > options.candidate!.barIndex &&
+    bar.timestamp_ms <= options.horizonEndMs!
+  );
+  let mfeAdr = 0;
+  let maeAdr = 0;
+  let mfeTimestampUtc = options.candidate.timestampUtc;
+  let maeTimestampUtc = options.candidate.timestampUtc;
+  for (const bar of horizonBars) {
+    const excursion = sideHighLowExcursionAdr(options.row, options.candidate.side, options.candidate.startPrice, bar);
+    if (excursion.favorable !== null && excursion.favorable > mfeAdr) {
+      mfeAdr = excursion.favorable;
+      mfeTimestampUtc = bar.timestamp_utc;
+    }
+    if (excursion.adverse !== null && excursion.adverse > maeAdr) {
+      maeAdr = excursion.adverse;
+      maeTimestampUtc = bar.timestamp_utc;
+    }
+  }
+  const closeBar = [...horizonBars].reverse()[0] ?? null;
+  const closePnlAdr = closeBar
+    ? sideClosePnlAdr(options.row, options.candidate.side, options.candidate.startPrice, closeBar.close)
+    : null;
+  const quantum = options.quantumAdr && options.quantumAdr > 0 ? options.quantumAdr : null;
+  return {
+    horizonEndUtc: iso(options.horizonEndMs),
+    mfeAdr: round(mfeAdr),
+    maeAdr: round(maeAdr),
+    mfeTimestampUtc,
+    maeTimestampUtc,
+    closePnlAdr: round(closePnlAdr),
+    hit1q: quantum === null ? null : mfeAdr + 1e-9 >= quantum,
+    hit2q: quantum === null ? null : mfeAdr + 1e-9 >= 2 * quantum,
+    hit3q: quantum === null ? null : mfeAdr + 1e-9 >= 3 * quantum,
+  } satisfies ExcursionReceipt;
+}
+
+function firstTargetHitTimestamp(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  candidate: StartModeCandidate | null;
+  targetAdr: number;
+}) {
+  if (!options.candidate) return null;
+  const horizonBars = options.bars.filter((bar) => bar.index > options.candidate!.barIndex);
+  for (const bar of horizonBars) {
+    const excursion = sideHighLowExcursionAdr(options.row, options.candidate.side, options.candidate.startPrice, bar);
+    if (excursion.favorable !== null && excursion.favorable + 1e-9 >= options.targetAdr) return bar.timestamp_utc;
+  }
+  return null;
+}
+
+function sweepRejectionCandidates(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  window: SessionWindow;
+  rangeHigh: number;
+  rangeLow: number;
+  sweepRequiredAdr: number;
+  displacementRequiredAdr: number;
+  davidSnapshots: Map<number, DavidDiagnosticSnapshot>;
+}) {
+  const entryBars = barsBetween(options.bars, options.window.entryStartMs, options.window.entryEndMs);
+  const candidates: StartModeCandidate[] = [];
+  for (let pos = 0; pos < entryBars.length; pos += 1) {
+    const sweepBar = entryBars[pos]!;
+    const directionalCandidates: Array<{ side: Side; depthAdr: number }> = [];
+    const downDepth = rangeAdr(options.row, options.rangeLow, sweepBar.low);
+    const upDepth = rangeAdr(options.row, sweepBar.high, options.rangeHigh);
+    if (downDepth !== null && downDepth >= options.sweepRequiredAdr) directionalCandidates.push({ side: "LONG", depthAdr: downDepth });
+    if (upDepth !== null && upDepth >= options.sweepRequiredAdr) directionalCandidates.push({ side: "SHORT", depthAdr: upDepth });
+    for (const candidate of directionalCandidates) {
+      const rejectionBars = [sweepBar, entryBars[pos + 1]].filter((bar): bar is Bar => Boolean(bar));
+      const rejection = rejectionBars.find((bar) => candidate.side === "LONG" ? bar.close > options.rangeLow : bar.close < options.rangeHigh);
+      if (!rejection) continue;
+      const displacementBars = [rejection, options.bars[rejection.index + 1]].filter((bar): bar is Bar => {
+        if (!bar) return false;
+        return bar.timestamp_ms >= options.window.entryStartMs && bar.timestamp_ms < options.window.entryEndMs;
+      });
+      const displacement = displacementBars
+        .map((bar) => ({ bar, result: displacementPass(options.row, bar, candidate.side, options.displacementRequiredAdr) }))
+        .find((row) => row.result.passed);
+      candidates.push({
+        side: candidate.side,
+        timestampUtc: (displacement?.bar ?? rejection).timestamp_utc,
+        timestampMs: (displacement?.bar ?? rejection).timestamp_ms,
+        barIndex: (displacement?.bar ?? rejection).index,
+        startPrice: (displacement?.bar ?? rejection).close,
+        distanceFromMidAdr: null,
+        sweepTimestampUtc: sweepBar.timestamp_utc,
+        rejectionTimestampUtc: rejection.timestamp_utc,
+        displacementTimestampUtc: displacement?.bar.timestamp_utc ?? null,
+        sweepDepthAdr: round(candidate.depthAdr),
+        displacementBodyAdr: round(displacement?.result.bodyAdr),
+        davidSnapshot: options.davidSnapshots.get((displacement?.bar ?? rejection).index) ?? null,
+      });
+    }
+  }
+  return candidates;
+}
+
+function meanExtensionCandidate(options: {
+  row: ReplayRow;
+  entryBars: Bar[];
+  rangeMid: number;
+  requiredExtensionAdr: number;
+  davidSnapshots: Map<number, DavidDiagnosticSnapshot>;
+  sideForBar?: (bar: Bar) => Side | null;
+}) {
+  const candidates: StartModeCandidate[] = [];
+  for (const bar of options.entryBars) {
+    const sides = options.sideForBar
+      ? [options.sideForBar(bar)].filter((side): side is Side => Boolean(side))
+      : ["LONG", "SHORT"] as Side[];
+    for (const side of sides) {
+      const touchPrice = side === "LONG" ? bar.low : bar.high;
+      const distance = sideDistanceFromMidAdr(options.row, side, options.rangeMid, touchPrice);
+      if (distance === null || distance < options.requiredExtensionAdr) continue;
+      candidates.push({
+        side,
+        timestampUtc: bar.timestamp_utc,
+        timestampMs: bar.timestamp_ms,
+        barIndex: bar.index,
+        startPrice: bar.close,
+        distanceFromMidAdr: round(distance),
+        sweepTimestampUtc: null,
+        rejectionTimestampUtc: null,
+        displacementTimestampUtc: null,
+        sweepDepthAdr: null,
+        displacementBodyAdr: null,
+        davidSnapshot: options.davidSnapshots.get(bar.index) ?? null,
+      });
+    }
+    if (candidates.length) break;
+  }
+  return firstByTimestamp(candidates);
+}
+
+function buildStartModeRow(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  window: SessionWindow;
+  modeId: StartModeId;
+  triggerBasis: StartModeDiagnosticRow["trigger_basis"];
+  candidate: StartModeCandidate | null;
+  blockedStatus: "blocked_no_start" | "blocked_no_david_side";
+  geometryM1: ReturnType<typeof geometryRegime>;
+  geometryAdrEvent: ReturnType<typeof geometryRegime>;
+  sessionRangeAdr: number | null;
+  peM1: number | null;
+  peAdrEvent: number | null;
+  entryRangeAdr: number | null;
+  spacingAdr: number | null;
+  requiredExtensionAdr: number | null;
+  rangeMid: number | null;
+  entryStartMs: number;
+  relaxedCandidateCount: number;
+  strictCandidateCount: number;
+}) {
+  const davidSide = davidContraSide(options.candidate?.davidSnapshot ?? null);
+  const startSide = options.candidate?.side ?? null;
+  const startDelay = options.candidate
+    ? (options.candidate.timestampMs - options.entryStartMs) / 60_000
+    : null;
+  const eodFlattenMs = options.candidate ? nextNyFlattenMsAfter(options.candidate.timestampMs) : null;
+  const nextDayFlattenMs = eodFlattenMs === null ? null : nextNyFlattenMsAfter(eodFlattenMs + 60_000);
+  const fullAvailableEndMs = options.bars.at(-1)?.timestamp_ms ?? null;
+  const eodExcursion = excursionReceipt({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    horizonEndMs: eodFlattenMs,
+    quantumAdr: options.spacingAdr,
+  });
+  const nextDayExcursion = excursionReceipt({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    horizonEndMs: nextDayFlattenMs,
+    quantumAdr: options.spacingAdr,
+  });
+  const fullAvailableExcursion = excursionReceipt({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    horizonEndMs: fullAvailableEndMs,
+    quantumAdr: options.spacingAdr,
+  });
+  const firstPositiveTimestamp = firstTargetHitTimestamp({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    targetAdr: 0.000001,
+  });
+  const first1qTimestamp = options.spacingAdr === null ? null : firstTargetHitTimestamp({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    targetAdr: options.spacingAdr,
+  });
+  const first2qTimestamp = options.spacingAdr === null ? null : firstTargetHitTimestamp({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    targetAdr: 2 * options.spacingAdr,
+  });
+  const first3qTimestamp = options.spacingAdr === null ? null : firstTargetHitTimestamp({
+    row: options.row,
+    bars: options.bars,
+    candidate: options.candidate,
+    targetAdr: 3 * options.spacingAdr,
+  });
+  const raw: Omit<StartModeDiagnosticRow, "content_hash"> = {
+    row_key: [
+      options.row.week_open_utc,
+      options.row.pair,
+      options.window.boxModel,
+      options.window.id,
+      options.modeId,
+    ].join("|"),
+    question_scope: "start_mode_inside_valid_geometry",
+    week_open_utc: options.row.week_open_utc,
+    pair: options.row.pair,
+    candidate_b_side: options.row.candidate_b_side,
+    box_model: options.window.boxModel,
+    session_id: options.window.id,
+    session_label: options.window.session,
+    start_mode_id: options.modeId,
+    start_status: options.candidate ? "found" : options.blockedStatus,
+    start_side: startSide,
+    start_timestamp_utc: options.candidate?.timestampUtc ?? null,
+    trigger_basis: options.triggerBasis,
+    valid_geometry_basis: START_MODE_GEOMETRY_BASIS,
+    geometry_regime_m1: options.geometryM1.geometryRegime,
+    geometry_regime_adr_event: options.geometryAdrEvent.geometryRegime,
+    geometry_harvestable_candidate_m1: options.geometryM1.geometryHarvestableCandidate,
+    geometry_harvestable_candidate_adr_event: options.geometryAdrEvent.geometryHarvestableCandidate,
+    session_range_adr: round(options.sessionRangeAdr),
+    pe_m1_1_session: round(options.peM1),
+    pe_adr_event_1_session: round(options.peAdrEvent),
+    entry_range_adr: round(options.entryRangeAdr),
+    adaptive_spacing_adr: options.spacingAdr,
+    required_extension_adr: round(options.requiredExtensionAdr),
+    session_mid_price: round(options.rangeMid),
+    start_price: round(options.candidate?.startPrice),
+    start_distance_from_mid_adr: round(options.candidate?.distanceFromMidAdr),
+    start_delay_minutes_from_entry_start: round(startDelay),
+    relaxed_sweep_rejection_candidates: options.relaxedCandidateCount,
+    strict_sweep_rejection_displacement_candidates: options.strictCandidateCount,
+    candidate_b_alignment: sideAlignment(startSide, options.row.candidate_b_side),
+    david_alignment: sideAlignment(startSide, davidSide),
+    david_state_at_start: options.candidate?.davidSnapshot?.david_state ?? null,
+    david_raw_state_at_start: options.candidate?.davidSnapshot?.david_raw_state ?? null,
+    david_ma_at_start: round(options.candidate?.davidSnapshot?.david_ma),
+    david_rsi_at_start: round(options.candidate?.davidSnapshot?.rsi),
+    sweep_timestamp_utc: options.candidate?.sweepTimestampUtc ?? null,
+    rejection_timestamp_utc: options.candidate?.rejectionTimestampUtc ?? null,
+    displacement_timestamp_utc: options.candidate?.displacementTimestampUtc ?? null,
+    sweep_depth_adr: options.candidate?.sweepDepthAdr ?? null,
+    displacement_body_adr: options.candidate?.displacementBodyAdr ?? null,
+    eod_flatten_timestamp_utc: eodExcursion.horizonEndUtc,
+    eod_mfe_adr: eodExcursion.mfeAdr,
+    eod_mae_adr: eodExcursion.maeAdr,
+    eod_mfe_quantum_units: options.spacingAdr && eodExcursion.mfeAdr !== null ? round(eodExcursion.mfeAdr / options.spacingAdr) : null,
+    eod_mfe_timestamp_utc: eodExcursion.mfeTimestampUtc,
+    eod_mae_timestamp_utc: eodExcursion.maeTimestampUtc,
+    eod_close_pnl_adr: eodExcursion.closePnlAdr,
+    eod_hit_1q: eodExcursion.hit1q,
+    eod_hit_2q: eodExcursion.hit2q,
+    eod_hit_3q: eodExcursion.hit3q,
+    next_day_flatten_timestamp_utc: nextDayExcursion.horizonEndUtc,
+    next_day_mfe_adr: nextDayExcursion.mfeAdr,
+    next_day_mae_adr: nextDayExcursion.maeAdr,
+    next_day_mfe_quantum_units: options.spacingAdr && nextDayExcursion.mfeAdr !== null ? round(nextDayExcursion.mfeAdr / options.spacingAdr) : null,
+    next_day_close_pnl_adr: nextDayExcursion.closePnlAdr,
+    next_day_hit_1q: nextDayExcursion.hit1q,
+    next_day_hit_2q: nextDayExcursion.hit2q,
+    next_day_hit_3q: nextDayExcursion.hit3q,
+    full_available_mfe_adr: fullAvailableExcursion.mfeAdr,
+    full_available_mae_adr: fullAvailableExcursion.maeAdr,
+    full_available_mfe_quantum_units: options.spacingAdr && fullAvailableExcursion.mfeAdr !== null ? round(fullAvailableExcursion.mfeAdr / options.spacingAdr) : null,
+    hold_until_profit_first_positive_timestamp_utc: firstPositiveTimestamp,
+    hold_until_profit_first_1q_timestamp_utc: first1qTimestamp,
+    hold_until_profit_first_2q_timestamp_utc: first2qTimestamp,
+    hold_until_profit_first_3q_timestamp_utc: first3qTimestamp,
+  };
+  return withHash(raw);
+}
+
+function buildStartModeDiagnostics(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  rangeRatioPair: number | null;
+  gridQuantumAdr: number;
+  allInCostAdr: number;
+  costFloorMultiple: number;
+  targetGridSlots: number;
+  minSpacingAdr: number;
+  maxSpacingAdr: number;
+}) {
+  const rows: StartModeDiagnosticRow[] = [];
+  const davidSnapshots = buildDavidDiagnosticSnapshots(options.row, options.bars);
+  const sweepRequiredAdr = Math.max(DAVID_DIAGNOSTIC_SETTINGS.signalAdrBrick, 0.25 * options.gridQuantumAdr);
+  const displacementRequiredAdr = sweepRequiredAdr;
+  for (const window of buildDiagnosticSessionWindows(options.bars)) {
+    const rangeBars = barsBetween(options.bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(options.bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const rangeMid = (rangeHigh + rangeLow) / 2;
+    const sessionRangeAdr = rangeAdr(options.row, rangeHigh, rangeLow);
+    const entryHigh = Math.max(...entryBars.map((bar) => bar.high));
+    const entryLow = Math.min(...entryBars.map((bar) => bar.low));
+    const entryRangeAdr = rangeAdr(options.row, entryHigh, entryLow);
+    const peM1 = pathEfficiency(entryBars);
+    const peAdrEvent = pathEfficiency(adrEventBars(options.row, entryBars, DAVID_DIAGNOSTIC_SETTINGS.signalAdrBrick));
+    const geometryM1 = geometryRegime({
+      pathEfficiencyWeek: peM1,
+      weekRangeAdr: sessionRangeAdr,
+      rangeRatioPair: options.rangeRatioPair,
+      gridQuantumAdr: options.gridQuantumAdr,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+    });
+    const geometryAdrEvent = geometryRegime({
+      pathEfficiencyWeek: peAdrEvent,
+      weekRangeAdr: sessionRangeAdr,
+      rangeRatioPair: options.rangeRatioPair,
+      gridQuantumAdr: options.gridQuantumAdr,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+    });
+    if (!geometryAdrEvent.geometryHarvestableCandidate) continue;
+    const spacing = adaptiveSpacing({
+      rangeAdr: sessionRangeAdr,
+      targetGridSlots: options.targetGridSlots,
+      minSpacingAdr: options.minSpacingAdr,
+      maxSpacingAdr: options.maxSpacingAdr,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+    });
+    const requiredExtensionAdr = spacing.spacingAdr ?? options.gridQuantumAdr;
+    const sweepCandidates = sweepRejectionCandidates({
+      row: options.row,
+      bars: options.bars,
+      window,
+      rangeHigh,
+      rangeLow,
+      sweepRequiredAdr,
+      displacementRequiredAdr,
+      davidSnapshots,
+    });
+    const strictCandidates = sweepCandidates.filter((candidate) => candidate.displacementTimestampUtc !== null);
+    const strictCandidate = firstByTimestamp(strictCandidates);
+    const relaxedCandidate = firstByTimestamp(sweepCandidates);
+    const meanCandidate = meanExtensionCandidate({
+      row: options.row,
+      entryBars,
+      rangeMid,
+      requiredExtensionAdr,
+      davidSnapshots,
+    });
+    const candidateBStart = meanExtensionCandidate({
+      row: options.row,
+      entryBars,
+      rangeMid,
+      requiredExtensionAdr,
+      davidSnapshots,
+      sideForBar: () => options.row.candidate_b_side,
+    });
+    let davidSideSeen = false;
+    const davidStart = meanExtensionCandidate({
+      row: options.row,
+      entryBars,
+      rangeMid,
+      requiredExtensionAdr,
+      davidSnapshots,
+      sideForBar: (bar) => {
+        const side = davidContraSide(davidSnapshots.get(bar.index));
+        if (side) davidSideSeen = true;
+        return side;
+      },
+    });
+    const base = {
+      row: options.row,
+      bars: options.bars,
+      window,
+      geometryM1,
+      geometryAdrEvent,
+      sessionRangeAdr,
+      peM1,
+      peAdrEvent,
+      entryRangeAdr,
+      spacingAdr: spacing.spacingAdr,
+      requiredExtensionAdr,
+      rangeMid,
+      entryStartMs: window.entryStartMs,
+      relaxedCandidateCount: sweepCandidates.length,
+      strictCandidateCount: strictCandidates.length,
+    };
+    rows.push(buildStartModeRow({
+      ...base,
+      modeId: "strict_sweep_rejection_displacement",
+      triggerBasis: "strict_katarakti",
+      candidate: strictCandidate,
+      blockedStatus: "blocked_no_start",
+    }));
+    rows.push(buildStartModeRow({
+      ...base,
+      modeId: "relaxed_sweep_rejection",
+      triggerBasis: "sweep_rejection",
+      candidate: relaxedCandidate,
+      blockedStatus: "blocked_no_start",
+    }));
+    rows.push(buildStartModeRow({
+      ...base,
+      modeId: "first_mean_extension_touch",
+      triggerBasis: "session_mid_extension",
+      candidate: meanCandidate,
+      blockedStatus: "blocked_no_start",
+    }));
+    rows.push(buildStartModeRow({
+      ...base,
+      modeId: "candidate_b_geometry_start",
+      triggerBasis: "candidate_b_session_mid_extension",
+      candidate: candidateBStart,
+      blockedStatus: "blocked_no_start",
+    }));
+    rows.push(buildStartModeRow({
+      ...base,
+      modeId: "david_contra_geometry_start",
+      triggerBasis: "david_contra_session_mid_extension",
+      candidate: davidStart,
+      blockedStatus: davidSideSeen ? "blocked_no_start" : "blocked_no_david_side",
+    }));
+  }
+  return rows;
+}
+
 function buildSessionGeometryRows(options: {
   row: ReplayRow;
   bars: Bar[];
@@ -919,6 +1860,132 @@ function buildSessionGeometryRows(options: {
   });
 }
 
+function buildDesignQuestionDiagnostics(options: {
+  row: ReplayRow;
+  bars: Bar[];
+  rangeRatioPair: number | null;
+  gridQuantumAdr: number;
+  signalAdrBrick: number;
+  allInCostAdr: number;
+  costFloorMultiple: number;
+  heatMaps: HeatMaps;
+  triggerRows: TriggerCandidateRow[];
+}) {
+  const rows: Omit<DesignQuestionDiagnosticRow, "content_hash" | "pe_m1_5_session_avg" | "pe_m1_fast_slow_ema">[] = [];
+  for (const window of buildDiagnosticSessionWindows(options.bars)) {
+    const rangeBars = barsBetween(options.bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(options.bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const entryHigh = Math.max(...entryBars.map((bar) => bar.high));
+    const entryLow = Math.min(...entryBars.map((bar) => bar.low));
+    const sessionRangeAdr = rangeAdr(options.row, rangeHigh, rangeLow);
+    const entryRangeAdr = rangeAdr(options.row, entryHigh, entryLow);
+    const peM1 = pathEfficiency(entryBars);
+    const peAdrEvent = pathEfficiency(adrEventBars(options.row, entryBars, options.signalAdrBrick));
+    const geometry = geometryRegime({
+      pathEfficiencyWeek: peM1,
+      weekRangeAdr: sessionRangeAdr,
+      rangeRatioPair: options.rangeRatioPair,
+      gridQuantumAdr: options.gridQuantumAdr,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+    });
+    const spacing = adaptiveSpacing({
+      rangeAdr: sessionRangeAdr,
+      targetGridSlots: DEFAULT_TARGET_GRID_SLOTS,
+      minSpacingAdr: DEFAULT_MIN_SPACING_ADR,
+      maxSpacingAdr: DEFAULT_MAX_SPACING_ADR,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+    });
+    const archivedTriggers = window.boxModel === "archived_utc"
+      ? options.triggerRows.filter((trigger) => trigger.session_id === window.id).length
+      : 0;
+    const pairHeat = options.heatMaps.pairHeat.get(`${options.row.week_open_utc}|${options.row.pair}`) ?? null;
+    const accountHeat = options.heatMaps.accountHeat.get(options.row.week_open_utc) ?? null;
+    const selectedHeat = pairHeat === null && accountHeat === null
+      ? null
+      : Math.max(pairHeat ?? 0, accountHeat ?? 0);
+    const centerlineBlocked = geometry.geometryHarvestableCandidate && archivedTriggers === 0;
+    rows.push({
+      row_key: [
+        options.row.week_open_utc,
+        options.row.pair,
+        window.boxModel,
+        window.id,
+      ].join("|"),
+      question_scope: "path_efficiency_box_heat_alignment_centerline",
+      week_open_utc: options.row.week_open_utc,
+      pair: options.row.pair,
+      candidate_b_side: options.row.candidate_b_side,
+      box_model: window.boxModel,
+      session_id: window.id,
+      session_label: window.session,
+      range_start_utc: iso(window.rangeStartMs),
+      range_end_utc: iso(window.rangeEndMs),
+      entry_start_utc: iso(window.entryStartMs),
+      entry_end_utc: iso(window.entryEndMs),
+      session_range_adr: round(sessionRangeAdr),
+      pe_m1_1_session: round(peM1),
+      pe_adr_event_1_session: round(peAdrEvent),
+      entry_range_adr: round(entryRangeAdr),
+      range_condition_pass: geometry.rangeConditionPass,
+      geometry_regime_m1: geometry.geometryRegime,
+      geometry_harvestable_candidate_m1: geometry.geometryHarvestableCandidate,
+      archived_utc_trigger_candidates: archivedTriggers,
+      centerline_only_blocked_candidate: centerlineBlocked,
+      centerline_only_diagnostic_status: centerlineBlocked ? "blocked_diagnostic_only" : "not_applicable",
+      neutral_alignment_allow_distance_adr: spacing.spacingAdr,
+      neutral_alignment_penalty_distance_adr: spacing.spacingAdr === null ? null : round(spacing.spacingAdr * 1.25),
+      pair_heat: round(pairHeat),
+      account_heat: round(accountHeat),
+      selected_heat: round(selectedHeat),
+      heat_formula: "max_pair_account",
+      profit_stop_mode: "receipt_only",
+    });
+  }
+  return rows;
+}
+
+function addRollingPathEfficiencyDiagnostics(rows: Array<Omit<DesignQuestionDiagnosticRow, "content_hash" | "pe_m1_5_session_avg" | "pe_m1_fast_slow_ema">>) {
+  const groups = new Map<string, Array<Omit<DesignQuestionDiagnosticRow, "content_hash" | "pe_m1_5_session_avg" | "pe_m1_fast_slow_ema">>>();
+  for (const row of rows) {
+    const key = `${row.pair}|${row.box_model}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  const output: DesignQuestionDiagnosticRow[] = [];
+  for (const groupRows of groups.values()) {
+    const sorted = [...groupRows].sort((left, right) => left.entry_start_utc.localeCompare(right.entry_start_utc));
+    let fast: number | null = null;
+    let slow: number | null = null;
+    const fastAlpha = 2 / (5 + 1);
+    const slowAlpha = 2 / (20 + 1);
+    const prior: number[] = [];
+    for (const row of sorted) {
+      const value = row.pe_m1_1_session;
+      if (value !== null) {
+        prior.push(value);
+        fast = fast === null ? value : fast + fastAlpha * (value - fast);
+        slow = slow === null ? value : slow + slowAlpha * (value - slow);
+      }
+      const lastFive = prior.slice(-5);
+      output.push(withHash({
+        ...row,
+        pe_m1_5_session_avg: lastFive.length ? round(lastFive.reduce((sum, current) => sum + current, 0) / lastFive.length) : null,
+        pe_m1_fast_slow_ema: fast !== null && slow !== null ? round(fast - slow) : null,
+      }));
+    }
+  }
+  return output.sort((left, right) =>
+    left.week_open_utc.localeCompare(right.week_open_utc) ||
+    left.pair.localeCompare(right.pair) ||
+    left.box_model.localeCompare(right.box_model) ||
+    left.entry_start_utc.localeCompare(right.entry_start_utc)
+  );
+}
+
 async function loadRows(options: Options) {
   const allWeeks = await readTradeLegPathWarehouseWeekKeys(options.manifestId);
   const fromMs = Date.parse(options.weekFrom);
@@ -964,6 +2031,13 @@ function lockFloor(maxPnlAdr: number, quantumAdr: number) {
   return null;
 }
 
+function profitStopReceiptFloor(maxPnlAdr: number, quantumAdr: number) {
+  if (maxPnlAdr >= 3 * quantumAdr) return Math.max(0.5 * quantumAdr, maxPnlAdr - quantumAdr);
+  if (maxPnlAdr >= 2 * quantumAdr) return 0.5 * quantumAdr;
+  if (maxPnlAdr >= quantumAdr) return 0;
+  return null;
+}
+
 async function buildLockRows(options: Options) {
   if (!options.closeEventsCsv) return [] as LockShadowRow[];
   const csvRows = await readCsvRows(options.closeEventsCsv);
@@ -971,7 +2045,9 @@ async function buildLockRows(options: Options) {
     const maxPnlAdr = Number(row.max_pnl_adr ?? 0);
     const pricePnlAdr = Number(row.price_pnl_adr ?? 0);
     const floor = lockFloor(maxPnlAdr, options.lockQuantumAdr);
+    const profitStopFloor = profitStopReceiptFloor(maxPnlAdr, options.lockQuantumAdr);
     const shadowPreserved = floor !== null && pricePnlAdr < floor ? floor - pricePnlAdr : 0;
+    const profitStopPreserved = profitStopFloor !== null && pricePnlAdr < profitStopFloor ? profitStopFloor - pricePnlAdr : 0;
     const state: LockShadowRow["lock_shadow_state"] = floor === null
       ? "no_lock_mfe"
       : shadowPreserved > 0
@@ -993,9 +2069,14 @@ async function buildLockRows(options: Options) {
       max_pnl_adr: round(maxPnlAdr)!,
       cycle_quantum_adr: options.lockQuantumAdr,
       mfe_units: round(maxPnlAdr / options.lockQuantumAdr),
+      lockout_1q_add_block: maxPnlAdr >= options.lockQuantumAdr,
+      lockout_2q_add_block: maxPnlAdr >= 2 * options.lockQuantumAdr,
       lock_floor_adr: round(floor),
       lock_shadow_state: state,
       shadow_preserved_adr: round(shadowPreserved)!,
+      profit_stop_receipt_mode: "receipt_only",
+      profit_stop_floor_adr: round(profitStopFloor),
+      profit_stop_shadow_preserved_adr: round(profitStopPreserved)!,
     };
     return withHash(raw);
   });
@@ -1116,6 +2197,55 @@ function sessionGeometryRegimeSummary(sessionRows: SessionGeometryRow[]) {
       harvestable_candidate_sessions: rows.filter((row) => row.geometry_harvestable_candidate).length,
     }))
     .sort((left, right) => right.sessions - left.sessions || left.geometry_regime.localeCompare(right.geometry_regime));
+}
+
+function startModeSummary(rows: StartModeDiagnosticRow[]) {
+  const groups = new Map<string, StartModeDiagnosticRow[]>();
+  for (const row of rows) {
+    const key = `${row.box_model}|${row.start_mode_id}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  return [...groups.entries()]
+    .map(([key, matching]): StartModeSummaryRow => {
+      const [boxModel = "archived_utc", startModeId = "strict_sweep_rejection_displacement"] = key.split("|");
+      const found = matching.filter((row) => row.start_status === "found");
+      return withHash({
+        box_model: boxModel as StartModeSummaryRow["box_model"],
+        start_mode_id: startModeId as StartModeId,
+        valid_geometry_sessions: matching.length,
+        found_starts: found.length,
+        blocked_no_start: matching.filter((row) => row.start_status === "blocked_no_start").length,
+        blocked_no_david_side: matching.filter((row) => row.start_status === "blocked_no_david_side").length,
+        long_starts: found.filter((row) => row.start_side === "LONG").length,
+        short_starts: found.filter((row) => row.start_side === "SHORT").length,
+        candidate_b_aligned_starts: found.filter((row) => row.candidate_b_alignment === 1).length,
+        david_aligned_starts: found.filter((row) => row.david_alignment === 1).length,
+        avg_pe_m1_1_session: round(average(matching.map((row) => row.pe_m1_1_session))),
+        avg_pe_adr_event_1_session: round(average(matching.map((row) => row.pe_adr_event_1_session))),
+        avg_session_range_adr: round(average(matching.map((row) => row.session_range_adr))),
+        avg_adaptive_spacing_adr: round(average(matching.map((row) => row.adaptive_spacing_adr))),
+        avg_start_delay_minutes: round(average(found.map((row) => row.start_delay_minutes_from_entry_start))),
+        avg_start_distance_from_mid_adr: round(average(found.map((row) => row.start_distance_from_mid_adr))),
+        avg_eod_mfe_adr: round(average(found.map((row) => row.eod_mfe_adr))),
+        avg_eod_mae_adr: round(average(found.map((row) => row.eod_mae_adr))),
+        eod_hit_1q_starts: found.filter((row) => row.eod_hit_1q === true).length,
+        eod_hit_2q_starts: found.filter((row) => row.eod_hit_2q === true).length,
+        eod_hit_3q_starts: found.filter((row) => row.eod_hit_3q === true).length,
+        avg_next_day_mfe_adr: round(average(found.map((row) => row.next_day_mfe_adr))),
+        avg_next_day_mae_adr: round(average(found.map((row) => row.next_day_mae_adr))),
+        next_day_hit_1q_starts: found.filter((row) => row.next_day_hit_1q === true).length,
+        next_day_hit_2q_starts: found.filter((row) => row.next_day_hit_2q === true).length,
+        next_day_hit_3q_starts: found.filter((row) => row.next_day_hit_3q === true).length,
+        avg_full_available_mfe_adr: round(average(found.map((row) => row.full_available_mfe_adr))),
+        full_available_hit_1q_starts: found.filter((row) => row.hold_until_profit_first_1q_timestamp_utc !== null).length,
+        full_available_hit_2q_starts: found.filter((row) => row.hold_until_profit_first_2q_timestamp_utc !== null).length,
+        full_available_hit_3q_starts: found.filter((row) => row.hold_until_profit_first_3q_timestamp_utc !== null).length,
+      });
+    })
+    .sort((left, right) =>
+      left.box_model.localeCompare(right.box_model) ||
+      left.start_mode_id.localeCompare(right.start_mode_id)
+    );
 }
 
 function buildStartTraceabilityRows(options: {
@@ -1305,6 +2435,8 @@ async function main() {
   const manifest = await readTradeLegPathWarehouseManifest(options.manifestId);
   const { selectedWeeks, rows } = await loadRows(options);
   const barsByKey = new Map(rows.map((row) => [`${row.week_open_utc}|${row.pair}`, barsFromRow(row)]));
+  const closeEventRows = options.closeEventsCsv ? await readCsvRows(options.closeEventsCsv) : [];
+  const heatMaps = buildHeatMaps(closeEventRows);
   const strengthsByWeek = new Map<string, Map<string, number>>();
   for (const week of selectedWeeks) {
     const weekRows = rows.filter((row) => row.week_open_utc === week);
@@ -1328,6 +2460,8 @@ async function main() {
   const triggerRows: TriggerCandidateRow[] = [];
   const pairFeatures: PairWeekFeatureRow[] = [];
   const sessionGeometryRows: SessionGeometryRow[] = [];
+  const designQuestionDiagnosticBaseRows: Array<Omit<DesignQuestionDiagnosticRow, "content_hash" | "pe_m1_5_session_avg" | "pe_m1_fast_slow_ema">> = [];
+  const startModeDiagnosticRows: StartModeDiagnosticRow[] = [];
   for (const row of rows) {
     const bars = barsByKey.get(`${row.week_open_utc}|${row.pair}`) ?? [];
     const pe = pathEfficiency(bars);
@@ -1357,6 +2491,28 @@ async function main() {
       strengths,
     });
     triggerRows.push(...rowTriggers);
+    designQuestionDiagnosticBaseRows.push(...buildDesignQuestionDiagnostics({
+      row,
+      bars,
+      rangeRatioPair: rr,
+      gridQuantumAdr: options.gridQuantumAdr,
+      signalAdrBrick: options.signalAdrBrick,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+      heatMaps,
+      triggerRows: rowTriggers,
+    }));
+    startModeDiagnosticRows.push(...buildStartModeDiagnostics({
+      row,
+      bars,
+      rangeRatioPair: rr,
+      gridQuantumAdr: options.gridQuantumAdr,
+      allInCostAdr: options.allInCostAdr,
+      costFloorMultiple: options.costFloorMultiple,
+      targetGridSlots: options.targetGridSlots,
+      minSpacingAdr: options.minSpacingAdr,
+      maxSpacingAdr: options.maxSpacingAdr,
+    }));
     sessionGeometryRows.push(...buildSessionGeometryRows({
       row,
       bars,
@@ -1416,13 +2572,14 @@ async function main() {
     pairFeatures.push(withHash(rawFeature));
   }
 
-  const closeEventRows = options.closeEventsCsv ? await readCsvRows(options.closeEventsCsv) : [];
+  const designQuestionDiagnosticRows = addRollingPathEfficiencyDiagnostics(designQuestionDiagnosticBaseRows);
   const lockRows = await buildLockRows(options);
   const summaryRows = aggregateSummary({ selectedWeeks, pairFeatures, triggerRows, lockRows });
   const triggerContextRows = triggerContextSummary(triggerRows);
   const lockVariantRows = lockVariantSummary(lockRows);
   const geometryRegimeRows = geometryRegimeSummary(pairFeatures);
   const sessionGeometryRegimeRows = sessionGeometryRegimeSummary(sessionGeometryRows);
+  const startModeSummaryRows = startModeSummary(startModeDiagnosticRows);
   const startTraceRows = buildStartTraceabilityRows({
     closeEventRows,
     closeEventsCsv: options.closeEventsCsv,
@@ -1454,6 +2611,27 @@ async function main() {
       sweep_depth_quantum_multiple: 0.25,
       displacement_body_quantum_multiple: 0.25,
       displacement_close_zone: 0.3,
+      diagnostic_box_models: ["archived_utc", "ny_clean_et"],
+      diagnostic_path_efficiency_modes: ["m1_1_session", "adr_event_1_session", "m1_5_session_avg", "m1_fast_slow_ema"],
+      start_mode_geometry_basis: START_MODE_GEOMETRY_BASIS,
+      start_mode_diagnostics: [
+        "strict_sweep_rejection_displacement",
+        "relaxed_sweep_rejection",
+        "first_mean_extension_touch",
+        "candidate_b_geometry_start",
+        "david_contra_geometry_start",
+      ],
+      start_mode_david_settings: DAVID_DIAGNOSTIC_SETTINGS,
+      excursion_receipts: {
+        terms: ["MFE_maximum_favorable_excursion", "MAE_maximum_adverse_excursion"],
+        horizons: ["next_ny_1600_flatten", "one_additional_ny_1600_flatten", "full_available_pair_week_path"],
+        target_unit_receipts: ["1Q", "2Q", "3Q"],
+        same_bar_lookahead_policy: "exclude_start_bar_high_low",
+      },
+      heat_formula: "max(pair_heat, account_heat)",
+      neutral_alignment_penalty_distance_multiplier: 1.25,
+      lockout_receipt_thresholds: ["1Q_add_block", "2Q_add_block"],
+      profit_stop_mode: "receipt_only",
     },
     data_contracts: {
       warehouse_manifest_id: options.manifestId,
@@ -1506,6 +2684,9 @@ async function main() {
   const formulaConfigPath = path.join(options.artifactDir, "gate90d-formula-config.json");
   const featureBase = path.join(options.artifactDir, "pair-week-feature.rows");
   const sessionGeometryBase = path.join(options.artifactDir, "session-geometry.rows");
+  const designQuestionDiagnosticBase = path.join(options.artifactDir, "design-question-diagnostic.rows");
+  const startModeDiagnosticBase = path.join(options.artifactDir, "start-mode-diagnostic.rows");
+  const startModeSummaryBase = path.join(options.artifactDir, "start-mode-summary.rows");
   const triggerBase = path.join(options.artifactDir, "katarakti-trigger-candidates.rows");
   const lockBase = path.join(options.artifactDir, "grid-lock-shadow.rows");
   const summaryBase = path.join(options.artifactDir, "gate90d-summary.rows");
@@ -1523,6 +2704,9 @@ async function main() {
   await writeJson(formulaConfigPath, formulaConfig);
   await writeRows(featureBase, pairFeatures);
   await writeRows(sessionGeometryBase, sessionGeometryRows as unknown as Array<Record<string, unknown>>);
+  await writeRows(designQuestionDiagnosticBase, designQuestionDiagnosticRows as unknown as Array<Record<string, unknown>>);
+  await writeRows(startModeDiagnosticBase, startModeDiagnosticRows as unknown as Array<Record<string, unknown>>);
+  await writeRows(startModeSummaryBase, startModeSummaryRows as unknown as Array<Record<string, unknown>>);
   await writeRows(triggerBase, triggerRows);
   await writeRows(lockBase, lockRows);
   await writeRows(summaryBase, summaryRows);
@@ -1548,17 +2732,41 @@ async function main() {
           ? `- The supplied close-event source includes cycle start timestamps; this pass matched ${matchedStartTraceRows} close events to prior in-session trigger candidates and left ${noInSessionTriggerRows} without a valid same-session trigger.`
           : `- The supplied close-event source includes cycle start timestamps, but no close events matched a prior in-session trigger candidate; ${noInSessionTriggerRows} rows remain ` +
             "`no_in_session_trigger`.";
+  const archivedDiagnosticRows = designQuestionDiagnosticRows.filter((row) => row.box_model === "archived_utc");
+  const nyCleanDiagnosticRows = designQuestionDiagnosticRows.filter((row) => row.box_model === "ny_clean_et");
+  const lockout1qRows = lockRows.filter((row) => row.lockout_1q_add_block);
+  const lockout2qRows = lockRows.filter((row) => row.lockout_2q_add_block);
+  const profitStopPreserveRows = lockRows.filter((row) => row.profit_stop_shadow_preserved_adr > 0);
+  const designQuestionRead = [
+    `- Design-question ledger rows: \`${designQuestionDiagnosticRows.length}\` total; archived UTC \`${archivedDiagnosticRows.length}\`, NY-clean ET \`${nyCleanDiagnosticRows.length}\`.`,
+    `- Harvestable geometry rows: archived UTC \`${archivedDiagnosticRows.filter((row) => row.geometry_harvestable_candidate_m1).length}\`, NY-clean ET \`${nyCleanDiagnosticRows.filter((row) => row.geometry_harvestable_candidate_m1).length}\`.`,
+    `- Blocked centerline-only diagnostic rows: archived UTC \`${archivedDiagnosticRows.filter((row) => row.centerline_only_blocked_candidate).length}\`, NY-clean ET \`${nyCleanDiagnosticRows.filter((row) => row.centerline_only_blocked_candidate).length}\`; these remain blocked diagnostics, not replay starts.`,
+    `- Average PE comparison: archived UTC M1 \`${round(average(archivedDiagnosticRows.map((row) => row.pe_m1_1_session)))}\` vs ADR-event \`${round(average(archivedDiagnosticRows.map((row) => row.pe_adr_event_1_session)))}\`; NY-clean ET M1 \`${round(average(nyCleanDiagnosticRows.map((row) => row.pe_m1_1_session)))}\` vs ADR-event \`${round(average(nyCleanDiagnosticRows.map((row) => row.pe_adr_event_1_session)))}\`.`,
+    `- Lockout/profit receipts: \`${lockout1qRows.length}\` rows hit 1Q add-block, \`${lockout2qRows.length}\` rows hit 2Q add-block, profit-stop remains receipt-only with \`${profitStopPreserveRows.length}\` preserve candidates.`,
+  ];
+  const startModeSummaryByKey = new Map(startModeSummaryRows.map((row) => [`${row.box_model}|${row.start_mode_id}`, row]));
+  const startModeFound = (boxModel: StartModeSummaryRow["box_model"], modeId: StartModeId) =>
+    startModeSummaryByKey.get(`${boxModel}|${modeId}`)?.found_starts ?? 0;
+  const startModeValid = (boxModel: StartModeSummaryRow["box_model"], modeId: StartModeId) =>
+    startModeSummaryByKey.get(`${boxModel}|${modeId}`)?.valid_geometry_sessions ?? 0;
+  const startModeRead = [
+    `- Start-mode diagnostic rows: \`${startModeDiagnosticRows.length}\` across ADR-event harvestable geometry sessions; archived UTC denominator \`${startModeValid("archived_utc", "strict_sweep_rejection_displacement")}\`, NY-clean ET denominator \`${startModeValid("ny_clean_et", "strict_sweep_rejection_displacement")}\`.`,
+    `- Strict versus relaxed starts: archived UTC strict \`${startModeFound("archived_utc", "strict_sweep_rejection_displacement")}\`, relaxed \`${startModeFound("archived_utc", "relaxed_sweep_rejection")}\`; NY-clean ET strict \`${startModeFound("ny_clean_et", "strict_sweep_rejection_displacement")}\`, relaxed \`${startModeFound("ny_clean_et", "relaxed_sweep_rejection")}\`.`,
+    `- Geometry-only start shapes: archived UTC mean-extension \`${startModeFound("archived_utc", "first_mean_extension_touch")}\`, Candidate B \`${startModeFound("archived_utc", "candidate_b_geometry_start")}\`, David contra \`${startModeFound("archived_utc", "david_contra_geometry_start")}\`; NY-clean ET mean-extension \`${startModeFound("ny_clean_et", "first_mean_extension_touch")}\`, Candidate B \`${startModeFound("ny_clean_et", "candidate_b_geometry_start")}\`, David contra \`${startModeFound("ny_clean_et", "david_contra_geometry_start")}\`.`,
+    "- Start-mode rows now include MFE/MAE excursion receipts: next NY 16:00 flatten, one additional NY 16:00 flatten, and full available pair-week path, with 1Q/2Q/3Q target-hit flags.",
+    `- David diagnostic settings: \`${DAVID_DIAGNOSTIC_SETTINGS.signalClock}\`, brick \`${DAVID_DIAGNOSTIC_SETTINGS.signalAdrBrick} ADR\`, LWMA \`${DAVID_DIAGNOSTIC_SETTINGS.maPeriod}\`, RSI \`${DAVID_DIAGNOSTIC_SETTINGS.rsiPeriod}\`, OB/OS \`${DAVID_DIAGNOSTIC_SETTINGS.rsiOverbought}/${DAVID_DIAGNOSTIC_SETTINGS.rsiOversold}\`.`,
+  ];
 
   const report = [
-    "# Gate 90D Triangle Feature Shadow Audit",
+    "# Gate 90D Feature Ledger And Start Mode Diagnostic",
     "",
     `Generated: ${GATE_DATE}`,
     "",
     "## Verdict",
     "",
-    "`PASS_GATE90D_TRIANGLE_FEATURE_SHADOW_AUDIT_BUILT_NO_REPLAY_NO_FULL_HANDSHAKE`",
+    "`PASS_GATE90D_FEATURE_LEDGER_START_MODES_LOGGED_NO_REPLAY_NO_FULL_HANDSHAKE`",
     "",
-    "This is the first Gate 90D evidence pass. It is not a trading replay, not an MT5 build, and not a full currency-family handshake implementation.",
+    "This extends the Gate 90D feature ledger before replay freeze. It is not a trading replay, not an MT5 build, and not a full currency-family handshake implementation.",
     "",
     "## Scope",
     "",
@@ -1569,6 +2777,8 @@ async function main() {
     `- Grid quantum used for trigger/lock shadow: \`${options.gridQuantumAdr} ADR\``,
     `- Signal brick: \`${options.signalAdrBrick} ADR\``,
     `- Adaptive spacing receipt: \`${SPACING_FORMULA_ID}\`, \`${options.targetGridSlots}\` target slots, \`${options.minSpacingAdr}..${options.maxSpacingAdr} ADR\` rails`,
+    "- Design-question diagnostics: M1/ADR-event path efficiency, archived UTC versus NY-clean boxes, 1-session/5-session/EMA PE, max(pair, account) heat, blocked centerline-only opportunities, neutral-alignment penalty distance, lockout thresholds, and profit-stop receipt-only state.",
+    "- Start-mode diagnostics: strict sweep/rejection/displacement, relaxed sweep/rejection, first session-mid extension touch, Candidate B geometry start, and David contra geometry start inside ADR-event harvestable geometry.",
     `- Close-event source: \`${options.closeEventsCsv ? toRepoRelative(options.closeEventsCsv) : "none"}\``,
     "",
     "## Summary",
@@ -1586,6 +2796,26 @@ async function main() {
     "## Session Geometry Regimes",
     "",
     renderTable(sessionGeometryRegimeRows as unknown as Array<Record<string, unknown>>, ["geometry_regime", "sessions", "trigger_candidates", "avg_entry_path_efficiency", "avg_session_range_adr", "avg_entry_range_adr", "avg_adaptive_spacing_adr", "range_condition_pass_sessions", "adaptive_range_condition_pass_sessions", "harvestable_candidate_sessions"]),
+    "",
+    "## Design Question Diagnostics",
+    "",
+    renderTable(designQuestionDiagnosticRows.slice(0, 20) as unknown as Array<Record<string, unknown>>, ["box_model", "session_label", "pe_m1_1_session", "pe_adr_event_1_session", "pe_m1_5_session_avg", "pe_m1_fast_slow_ema", "geometry_regime_m1", "centerline_only_blocked_candidate", "neutral_alignment_allow_distance_adr", "neutral_alignment_penalty_distance_adr", "pair_heat", "account_heat", "selected_heat"]),
+    "",
+    "## Design Question Read",
+    "",
+    ...designQuestionRead,
+    "",
+    "## Start Mode Diagnostics",
+    "",
+    renderTable(startModeSummaryRows as unknown as Array<Record<string, unknown>>, ["box_model", "start_mode_id", "valid_geometry_sessions", "found_starts", "blocked_no_start", "blocked_no_david_side", "avg_start_delay_minutes", "avg_start_distance_from_mid_adr", "avg_eod_mfe_adr", "avg_eod_mae_adr", "eod_hit_1q_starts", "eod_hit_2q_starts", "eod_hit_3q_starts", "avg_next_day_mfe_adr", "next_day_hit_1q_starts", "next_day_hit_2q_starts", "next_day_hit_3q_starts", "avg_full_available_mfe_adr", "full_available_hit_1q_starts", "full_available_hit_2q_starts", "full_available_hit_3q_starts"]),
+    "",
+    "## Start Mode Sample",
+    "",
+    renderTable(startModeDiagnosticRows.filter((row) => row.start_status === "found").slice(0, 20) as unknown as Array<Record<string, unknown>>, ["box_model", "session_label", "start_mode_id", "start_side", "start_timestamp_utc", "pe_adr_event_1_session", "adaptive_spacing_adr", "start_distance_from_mid_adr", "eod_mfe_adr", "eod_mae_adr", "eod_mfe_quantum_units", "next_day_mfe_adr", "full_available_mfe_adr", "hold_until_profit_first_1q_timestamp_utc", "candidate_b_alignment", "david_alignment"]),
+    "",
+    "## Start Mode Read",
+    "",
+    ...startModeRead,
     "",
     "## Lock Shadow By Variant",
     "",
@@ -1608,6 +2838,10 @@ async function main() {
     `- Formula contract hash: \`${formulaConfig.formula_contract_hash}\`.`,
     "- `pair-week-feature.rows.*` records week-level path efficiency, range ratio, range-condition pass/fail, geometry regime, derived grid quantum, signal brick, and log-only family context.",
     "- `session-geometry.rows.*` records the same efficiency/range regime test at Katarakti session-box resolution so low-efficiency dead churn is not confused with harvestable chop.",
+    "- `design-question-diagnostic.rows.*` logs the open Gate 90D design questions side by side before any replay freeze: M1 versus ADR-event PE, archived UTC versus NY-clean boxes, 1-session/5-session/EMA PE, max(pair, account) heat, blocked centerline-only rows, neutral alignment allow-versus-penalty distance, and profit-stop receipt-only state.",
+    "- `start-mode-diagnostic.rows.*` compares strict, relaxed, session-mid extension, Candidate B geometry, and David contra geometry starts inside the same ADR-event harvestable geometry denominator.",
+    "- `start-mode-diagnostic.rows.*` also records MFE/MAE, EOD flatten PnL, next-day hold what-if, full available path MFE, and 1Q/2Q/3Q target-hit timestamps/flags so larger-target hypotheses remain visible without changing replay state.",
+    "- `start-mode-summary.rows.*` groups those start modes and excursion receipts by box model so v1 can choose a handshake shape before any replay freeze.",
     "- Adaptive spacing receipts use completed session range divided into fixed slots, then apply cost/min/max rails; they are feature receipts only in this pass, not trading replay controls.",
     "- `katarakti-trigger-candidates.rows.*` records session sweep / rejection / displacement trigger candidates in ADR/grid units.",
     "- `geometry-regime-summary.rows.*` separates harvestable chop candidates from dead chop, efficient tail risk, and mixed regimes.",
@@ -1632,6 +2866,9 @@ async function main() {
     "",
     `- \`${toRepoRelative(`${featureBase}.csv`)}\``,
     `- \`${toRepoRelative(`${sessionGeometryBase}.csv`)}\``,
+    `- \`${toRepoRelative(`${designQuestionDiagnosticBase}.csv`)}\``,
+    `- \`${toRepoRelative(`${startModeDiagnosticBase}.csv`)}\``,
+    `- \`${toRepoRelative(`${startModeSummaryBase}.csv`)}\``,
     `- \`${toRepoRelative(`${triggerBase}.csv`)}\``,
     `- \`${toRepoRelative(`${lockBase}.csv`)}\``,
     `- \`${toRepoRelative(`${summaryBase}.csv`)}\``,
@@ -1658,6 +2895,9 @@ async function main() {
     { label: "formula_config", path: formulaConfigPath },
     { label: "pair_week_features_json", path: `${featureBase}.json` },
     { label: "session_geometry_json", path: `${sessionGeometryBase}.json` },
+    { label: "design_question_diagnostic_json", path: `${designQuestionDiagnosticBase}.json` },
+    { label: "start_mode_diagnostic_json", path: `${startModeDiagnosticBase}.json` },
+    { label: "start_mode_summary_json", path: `${startModeSummaryBase}.json` },
     { label: "katarakti_trigger_candidates_json", path: `${triggerBase}.json` },
     { label: "grid_lock_shadow_json", path: `${lockBase}.json` },
     { label: "summary_json", path: `${summaryBase}.json` },

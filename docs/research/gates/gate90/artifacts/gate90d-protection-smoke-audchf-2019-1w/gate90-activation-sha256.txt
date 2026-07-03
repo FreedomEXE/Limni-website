@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T03:52:25.638Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 8B8BB06E2445ED78445807E4AC327AE3C15959F827508F40DAC20AF4481CA71A docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json 6AF357FF349FBCFBFF8C4F7249A9B4E4BD26B217F5B985B2B9AC1DE3DE439AFC docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 812A7F90CFBC241AF120D52C7EE0D7679CE668347F072164C9A8AD375484DC90 docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json A04F5CDF004F46EDF4D4989994730EF6E5C6EB49CCE2881871FA54B3FD9E23EC docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json B38AEEAA807DFBF044B36C769E72C3C2ED4FEAEADDA1F4EA31311346A84C355A docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 16B43E7E916A36F26A48E64E61CA96F22A59A884356516F03902A82785D57296 docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt DA3A77D3F8A0EC1C4188C36582C725797CCFC2F173359B1EBD444A0A576FC42F docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 4D0367504EFC39C724A3DF8E3B0C249862983BB77615C83F32AE8D55B78C9897 docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/gate90-run-summary.json
+report 296873946C1F34F464C590DB469BE21EE3B2907B9C2D1932499C279425F06E82 docs/research/gates/gate90/artifacts/gate90d-protection-smoke-audchf-2019-1w/GATE90D_PROTECTION_SMOKE_AUDCHF_2019_1W.md

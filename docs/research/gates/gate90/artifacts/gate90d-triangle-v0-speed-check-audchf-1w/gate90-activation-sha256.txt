@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T02:20:33.552Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 34AA104B742F8B6ED745546E36536902BE5913855BA71A5AEFA7CABB40E764F1 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/activation-summary.rows.json
+weekly_json 40438BB87FAC12C27C5E9CDD4B5758DA992E45ABC2595C1822948C0AB21FDEB3 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/weekly-activation-truth.rows.json
+close_events_json A411B7CD7A27A86FD96D39E3873FB49F68A4474CA9AAC160546CC163B1A76E5A docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/terminal-inventory.rows.json
+validation_json D956D528242BA50B71C4B92FECFAB594291CBBC2513E8E72EA658B6686EEA23C docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/validation.rows.json
+metric_definitions_json 6ED1C5F735FE036C2E5595FC128E417AD31B9FF3FDD40222843B5B6E8B96DD9B docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/metric-definitions.rows.json
+command_receipt 5CB6C79460074DC4B934F7C7B0096188DFFE0AE6D62FB257B91CABD328BE31AD docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/command-receipt.json
+run_summary_json 8A73A77088981AD1122CD47D8C1F8B1F2258BE3E8E06BC388C1E02DB0D82C9CD docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/gate90-run-summary.json
+report 9578225267A69E880EF63D77A1068E91CB178A8B608CB224599159E399C884EC docs/research/gates/gate90/artifacts/gate90d-triangle-v0-speed-check-audchf-1w/GATE90D_TRIANGLE_V0_SPEED_CHECK_AUDCHF_1W.md

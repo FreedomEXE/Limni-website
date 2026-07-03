@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T02:56:49.671Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 80CEF27B98C388668D0386466F9734EAD65C7351591FFA990B05A6C3A3C733A7 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/activation-summary.rows.json
+weekly_json FE2132ACD6149D81000106CC5E5780DBC1F1F4C6940108198A2A40D0825FBBEA docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/terminal-inventory.rows.json
+validation_json 4F77019815A7E16DA61483DBB2F3D5A1AF55768881687855B472B85425CD4CBF docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/validation.rows.json
+metric_definitions_json 4BDDCE6A4C356039AB73B4F864C5E76F8D76730BA89F2E42F5365C7EDF0F4257 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/metric-definitions.rows.json
+command_receipt 7088A708996CF9C13CBBC8925702F043CD8EC820D325C83377DD66ED52F207D6 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/command-receipt.json
+run_summary_json F87C57456F20E9F40FA71F91B6C91252A91ABE04FC84B128391E7313C2656CB7 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/gate90-run-summary.json
+report 7E5675C2588AF248235C014C1E7DBA854BA821EAD9946AE65BE924E04CE6234E docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2026-26w-david-only-mfe/GATE90D_TRIANGLE_V1_OPEN_2026_26W_DAVID_ONLY_MFE.md

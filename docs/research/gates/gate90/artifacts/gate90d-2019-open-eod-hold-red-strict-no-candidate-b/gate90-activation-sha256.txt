@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:35:37.047Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 51DB4F81F12B465DB0E991E2725BF8223A3C67DB741389391C2891126B06082A docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/activation-summary.rows.json
+weekly_json 1A6527EBB6F4F51985B8183CE15DDC911A19443C50357DE8DDBDD44AA90335BE docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json 1A6C6682BCAE2F9BEB7D50DF0E1CEADA8A868AFD0DF8EB9004CA1D2E89E44F8C docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json 4C4E3EF66D493B600AE2B9A91129C558CF1BBA43229306761E5CC3EF69308A3B docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/terminal-inventory.rows.json
+validation_json 09CF1693A8FDF0E985E6BD060FCC88048D06B7C9F12B0F00620438A7E172975A docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/validation.rows.json
+metric_definitions_json 29B2B994E9725904F63BFA9D784283C37CED26D50CFEC0DCBF719041A02F1078 docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/metric-definitions.rows.json
+command_receipt 454B3D3474083774FA10FC121FBA95CC7921AD18C3344EC42185480BE68D85F6 docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/command-receipt.json
+run_summary_json 258C20B22E0EB02A5EDF1A7B09D864C3B296A23F279CBE037D9B124A6A2363F8 docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/gate90-run-summary.json
+report A7080B49D5FD2A19A82DBDFC67A68F2409A992DA163313948F1EC85C9403DF01 docs/research/gates/gate90/artifacts/gate90d-2019-open-eod-hold-red-strict-no-candidate-b/GATE90D_2019_OPEN_EOD_HOLD_RED_STRICT_NO_CANDIDATE_B.md

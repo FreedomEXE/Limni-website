@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T03:06:02.508Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 134D31E414D1E749E58703890F5C3DE0DC4835AC25D3DE11DF171B90E1E1809C docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/activation-summary.rows.json
+weekly_json 5446E1248D3A993655704DD8248EA9D3AFFA5C1CDEDD399DE889E00DE1AF78EB docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/terminal-inventory.rows.json
+validation_json 71669A76F11E04F78859000E67362054A38AB4AC36BCB481492621E65BE41A61 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/validation.rows.json
+metric_definitions_json 4BDDCE6A4C356039AB73B4F864C5E76F8D76730BA89F2E42F5365C7EDF0F4257 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/metric-definitions.rows.json
+command_receipt DC37C64A267A4980BDF0DFA668E34556993E0E01ACD0AC5ACB1EC365F0E89097 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/command-receipt.json
+run_summary_json 77111238BD70C76882783E40691AF2BB59A233F9DC6063F81003E3B840F20A93 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/gate90-run-summary.json
+report 5FDA607D36D7453F079BC4214E92F6D1B67F2D9034F114E69FFBB0237030AE02 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-open-2019-david-only-summary-mfe/GATE90D_TRIANGLE_V1_OPEN_2019_DAVID_ONLY_SUMMARY_MFE.md

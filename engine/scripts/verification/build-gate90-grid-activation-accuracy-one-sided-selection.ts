@@ -34,6 +34,7 @@ const DEFAULT_SPACING_ADR = 0.2;
 const DEFAULT_LOT_SIZE = 0.01;
 const STANDARD_FX_CONTRACT_UNITS = 100_000;
 const TRIANGLE_V0_FORMULA_ID = "gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03";
+const TRIANGLE_V1_FORMULA_ID = "gate90d_triangle_v1_geometry_extension_start_scaffold_2026_07_03";
 const TRIANGLE_TARGET_GRID_SLOTS = 3;
 const TRIANGLE_MIN_SPACING_ADR = 0.2;
 const TRIANGLE_MAX_SPACING_ADR = 0.3;
@@ -53,13 +54,41 @@ const DEFAULT_SIGNAL_SETTINGS = {
 
 type Side = "LONG" | "SHORT";
 type FillKind = "initial" | "adverse_recovery" | "favorable_expansion";
-type CloseReason = "target" | "session_flatten" | "end_of_test";
-type BarPathMode = "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
+type CloseReason = "target" | "session_flatten" | "end_of_test" | "protection_trail" | "protected_flatten" | "pain_circuit";
+type BarPathMode = "open" | "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
 type DavidState = "UP" | "DOWN";
 type TargetMode = "fixed_adr" | "david_ma_reversion";
 type GridAddMode = "adverse_and_favorable" | "adverse_only";
 type SignalClock = "m1" | "adr_event";
 type SessionMode = "continuous" | "ny_daily_window";
+type ProtectionMode =
+  | "baseline"
+  | "lock_1q_stop_adds"
+  | "trail_1q_1q"
+  | "trail_1q_0_5q"
+  | "protected_flatten_1q"
+  | "protected_flatten_1q_trail_1q"
+  | "pain_1q_stop_adds_before_profit_0_5q"
+  | "pain_2q_circuit_before_profit_0_5q"
+  | "live_state_guard_v0"
+  | "eod_green_hold_red"
+  | "eod_green_hold_red_pain_1q_stop_adds"
+  | "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q"
+  | "eod_green_hold_red_max_3d"
+  | "eod_green_hold_red_pain_1q_stop_adds_max_3d"
+  | "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d";
+type PainStopAddMode = "none" | "locked_before_profit_0_5q" | "until_profit_0_5q";
+type ProtectionConfig = {
+  stopAddsAfterQ: number | null;
+  trailActivateQ: number | null;
+  trailGivebackQ: number | null;
+  protectedFlatten: boolean;
+  uglyRedQ: number | null;
+  holdRedAtFlatten: boolean;
+  holdRedMaxDays: number | null;
+  painStopAddMode: PainStopAddMode;
+  painCircuitBeforeProfitHalfQ: boolean;
+};
 type ActivationRuleId =
   | "raw_both"
   | "candidate_b"
@@ -71,7 +100,10 @@ type ActivationRuleId =
   | "david_stoch_confirm"
   | "david_stoch_release"
   | "triangle_v0"
-  | "triangle_v0_no_candidate_b";
+  | "triangle_v0_no_candidate_b"
+  | "triangle_v1_candidate_b_extension"
+  | "triangle_v1_david_contra_extension"
+  | "triangle_v1_candidate_or_david_extension";
 type SignalSettings = {
   davidMaPeriod: number;
   davidRsiPeriod: number;
@@ -135,6 +167,16 @@ type Cycle = {
   next_favorable_fill_level: number;
   min_pnl_adr: number;
   max_pnl_adr: number;
+  min_pnl_timestamp_utc: string | null;
+  max_pnl_timestamp_utc: string | null;
+  first_mfe_0_5q_timestamp_utc: string | null;
+  first_mfe_1q_timestamp_utc: string | null;
+  first_mfe_2q_timestamp_utc: string | null;
+  first_mfe_3q_timestamp_utc: string | null;
+  first_mae_0_5q_timestamp_utc: string | null;
+  first_mae_1q_timestamp_utc: string | null;
+  first_mae_2q_timestamp_utc: string | null;
+  first_mae_3q_timestamp_utc: string | null;
   reset_ordinal_at_start: number;
 };
 
@@ -165,6 +207,7 @@ type ConversionSource = {
 type CloseEvent = {
   variant_id: string;
   activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
   cycle_id: string;
   pair: string;
   side: Side;
@@ -182,11 +225,60 @@ type CloseEvent = {
   net_usd: number;
   min_pnl_adr: number;
   max_pnl_adr: number;
+  min_pnl_timestamp_utc: string | null;
+  max_pnl_timestamp_utc: string | null;
+  first_mfe_0_5q_timestamp_utc: string | null;
+  first_mfe_1q_timestamp_utc: string | null;
+  first_mfe_2q_timestamp_utc: string | null;
+  first_mfe_3q_timestamp_utc: string | null;
+  first_mae_0_5q_timestamp_utc: string | null;
+  first_mae_1q_timestamp_utc: string | null;
+  first_mae_2q_timestamp_utc: string | null;
+  first_mae_3q_timestamp_utc: string | null;
   reset_ordinal_at_start: number;
   completed_reset_ordinal: number | null;
   max_fill_age_days: number;
   cycle_spacing_adr: number;
   triangle_trigger_key: string | null;
+};
+
+type CloseEventBreakdownRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  group_type: "anchor_week" | "close_month" | "pair" | "pair_side" | "close_reason" | "strategy_class";
+  group_key: string;
+  close_event_count: number;
+  win_count: number;
+  loss_count: number;
+  flat_count: number;
+  win_pct: number | null;
+  total_realized_pnl_adr: number;
+  adr_normalized_return_pct: number;
+  avg_realized_pnl_adr: number | null;
+  net_usd: number;
+  account_return_pct: number;
+  gross_profit_usd: number;
+  gross_loss_abs_usd: number;
+  profit_factor: number | null;
+  avg_mfe_adr: number | null;
+  avg_mae_adr_abs: number | null;
+  mfe_1q_hit_count: number;
+  mfe_2q_hit_count: number;
+  mfe_3q_hit_count: number;
+  mfe_1q_hit_pct: number | null;
+  mfe_2q_hit_pct: number | null;
+  mfe_3q_hit_pct: number | null;
+  mae_1q_hit_count: number;
+  mae_2q_hit_count: number;
+  mae_3q_hit_count: number;
+  mae_1q_hit_pct: number | null;
+  mae_2q_hit_pct: number | null;
+  mae_3q_hit_pct: number | null;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
+  session_flatten_account_return_pct: number;
+  content_hash?: string;
 };
 
 type TerminalInventoryRow = {
@@ -247,6 +339,7 @@ type WeeklyTruthRow = {
 type SummaryRow = {
   variant_id: string;
   activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
   signal_settings_id: string;
   david_settings: string;
   stochastic_settings: string;
@@ -287,6 +380,8 @@ type SummaryRow = {
   session_flatten_positions: number;
   session_flatten_price_pnl_usd: number;
   session_flatten_swap_usd: number;
+  protection_close_count: number;
+  protection_close_positions: number;
   entries_opened: number;
   closed_positions: number;
   end_liquidation_positions: number;
@@ -305,10 +400,28 @@ type SummaryRow = {
   close_event_flat_count: number;
   close_event_profit_factor: number | null;
   close_event_win_pct: number | null;
+  close_event_total_realized_pnl_adr: number;
+  adr_normalized_return_pct: number;
   close_event_gross_profit_usd: number;
   close_event_gross_loss_abs_usd: number;
+  close_event_avg_realized_pnl_adr: number | null;
+  close_event_avg_mfe_adr: number | null;
+  close_event_avg_mae_adr_abs: number | null;
+  close_event_mfe_1q_hit_count: number;
+  close_event_mfe_2q_hit_count: number;
+  close_event_mfe_3q_hit_count: number;
+  close_event_mfe_1q_hit_pct: number | null;
+  close_event_mfe_2q_hit_pct: number | null;
+  close_event_mfe_3q_hit_pct: number | null;
+  close_event_mae_1q_hit_count: number;
+  close_event_mae_2q_hit_count: number;
+  close_event_mae_3q_hit_count: number;
+  close_event_mae_1q_hit_pct: number | null;
+  close_event_mae_2q_hit_pct: number | null;
+  close_event_mae_3q_hit_pct: number | null;
   target_close_net_usd: number;
   session_flatten_close_net_usd: number;
+  protection_close_net_usd: number;
   activation_checks: number;
   activation_blocked_long: number;
   activation_blocked_short: number;
@@ -370,6 +483,7 @@ type Options = {
   sessionFlattenOverridesEt: Record<string, number>;
   activationRuleId: ActivationRuleId;
   activationRuleIds: ActivationRuleId[];
+  protectionModes: ProtectionMode[];
   targetMode: TargetMode;
   logProgress: boolean;
   summaryOnly: boolean;
@@ -378,6 +492,7 @@ type Options = {
 
 type RuntimeVariantState = {
   activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
   stats: RuntimeStats;
   books: Map<string, PairBook>;
   previousEquityUsd: number;
@@ -418,6 +533,24 @@ type TriangleTrigger = {
   geometry_regime: "harvestable_chop_candidate" | "dead_chop_cost_churn" | "other";
 };
 
+type TriangleGeometrySession = {
+  geometry_key: string;
+  pair: string;
+  week_open_utc: string;
+  session_id: string;
+  entry_start_ms: number;
+  entry_end_ms: number;
+  range_high: number;
+  range_low: number;
+  range_mid: number;
+  session_range_adr: number;
+  adaptive_spacing_adr: number;
+  adaptive_signal_adr_brick: number;
+  range_condition_pass: boolean;
+  entry_bars: TriangleBar[];
+  path_efficiency_before_bar: Map<number, number | null>;
+};
+
 type TriangleBar = ClosedBar & {
   index: number;
   timestamp_ms: number;
@@ -433,6 +566,8 @@ type RuntimeStats = {
   sessionFlattenSwapUsd: number;
   sessionFlattenCount: number;
   sessionFlattenPositions: number;
+  protectionCloseCount: number;
+  protectionClosePositions: number;
   targetResetCount: number;
   fillsOpened: number;
   closedPositions: number;
@@ -460,8 +595,18 @@ type RuntimeStats = {
   closeEventFlatCount: number;
   closeEventGrossProfitUsd: number;
   closeEventGrossLossAbsUsd: number;
+  closeEventRealizedPnlAdrSum: number;
+  closeEventMfeAdrSum: number;
+  closeEventMaeAdrAbsSum: number;
+  closeEventMfe1QHitCount: number;
+  closeEventMfe2QHitCount: number;
+  closeEventMfe3QHitCount: number;
+  closeEventMae1QHitCount: number;
+  closeEventMae2QHitCount: number;
+  closeEventMae3QHitCount: number;
   targetCloseNetUsd: number;
   sessionFlattenCloseNetUsd: number;
+  protectionCloseNetUsd: number;
   closeEvents: CloseEvent[];
   weeklyRows: WeeklyTruthRow[];
   terminalInventoryRows: TerminalInventoryRow[];
@@ -515,6 +660,7 @@ function parseOptions(): Options {
   const allPairs = process.argv.includes("--all-pairs");
   const summaryOnly = process.argv.includes("--summary-only");
   const activationRuleIds = parseActivationRuleIds(args.get("--activation-rules") ?? args.get("--activation-rule") ?? "raw_both");
+  const protectionModes = parseProtectionModes(args.get("--protection-modes") ?? args.get("--protection-mode") ?? "baseline");
   return {
     gate74bDir: args.get("--gate74b-dir") ?? DEFAULT_GATE74B_DIR,
     artifactDir: args.get("--artifact-dir") ?? DEFAULT_ARTIFACT_DIR,
@@ -548,6 +694,7 @@ function parseOptions(): Options {
     sessionFlattenOverridesEt: parseSessionFlattenOverrides(args.get("--session-flatten-overrides-et") ?? ""),
     activationRuleId: activationRuleIds[0]!,
     activationRuleIds,
+    protectionModes,
     targetMode: parseTargetMode(args.get("--target-mode") ?? "fixed_adr"),
     logProgress: process.argv.includes("--log-progress"),
     summaryOnly,
@@ -590,8 +737,8 @@ function parseSignalSettings(args: Map<string, string>): SignalSettings {
 }
 
 function parseBarPathMode(value: string): BarPathMode {
-  if (value === "close" || value === "ohlc_high_low" || value === "ohlc_low_high" || value === "ohlc_directional") return value;
-  throw new Error(`Unsupported --bar-path-mode=${value}; expected close, ohlc_high_low, ohlc_low_high, or ohlc_directional`);
+  if (value === "open" || value === "close" || value === "ohlc_high_low" || value === "ohlc_low_high" || value === "ohlc_directional") return value;
+  throw new Error(`Unsupported --bar-path-mode=${value}; expected open, close, ohlc_high_low, ohlc_low_high, or ohlc_directional`);
 }
 
 function parseTargetMode(value: string): TargetMode {
@@ -612,6 +759,35 @@ function parseSignalClock(value: string): SignalClock {
 function parseSessionMode(value: string): SessionMode {
   if (value === "continuous" || value === "ny_daily_window") return value;
   throw new Error(`Unsupported --session-mode=${value}; expected continuous or ny_daily_window`);
+}
+
+function parseProtectionMode(value: string): ProtectionMode {
+  if (
+    value === "baseline" ||
+    value === "lock_1q_stop_adds" ||
+    value === "trail_1q_1q" ||
+    value === "trail_1q_0_5q" ||
+    value === "protected_flatten_1q" ||
+    value === "protected_flatten_1q_trail_1q" ||
+    value === "pain_1q_stop_adds_before_profit_0_5q" ||
+    value === "pain_2q_circuit_before_profit_0_5q" ||
+    value === "live_state_guard_v0" ||
+    value === "eod_green_hold_red" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q" ||
+    value === "eod_green_hold_red_max_3d" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_max_3d" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported --protection-mode=${value}; expected baseline, lock_1q_stop_adds, trail_1q_1q, trail_1q_0_5q, protected_flatten_1q, protected_flatten_1q_trail_1q, pain_1q_stop_adds_before_profit_0_5q, pain_2q_circuit_before_profit_0_5q, live_state_guard_v0, eod_green_hold_red, eod_green_hold_red_pain_1q_stop_adds, eod_green_hold_red_pain_1q_stop_adds_reset_0_5q, eod_green_hold_red_max_3d, eod_green_hold_red_pain_1q_stop_adds_max_3d, or eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d`);
+}
+
+function parseProtectionModes(value: string) {
+  const modes = value.split(",").map((part) => parseProtectionMode(part.trim())).filter(Boolean);
+  if (!modes.length) throw new Error("At least one protection mode is required");
+  return [...new Set(modes)];
 }
 
 function parseTimeOfDayMinutes(value: string, flag: string) {
@@ -661,11 +837,14 @@ function parseActivationRuleId(value: string): ActivationRuleId {
     value === "david_stoch_confirm" ||
     value === "david_stoch_release" ||
     value === "triangle_v0" ||
-    value === "triangle_v0_no_candidate_b"
+    value === "triangle_v0_no_candidate_b" ||
+    value === "triangle_v1_candidate_b_extension" ||
+    value === "triangle_v1_david_contra_extension" ||
+    value === "triangle_v1_candidate_or_david_extension"
   ) {
     return value;
   }
-  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, or triangle_v0_no_candidate_b`);
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, triangle_v0_no_candidate_b, triangle_v1_candidate_b_extension, triangle_v1_david_contra_extension, or triangle_v1_candidate_or_david_extension`);
 }
 
 function parseActivationRuleIds(value: string): ActivationRuleId[] {
@@ -680,12 +859,27 @@ function parseActivationRuleIds(value: string): ActivationRuleId[] {
   return unique;
 }
 
-function variantId(ruleId: ActivationRuleId) {
-  return `RAW_GRID_T100_S020_GATE90_${ruleId.toUpperCase()}`;
+function variantId(ruleId: ActivationRuleId, protectionMode: ProtectionMode = "baseline") {
+  const base = `RAW_GRID_T100_S020_GATE90_${ruleId.toUpperCase()}`;
+  return protectionMode === "baseline" ? base : `${base}__PROTECT_${protectionMode.toUpperCase()}`;
 }
 
 function isTriangleActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v0" ||
+    ruleId === "triangle_v0_no_candidate_b" ||
+    ruleId === "triangle_v1_candidate_b_extension" ||
+    ruleId === "triangle_v1_david_contra_extension" ||
+    ruleId === "triangle_v1_candidate_or_david_extension";
+}
+
+function isTriangleV0ActivationRule(ruleId: ActivationRuleId) {
   return ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b";
+}
+
+function isTriangleV1ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v1_candidate_b_extension" ||
+    ruleId === "triangle_v1_david_contra_extension" ||
+    ruleId === "triangle_v1_candidate_or_david_extension";
 }
 
 function davidSettingsLabel(settings: SignalSettings) {
@@ -773,6 +967,7 @@ function renderDurableCommand(options: Options) {
     `--week-from=${options.weekFrom ?? ""}`,
     `--week-to=${options.weekTo ?? ""}`,
     `--activation-rules=${options.activationRuleIds.join(",")}`,
+    `--protection-modes=${options.protectionModes.join(",")}`,
     `--bar-path-mode=${options.barPathMode}`,
     `--signal-clock=${options.signalClock}`,
     `--signal-adr-brick=${options.signalAdrBrick}`,
@@ -929,6 +1124,7 @@ function directedBarPath(row: ReplayRow, index: number, mode: BarPathMode) {
   const high = payload.directed_high_adr[index]!;
   const low = payload.directed_low_adr[index]!;
   const close = payload.directed_close_adr[index]!;
+  if (mode === "open") return [open];
   if (mode === "close") return [close];
   if (mode === "ohlc_high_low") return [open, high, low, close];
   if (mode === "ohlc_low_high") return [open, low, high, close];
@@ -937,6 +1133,7 @@ function directedBarPath(row: ReplayRow, index: number, mode: BarPathMode) {
 
 function directedAdrAtTick(row: ReplayRow, index: number, mode: BarPathMode, tickIndex: number) {
   const payload = row.path_payload;
+  if (mode === "open") return tickIndex === 0 ? payload.directed_open_adr[index]! : null;
   if (mode === "close") return tickIndex === 0 ? payload.directed_close_adr[index]! : null;
   if (tickIndex < 0 || tickIndex > 3) return null;
   const open = payload.directed_open_adr[index]!;
@@ -1046,6 +1243,30 @@ function triangleDisplacementPass(row: ReplayRow, bar: TriangleBar, side: Side, 
   return closeZone <= 0.3;
 }
 
+function trianglePathEfficiencyBeforeBars(entryBars: TriangleBar[]) {
+  const output = new Map<number, number | null>();
+  let firstClose: number | null = null;
+  let previousClose: number | null = null;
+  let noise = 0;
+  let completedBars = 0;
+  for (const bar of entryBars) {
+    output.set(
+      bar.index,
+      firstClose !== null && previousClose !== null && completedBars >= 2 && noise > 0
+        ? Math.abs(previousClose - firstClose) / noise
+        : null,
+    );
+    if (firstClose === null) {
+      firstClose = bar.close;
+    } else if (previousClose !== null) {
+      noise += Math.abs(bar.close - previousClose);
+    }
+    previousClose = bar.close;
+    completedBars += 1;
+  }
+  return output;
+}
+
 function detectTriangleTriggers(row: ReplayRow) {
   const triggers: TriangleTrigger[] = [];
   const bars = triangleBarsFromRow(row);
@@ -1110,6 +1331,47 @@ function detectTriangleTriggers(row: ReplayRow) {
     }
   }
   return triggers;
+}
+
+function detectTriangleGeometrySessions(row: ReplayRow) {
+  const sessions: TriangleGeometrySession[] = [];
+  const bars = triangleBarsFromRow(row);
+  for (const window of triangleSessionWindows(bars)) {
+    const rangeBars = barsBetween(bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const sessionRangeAdr = triangleRangeAdr(row, rangeHigh, rangeLow);
+    if (sessionRangeAdr === null) continue;
+    const adaptiveSpacingAdr = triangleAdaptiveSpacing(sessionRangeAdr);
+    const adaptiveSignalAdrBrick = clampValue(0.0125, 0.075, adaptiveSpacingAdr / 4);
+    const rangeFloorAdr = Math.max(TRIANGLE_RANGE_FLOOR_MIN_ADR, TRIANGLE_TARGET_GRID_SLOTS * adaptiveSpacingAdr);
+    const rangeConditionPass = sessionRangeAdr + 1e-9 >= rangeFloorAdr;
+    sessions.push({
+      geometry_key: [
+        row.week_open_utc,
+        row.pair,
+        window.id,
+        "triangle_v1_geometry",
+      ].join("|"),
+      pair: row.pair,
+      week_open_utc: row.week_open_utc,
+      session_id: window.id,
+      entry_start_ms: window.entryStartMs,
+      entry_end_ms: window.entryEndMs,
+      range_high: rangeHigh,
+      range_low: rangeLow,
+      range_mid: (rangeHigh + rangeLow) / 2,
+      session_range_adr: round6(sessionRangeAdr),
+      adaptive_spacing_adr: round6(adaptiveSpacingAdr),
+      adaptive_signal_adr_brick: round6(adaptiveSignalAdrBrick),
+      range_condition_pass: rangeConditionPass,
+      entry_bars: entryBars,
+      path_efficiency_before_bar: trianglePathEfficiencyBeforeBars(entryBars),
+    });
+  }
+  return sessions;
 }
 
 function buildConversionRates(rows: ReplayRow[], mode: BarPathMode): ConversionRates {
@@ -1442,6 +1704,97 @@ function triangleStartGate(options: {
   };
 }
 
+function activeTriangleGeometrySession(options: {
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  side: Side;
+  timestampMs: number;
+  markPrice: number;
+}) {
+  return options.sessions
+    .filter((session) => {
+      if (!session.range_condition_pass) return false;
+      if (options.timestampMs < session.entry_start_ms || options.timestampMs > session.entry_end_ms) return false;
+      const distanceAdr = options.side === "LONG"
+        ? trianglePriceMoveAdr(options.row, options.markPrice, session.range_mid)
+        : trianglePriceMoveAdr(options.row, session.range_mid, options.markPrice);
+      return distanceAdr !== null && distanceAdr + 1e-9 >= session.adaptive_spacing_adr;
+    })
+    .sort((left, right) => right.entry_start_ms - left.entry_start_ms)[0] ?? null;
+}
+
+function trianglePathEfficiencySoFar(options: {
+  session: TriangleGeometrySession;
+  currentBarIndex: number;
+}) {
+  return options.session.path_efficiency_before_bar.get(options.currentBarIndex) ?? null;
+}
+
+function triangleV1DirectionAllowed(options: {
+  ruleId: ActivationRuleId;
+  signal: SignalSnapshot;
+  side: Side;
+  candidateBSide: Side;
+}) {
+  const candidateAllows = options.side === options.candidateBSide;
+  const davidSide = davidContraSide(options.signal);
+  const davidAllows = davidSide !== null && options.side === davidSide;
+  if (options.ruleId === "triangle_v1_candidate_b_extension") return candidateAllows;
+  if (options.ruleId === "triangle_v1_david_contra_extension") return davidAllows;
+  if (options.ruleId === "triangle_v1_candidate_or_david_extension") return candidateAllows || davidAllows;
+  return false;
+}
+
+function triangleV1StartGate(options: {
+  ruleId: ActivationRuleId;
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  signal: SignalSnapshot;
+  side: Side;
+  markPrice: number;
+  timestampMs: number;
+  currentBarIndex: number;
+}) {
+  const session = activeTriangleGeometrySession({
+    sessions: options.sessions,
+    row: options.row,
+    side: options.side,
+    timestampMs: options.timestampMs,
+    markPrice: options.markPrice,
+  });
+  if (!session) {
+    return {
+      signalAllowed: false,
+      expansionAllowed: false,
+      spacingAdr: null,
+      triggerKey: null,
+    };
+  }
+  const pathEfficiency = trianglePathEfficiencySoFar({
+    session,
+    currentBarIndex: options.currentBarIndex,
+  });
+  const geometryAllowed = pathEfficiency !== null && pathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX;
+  const directionAllowed = triangleV1DirectionAllowed({
+    ruleId: options.ruleId,
+    signal: options.signal,
+    side: options.side,
+    candidateBSide: options.row.candidate_b_side,
+  });
+  const allowed = geometryAllowed && directionAllowed;
+  return {
+    signalAllowed: directionAllowed,
+    expansionAllowed: allowed,
+    spacingAdr: session.adaptive_spacing_adr,
+    triggerKey: [
+      session.geometry_key,
+      options.side,
+      iso(options.timestampMs),
+      pathEfficiency === null ? "pe_null" : `pe_${round6(pathEfficiency)}`,
+    ].join("|"),
+  };
+}
+
 function directedMoveFromCycle(cycle: Cycle, markPrice: number, currentAdrPct: number) {
   const sign = cycle.side === "LONG" ? 1 : -1;
   return ((markPrice - cycle.anchor_price) / cycle.anchor_price) * 100 * sign / currentAdrPct;
@@ -1518,6 +1871,8 @@ function createStats(): RuntimeStats {
     sessionFlattenSwapUsd: 0,
     sessionFlattenCount: 0,
     sessionFlattenPositions: 0,
+    protectionCloseCount: 0,
+    protectionClosePositions: 0,
     targetResetCount: 0,
     fillsOpened: 0,
     closedPositions: 0,
@@ -1545,8 +1900,18 @@ function createStats(): RuntimeStats {
     closeEventFlatCount: 0,
     closeEventGrossProfitUsd: 0,
     closeEventGrossLossAbsUsd: 0,
+    closeEventRealizedPnlAdrSum: 0,
+    closeEventMfeAdrSum: 0,
+    closeEventMaeAdrAbsSum: 0,
+    closeEventMfe1QHitCount: 0,
+    closeEventMfe2QHitCount: 0,
+    closeEventMfe3QHitCount: 0,
+    closeEventMae1QHitCount: 0,
+    closeEventMae2QHitCount: 0,
+    closeEventMae3QHitCount: 0,
     targetCloseNetUsd: 0,
     sessionFlattenCloseNetUsd: 0,
+    protectionCloseNetUsd: 0,
     closeEvents: [],
     weeklyRows: [],
     terminalInventoryRows: [],
@@ -1676,6 +2041,16 @@ function startCycle(options: {
     next_favorable_fill_level: 1,
     min_pnl_adr: 0,
     max_pnl_adr: 0,
+    min_pnl_timestamp_utc: null,
+    max_pnl_timestamp_utc: null,
+    first_mfe_0_5q_timestamp_utc: null,
+    first_mfe_1q_timestamp_utc: null,
+    first_mfe_2q_timestamp_utc: null,
+    first_mfe_3q_timestamp_utc: null,
+    first_mae_0_5q_timestamp_utc: null,
+    first_mae_1q_timestamp_utc: null,
+    first_mae_2q_timestamp_utc: null,
+    first_mae_3q_timestamp_utc: null,
     reset_ordinal_at_start: sideResetCount(options.book, options.side),
   };
   const opened = openFill({
@@ -1694,10 +2069,26 @@ function startCycle(options: {
   return opened ? cycle : null;
 }
 
-function observeCycle(cycle: Cycle, markPrice: number, currentAdrPct: number) {
+function observeCycle(cycle: Cycle, markPrice: number, currentAdrPct: number, timestampUtc: string | null = null) {
   const pnl = round6(cycleNetPnlAdr(cycle, markPrice, currentAdrPct));
-  if (pnl < cycle.min_pnl_adr) cycle.min_pnl_adr = pnl;
-  if (pnl > cycle.max_pnl_adr) cycle.max_pnl_adr = pnl;
+  if (pnl < cycle.min_pnl_adr) {
+    cycle.min_pnl_adr = pnl;
+    cycle.min_pnl_timestamp_utc = timestampUtc;
+  }
+  if (pnl > cycle.max_pnl_adr) {
+    cycle.max_pnl_adr = pnl;
+    cycle.max_pnl_timestamp_utc = timestampUtc;
+  }
+  if (!timestampUtc || cycle.cycle_spacing_adr <= 0) return;
+  const spacingAdr = cycle.cycle_spacing_adr;
+  if (pnl >= spacingAdr * 0.5 && cycle.first_mfe_0_5q_timestamp_utc === null) cycle.first_mfe_0_5q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr && cycle.first_mfe_1q_timestamp_utc === null) cycle.first_mfe_1q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr * 2 && cycle.first_mfe_2q_timestamp_utc === null) cycle.first_mfe_2q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr * 3 && cycle.first_mfe_3q_timestamp_utc === null) cycle.first_mfe_3q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 0.5 && cycle.first_mae_0_5q_timestamp_utc === null) cycle.first_mae_0_5q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr && cycle.first_mae_1q_timestamp_utc === null) cycle.first_mae_1q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 2 && cycle.first_mae_2q_timestamp_utc === null) cycle.first_mae_2q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 3 && cycle.first_mae_3q_timestamp_utc === null) cycle.first_mae_3q_timestamp_utc = timestampUtc;
 }
 
 function addGridFills(options: {
@@ -1750,8 +2141,117 @@ function targetReached(options: {
   return options.cycle.side === "LONG" ? options.markPrice >= ma : options.markPrice <= ma;
 }
 
+function protectionConfig(mode: ProtectionMode): ProtectionConfig {
+  const base = {
+    stopAddsAfterQ: null,
+    trailActivateQ: null,
+    trailGivebackQ: null,
+    protectedFlatten: false,
+    uglyRedQ: null,
+    holdRedAtFlatten: false,
+    holdRedMaxDays: null,
+    painStopAddMode: "none" as PainStopAddMode,
+    painCircuitBeforeProfitHalfQ: false,
+  };
+  switch (mode) {
+    case "lock_1q_stop_adds":
+      return { ...base, stopAddsAfterQ: 1 };
+    case "trail_1q_1q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 1 };
+    case "trail_1q_0_5q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 0.5 };
+    case "protected_flatten_1q":
+      return { ...base, stopAddsAfterQ: 1, protectedFlatten: true, uglyRedQ: 1 };
+    case "protected_flatten_1q_trail_1q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 1, protectedFlatten: true, uglyRedQ: 1 };
+    case "pain_1q_stop_adds_before_profit_0_5q":
+      return { ...base, painStopAddMode: "locked_before_profit_0_5q" };
+    case "pain_2q_circuit_before_profit_0_5q":
+      return { ...base, painCircuitBeforeProfitHalfQ: true };
+    case "live_state_guard_v0":
+      return { ...base, stopAddsAfterQ: 1, painStopAddMode: "locked_before_profit_0_5q", painCircuitBeforeProfitHalfQ: true };
+    case "eod_green_hold_red":
+      return { ...base, holdRedAtFlatten: true };
+    case "eod_green_hold_red_pain_1q_stop_adds":
+      return { ...base, holdRedAtFlatten: true, painStopAddMode: "locked_before_profit_0_5q" };
+    case "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q":
+      return { ...base, holdRedAtFlatten: true, painStopAddMode: "until_profit_0_5q" };
+    case "eod_green_hold_red_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3 };
+    case "eod_green_hold_red_pain_1q_stop_adds_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3, painStopAddMode: "locked_before_profit_0_5q" };
+    case "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3, painStopAddMode: "until_profit_0_5q" };
+    case "baseline":
+      return base;
+  }
+}
+
+function cyclePnlAdr(cycle: Cycle, markPrice: number, currentAdrPct: number) {
+  return round6(cycleNetPnlAdr(cycle, markPrice, currentAdrPct));
+}
+
+function shouldStopAddsAfterProfit(cycle: Cycle, protectionMode: ProtectionMode) {
+  const config = protectionConfig(protectionMode);
+  const profitStop = config.stopAddsAfterQ !== null && cycle.max_pnl_adr >= cycle.cycle_spacing_adr * config.stopAddsAfterQ;
+  const painStop = config.painStopAddMode === "locked_before_profit_0_5q"
+    ? timestampBeforeOrSame(cycle.first_mae_1q_timestamp_utc, cycle.first_mfe_0_5q_timestamp_utc)
+    : config.painStopAddMode === "until_profit_0_5q"
+      ? cycle.first_mae_1q_timestamp_utc !== null && cycle.first_mfe_0_5q_timestamp_utc === null
+      : false;
+  return profitStop || painStop;
+}
+
+function timestampBeforeOrSame(left: string | null, right: string | null) {
+  return left !== null && (right === null || left <= right);
+}
+
+function cycleMaxFillAgeDays(cycle: Cycle, timestampMs: number) {
+  return cycle.fills.reduce((maxAge, fill) => Math.max(maxAge, fillAgeDays(fill, timestampMs)), 0);
+}
+
+function painCircuitTriggered(cycle: Cycle, protectionMode: ProtectionMode) {
+  const config = protectionConfig(protectionMode);
+  if (!config.painCircuitBeforeProfitHalfQ) return false;
+  return timestampBeforeOrSame(cycle.first_mae_2q_timestamp_utc, cycle.first_mfe_0_5q_timestamp_utc);
+}
+
+function trailProtectionTriggered(options: {
+  cycle: Cycle;
+  pnlAdr: number;
+  protectionMode: ProtectionMode;
+}) {
+  const config = protectionConfig(options.protectionMode);
+  if (config.trailActivateQ === null || config.trailGivebackQ === null) return false;
+  const spacingAdr = options.cycle.cycle_spacing_adr;
+  if (spacingAdr <= 0) return false;
+  if (options.cycle.max_pnl_adr < spacingAdr * config.trailActivateQ) return false;
+  return options.pnlAdr <= options.cycle.max_pnl_adr - spacingAdr * config.trailGivebackQ;
+}
+
+function sessionFlattenDecision(options: {
+  cycle: Cycle;
+  pnlAdr: number;
+  protectionMode: ProtectionMode;
+  timestampMs: number;
+}): "session_flatten" | "protected_flatten" | "hold" {
+  const config = protectionConfig(options.protectionMode);
+  if (config.holdRedAtFlatten) {
+    if (options.pnlAdr >= 0) return "session_flatten";
+    if (config.holdRedMaxDays !== null && cycleMaxFillAgeDays(options.cycle, options.timestampMs) >= config.holdRedMaxDays) {
+      return "session_flatten";
+    }
+    return "hold";
+  }
+  if (!config.protectedFlatten || config.uglyRedQ === null) return "session_flatten";
+  if (options.pnlAdr >= 0) return "session_flatten";
+  if (options.pnlAdr <= -options.cycle.cycle_spacing_adr * config.uglyRedQ) return "protected_flatten";
+  return "hold";
+}
+
 function closeCycle(options: {
   activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
   stats: RuntimeStats;
   cycle: Cycle;
   closeReason: CloseReason;
@@ -1764,7 +2264,7 @@ function closeCycle(options: {
   runtimeOptions: Options;
   completedResetOrdinal: number | null;
 }) {
-  observeCycle(options.cycle, options.markPrice, options.currentAdrPct);
+  observeCycle(options.cycle, options.markPrice, options.currentAdrPct, options.timestampUtc);
   let pricePnlUsd = 0;
   let swapUsd = 0;
   let commissionUsd = 0;
@@ -1796,6 +2296,9 @@ function closeCycle(options: {
     options.stats.sessionFlattenSwapUsd = round6(options.stats.sessionFlattenSwapUsd + swapUsd);
     options.stats.sessionFlattenCount += 1;
     options.stats.sessionFlattenPositions += options.cycle.fills.length;
+  } else if (options.closeReason === "protection_trail" || options.closeReason === "protected_flatten" || options.closeReason === "pain_circuit") {
+    options.stats.protectionCloseCount += 1;
+    options.stats.protectionClosePositions += options.cycle.fills.length;
   } else {
     options.stats.targetResetCount += 1;
   }
@@ -1806,6 +2309,7 @@ function closeCycle(options: {
   const event: CloseEvent = {
     variant_id: options.cycle.variant_id,
     activation_rule_id: options.activationRuleId,
+    protection_mode: options.protectionMode,
     cycle_id: options.cycle.cycle_id,
     pair: options.cycle.pair,
     side: options.cycle.side,
@@ -1823,6 +2327,16 @@ function closeCycle(options: {
     net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
     min_pnl_adr: round6(options.cycle.min_pnl_adr),
     max_pnl_adr: round6(options.cycle.max_pnl_adr),
+    min_pnl_timestamp_utc: options.cycle.min_pnl_timestamp_utc,
+    max_pnl_timestamp_utc: options.cycle.max_pnl_timestamp_utc,
+    first_mfe_0_5q_timestamp_utc: options.cycle.first_mfe_0_5q_timestamp_utc,
+    first_mfe_1q_timestamp_utc: options.cycle.first_mfe_1q_timestamp_utc,
+    first_mfe_2q_timestamp_utc: options.cycle.first_mfe_2q_timestamp_utc,
+    first_mfe_3q_timestamp_utc: options.cycle.first_mfe_3q_timestamp_utc,
+    first_mae_0_5q_timestamp_utc: options.cycle.first_mae_0_5q_timestamp_utc,
+    first_mae_1q_timestamp_utc: options.cycle.first_mae_1q_timestamp_utc,
+    first_mae_2q_timestamp_utc: options.cycle.first_mae_2q_timestamp_utc,
+    first_mae_3q_timestamp_utc: options.cycle.first_mae_3q_timestamp_utc,
     reset_ordinal_at_start: options.cycle.reset_ordinal_at_start,
     completed_reset_ordinal: options.completedResetOrdinal,
     max_fill_age_days: round6(maxFillAgeDays),
@@ -1830,6 +2344,19 @@ function closeCycle(options: {
     triangle_trigger_key: options.cycle.triangle_trigger_key,
   };
   options.stats.closeEventCount += 1;
+  const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+  const spacingAdr = event.cycle_spacing_adr;
+  options.stats.closeEventRealizedPnlAdrSum = round6(options.stats.closeEventRealizedPnlAdrSum + event.price_pnl_adr);
+  options.stats.closeEventMfeAdrSum = round6(options.stats.closeEventMfeAdrSum + Math.max(0, event.max_pnl_adr));
+  options.stats.closeEventMaeAdrAbsSum = round6(options.stats.closeEventMaeAdrAbsSum + maeAdrAbs);
+  if (spacingAdr > 0) {
+    if (event.max_pnl_adr >= spacingAdr) options.stats.closeEventMfe1QHitCount += 1;
+    if (event.max_pnl_adr >= spacingAdr * 2) options.stats.closeEventMfe2QHitCount += 1;
+    if (event.max_pnl_adr >= spacingAdr * 3) options.stats.closeEventMfe3QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr) options.stats.closeEventMae1QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr * 2) options.stats.closeEventMae2QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr * 3) options.stats.closeEventMae3QHitCount += 1;
+  }
   if (event.net_usd > 0) {
     options.stats.closeEventWinCount += 1;
     options.stats.closeEventGrossProfitUsd = round6(options.stats.closeEventGrossProfitUsd + event.net_usd);
@@ -1843,6 +2370,8 @@ function closeCycle(options: {
     options.stats.targetCloseNetUsd = round6(options.stats.targetCloseNetUsd + event.net_usd);
   } else if (options.closeReason === "session_flatten") {
     options.stats.sessionFlattenCloseNetUsd = round6(options.stats.sessionFlattenCloseNetUsd + event.net_usd);
+  } else if (options.closeReason === "protection_trail" || options.closeReason === "protected_flatten" || options.closeReason === "pain_circuit") {
+    options.stats.protectionCloseNetUsd = round6(options.stats.protectionCloseNetUsd + event.net_usd);
   }
   if (!options.runtimeOptions.summaryOnly) options.stats.closeEvents.push(event);
   return event;
@@ -1860,7 +2389,7 @@ function terminalInventoryRow(options: {
   conversionRates: ConversionRates;
   runtimeOptions: Options;
 }): TerminalInventoryRow {
-  observeCycle(options.cycle, options.markPrice, options.currentAdrPct);
+  observeCycle(options.cycle, options.markPrice, options.currentAdrPct, options.timestampUtc);
   let pricePnlUsd = 0;
   let swapUsd = 0;
   let commissionUsd = 0;
@@ -1933,12 +2462,15 @@ function replayTick(options: {
   conversionRates: ConversionRates;
   runtimeOptions: Options;
   activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
   sessionState: SessionTickState;
   triangleTriggers: TriangleTrigger[];
+  triangleGeometrySessions: TriangleGeometrySession[];
+  barIndex: number;
 }) {
   const book = options.books.get(options.row.pair) ?? createBook(options.row.pair);
   options.books.set(options.row.pair, book);
-  const variant_id = variantId(options.activationRuleId);
+  const variant_id = variantId(options.activationRuleId, options.protectionMode);
   const previousTimestampMs = book.last_timestamp_utc === null
     ? null
     : Date.parse(book.last_timestamp_utc) + (book.last_tick_index ?? 0);
@@ -1951,13 +2483,41 @@ function replayTick(options: {
   for (const side of ["LONG", "SHORT"] as const) {
     let cycle = sideCycle(book, side);
     if (cycle) {
-      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct, options.timestampUtc);
       if (missedSessionFlatten) {
+        const decision = sessionFlattenDecision({
+          cycle,
+          pnlAdr: cyclePnlAdr(cycle, options.markPrice, options.row.pair_adr_pct),
+          protectionMode: options.protectionMode,
+          timestampMs: options.timestampMs,
+        });
+        if (decision !== "hold") {
+          closeCycle({
+            activationRuleId: options.activationRuleId,
+            protectionMode: options.protectionMode,
+            stats: options.stats,
+            cycle,
+            closeReason: decision,
+            markPrice: options.markPrice,
+            currentAdrPct: options.row.pair_adr_pct,
+            timestampUtc: options.timestampUtc,
+            timestampMs: options.timestampMs,
+            tickIndex: options.tickIndex,
+            conversionRates: options.conversionRates,
+            runtimeOptions: options.runtimeOptions,
+            completedResetOrdinal: null,
+          });
+          setSideCycle(book, side, null);
+          continue;
+        }
+      }
+      if (painCircuitTriggered(cycle, options.protectionMode)) {
         closeCycle({
           activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
           stats: options.stats,
           cycle,
-          closeReason: "session_flatten",
+          closeReason: "pain_circuit",
           markPrice: options.markPrice,
           currentAdrPct: options.row.pair_adr_pct,
           timestampUtc: options.timestampUtc,
@@ -1980,6 +2540,7 @@ function replayTick(options: {
         const completedResetOrdinal = incrementSideReset(book, side);
         closeCycle({
           activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
           stats: options.stats,
           cycle,
           closeReason: "target",
@@ -1995,12 +2556,14 @@ function replayTick(options: {
         setSideCycle(book, side, null);
         continue;
       }
-      if (options.sessionState.shouldFlatten) {
+      const currentPnlAdr = cyclePnlAdr(cycle, options.markPrice, options.row.pair_adr_pct);
+      if (trailProtectionTriggered({ cycle, pnlAdr: currentPnlAdr, protectionMode: options.protectionMode })) {
         closeCycle({
           activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
           stats: options.stats,
           cycle,
-          closeReason: "session_flatten",
+          closeReason: "protection_trail",
           markPrice: options.markPrice,
           currentAdrPct: options.row.pair_adr_pct,
           timestampUtc: options.timestampUtc,
@@ -2013,7 +2576,35 @@ function replayTick(options: {
         setSideCycle(book, side, null);
         continue;
       }
+      if (options.sessionState.shouldFlatten) {
+        const decision = sessionFlattenDecision({
+          cycle,
+          pnlAdr: currentPnlAdr,
+          protectionMode: options.protectionMode,
+          timestampMs: options.timestampMs,
+        });
+        if (decision !== "hold") {
+          closeCycle({
+            activationRuleId: options.activationRuleId,
+            protectionMode: options.protectionMode,
+            stats: options.stats,
+            cycle,
+            closeReason: decision,
+            markPrice: options.markPrice,
+            currentAdrPct: options.row.pair_adr_pct,
+            timestampUtc: options.timestampUtc,
+            timestampMs: options.timestampMs,
+            tickIndex: options.tickIndex,
+            conversionRates: options.conversionRates,
+            runtimeOptions: options.runtimeOptions,
+            completedResetOrdinal: null,
+          });
+          setSideCycle(book, side, null);
+          continue;
+        }
+      }
       if (!options.sessionState.canOpenOrAdd) continue;
+      if (shouldStopAddsAfterProfit(cycle, options.protectionMode)) continue;
       addGridFills({
         stats: options.stats,
         book,
@@ -2024,7 +2615,7 @@ function replayTick(options: {
         currentAdrPct: options.row.pair_adr_pct,
         runtimeOptions: options.runtimeOptions,
       });
-      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct);
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct, options.timestampUtc);
       continue;
     }
     if (options.sessionState.canOpenOrAdd) {
@@ -2032,7 +2623,7 @@ function replayTick(options: {
       let triangleTriggerKey: string | null = null;
       let signalAllowed = false;
       let expansionAllowed = false;
-      if (isTriangleActivationRule(options.activationRuleId)) {
+      if (isTriangleV0ActivationRule(options.activationRuleId)) {
         const trigger = activeTriangleTrigger(options.triangleTriggers, side, options.timestampMs);
         const gate = triangleStartGate({
           trigger,
@@ -2042,6 +2633,21 @@ function replayTick(options: {
           currentAdrPct: options.row.pair_adr_pct,
           candidateBSide: options.row.candidate_b_side,
           candidateMode: options.activationRuleId === "triangle_v0_no_candidate_b" ? "david_only" : "candidate_and_david",
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        triangleTriggerKey = gate.triggerKey;
+      } else if (isTriangleV1ActivationRule(options.activationRuleId)) {
+        const gate = triangleV1StartGate({
+          ruleId: options.activationRuleId,
+          sessions: options.triangleGeometrySessions,
+          row: options.row,
+          signal: options.signal,
+          side,
+          markPrice: options.markPrice,
+          timestampMs: options.timestampMs,
+          currentBarIndex: options.barIndex,
         });
         signalAllowed = gate.signalAllowed;
         expansionAllowed = gate.expansionAllowed;
@@ -2097,8 +2703,11 @@ function replayRowForVariants(options: {
   const signalBook = options.sharedSignalBooks.get(options.row.pair) ?? createSignalBook(options.row.pair);
   options.sharedSignalBooks.set(options.row.pair, signalBook);
   const timestamps = options.row.path_payload.timestamp_utc;
-  const triangleTriggers = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule)
+  const triangleTriggers = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule)
     ? detectTriangleTriggers(options.row)
+    : [];
+  const triangleGeometrySessions = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule)
+    ? detectTriangleGeometrySessions(options.row)
     : [];
   for (let index = 0; index < timestamps.length; index += 1) {
     const timestampUtc = timestamps[index]!;
@@ -2118,12 +2727,15 @@ function replayRowForVariants(options: {
           markPrice,
           timestampUtc,
           timestampMs,
+          barIndex: index,
           tickIndex,
           conversionRates: options.conversionRates,
           runtimeOptions: options.runtimeOptions,
           activationRuleId: variantState.activationRuleId,
+          protectionMode: variantState.protectionMode,
           sessionState,
           triangleTriggers,
+          triangleGeometrySessions,
         });
       }
     }
@@ -2206,6 +2818,7 @@ function addWeeklySnapshot(options: {
 
 function liquidateEnd(options: {
   activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
   stats: RuntimeStats;
   books: Map<string, PairBook>;
   signalBooks: Map<string, SignalBook>;
@@ -2236,6 +2849,7 @@ function liquidateEnd(options: {
       }
       closeCycle({
         activationRuleId: options.activationRuleId,
+        protectionMode: options.protectionMode,
         stats: options.stats,
         cycle,
         closeReason,
@@ -2274,6 +2888,163 @@ function drawdown(rows: Array<{ week_open_utc: string; value: number }>) {
   return { drawdown: worst, start, end };
 }
 
+function strategyClass(ruleId: ActivationRuleId) {
+  if (ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b") return "strict_katarakti";
+  if (isTriangleV1ActivationRule(ruleId)) return "triangle_geometry_extension";
+  if (ruleId === "david_contra") return "standalone_david_contra";
+  if (ruleId === "candidate_b") return "standalone_candidate_b";
+  return ruleId;
+}
+
+type CloseEventBreakdownAccumulator = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  group_type: CloseEventBreakdownRow["group_type"];
+  group_key: string;
+  close_event_count: number;
+  win_count: number;
+  loss_count: number;
+  flat_count: number;
+  total_realized_pnl_adr: number;
+  net_usd: number;
+  gross_profit_usd: number;
+  gross_loss_abs_usd: number;
+  mfe_adr_sum: number;
+  mae_adr_abs_sum: number;
+  mfe_1q_hit_count: number;
+  mfe_2q_hit_count: number;
+  mfe_3q_hit_count: number;
+  mae_1q_hit_count: number;
+  mae_2q_hit_count: number;
+  mae_3q_hit_count: number;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
+};
+
+function closeMonthKey(timestampUtc: string) {
+  return timestampUtc.slice(0, 7);
+}
+
+function closeEventGroupKeys(event: CloseEvent): Array<{ group_type: CloseEventBreakdownRow["group_type"]; group_key: string }> {
+  return [
+    { group_type: "anchor_week", group_key: event.anchor_week_open_utc },
+    { group_type: "close_month", group_key: closeMonthKey(event.close_timestamp_utc) },
+    { group_type: "pair", group_key: event.pair },
+    { group_type: "pair_side", group_key: `${event.pair}_${event.side}` },
+    { group_type: "close_reason", group_key: event.close_reason },
+    { group_type: "strategy_class", group_key: strategyClass(event.activation_rule_id) },
+  ];
+}
+
+function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number): CloseEventBreakdownRow[] {
+  const groups = new Map<string, CloseEventBreakdownAccumulator>();
+  for (const event of events) {
+    for (const group of closeEventGroupKeys(event)) {
+      const key = [event.variant_id, event.activation_rule_id, event.protection_mode, group.group_type, group.group_key].join("|");
+      const accumulator = groups.get(key) ?? {
+        variant_id: event.variant_id,
+        activation_rule_id: event.activation_rule_id,
+        protection_mode: event.protection_mode,
+        group_type: group.group_type,
+        group_key: group.group_key,
+        close_event_count: 0,
+        win_count: 0,
+        loss_count: 0,
+        flat_count: 0,
+        total_realized_pnl_adr: 0,
+        net_usd: 0,
+        gross_profit_usd: 0,
+        gross_loss_abs_usd: 0,
+        mfe_adr_sum: 0,
+        mae_adr_abs_sum: 0,
+        mfe_1q_hit_count: 0,
+        mfe_2q_hit_count: 0,
+        mfe_3q_hit_count: 0,
+        mae_1q_hit_count: 0,
+        mae_2q_hit_count: 0,
+        mae_3q_hit_count: 0,
+        target_close_net_usd: 0,
+        session_flatten_close_net_usd: 0,
+      };
+      accumulator.close_event_count += 1;
+      accumulator.total_realized_pnl_adr = round6(accumulator.total_realized_pnl_adr + event.price_pnl_adr);
+      accumulator.net_usd = round6(accumulator.net_usd + event.net_usd);
+      if (event.net_usd > 0) {
+        accumulator.win_count += 1;
+        accumulator.gross_profit_usd = round6(accumulator.gross_profit_usd + event.net_usd);
+      } else if (event.net_usd < 0) {
+        accumulator.loss_count += 1;
+        accumulator.gross_loss_abs_usd = round6(accumulator.gross_loss_abs_usd + Math.abs(event.net_usd));
+      } else {
+        accumulator.flat_count += 1;
+      }
+      const mfeAdr = Math.max(0, event.max_pnl_adr);
+      const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+      accumulator.mfe_adr_sum = round6(accumulator.mfe_adr_sum + mfeAdr);
+      accumulator.mae_adr_abs_sum = round6(accumulator.mae_adr_abs_sum + maeAdrAbs);
+      if (event.cycle_spacing_adr > 0) {
+        if (mfeAdr >= event.cycle_spacing_adr) accumulator.mfe_1q_hit_count += 1;
+        if (mfeAdr >= event.cycle_spacing_adr * 2) accumulator.mfe_2q_hit_count += 1;
+        if (mfeAdr >= event.cycle_spacing_adr * 3) accumulator.mfe_3q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr) accumulator.mae_1q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr * 2) accumulator.mae_2q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr * 3) accumulator.mae_3q_hit_count += 1;
+      }
+      if (event.close_reason === "target") {
+        accumulator.target_close_net_usd = round6(accumulator.target_close_net_usd + event.net_usd);
+      } else if (event.close_reason === "session_flatten") {
+        accumulator.session_flatten_close_net_usd = round6(accumulator.session_flatten_close_net_usd + event.net_usd);
+      }
+      groups.set(key, accumulator);
+    }
+  }
+  const pct = (count: number, total: number) => total ? round2((count / total) * 100) : null;
+  return [...groups.values()]
+    .map((row): CloseEventBreakdownRow => ({
+      variant_id: row.variant_id,
+      activation_rule_id: row.activation_rule_id,
+      protection_mode: row.protection_mode,
+      group_type: row.group_type,
+      group_key: row.group_key,
+      close_event_count: row.close_event_count,
+      win_count: row.win_count,
+      loss_count: row.loss_count,
+      flat_count: row.flat_count,
+      win_pct: pct(row.win_count, row.close_event_count),
+      total_realized_pnl_adr: round6(row.total_realized_pnl_adr),
+      adr_normalized_return_pct: round6(row.total_realized_pnl_adr),
+      avg_realized_pnl_adr: row.close_event_count ? round6(row.total_realized_pnl_adr / row.close_event_count) : null,
+      net_usd: round2(row.net_usd),
+      account_return_pct: round6((row.net_usd / initialDepositUsd) * 100),
+      gross_profit_usd: round2(row.gross_profit_usd),
+      gross_loss_abs_usd: round2(row.gross_loss_abs_usd),
+      profit_factor: profitFactorFromGross(row.gross_profit_usd, row.gross_loss_abs_usd),
+      avg_mfe_adr: row.close_event_count ? round6(row.mfe_adr_sum / row.close_event_count) : null,
+      avg_mae_adr_abs: row.close_event_count ? round6(row.mae_adr_abs_sum / row.close_event_count) : null,
+      mfe_1q_hit_count: row.mfe_1q_hit_count,
+      mfe_2q_hit_count: row.mfe_2q_hit_count,
+      mfe_3q_hit_count: row.mfe_3q_hit_count,
+      mfe_1q_hit_pct: pct(row.mfe_1q_hit_count, row.close_event_count),
+      mfe_2q_hit_pct: pct(row.mfe_2q_hit_count, row.close_event_count),
+      mfe_3q_hit_pct: pct(row.mfe_3q_hit_count, row.close_event_count),
+      mae_1q_hit_count: row.mae_1q_hit_count,
+      mae_2q_hit_count: row.mae_2q_hit_count,
+      mae_3q_hit_count: row.mae_3q_hit_count,
+      mae_1q_hit_pct: pct(row.mae_1q_hit_count, row.close_event_count),
+      mae_2q_hit_pct: pct(row.mae_2q_hit_count, row.close_event_count),
+      mae_3q_hit_pct: pct(row.mae_3q_hit_count, row.close_event_count),
+      target_close_net_usd: round2(row.target_close_net_usd),
+      session_flatten_close_net_usd: round2(row.session_flatten_close_net_usd),
+      session_flatten_account_return_pct: round6((row.session_flatten_close_net_usd / initialDepositUsd) * 100),
+    }))
+    .map((row) => withHash(row as unknown as Record<string, unknown>) as unknown as CloseEventBreakdownRow)
+    .sort((a, b) => a.variant_id.localeCompare(b.variant_id)
+      || a.protection_mode.localeCompare(b.protection_mode)
+      || a.group_type.localeCompare(b.group_type)
+      || a.group_key.localeCompare(b.group_key));
+}
+
 function summarize(options: {
   stats: RuntimeStats;
   books: Map<string, PairBook>;
@@ -2282,6 +3053,7 @@ function summarize(options: {
   manifest: { manifest_id: string; warehouse_hash: string; price_bundle_id?: string | null };
   runtimeOptions: Options;
   activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
 }): SummaryRow {
   const finalBeforeLiquidation = options.stats.weeklyRows.at(-1)?.equity_usd ?? options.runtimeOptions.initialDepositUsd;
   const finalBalance = round6(options.runtimeOptions.initialDepositUsd + options.stats.realizedPricePnlUsd + options.stats.realizedCommissionUsd + options.stats.realizedSwapUsd);
@@ -2291,16 +3063,19 @@ function summarize(options: {
   const balanceDd = drawdown(options.stats.weeklyRows.map((row) => ({ week_open_utc: row.week_open_utc, value: row.balance_usd - options.runtimeOptions.initialDepositUsd })));
   const closedPricePnl = round6(options.stats.realizedPricePnlUsd - options.stats.endLiquidationPricePnlUsd);
   const endPricePnl = round6(options.stats.endLiquidationPricePnlUsd);
-  const variant_id = variantId(options.activationRuleId);
+  const variant_id = variantId(options.activationRuleId, options.protectionMode);
   const settings = options.runtimeOptions.signalSettings;
   const longChecks = options.stats.activationAllowedLong + options.stats.activationBlockedLong;
   const shortChecks = options.stats.activationAllowedShort + options.stats.activationBlockedShort;
   const closeWinPct = options.stats.closeEventCount
     ? round2((options.stats.closeEventWinCount / options.stats.closeEventCount) * 100)
     : null;
+  const closeEventCount = options.stats.closeEventCount;
+  const closeEventHitPct = (count: number) => closeEventCount ? round2((count / closeEventCount) * 100) : null;
   return withHash({
     variant_id,
     activation_rule_id: options.activationRuleId,
+    protection_mode: options.protectionMode,
     signal_settings_id: signalSettingsId(settings),
     david_settings: davidSettingsLabel(settings),
     stochastic_settings: stochasticSettingsLabel(settings),
@@ -2341,6 +3116,8 @@ function summarize(options: {
     session_flatten_positions: options.stats.sessionFlattenPositions,
     session_flatten_price_pnl_usd: round2(options.stats.sessionFlattenPricePnlUsd),
     session_flatten_swap_usd: round2(options.stats.sessionFlattenSwapUsd),
+    protection_close_count: options.stats.protectionCloseCount,
+    protection_close_positions: options.stats.protectionClosePositions,
     entries_opened: options.stats.fillsOpened,
     closed_positions: options.stats.closedPositions,
     end_liquidation_positions: options.stats.endLiquidationPositions,
@@ -2359,10 +3136,28 @@ function summarize(options: {
     close_event_flat_count: options.stats.closeEventFlatCount,
     close_event_profit_factor: profitFactorFromGross(options.stats.closeEventGrossProfitUsd, options.stats.closeEventGrossLossAbsUsd),
     close_event_win_pct: closeWinPct,
+    close_event_total_realized_pnl_adr: round6(options.stats.closeEventRealizedPnlAdrSum),
+    adr_normalized_return_pct: round6(options.stats.closeEventRealizedPnlAdrSum),
     close_event_gross_profit_usd: round2(options.stats.closeEventGrossProfitUsd),
     close_event_gross_loss_abs_usd: round2(options.stats.closeEventGrossLossAbsUsd),
+    close_event_avg_realized_pnl_adr: closeEventCount ? round6(options.stats.closeEventRealizedPnlAdrSum / closeEventCount) : null,
+    close_event_avg_mfe_adr: closeEventCount ? round6(options.stats.closeEventMfeAdrSum / closeEventCount) : null,
+    close_event_avg_mae_adr_abs: closeEventCount ? round6(options.stats.closeEventMaeAdrAbsSum / closeEventCount) : null,
+    close_event_mfe_1q_hit_count: options.stats.closeEventMfe1QHitCount,
+    close_event_mfe_2q_hit_count: options.stats.closeEventMfe2QHitCount,
+    close_event_mfe_3q_hit_count: options.stats.closeEventMfe3QHitCount,
+    close_event_mfe_1q_hit_pct: closeEventHitPct(options.stats.closeEventMfe1QHitCount),
+    close_event_mfe_2q_hit_pct: closeEventHitPct(options.stats.closeEventMfe2QHitCount),
+    close_event_mfe_3q_hit_pct: closeEventHitPct(options.stats.closeEventMfe3QHitCount),
+    close_event_mae_1q_hit_count: options.stats.closeEventMae1QHitCount,
+    close_event_mae_2q_hit_count: options.stats.closeEventMae2QHitCount,
+    close_event_mae_3q_hit_count: options.stats.closeEventMae3QHitCount,
+    close_event_mae_1q_hit_pct: closeEventHitPct(options.stats.closeEventMae1QHitCount),
+    close_event_mae_2q_hit_pct: closeEventHitPct(options.stats.closeEventMae2QHitCount),
+    close_event_mae_3q_hit_pct: closeEventHitPct(options.stats.closeEventMae3QHitCount),
     target_close_net_usd: round2(options.stats.targetCloseNetUsd),
     session_flatten_close_net_usd: round2(options.stats.sessionFlattenCloseNetUsd),
+    protection_close_net_usd: round2(options.stats.protectionCloseNetUsd),
     activation_checks: options.stats.activationChecks,
     activation_blocked_long: options.stats.activationBlockedLong,
     activation_blocked_short: options.stats.activationBlockedShort,
@@ -2391,7 +3186,8 @@ function validationRows(options: {
   selectedPairs: string[];
   runtimeOptions: Options;
 }) {
-  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule);
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
+  const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
   return [
     { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
     { check: "continuous_carried_inventory", value: options.runtimeOptions.sessionMode === "continuous", expected: "true only in continuous session mode", passed: true },
@@ -2416,11 +3212,15 @@ function validationRows(options: {
     { check: "quote_currency_pnl_converted_to_usd", value: true, expected: true, passed: true },
     { check: "swap_triggers_target_reset", value: false, expected: false, passed: true },
     { check: "activation_rule_ids", value: options.runtimeOptions.activationRuleIds.join(","), expected: "explicit", passed: true },
+    { check: "protection_modes", value: options.runtimeOptions.protectionModes.join(","), expected: "explicit", passed: true },
     { check: "activation_controls_initial_cycle_start_only", value: true, expected: true, passed: true },
     { check: "triangle_v0_enabled", value: triangleV0Enabled, expected: "true when activation_rule_ids includes a triangle_v0 rule", passed: true },
     { check: "triangle_v0_formula_id", value: triangleV0Enabled ? TRIANGLE_V0_FORMULA_ID : "", expected: "visible when a triangle_v0 rule is enabled", passed: true },
     { check: "triangle_v0_spacing_rails_adr", value: triangleV0Enabled ? `${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}` : "", expected: "range/3 clamped rails when a triangle_v0 rule is enabled", passed: true },
     { check: "triangle_v0_traceability_columns", value: triangleV0Enabled ? "cycle_spacing_adr,triangle_trigger_key" : "", expected: "close-events and terminal-inventory rows carry trigger provenance", passed: true },
+    { check: "triangle_v1_enabled", value: triangleV1Enabled, expected: "true when activation_rule_ids includes a triangle_v1 rule", passed: true },
+    { check: "triangle_v1_formula_id", value: triangleV1Enabled ? TRIANGLE_V1_FORMULA_ID : "", expected: "visible when a triangle_v1 rule is enabled", passed: true },
+    { check: "triangle_v1_start_gate", value: triangleV1Enabled ? "valid_geometry_session_mid_extension_direction_permission" : "", expected: "geometry plus extension plus Candidate B/David permission", passed: true },
     { check: "david_ma_settings", value: davidSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "stochastic_settings", value: stochasticSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "summary_only", value: options.runtimeOptions.summaryOnly, expected: "explicit", passed: true },
@@ -2436,11 +3236,25 @@ function metricRows() {
   return [
     { metric: "continuous_carried_position_truth_replay", definition: "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation" },
     { metric: "session_window_position_truth_replay", definition: "keeps side grid state open inside the configured session window, allows target closes whenever ticks exist, and force-closes unresolved cycles at session flatten" },
-    { metric: "bar_path_mode", definition: "intrabar path used for each warehouse M1 bar; close mode uses close-only marks, OHLC modes synthesize four tester-like marks per bar" },
+    { metric: "bar_path_mode", definition: "intrabar path used for each warehouse M1 bar; open/close modes use one mark per bar, OHLC modes synthesize four tester-like marks per bar" },
     { metric: "signal_clock", definition: "clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes" },
     { metric: "signal_adr_brick", definition: "ADR movement required to complete one synthetic signal bar when signal_clock is adr_event" },
     { metric: "session_mode", definition: "continuous keeps the original carried-position replay; ny_daily_window allows starts/adds only inside the configured New York session and force-closes remaining cycles at the daily flatten boundary" },
     { metric: "session_flatten_count", definition: "number of side cycles closed by the configured daily session flatten boundary, a missed no-tick boundary, or the session-mode endpoint cleanup rather than a target reset or final end-of-test liquidation" },
+    { metric: "protection_mode", definition: "diagnostic cycle-management replay mode; baseline preserves existing behavior, Q modes add stop-add, trailing, protected-flatten, or live-state pain guards without changing entries" },
+    { metric: "protection_trail", definition: "close reason emitted when a cycle reaches the configured Q-profit activation threshold and then gives back the configured Q trail distance" },
+    { metric: "protected_flatten", definition: "close reason emitted by protected flatten when a cycle is ugly red at the daily flatten boundary; small-red cycles can be held instead of force-closed" },
+    { metric: "pain_circuit", definition: "close reason emitted when a live-state guard closes a cycle after adverse 2Q pain occurs before any 0.5Q favorable excursion" },
+    { metric: "pain_1q_stop_adds_before_profit_0_5q", definition: "protection mode that blocks new adds after the cycle reaches 1Q adverse excursion before any 0.5Q favorable excursion" },
+    { metric: "pain_2q_circuit_before_profit_0_5q", definition: "protection mode that closes the cycle after it reaches 2Q adverse excursion before any 0.5Q favorable excursion" },
+    { metric: "live_state_guard_v0", definition: "combined diagnostic guard: stop adds after profit reaches 1Q, stop adds after pain reaches 1Q before 0.5Q profit, and close after pain reaches 2Q before 0.5Q profit" },
+    { metric: "eod_green_hold_red", definition: "protection mode that closes green cycles at the daily flatten boundary and holds red cycles open for later target/flatten handling" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds", definition: "hold-red mode plus locked stop-add after 1Q adverse excursion happens before any 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q", definition: "hold-red mode plus stop-add while 1Q adverse excursion has occurred before any 0.5Q favorable excursion; stop-add unlocks after the same cycle reaches 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_max_3d", definition: "hold-red mode capped at three calendar days of max fill age; red cycles older than the cap close at the next flatten boundary" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_max_3d", definition: "three-day capped hold-red mode plus locked stop-add after 1Q adverse excursion happens before any 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d", definition: "three-day capped hold-red mode plus pain stop-add that unlocks after the same cycle reaches 0.5Q favorable excursion" },
+    { metric: "protection_close_net_usd", definition: "aggregate net USD from protection_trail, protected_flatten, and pain_circuit close cycles, including price PnL, commission, and swap" },
     { metric: "session_flatten_price_pnl_usd", definition: "price PnL from cycles force-closed by the configured daily session flatten boundary" },
     { metric: "closed_price_pnl_usd", definition: "target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected" },
     { metric: "total_commission_usd", definition: "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report" },
@@ -2452,6 +3266,9 @@ function metricRows() {
     { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
     { metric: "triangle_v0", definition: "Gate 90D scaffold rule that starts only after a completed session range sweep, rejection, displacement, point-in-time harvestable path geometry, and Candidate/David alignment gate" },
     { metric: "triangle_v0_no_candidate_b", definition: "Gate 90D diagnostic rule that keeps the Triangle trigger and geometry but removes Candidate B from the direction gate and requires David-only side agreement" },
+    { metric: "triangle_v1_candidate_b_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in Candidate B side; Katarakti is not required" },
+    { metric: "triangle_v1_david_contra_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in David contra side; Katarakti is not required" },
+    { metric: "triangle_v1_candidate_or_david_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension when Candidate B or David contra permits the side" },
     { metric: "cycle_spacing_adr", definition: "actual ADR spacing assigned to the side cycle at start; triangle_v0 uses completed session range divided into target slots and clamped to the configured rails" },
     { metric: "triangle_trigger_key", definition: "stable provenance key for the session box, side, sweep, and displacement trigger that started a triangle_v0 cycle" },
     { metric: "triangle_v0_formula_id", definition: "scaffold formula identifier for the Gate 90D bounded Triangle v0 replay path" },
@@ -2459,6 +3276,18 @@ function metricRows() {
     { metric: "grid_add_mode", definition: "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor" },
     { metric: "close_event_profit_factor", definition: "gross winning close-cycle net USD divided by absolute gross losing close-cycle net USD; computed even in summary-only mode without retaining close-event rows" },
     { metric: "close_event_win_pct", definition: "winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included" },
+    { metric: "adr_normalized_return_pct", definition: "price-movement return normalized by each pair's ADR; one ADR is reported as one percent for cross-currency comparison; commission and swap remain costed in USD fields" },
+    { metric: "close_event_total_realized_pnl_adr", definition: "sum of close-cycle realized price PnL in ADR units; same numeric value as adr_normalized_return_pct because one ADR is reported as one percent" },
+    { metric: "close_event_avg_realized_pnl_adr", definition: "average realized price PnL per closed side cycle in ADR units, before commission and swap" },
+    { metric: "close_event_avg_mfe_adr", definition: "average Maximum Favorable Excursion per closed side cycle in ADR units, computed from observed cycle max_pnl_adr" },
+    { metric: "close_event_avg_mae_adr_abs", definition: "average absolute Maximum Adverse Excursion per closed side cycle in ADR units, computed from observed negative cycle min_pnl_adr" },
+    { metric: "first_mfe_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named favorable quantum threshold; used for live-safe profit-first diagnostics" },
+    { metric: "first_mae_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named adverse quantum threshold; used for live-safe pain-first diagnostics" },
+    { metric: "max_pnl_timestamp_utc", definition: "timestamp when observed cycle MFE was first set to its maximum value in the replay path" },
+    { metric: "min_pnl_timestamp_utc", definition: "timestamp when observed cycle MAE was first set to its worst value in the replay path" },
+    { metric: "close_event_mfe_1q/2q/3q_hit_pct", definition: "share of closed side cycles whose observed MFE reached at least one, two, or three cycle-spacing quanta before close" },
+    { metric: "close_event_mae_1q/2q/3q_hit_pct", definition: "share of closed side cycles whose observed MAE reached at least one, two, or three cycle-spacing quanta before close" },
+    { metric: "close-event-breakdown.rows", definition: "non-summary close-cycle aggregate artifact grouped by anchor week, close month, pair, pair side, close reason, and strategy class; includes ADR-normalized return percent plus costed account-return percent" },
     { metric: "close_event_start_timestamp_utc", definition: "cycle start timestamp emitted on close-event rows for downstream start-level trigger traceability" },
     { metric: "close_event_cycle_id", definition: "stable side-cycle identifier emitted on close-event rows so close outcomes can be matched to cycle starts" },
     { metric: "target_close_net_usd", definition: "aggregate net USD from close cycles closed by target reset, including price PnL, commission, and swap" },
@@ -2477,10 +3306,12 @@ function renderReport(options: {
   artifacts: Record<string, string>;
   runtimeOptions: Options;
 }) {
-  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleActivationRule);
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
+  const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
   const summaryTable = renderTable(options.summaryRows, [
     "variant_id",
     "activation_rule_id",
+    "protection_mode",
     "signal_settings_id",
     "symbol_universe",
     "bar_path_mode",
@@ -2508,6 +3339,8 @@ function renderReport(options: {
     "session_flatten_positions",
     "session_flatten_price_pnl_usd",
     "session_flatten_swap_usd",
+    "protection_close_count",
+    "protection_close_positions",
     "entries_opened",
     "end_liquidation_positions",
     "max_open_positions",
@@ -2517,8 +3350,20 @@ function renderReport(options: {
     "close_event_count",
     "close_event_profit_factor",
     "close_event_win_pct",
+    "adr_normalized_return_pct",
+    "close_event_total_realized_pnl_adr",
+    "close_event_avg_realized_pnl_adr",
+    "close_event_avg_mfe_adr",
+    "close_event_avg_mae_adr_abs",
+    "close_event_mfe_1q_hit_pct",
+    "close_event_mfe_2q_hit_pct",
+    "close_event_mfe_3q_hit_pct",
+    "close_event_mae_1q_hit_pct",
+    "close_event_mae_2q_hit_pct",
+    "close_event_mae_3q_hit_pct",
     "target_close_net_usd",
     "session_flatten_close_net_usd",
+    "protection_close_net_usd",
     "activation_started_long",
     "activation_started_short",
     "activation_blocked_long",
@@ -2542,11 +3387,14 @@ Generated: \`${new Date().toISOString()}\`
 ## Scope
 
 - Warehouse truth replay with one-sided activation gates and explicit session mode controls.
-- Variants: \`${options.runtimeOptions.activationRuleIds.map((ruleId) => variantId(ruleId)).join(",")}\`.
+- Variants: \`${options.summaryRows.map((row) => row.variant_id).join(",")}\`.
 - Activation rules: \`${options.runtimeOptions.activationRuleIds.join(",")}\`.
+- Protection modes: \`${options.runtimeOptions.protectionModes.join(",")}\`.
 ${triangleV0Enabled ? `- Triangle v0 formula id: \`${TRIANGLE_V0_FORMULA_ID}\`; starts require a completed session range, sweep/rejection/displacement trigger, point-in-time harvestable path geometry, and Candidate/David alignment.
 - Triangle v0 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v0 formula is disabled for this run."}
 ${options.runtimeOptions.activationRuleIds.includes("triangle_v0_no_candidate_b") ? "- `triangle_v0_no_candidate_b` is enabled: Candidate B is removed from the Triangle direction formula and David-only side agreement is required." : ""}
+${triangleV1Enabled ? `- Triangle v1 formula id: \`${TRIANGLE_V1_FORMULA_ID}\`; starts require valid harvestable session geometry, session-mid extension, and Candidate B / David direction permission. Strict Katarakti is not required for v1 starts.
+- Triangle v1 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v1 formula is disabled for this run."}
 - Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
 - David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
 - Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.
@@ -2555,6 +3403,7 @@ ${options.runtimeOptions.activationRuleIds.includes("triangle_v0_no_candidate_b"
 - Summary-only output: \`${options.runtimeOptions.summaryOnly}\`.
 - Activation uses closed warehouse bars and controls only missing side-cycle starts.
 - Target mode \`${options.runtimeOptions.targetMode}\`, fixed target \`${options.runtimeOptions.targetAdr}\` ADR used only by fixed_adr mode, spacing \`${options.runtimeOptions.spacingAdr}\` ADR, minimum MA expansion \`${options.runtimeOptions.minMaExpansionAdr}\` ADR, grid add mode \`${options.runtimeOptions.gridAddMode}\`, lot size \`${options.runtimeOptions.lotSize}\`.
+- Protection modes are diagnostic replay controls only. \`lock_1q_stop_adds\` blocks new adds after a cycle reaches \`1Q\` MFE; trail modes close after Q-denominated giveback; protected flatten closes green cycles, holds small-red cycles, and closes ugly-red cycles at \`-1Q\`; live-state guards use first MFE/MAE quantum timestamps observed while the cycle is open; EOD hold-red modes close green cycles at flatten and carry red cycles forward.
 - Bar path mode: \`${options.runtimeOptions.barPathMode}\`.
 - Continuous mode carries side-grid positions across warehouse week boundaries; session-window mode carries only until target reset, session flatten, or terminal liquidation.
 - Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA.
@@ -2645,17 +3494,20 @@ async function main() {
   const selectedWeeks = resolveSelectedWeeks(allWeeks, options);
   if (selectedWeeks.length === 0) throw new Error("No weeks selected for Gate 90 replay");
   const selectedPairs = resolveSelectedPairs(manifest.universe_symbols, options);
-  const variantStates: RuntimeVariantState[] = options.activationRuleIds.map((activationRuleId) => ({
-    activationRuleId,
-    stats: createStats(),
-    books: new Map<string, PairBook>(),
-    previousEquityUsd: options.initialDepositUsd,
-  }));
+  const variantStates: RuntimeVariantState[] = options.activationRuleIds.flatMap((activationRuleId) =>
+    options.protectionModes.map((protectionMode) => ({
+      activationRuleId,
+      protectionMode,
+      stats: createStats(),
+      books: new Map<string, PairBook>(),
+      previousEquityUsd: options.initialDepositUsd,
+    })),
+  );
   const sharedSignalBooks = new Map<string, SignalBook>();
   let finalConversionRates = emptyConversionRates();
 
   for (const week of selectedWeeks) {
-    if (options.logProgress) console.log(`gate90 week=${week} pairs=${selectedPairs.length} activation_rules=${options.activationRuleIds.join(",")}`);
+    if (options.logProgress) console.log(`gate90 week=${week} pairs=${selectedPairs.length} activation_rules=${options.activationRuleIds.join(",")} protection_modes=${options.protectionModes.join(",")}`);
     const rows = await readWeekRowsWithRetry({ manifestId, week, pairs: selectedPairs, attempts: 3 });
     const weekRows = new Map(rows.map((row) => [row.pair, row]));
     if (weekRows.size !== selectedPairs.length) throw new Error(`Loaded week ${week} has ${weekRows.size} pairs; expected ${selectedPairs.length}`);
@@ -2670,7 +3522,7 @@ async function main() {
       variantState.previousEquityUsd = addWeeklySnapshot({
         stats: variantState.stats,
         books: variantState.books,
-        variant_id: variantId(variantState.activationRuleId),
+        variant_id: variantId(variantState.activationRuleId, variantState.protectionMode),
         weekOpenUtc: week,
         pairsReplayed: selectedPairs.length,
         previousEquityUsd: variantState.previousEquityUsd,
@@ -2683,6 +3535,7 @@ async function main() {
   for (const variantState of variantStates) {
     liquidateEnd({
       activationRuleId: variantState.activationRuleId,
+      protectionMode: variantState.protectionMode,
       stats: variantState.stats,
       books: variantState.books,
       signalBooks: sharedSignalBooks,
@@ -2699,9 +3552,11 @@ async function main() {
     manifest,
     runtimeOptions: options,
     activationRuleId: variantState.activationRuleId,
+    protectionMode: variantState.protectionMode,
   }));
   const weeklyRows = variantStates.flatMap((variantState) => variantState.stats.weeklyRows);
   const closeEvents = variantStates.flatMap((variantState) => variantState.stats.closeEvents);
+  const closeEventBreakdowns = closeEventBreakdownRows(closeEvents, options.initialDepositUsd);
   const terminalInventoryRows = variantStates.flatMap((variantState) => variantState.stats.terminalInventoryRows);
   const validations = validationRows({ gate74b, selectedWeeks, selectedPairs, runtimeOptions: options });
   const metrics = metricRows();
@@ -2714,6 +3569,8 @@ async function main() {
     weeklyCsv: path.join(options.artifactDir, "weekly-activation-truth.rows.csv"),
     closeEventsJson: path.join(options.artifactDir, "close-events.rows.json"),
     closeEventsCsv: path.join(options.artifactDir, "close-events.rows.csv"),
+    closeEventBreakdownsJson: path.join(options.artifactDir, "close-event-breakdown.rows.json"),
+    closeEventBreakdownsCsv: path.join(options.artifactDir, "close-event-breakdown.rows.csv"),
     terminalInventoryJson: path.join(options.artifactDir, "terminal-inventory.rows.json"),
     terminalInventoryCsv: path.join(options.artifactDir, "terminal-inventory.rows.csv"),
     validationJson: path.join(options.artifactDir, "validation.rows.json"),
@@ -2729,6 +3586,7 @@ async function main() {
   await writeRows(paths.summaryJson, paths.summaryCsv, summaryRows);
   await writeRows(paths.weeklyJson, paths.weeklyCsv, weeklyRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
   await writeRows(paths.closeEventsJson, paths.closeEventsCsv, closeEvents.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.closeEventBreakdownsJson, paths.closeEventBreakdownsCsv, closeEventBreakdowns as unknown as Record<string, unknown>[]);
   await writeRows(paths.terminalInventoryJson, paths.terminalInventoryCsv, terminalInventoryRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
   await writeRows(paths.validationJson, paths.validationCsv, validations);
   await writeRows(paths.metricDefinitionsJson, paths.metricDefinitionsCsv, metrics);
@@ -2743,13 +3601,15 @@ async function main() {
   await writeJson(paths.runSummaryJson, {
     gate_id: GATE_ID,
     verdict,
-    variant_ids: options.activationRuleIds.map((ruleId) => variantId(ruleId)),
+    variant_ids: variantStates.map((state) => variantId(state.activationRuleId, state.protectionMode)),
     activation_rule_ids: options.activationRuleIds,
+    protection_modes: options.protectionModes,
     warehouse_manifest_id: manifest.manifest_id,
     warehouse_hash: manifest.warehouse_hash,
     selected_weeks: selectedWeeks.length,
     selected_pairs: selectedPairs,
     summary_rows: summaryRows,
+    close_event_breakdown_rows: closeEventBreakdowns.length,
     terminal_inventory_rows: terminalInventoryRows.length,
     validation_rows: validations,
   });
@@ -2765,6 +3625,7 @@ async function main() {
     { label: "summary_json", path: paths.summaryJson },
     { label: "weekly_json", path: paths.weeklyJson },
     { label: "close_events_json", path: paths.closeEventsJson },
+    { label: "close_event_breakdowns_json", path: paths.closeEventBreakdownsJson },
     { label: "terminal_inventory_json", path: paths.terminalInventoryJson },
     { label: "validation_json", path: paths.validationJson },
     { label: "metric_definitions_json", path: paths.metricDefinitionsJson },

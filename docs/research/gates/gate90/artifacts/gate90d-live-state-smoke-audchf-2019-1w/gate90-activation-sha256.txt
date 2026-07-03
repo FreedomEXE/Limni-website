@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:03:35.721Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 60BB04EB00CB3F5B6BACA5384649F8E2E13C2C1EB1C900902280753CAD9A4CBB docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json EF23E28DA0CF6AF42225EB75E3973ABDEE2BAB8737294D0F3E6FE8FC6596F0F2 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 90DC98C178F35B5FC6C41241BA6A0878ECE2029C209D1485E7726258C414ACC4 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json 77213DB7C48845D36E6710BA265089C528CDCCEF54E962E2ED1C95527AC3B9BA docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json 05D2347972374B0DAE7C0FDCF86E702314C2397FBA7FF22BC3D506CE9F18BAD3 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json B35D862C182837A89DAAE0FA2B26FB3A40105B072B72CBEF1B2B872ECB2DFBC9 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt 203ECAFDE19D6F8C38D9044EEA5D50727682E39F8386ED85CCFE363EB6742B53 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 250B04B2CAB2E38D41F68F04C619E231C2EA7E33D314FA66C95A55C9DDE8883C docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/gate90-run-summary.json
+report 010C25A4D7A9A6F7C0DC67F2F01A8E5186C918562D7FAF7DCFB534932AA77B97 docs/research/gates/gate90/artifacts/gate90d-live-state-smoke-audchf-2019-1w/GATE90D_LIVE_STATE_SMOKE_AUDCHF_2019_1W.md

@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:05:37.338Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 51DCAF656688B32793A87C0119AB3EB185C10CEBFA260216655D4861D2A3A246 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/activation-summary.rows.json
+weekly_json 0491769396EF005E1ACF943D0B4ACEA8738EF10F8CD57EDF0F28513FA7AB98EB docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json B31DFC7AE13CB8C0DD739EC1D8C6F2F39183DB843BC997E3BEBD0DEFFAC2674E docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json A478B5162C04AB411887A8BFCE82EC8299668077FF36C19F5A9896BD916DC65E docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/terminal-inventory.rows.json
+validation_json 85189BA779016158DAAF25B4294E5F3923364E447C1CFF9C010BC95A397C3829 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/validation.rows.json
+metric_definitions_json B35D862C182837A89DAAE0FA2B26FB3A40105B072B72CBEF1B2B872ECB2DFBC9 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/metric-definitions.rows.json
+command_receipt 1E7305BA8FD0B2F67DE7F1CEFC95C3BAB44B3E59423BCDBB02243D74440E8D75 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/command-receipt.json
+run_summary_json A4AC3ECCC00C2877EEF389F0C8956371B5166D01C386441C371A8D52B6F92A51 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/gate90-run-summary.json
+report E745CAC3B28CA6540B13ABC88E93750C041525014FC06747A3E1B0F5AFB02C20 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-strict-no-candidate-b/GATE90D_2019_OPEN_LIVE_STATE_STRICT_NO_CANDIDATE_B.md

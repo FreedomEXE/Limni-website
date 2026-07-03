@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:15:34.769Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json E7B2927F84C02BEF3C630F6328117B057F6E4194EB40CCB13AD4EAD25BF34865 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/activation-summary.rows.json
+weekly_json 2806094A84BF3A61E86202E187E16188A71B5BCF85B587522C7A494FCE03B592 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json 2483BC7060484418C927B9FFCEF66FC57362D2F586E8307FA023FDDEE78754B0 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json B3A6052E20F8D3831D608F6A013BB157B6B189E773C6FFB2A4F3D81589B163F9 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/terminal-inventory.rows.json
+validation_json D09FD103B0CDE86F771C5443F0A6AEE26517412C74A86033C75C0744CA100CBD docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/validation.rows.json
+metric_definitions_json 227136F9870CFA1B0F7E301095ED190601503631E67093F07F4A2371B24D456A docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/metric-definitions.rows.json
+command_receipt 0F07B58A5612999C699256789D8B648076CE494ED0B40CDC33487245E68E39D4 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/command-receipt.json
+run_summary_json 8AC69F9926ACB94AF340CFA7504DE48A054DB08B73D40DB63DEF649B7A83A9FE docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/gate90-run-summary.json
+report 3B0688F895436B5205B60884E4A49500C4FB55BBC6016CD5898B5BF7A814AE2E docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-guard-strict-no-candidate-b/GATE90D_2019_OPEN_LIVE_STATE_GUARD_STRICT_NO_CANDIDATE_B.md

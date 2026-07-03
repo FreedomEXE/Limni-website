@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:30:06.806Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json D2B8BF2CF55868AEDDFE595EA72D8A8B1C16F48924FD073859466566BB727ED9 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json F2B1B4E85C220E80B72A5E9823792AD7352ADEF89A2F4FABF3FB34B0BF235DAC docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 9308D931A4AA4CFFB4859C634F143599632D6215CBB815FE0D1293668E07412B docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json A5FFB51932F9A54772434FC869460E37B349186254ACCEF20F20D27C67145C35 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json F0B8D88981098B40CF70C8845AFE6B84C69CF19788172B3BC54A199E5FE67B89 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 29B2B994E9725904F63BFA9D784283C37CED26D50CFEC0DCBF719041A02F1078 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt 28A433D5AB00B31FA696D4DADCDCB3F7E93E3BFB625372ABFC0DC430BADBAAFA docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 7F5191DE447F6E703202993CA2CF3018184509AF227593940D70A3929EBAF1C1 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/gate90-run-summary.json
+report 2EBC8CD108EFADD41E5CC699250E77D8695F2A6AC935506249D341FB327D01C6 docs/research/gates/gate90/artifacts/gate90d-eod-hold-red-smoke-audchf-2019-1w/GATE90D_EOD_HOLD_RED_SMOKE_AUDCHF_2019_1W.md
