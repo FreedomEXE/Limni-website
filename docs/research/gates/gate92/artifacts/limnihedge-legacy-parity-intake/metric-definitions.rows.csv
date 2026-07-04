@@ -1,0 +1,14 @@
+metric,definition,content_hash
+terminal_liquidation_deals,MT5 out deals whose comment is end of test; this is the forced liquidation count that must match before lifecycle redesign.,7965494D8F3AB16D921B7C5D8270CDBA9C4A35CF9BE66588FE4BEF8AE8C9FB77
+observed_type3_entries,"MT5 entry deals whose volume equals Trade_Lots * 2, matching LimniHedge Type 3 lot scaling.",5A1D5E30D453496355354B1AF73DDFF634217B8399416E2BA8D98A3ED2BA23E6
+average_hold_hours_fifo,FIFO approximation pairing buy-in with sell-out and sell-in with buy-out because MT5 HTML omits position ids.,F52EB4ABEB4CC1D8886C4D19171D4C0C05472CCD4EB987A8C67CCF5B474B877A
+raw_signal_count,Legacy Type 3 candidate count before MT5 tester-admission filtering.,0B1140F059EB366BA8A4C472FC2AB28B897AFD1F0C098412374DB1D16526331B
+accepted_count,Repo replica entry count after applying the audited MT5 tester acceptance layer.,FAAD4742D738E3F678A461FFF87471A497EA3E397E5C4692554E972D3F089C73
+skipped_daily_rollover_0000,Raw candidates at 00:00 skipped because the saved MT5 reports contain zero accepted entry deals at the daily rollover hour.,0DD21278AAF3CF34192287104D374C185DF536B02A091F2DC6B0D81E16C83742
+replica_entries_in_coverage,Accepted entry-shape replay count from the selected H1 source inside the overlapping report and source coverage window.,0F6F317B8CC50CE1B937BEC9532C970B911F6AEFFC3D0CBEB53D9601608B3BD3
+david_state_source,Replica entry state source; mt5_export_indicator_buffer means the repo replay used the same iCustom David buffer surface as the EA.,C5BA1E4A76559C89F1FC57BF08817B80A47BF38B866CB1573309F6FBEB1B425E
+exact_sequence_matches,"Strict sequence match on entry timestamp, side, inferred order type, and lot size.",D2C91028AE994D70788EC26F8B2CB20746212741F205F4659BDE95563F4A1FE7
+reaches_report_end,"Selected H1 source coverage reaches the MT5 report end. If false, full parity must fail closed.",4915A4B8AEAA8F0C4548E7D3A58484491ADAA708604BB2F6D88C847899F84DE8
+match_method,Lifecycle/PnL exit matching method. Gate 92 uses exit_sequence because saved MT5 HTML deals do not expose hedged position ids.,8D7FCB5019B35ABADBA61DC8136C560B498756C9ECEAC1639B229C681F3FBA9D
+replica_price_profit,Replica lifecycle price PnL converted to USD with the exported MT5 H1 conversion close for the quote currency.,9894AAB86AEEA63856D95259F1F89C696A5E6761A223AC4A815B1053B0088478
+replica_swap_source,Swap is carried from the saved MT5 report as observed broker accounting; Gate 92 does not build an independent historical swap model.,24E96BBCAAE0C1FD4CF37AFB5DE01BDB2B8994154D2843C49D1BCB145DFC4ADF

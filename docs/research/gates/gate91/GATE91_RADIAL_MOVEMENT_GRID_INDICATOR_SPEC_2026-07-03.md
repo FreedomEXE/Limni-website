@@ -68,17 +68,17 @@ The generated chart is the study surface. It is not a subwindow under a normal
 price chart.
 
 ```text
-x-axis = real source-chart time
-y-axis = absolute LRMG level units from the generated chart base
+x-axis = generated M1 custom-symbol time anchored to source M1 events
+y-axis = absolute LRMG closed-brick level units from the generated chart base
 cyan   = moving closed-brick LRMG median
-grid distance = candle level - moving median level
+grid distance = brick close level - moving median level
 ```
 
 The generated chart must draw:
 
-- every source OHLC candle transformed into LRMG level-space
-- wicks from source high/low transformed into the same level-space
-- brick closes as internal state updates to the moving median level
+- one equal-size custom OHLC bar per closed LRMG brick
+- each brick body from the previous integer LRMG level to the next integer LRMG level
+- high/low locked to the brick body so the visual grammar stays equal-block
 - a moving cyan median line
 - no static `0` trade boundary
 
@@ -88,11 +88,15 @@ This solves the axis problem:
 - raw brick size/pips stay as measurement metadata only
 - manual review happens on the generated normalized movement chart
 - direction is not inferred from static above/below-zero position
-- chart time remains real and non-negotiable
+- the LRMG formula source is canonical M1 regardless of the chart timeframe
+- chart timeframe changes are display aggregation only, not a formula input
 
-If one source candle closes multiple LRMG bricks, the indicator must merge those
-closes into that source timestamp. This is the correct tradeoff for preserving
-real time instead of inventing synthetic bar times.
+MT5 custom-symbol rates are M1 history. That means multiple independent custom
+bars cannot occupy the same M1 open time. If one source M1 candle closes
+multiple LRMG bricks, the first brick stays anchored to the source M1 event
+minute and subsequent bricks are placed in the next available generated M1
+slots. This preserves event order and source-time locality while prioritizing
+the equal-block visual grammar Freedom asked for.
 
 ## Projection Contract
 

@@ -6,6 +6,12 @@
 
 #include "..\\Indicators\\Include\\LimniRadialMovementGrid.mqh"
 
+input int  SourceM1LookbackBars = 12000;
+input int  BootstrapM1Bars = 720;
+input bool UseClosedM1BarsOnly = true;
+input int  MedianBrickWindow = 55;
+input int  MaxGeneratedBricks = 20000;
+
 string CleanSymbolName(const string value)
 {
    string output = "";
@@ -27,57 +33,87 @@ string CleanSymbolName(const string value)
    return output;
 }
 
-datetime NextBrickTime(const datetime start_time, const int brick_index)
+datetime M1OpenTime(const datetime value)
 {
-   return (datetime)(start_time + brick_index * 60);
+   long raw = (long)value;
+   return (datetime)(raw - raw % 60);
 }
 
-string PeriodSuffix(const ENUM_TIMEFRAMES period)
+datetime NextBrickTime(const datetime event_time, const datetime last_time)
 {
-   string value = EnumToString(period);
-   StringReplace(value, "PERIOD_", "");
-   return value;
+   datetime brick_time = M1OpenTime(event_time);
+   if(brick_time <= last_time)
+      brick_time = (datetime)(last_time + 60);
+
+   return brick_time;
 }
 
-double MedianRateClose(const MqlRates &rates[], const int start_index, const int end_index)
+double MedianBrickLevel(const double &levels[], const int count, const int window)
 {
-   int count = end_index - start_index + 1;
    if(count <= 0)
       return 0.0;
 
+   int start_index = 0;
+   if(window > 0)
+      start_index = MathMax(0, count - window);
+
+   int sample_count = count - start_index;
    double values[];
-   ArrayResize(values, count);
-   for(int i = 0; i < count; i++)
-      values[i] = rates[start_index + i].close;
+   ArrayResize(values, sample_count);
+   for(int i = 0; i < sample_count; i++)
+      values[i] = levels[start_index + i];
 
    ArraySort(values);
-   int mid = count / 2;
-   if((count % 2) == 1)
+   int mid = sample_count / 2;
+   if((sample_count % 2) == 1)
       return values[mid];
 
    return (values[mid - 1] + values[mid]) / 2.0;
 }
 
-void SetMappedRate(
+bool AppendBrickRate(
    MqlRates &rates[],
-   const int index,
-   const datetime rate_time,
-   const double z_open,
-   const double z_high,
-   const double z_low,
-   const double z_close,
+   double &median_levels[],
+   double &closed_levels[],
+   int &rate_count,
+   int &closed_level_count,
+   datetime &last_rate_time,
+   const datetime event_time,
+   const int open_level,
+   const int close_level,
    const long tick_volume,
    const int spread
 )
 {
-   rates[index].time = rate_time;
-   rates[index].open = z_open;
-   rates[index].close = z_close;
-   rates[index].high = MathMax(MathMax(z_open, z_close), z_high);
-   rates[index].low = MathMin(MathMin(z_open, z_close), z_low);
-   rates[index].tick_volume = tick_volume;
-   rates[index].spread = spread;
-   rates[index].real_volume = 0;
+   if(MaxGeneratedBricks > 0 && rate_count >= MaxGeneratedBricks)
+      return false;
+
+   datetime rate_time = NextBrickTime(event_time, last_rate_time);
+   double open_value = (double)open_level;
+   double close_value = (double)close_level;
+   double high_value = MathMax(open_value, close_value);
+   double low_value = MathMin(open_value, close_value);
+
+   ArrayResize(rates, rate_count + 1);
+   ArrayResize(median_levels, rate_count + 1);
+   ArrayResize(closed_levels, closed_level_count + 1);
+
+   closed_levels[closed_level_count] = close_value;
+   closed_level_count++;
+
+   rates[rate_count].time = rate_time;
+   rates[rate_count].open = open_value;
+   rates[rate_count].high = high_value;
+   rates[rate_count].low = low_value;
+   rates[rate_count].close = close_value;
+   rates[rate_count].tick_volume = tick_volume;
+   rates[rate_count].spread = spread;
+   rates[rate_count].real_volume = 0;
+
+   median_levels[rate_count] = MedianBrickLevel(closed_levels, closed_level_count, MedianBrickWindow);
+   last_rate_time = rate_time;
+   rate_count++;
+   return true;
 }
 
 bool EnsureCustomSymbol(const string custom_symbol, const string source_symbol)
@@ -93,7 +129,7 @@ bool EnsureCustomSymbol(const string custom_symbol, const string source_symbol)
       }
    }
 
-   CustomSymbolSetString(custom_symbol, SYMBOL_DESCRIPTION, "Limni Radial Movement Grid synthetic brick chart from " + source_symbol);
+   CustomSymbolSetString(custom_symbol, SYMBOL_DESCRIPTION, "Limni Radial Movement Grid equal-brick M1 chart from " + source_symbol);
    CustomSymbolSetInteger(custom_symbol, SYMBOL_DIGITS, 2);
    CustomSymbolSetDouble(custom_symbol, SYMBOL_POINT, 0.01);
    CustomSymbolSetDouble(custom_symbol, SYMBOL_TRADE_TICK_SIZE, 0.01);
@@ -134,8 +170,9 @@ bool BuildLrmgRates(
       closes[i] = source[i].close;
    }
 
+   int bootstrap_end = MathMin(copied - 1, MathMax(10, BootstrapM1Bars) - 1);
    LimniRadialMap bootstrap;
-   if(!LimniComputeMovementMap(times, closes, 0, copied - 1, true, bootstrap))
+   if(!LimniComputeMovementMap(times, closes, 0, bootstrap_end, true, bootstrap))
       return false;
 
    brick_size = bootstrap.radius;
@@ -144,69 +181,63 @@ bool BuildLrmgRates(
 
    double base_price = source[0].close;
    int current_level = 0;
-   double brick_levels[];
+   double closed_levels[];
+   datetime last_rate_time = 0;
 
-   ArrayResize(out_rates, copied);
-   ArrayResize(median_levels, copied);
-   out_count = copied;
-
-   for(int i = 0; i < copied; i++)
+   for(int i = 1; i < copied; i++)
    {
+      bool keep_building = true;
       int guard = 0;
       while(source[i].close >= base_price + ((double)current_level + 1.0) * brick_size && guard < 200)
       {
-         double close_level = (double)(current_level + 1);
-         ArrayResize(brick_levels, brick_close_count + 1);
-         brick_levels[brick_close_count] = close_level;
-         brick_close_count++;
+         int next_level = current_level + 1;
+         keep_building = AppendBrickRate(
+            out_rates,
+            median_levels,
+            closed_levels,
+            out_count,
+            brick_close_count,
+            last_rate_time,
+            source[i].time,
+            current_level,
+            next_level,
+            source[i].tick_volume,
+            source[i].spread
+         );
          current_level++;
          guard++;
+         if(!keep_building)
+            break;
       }
+
+      if(!keep_building)
+         break;
 
       guard = 0;
       while(source[i].close <= base_price + ((double)current_level - 1.0) * brick_size && guard < 200)
       {
-         double close_level = (double)(current_level - 1);
-         ArrayResize(brick_levels, brick_close_count + 1);
-         brick_levels[brick_close_count] = close_level;
-         brick_close_count++;
+         int next_level = current_level - 1;
+         keep_building = AppendBrickRate(
+            out_rates,
+            median_levels,
+            closed_levels,
+            out_count,
+            brick_close_count,
+            last_rate_time,
+            source[i].time,
+            current_level,
+            next_level,
+            source[i].tick_volume,
+            source[i].spread
+         );
          current_level--;
          guard++;
+         if(!keep_building)
+            break;
       }
 
-      double median_level = 0.0;
-      if(brick_close_count > 0)
-      {
-         int start = MathMax(0, brick_close_count - 55);
-         int count = brick_close_count - start;
-         double values[];
-         ArrayResize(values, count);
-         for(int j = 0; j < count; j++)
-            values[j] = brick_levels[start + j];
-
-         ArraySort(values);
-         int mid = count / 2;
-         median_level = (count % 2) == 1 ? values[mid] : (values[mid - 1] + values[mid]) / 2.0;
-      }
-
-      median_levels[i] = median_level;
-
-      double z_open = (source[i].open - base_price) / brick_size;
-      double z_high = (source[i].high - base_price) / brick_size;
-      double z_low = (source[i].low - base_price) / brick_size;
-      double z_close = (source[i].close - base_price) / brick_size;
-
-      SetMappedRate(
-         out_rates,
-         i,
-         source[i].time,
-         z_open,
-         z_high,
-         z_low,
-         z_close,
-         source[i].tick_volume,
-         source[i].spread
-      );
+      if(!keep_building)
+         break;
    }
 
    return out_count > 0;
@@ -309,38 +340,6 @@ void DeleteLrmgChartObjects(const long chart_id)
    }
 }
 
-void DrawClosedBrickMedianSpine(const long chart_id, const MqlRates &rates[], const int count)
-{
-   if(chart_id <= 0 || count < 2)
-      return;
-
-   const int window = 55;
-   double previous_median = MedianRateClose(rates, 0, 0);
-
-   for(int i = 1; i < count; i++)
-   {
-      int start = MathMax(0, i - window + 1);
-      double median = MedianRateClose(rates, start, i);
-      string name = "LRMG_MEDIAN_SEG_" + IntegerToString(i);
-
-      if(ObjectFind(chart_id, name) < 0)
-         ObjectCreate(chart_id, name, OBJ_TREND, 0, rates[i - 1].time, previous_median, rates[i].time, median);
-
-      ObjectSetInteger(chart_id, name, OBJPROP_TIME, 0, rates[i - 1].time);
-      ObjectSetDouble(chart_id, name, OBJPROP_PRICE, 0, previous_median);
-      ObjectSetInteger(chart_id, name, OBJPROP_TIME, 1, rates[i].time);
-      ObjectSetDouble(chart_id, name, OBJPROP_PRICE, 1, median);
-      ObjectSetInteger(chart_id, name, OBJPROP_COLOR, clrDeepSkyBlue);
-      ObjectSetInteger(chart_id, name, OBJPROP_WIDTH, 2);
-      ObjectSetInteger(chart_id, name, OBJPROP_STYLE, STYLE_SOLID);
-      ObjectSetInteger(chart_id, name, OBJPROP_RAY_RIGHT, false);
-      ObjectSetInteger(chart_id, name, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(chart_id, name, OBJPROP_HIDDEN, true);
-
-      previous_median = median;
-   }
-}
-
 void DrawMedianInfoLabel(const long chart_id)
 {
    if(chart_id <= 0)
@@ -393,21 +392,23 @@ void DrawMovingMedianSpine(
 void OnStart()
 {
    string source_symbol = _Symbol;
-   ENUM_TIMEFRAMES source_period = (ENUM_TIMEFRAMES)_Period;
+   ENUM_TIMEFRAMES launch_period = (ENUM_TIMEFRAMES)_Period;
+   ENUM_TIMEFRAMES source_period = PERIOD_M1;
 
-   int bars = Bars(source_symbol, source_period);
+   int bars = Bars(source_symbol, PERIOD_M1);
    if(bars < 50)
    {
-      Print("LRMG: not enough chart history for ", source_symbol, " ", EnumToString(source_period));
+      Print("LRMG: not enough M1 history for ", source_symbol);
       return;
    }
 
+   int requested_bars = MathMin(bars, MathMax(50, SourceM1LookbackBars));
    MqlRates source_rates[];
    ArraySetAsSeries(source_rates, false);
-   int copied = CopyRates(source_symbol, source_period, 0, bars, source_rates);
+   int copied = CopyRates(source_symbol, PERIOD_M1, 0, requested_bars, source_rates);
    if(copied < 50)
    {
-      Print("LRMG: CopyRates failed/short for ", source_symbol, " copied=", copied);
+      Print("LRMG: M1 CopyRates failed/short for ", source_symbol, " copied=", copied);
       return;
    }
 
@@ -422,6 +423,9 @@ void OnStart()
          source_rates[i] = ordered[i];
    }
 
+   if(UseClosedM1BarsOnly && copied > 1)
+      copied--;
+
    MqlRates lrmg_rates[];
    double median_levels[];
    int lrmg_count = 0;
@@ -433,7 +437,7 @@ void OnStart()
       return;
    }
 
-   string custom_symbol = CleanSymbolName(source_symbol) + "_LRMG_" + PeriodSuffix(source_period);
+   string custom_symbol = CleanSymbolName(source_symbol) + "_LRMG_M1";
    if(!EnsureCustomSymbol(custom_symbol, source_symbol))
       return;
 
@@ -450,7 +454,7 @@ void OnStart()
    }
 
    SymbolSelect(custom_symbol, true);
-   long chart_id = ChartOpen(custom_symbol, source_period);
+   long chart_id = ChartOpen(custom_symbol, PERIOD_M1);
    ConfigureLrmgChart(chart_id);
    Sleep(300);
    DeleteLrmgChartObjects(chart_id);
@@ -462,9 +466,10 @@ void OnStart()
       "LRMG custom chart built: ",
       custom_symbol,
       " source=", source_symbol,
-      " period=", EnumToString(source_period),
-      " source_bars=", copied,
-      " mapped_bars=", lrmg_count,
+      " source_period=", EnumToString(source_period),
+      " launch_period=", EnumToString(launch_period),
+      " source_m1_bars=", copied,
+      " brick_bars=", lrmg_count,
       " brick_closes=", brick_close_count,
       " raw_Q=", DoubleToString(brick_size, (int)SymbolInfoInteger(source_symbol, SYMBOL_DIGITS)),
       " chart_id=", chart_id

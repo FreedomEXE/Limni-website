@@ -1,0 +1,10 @@
+check,value,expected,passed,content_hash
+required_primary_mt5_reports_present,0,0,true,EBAE7F0DE023BA9C31F6C99D949C3998E4AE63EC2E7E99CF380A295026600371
+primary_reports_parsed,3,3,true,1BE15172E55D0844400E1E7A2B643EE423E06E8225B6EEF24437D9CE2FF42618
+h1_source_rows_available,0,0,true,85BB69776A6371DFCAB462579A7943E37E243DF64F7CADB7F752D9402295F174
+h1_source_coverage_reaches_report_windows,0,0,true,21DAE7D088D48B07E1B7D36BC71BE0FD36D6C6E69796E377E0BA4A5B90CCEF20
+entry_shape_comparisons_pass,pass=5;fail=0;skip=0,fail=0;skip=0;pass>=1,true,E55561C1F04A32D887D0995E4FE83F982269AF1903E11F334611DC036B54F629
+lifecycle_count_comparisons_pass,pass=5;fail=0;skip=0,fail=0;skip=0;pass>=1,true,1345E2CE2CACA5F029DFCFDB9C4F7E3E9C1D1C61DF5A9EE58ED937471C11543C
+accounting_shape_comparisons_pass,pass=5;fail=0;skip=0,fail=0;skip=0;pass>=1,true,52BD684F26B5101625D7BCB41343E7F63DD1B421F1285E6BBB2A1E27757D8642
+mt5_ea_not_mutated_by_gate92_script,no writes to automation/mt5/Experts/LimniHedge_V1.mq5,reference-only,true,617826EDD970EAB48DB2C291F2AE8C8AC14902892D59D9A0FEC6E0BFF180409C
+frozen_reengineering_scope_respected,"no LRMG, Katarakti, zero-line, Direction, Candidate B, David redesign, promotion, or live MT5 trading",frozen,true,63498B7990B36619E3FC4BCBFA53D128C5D878B99ED6BF1D89A38B220F6A8A58

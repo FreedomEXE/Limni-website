@@ -23,12 +23,94 @@ keeper yet. Freedom rejected the current generated chart because bars are not
 equal-size bricks and the moving average / `0` line no longer behaves like the
 earlier equal-brick offline chart. Do not continue from the bottom-pane
 oscillator or the latest transformed-candle generated chart as if they are
-acceptable. Next chat should recover from
-`docs/research/gates/gate91/NEXT_CHAT_LRMG_VISUAL_RECOVERY_PROMPT_2026-07-04.md`
-and restore a full generated/offline LRMG chart with canonical M1 source,
-equal visual bricks/blocks, and a moving closed-brick median line. Direction,
-Katarakti, David, cost guard, live MT5 trading, and backtest matrix expansion
-remain frozen.
+acceptable. Recovery pass restored `LimniLRMGCreateChart.mq5` to a full
+generated/offline LRMG custom chart using canonical M1 source, one equal-size
+custom OHLC bar per closed LRMG brick, and a moving closed-brick median line.
+MT5 custom-symbol rates are M1 bars, so multiple LRMG bricks from the same
+source M1 event are assigned to the next available generated M1 slots rather
+than duplicate timestamps; this preserves event order and equal-block grammar
+at the cost of exact duplicate-time rendering. Repo and active-terminal compiles
+passed with `0 errors, 0 warnings`. Status is pending Freedom visual review.
+Direction, Katarakti, David, cost guard, live MT5 trading, and backtest matrix
+expansion remain frozen.
+
+Active Gate 92: `limnihedge-legacy-parity`. Freedom wants the old fund-era
+`LimniHedge_V1` behavior replicated in the repo engine before further EA
+mutation or strategy re-engineering. Treat the current EA as the MT5 reference
+surface. Gate 92 intake created a parser/contract command,
+`npm run engine:gate92:limnihedge-legacy-parity`, and report:
+`docs/research/gates/gate92/GATE92_LIMNIHEDGE_LEGACY_PARITY_INTAKE_2026-07-04.md`.
+The two missing AUDCAD primary filenames were rebuilt from the MT5 tester cache
+and bound into `C:/Users/User/Desktop/LIMNI/Baktests/LimniHedge_v1/`: Type 3
+MA-changed (`$5140.60`, `260` trades) and the Type1+Type3 Trail20 primary
+(`$5039.46`, `1432` trades; Trail10 was rejected at `$2722.72`). The DB-backed
+canonical coverage probe hung, so the default replay source is
+`--price-source=mt5-export`. `automation/mt5/Scripts/LimniHedgeV1ExportParityH1.mq5`
+is installed/compiled with `0 errors, 0 warnings` and now exports both default
+David `70/30` and AUDCAD primary `60/40` profile CSVs under the active terminal
+`MQL5/Files/LimniHedge_V1_Parity*` folders. Current rerun passes Gate 92
+parity intake with validation failures `0`: entry shape `5/5`, lifecycle count
+`5/5`, accounting shape `5/5`, and yearly split rows have no failing rows.
+Entry parity is AUDCAD Type1+Type3 `1432/1432`, AUDCAD Type3 MA `260/260`,
+AUDJPY `1518/1518`, AUDCHF `386/386`, and discovered AUDCAD `260/260`.
+Lifecycle replay matches MT5 exit counts, SL-vs-terminal classification, and
+terminal liquidation counts for all parsed reports. Accounting replay uses
+exported MT5 H1 conversion bars, exact commission at `-7.00 * lots`, and MT5
+saved-report swap as observed broker accounting passthrough; this is
+behavioral/report-shape parity, not penny-perfect independent swap modelling.
+Stop here before any LRMG bricks, LRMG `0`/median direction, Katarakti-lite,
+new lifecycle rules, EA mutation, or optimization unless Freedom explicitly
+opens the next reconstruction/testing gate.
+
+Active Gate 93: `limnihedge-triangle-overlay-diagnostic`. First bounded
+triangle reconstruction after Gate 92 parity is complete:
+`npm run engine:gate93:limnihedge-triangle-overlay`, report
+`docs/research/gates/gate93/GATE93_LIMNIHEDGE_TRIANGLE_OVERLAY_DIAGNOSTIC_2026-07-04.md`.
+It is repo-side only and reads Gate 92 artifacts; the MT5 EA remains untouched.
+Verdict:
+`PASS_GATE93_TRIANGLE_OVERLAY_DIAGNOSTIC_NO_KEEPER_NO_PROMOTION` with
+validation failures `0`. The hard H1 Triangle start gates are too restrictive
+on the LimniHedge parity surface: v2/v2.1 keeps about `6.3%` to `6.6%` of
+entries and removes all `76` terminal liquidations, but cuts aggregate saved
+report net from `$26,739.30` to about `$2,001.75` to `$2,078.46`. The simpler
+center-reversion-side bucket keeps `606/3856` entries, removes `70/76` terminal
+liquidations, and has PF `33.74`, but still sacrifices `$21,876.79` of baseline
+net. Read: Triangle is not ready as a hard entry filter for LimniHedge; the
+useful signal is terminal-risk clustering, so the next safe gate should be a
+risk-overlay/protection diagnostic, not threshold tuning or EA mutation.
+
+Active Gate 94: `limnihedge-type3-movement-candle-diagnostic`. Freedom asked
+whether the saved LimniHedge Type 3 entries were tested on the custom
+ADR/ATR-style movement candles instead of time candles. Gate 94 is complete:
+`npm run engine:gate94:limnihedge-type3-movement-candles`, report
+`docs/research/gates/gate94/GATE94_LIMNIHEDGE_TYPE3_MOVEMENT_CANDLE_DIAGNOSTIC_2026-07-04.md`.
+It is repo-side only, reads Gate 92 saved Type 3 outcomes, and builds fixed ADR
+movement candles from the canonical Gate 74B M1-derived directed-ADR warehouse;
+H1 bars used for movement candles: `0`. Verdict:
+`PASS_GATE94_TYPE3_MOVEMENT_CANDLE_DIAGNOSTIC_NO_PROMOTION` with validation
+failures `0`. This is a projection/classification diagnostic, not a full
+movement-candle Type 3 replay. Covered Type 3 baseline net is `$25,613.45`
+with PF `18.23` and `51` terminal liquidations. Exact movement-candle Type 3
+hard matches are too sparse: ADR `0.025` keeps `93` rows (`2.64%`) for
+`$774.67` net and `2` terminals; ADR `0.05` keeps `98` rows (`2.78%`) for
+`$746.14` net and `0` terminals; ADR `0.075` keeps `103` rows (`2.93%`) for
+`$804.57` net and `1` terminal; ADR `0.10` keeps `157` rows (`4.46%`) for
+`$898.35` net and `0` terminals. Read: custom movement candles do remove
+terminal-risk clusters when used as a hard exact Type 3 filter, but they destroy
+too much harvest. Do not promote into MT5 or rewrite Type 3 from this. If this
+lane continues, the next bounded step is a full non-time-based movement-candle
+Type 3 replay with explicit MT5 M1 export parity, or a risk-overlay diagnostic
+using the movement buckets rather than hard entry replacement.
+
+Outside review packet is now prepared for the next phase:
+`docs/research/gates/gate95/LIMNIHEDGE_REPO_TYPE3_OUTSIDE_REVIEW_PACKET_2026-07-04.md`.
+New-chat recovery prompt:
+`docs/research/gates/gate95/NEXT_CHAT_LIMNIHEDGE_TYPE3_REPO_DISCOVERY_PROMPT_2026-07-04.md`.
+Current stop line: do not run more variants until Freedom returns the outside
+review. The next intended gate is repo-only Type 3 discovery across all 28
+pairs, with movement-candle surfaces, Candidate B directional bias, and
+no-direction/both-side controls. The goal is not to preserve the legacy EA; it
+is to find a consistently profitable repo-verifiable Type 3-derived system.
 
 Latest Gate 91 report:
 `docs/research/gates/gate91/GATE91F_MARGINAL_ADD_VALUE_AUDIT_2026-07-03.md`.
