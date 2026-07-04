@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import { once } from "node:events";
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -281,15 +283,48 @@ function csvEscape(value: unknown) {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+async function writeStreamChunk(stream: ReturnType<typeof createWriteStream>, chunk: string) {
+  if (!stream.write(chunk)) await once(stream, "drain");
+}
+
+async function finishStream(stream: ReturnType<typeof createWriteStream>) {
+  stream.end();
+  await once(stream, "finish");
+}
+
 async function writeRows(jsonPath: string, csvPath: string, rows: Record<string, unknown>[]) {
-  await writeJson(jsonPath, rows);
+  const normalizedJsonPath = normalizePath(jsonPath);
+  await mkdir(path.dirname(normalizedJsonPath), { recursive: true });
+  const jsonStream = createWriteStream(normalizedJsonPath, { encoding: "utf8" });
+  try {
+    await writeStreamChunk(jsonStream, "[\n");
+    for (let index = 0; index < rows.length; index += 1) {
+      await writeStreamChunk(jsonStream, `${index === 0 ? "" : ",\n"}${JSON.stringify(rows[index])}`);
+    }
+    await writeStreamChunk(jsonStream, "\n]\n");
+    await finishStream(jsonStream);
+  } catch (error) {
+    jsonStream.destroy();
+    throw error;
+  }
   if (rows.length === 0) {
     await writeFile(normalizePath(csvPath), "", "utf8");
     return;
   }
   const columns = Object.keys(rows[0]!);
-  const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => csvEscape(row[column])).join(","))].join("\n");
-  await writeFile(normalizePath(csvPath), `${csv}\n`, "utf8");
+  const normalizedCsvPath = normalizePath(csvPath);
+  await mkdir(path.dirname(normalizedCsvPath), { recursive: true });
+  const csvStream = createWriteStream(normalizedCsvPath, { encoding: "utf8" });
+  try {
+    await writeStreamChunk(csvStream, `${columns.join(",")}\n`);
+    for (const row of rows) {
+      await writeStreamChunk(csvStream, `${columns.map((column) => csvEscape(row[column])).join(",")}\n`);
+    }
+    await finishStream(csvStream);
+  } catch (error) {
+    csvStream.destroy();
+    throw error;
+  }
 }
 
 async function readJsonFile<T>(filePath: string) {
