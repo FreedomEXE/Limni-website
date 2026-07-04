@@ -1015,6 +1015,18 @@ function appendRows<T>(map: Map<string, T[]>, key: string, rows: T[]) {
   else map.set(key, [...rows]);
 }
 
+function maxNumber(values: number[]) {
+  let max = Number.NEGATIVE_INFINITY;
+  for (const value of values) if (value > max) max = value;
+  return max;
+}
+
+function minNumber(values: number[]) {
+  let min = Number.POSITIVE_INFINITY;
+  for (const value of values) if (value < min) min = value;
+  return min;
+}
+
 function maxDrawdownFromOrdered(values: number[]) {
   let equity = 0;
   let peak = 0;
@@ -1059,10 +1071,10 @@ function summaryRows(
       avg_hold_hours: holds.length ? round6(holds.reduce((sum, value) => sum + value, 0) / holds.length) : null,
       median_hold_hours: holds.length ? round6(holds[Math.floor(holds.length / 2)]!) : null,
       p95_hold_hours: holds.length ? round6(holds[Math.min(holds.length - 1, Math.floor(holds.length * 0.95))]!) : null,
-      max_hold_hours: holds.length ? round6(Math.max(...holds)) : null,
-      max_simultaneous_open: variantStats.length ? Math.max(...variantStats.map((row) => row.max_simultaneous_open)) : 0,
-      balance_dd_usd_model: variantStats.length ? Math.min(...variantStats.map((row) => row.max_balance_drawdown_usd_model)) : maxDrawdownFromOrdered(values),
-      equity_dd_usd_model: variantStats.length ? Math.min(...variantStats.map((row) => row.max_equity_drawdown_usd_model)) : null,
+      max_hold_hours: holds.length ? round6(maxNumber(holds)) : null,
+      max_simultaneous_open: variantStats.length ? maxNumber(variantStats.map((row) => row.max_simultaneous_open)) : 0,
+      balance_dd_usd_model: variantStats.length ? minNumber(variantStats.map((row) => row.max_balance_drawdown_usd_model)) : maxDrawdownFromOrdered(values),
+      equity_dd_usd_model: variantStats.length ? minNumber(variantStats.map((row) => row.max_equity_drawdown_usd_model)) : null,
       pair_count_traded: new Set(variantRows.map((row) => row.symbol)).size,
       positive_pair_count: [...groupBy(variantRows, (row) => row.symbol).values()]
         .filter((group) => group.reduce((sum, row) => sum + row.net_usd_model, 0) > 0).length,
