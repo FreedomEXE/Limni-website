@@ -35,11 +35,25 @@ const DEFAULT_LOT_SIZE = 0.01;
 const STANDARD_FX_CONTRACT_UNITS = 100_000;
 const TRIANGLE_V0_FORMULA_ID = "gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03";
 const TRIANGLE_V1_FORMULA_ID = "gate90d_triangle_v1_geometry_extension_start_scaffold_2026_07_03";
+const TRIANGLE_FORMULAIC_GEOMETRY_ID = "gate91_formulaic_directionless_grid_geometry_scaffold_2026_07_03";
+const TRIANGLE_FORMULAIC_V2_GEOMETRY_ID = "gate91_formulaic_directionless_grid_geometry_v2_cost_bend_center_band_2026_07_03";
 const TRIANGLE_TARGET_GRID_SLOTS = 3;
 const TRIANGLE_MIN_SPACING_ADR = 0.2;
 const TRIANGLE_MAX_SPACING_ADR = 0.3;
 const TRIANGLE_RANGE_FLOOR_MIN_ADR = 0.5;
 const TRIANGLE_PATH_EFFICIENCY_LOW_MAX = 0.35;
+const TRIANGLE_FORMULAIC_COST_FLOOR_ADR = 0.05;
+const TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_MIN_RANGE_TO_Q = 2;
+const TRIANGLE_FORMULAIC_V2_COST_MULTIPLE = 4;
+const TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR = TRIANGLE_FORMULAIC_COST_FLOOR_ADR / TRIANGLE_FORMULAIC_V2_COST_MULTIPLE;
+const TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY = 1;
+const TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO = 1.25;
+const TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE = 2;
+const TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY = 1;
+const TRIANGLE_FORMULAIC_V2_2_FEASIBILITY_EPSILON_ADR = 1e-9;
 const DEFAULT_SIGNAL_SETTINGS = {
   davidMaPeriod: 35,
   davidRsiPeriod: 21,
@@ -57,7 +71,7 @@ type FillKind = "initial" | "adverse_recovery" | "favorable_expansion";
 type CloseReason = "target" | "session_flatten" | "end_of_test" | "protection_trail" | "protected_flatten" | "pain_circuit";
 type BarPathMode = "open" | "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
 type DavidState = "UP" | "DOWN";
-type TargetMode = "fixed_adr" | "david_ma_reversion";
+type TargetMode = "fixed_adr" | "david_ma_reversion" | "session_mid_reversion" | "session_center_band_reversion";
 type GridAddMode = "adverse_and_favorable" | "adverse_only";
 type SignalClock = "m1" | "adr_event";
 type SessionMode = "continuous" | "ny_daily_window";
@@ -103,7 +117,15 @@ type ActivationRuleId =
   | "triangle_v0_no_candidate_b"
   | "triangle_v1_candidate_b_extension"
   | "triangle_v1_david_contra_extension"
-  | "triangle_v1_candidate_or_david_extension";
+  | "triangle_v1_candidate_or_david_extension"
+  | "triangle_formulaic_directionless_geometry"
+  | "triangle_formulaic_directionless_geometry_v2"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin"
+  | "triangle_formulaic_directionless_geometry_v2_surplus"
+  | "triangle_formulaic_directionless_geometry_v2_surplus_convex"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_horizon"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_solvency"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
 type SignalSettings = {
   davidMaPeriod: number;
   davidRsiPeriod: number;
@@ -159,11 +181,30 @@ type Cycle = {
   anchor_price: number;
   cycle_adr_pct: number;
   cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  cycle_reversion_target_price: number | null;
+  cycle_reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
   triangle_trigger_key: string | null;
   fills: Fill[];
   entry_price_inverse_sum: number;
   quantity_sum: number;
   next_adverse_fill_level: number;
+  next_adverse_fill_distance_adr: number;
   next_favorable_fill_level: number;
   min_pnl_adr: number;
   max_pnl_adr: number;
@@ -219,12 +260,15 @@ type CloseEvent = {
   adverse_fill_count: number;
   expansion_fill_count: number;
   price_pnl_adr: number;
+  price_pnl_market_pct: number;
   price_pnl_usd: number;
   commission_usd: number;
   swap_usd: number;
   net_usd: number;
   min_pnl_adr: number;
   max_pnl_adr: number;
+  min_pnl_market_pct: number;
+  max_pnl_market_pct: number;
   min_pnl_timestamp_utc: string | null;
   max_pnl_timestamp_utc: string | null;
   first_mfe_0_5q_timestamp_utc: string | null;
@@ -239,6 +283,24 @@ type CloseEvent = {
   completed_reset_ordinal: number | null;
   max_fill_age_days: number;
   cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  reversion_target_price: number | null;
+  reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
   triangle_trigger_key: string | null;
 };
 
@@ -256,6 +318,8 @@ type CloseEventBreakdownRow = {
   total_realized_pnl_adr: number;
   adr_normalized_return_pct: number;
   avg_realized_pnl_adr: number | null;
+  total_realized_market_pct: number;
+  avg_realized_market_pct: number | null;
   net_usd: number;
   account_return_pct: number;
   gross_profit_usd: number;
@@ -263,6 +327,8 @@ type CloseEventBreakdownRow = {
   profit_factor: number | null;
   avg_mfe_adr: number | null;
   avg_mae_adr_abs: number | null;
+  avg_mfe_market_pct: number | null;
+  avg_mae_market_pct_abs: number | null;
   mfe_1q_hit_count: number;
   mfe_2q_hit_count: number;
   mfe_3q_hit_count: number;
@@ -297,18 +363,39 @@ type TerminalInventoryRow = {
   max_fill_age_days: number;
   avg_fill_age_days: number;
   cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  reversion_target_price: number | null;
+  reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
   triangle_trigger_key: string | null;
   terminal_mark_price: number;
   terminal_david_ma: number | null;
   side_exit_distance_to_ma_adr: number | null;
   directed_move_from_anchor_adr: number;
   price_pnl_adr: number;
+  price_pnl_market_pct: number;
   liquidation_price_pnl_usd: number;
   liquidation_swap_usd: number;
   entry_commission_usd: number;
   liquidation_net_usd: number;
   min_pnl_adr: number;
   max_pnl_adr: number;
+  min_pnl_market_pct: number;
+  max_pnl_market_pct: number;
 };
 
 type WeeklyTruthRow = {
@@ -402,11 +489,15 @@ type SummaryRow = {
   close_event_win_pct: number | null;
   close_event_total_realized_pnl_adr: number;
   adr_normalized_return_pct: number;
+  close_event_total_realized_market_pct: number;
   close_event_gross_profit_usd: number;
   close_event_gross_loss_abs_usd: number;
   close_event_avg_realized_pnl_adr: number | null;
+  close_event_avg_realized_market_pct: number | null;
   close_event_avg_mfe_adr: number | null;
   close_event_avg_mae_adr_abs: number | null;
+  close_event_avg_mfe_market_pct: number | null;
+  close_event_avg_mae_market_pct_abs: number | null;
   close_event_mfe_1q_hit_count: number;
   close_event_mfe_2q_hit_count: number;
   close_event_mfe_3q_hit_count: number;
@@ -426,6 +517,14 @@ type SummaryRow = {
   activation_blocked_long: number;
   activation_blocked_short: number;
   activation_blocked_expansion: number;
+  terminal_horizon_add_checks: number;
+  terminal_horizon_blocked_adds: number;
+  basket_solvency_add_checks: number;
+  basket_solvency_blocked_adds: number;
+  feasibility_observation_count: number;
+  avg_required_reversion_adr: number | null;
+  avg_available_reversion_adr: number | null;
+  avg_reversion_feasibility_ratio: number | null;
   activation_started_long: number;
   activation_started_short: number;
   activation_long_allow_pct: number | null;
@@ -543,7 +642,14 @@ type TriangleGeometrySession = {
   range_high: number;
   range_low: number;
   range_mid: number;
+  median_center: number;
+  pivot_center: number;
   session_range_adr: number;
+  path_raw_adr: number;
+  net_displacement_adr: number;
+  close_delta_adr: number[];
+  current_volatility_floor_adr: number;
+  median_center_balance: number;
   adaptive_spacing_adr: number;
   adaptive_signal_adr_brick: number;
   range_condition_pass: boolean;
@@ -587,6 +693,14 @@ type RuntimeStats = {
   activationBlockedLong: number;
   activationBlockedShort: number;
   activationBlockedExpansion: number;
+  terminalHorizonAddChecks: number;
+  terminalHorizonBlockedAdds: number;
+  basketSolvencyAddChecks: number;
+  basketSolvencyBlockedAdds: number;
+  feasibilityObservationCount: number;
+  requiredReversionAdrSum: number;
+  availableReversionAdrSum: number;
+  reversionFeasibilityRatioSum: number;
   activationStartedLong: number;
   activationStartedShort: number;
   closeEventCount: number;
@@ -596,8 +710,11 @@ type RuntimeStats = {
   closeEventGrossProfitUsd: number;
   closeEventGrossLossAbsUsd: number;
   closeEventRealizedPnlAdrSum: number;
+  closeEventRealizedMarketPctSum: number;
   closeEventMfeAdrSum: number;
   closeEventMaeAdrAbsSum: number;
+  closeEventMfeMarketPctSum: number;
+  closeEventMaeMarketPctAbsSum: number;
   closeEventMfe1QHitCount: number;
   closeEventMfe2QHitCount: number;
   closeEventMfe3QHitCount: number;
@@ -742,8 +859,8 @@ function parseBarPathMode(value: string): BarPathMode {
 }
 
 function parseTargetMode(value: string): TargetMode {
-  if (value === "fixed_adr" || value === "david_ma_reversion") return value;
-  throw new Error(`Unsupported --target-mode=${value}; expected fixed_adr or david_ma_reversion`);
+  if (value === "fixed_adr" || value === "david_ma_reversion" || value === "session_mid_reversion" || value === "session_center_band_reversion") return value;
+  throw new Error(`Unsupported --target-mode=${value}; expected fixed_adr, david_ma_reversion, session_mid_reversion, or session_center_band_reversion`);
 }
 
 function parseGridAddMode(value: string): GridAddMode {
@@ -840,11 +957,19 @@ function parseActivationRuleId(value: string): ActivationRuleId {
     value === "triangle_v0_no_candidate_b" ||
     value === "triangle_v1_candidate_b_extension" ||
     value === "triangle_v1_david_contra_extension" ||
-    value === "triangle_v1_candidate_or_david_extension"
+    value === "triangle_v1_candidate_or_david_extension" ||
+    value === "triangle_formulaic_directionless_geometry" ||
+    value === "triangle_formulaic_directionless_geometry_v2" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    value === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    value === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency"
   ) {
     return value;
   }
-  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, triangle_v0_no_candidate_b, triangle_v1_candidate_b_extension, triangle_v1_david_contra_extension, or triangle_v1_candidate_or_david_extension`);
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, triangle_v0_no_candidate_b, triangle_v1_candidate_b_extension, triangle_v1_david_contra_extension, triangle_v1_candidate_or_david_extension, triangle_formulaic_directionless_geometry, triangle_formulaic_directionless_geometry_v2, triangle_formulaic_directionless_geometry_v2_floorpin, triangle_formulaic_directionless_geometry_v2_surplus, triangle_formulaic_directionless_geometry_v2_surplus_convex, triangle_formulaic_directionless_geometry_v2_floorpin_horizon, triangle_formulaic_directionless_geometry_v2_floorpin_solvency, or triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency`);
 }
 
 function parseActivationRuleIds(value: string): ActivationRuleId[] {
@@ -869,7 +994,8 @@ function isTriangleActivationRule(ruleId: ActivationRuleId) {
     ruleId === "triangle_v0_no_candidate_b" ||
     ruleId === "triangle_v1_candidate_b_extension" ||
     ruleId === "triangle_v1_david_contra_extension" ||
-    ruleId === "triangle_v1_candidate_or_david_extension";
+    ruleId === "triangle_v1_candidate_or_david_extension" ||
+    isTriangleFormulaicActivationRule(ruleId);
 }
 
 function isTriangleV0ActivationRule(ruleId: ActivationRuleId) {
@@ -880,6 +1006,50 @@ function isTriangleV1ActivationRule(ruleId: ActivationRuleId) {
   return ruleId === "triangle_v1_candidate_b_extension" ||
     ruleId === "triangle_v1_david_contra_extension" ||
     ruleId === "triangle_v1_candidate_or_david_extension";
+}
+
+function isTriangleFormulaicActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry" ||
+    isTriangleFormulaicV2ActivationRule(ruleId);
+}
+
+function isTriangleFormulaicV2ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId);
+}
+
+function isTriangleFormulaicV22ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+}
+
+function isTriangleFormulaicV21SurplusActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex";
+}
+
+function usesTriangleFormulaicV21FloorPin(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    isTriangleFormulaicV21SurplusActivationRule(ruleId) ||
+    isTriangleFormulaicV22ActivationRule(ruleId);
+}
+
+function usesTriangleFormulaicV21ConvexAdds(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex";
+}
+
+function usesTriangleFormulaicV22TerminalHorizon(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+}
+
+function usesTriangleFormulaicV22BasketSolvency(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
 }
 
 function davidSettingsLabel(settings: SignalSettings) {
@@ -1172,6 +1342,15 @@ function clampValue(min: number, max: number, value: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function median(values: number[]) {
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((left, right) => left - right);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]!
+    : (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
 function trianglePriceMoveAdr(row: ReplayRow, from: number, to: number) {
   if (row.entry_price === null || row.entry_price <= 0 || row.pair_adr_pct <= 0) return null;
   return ((to - from) / row.entry_price) * 100 / row.pair_adr_pct;
@@ -1188,6 +1367,35 @@ function trianglePathEfficiency(bars: TriangleBar[]) {
   let noise = 0;
   for (let index = 1; index < bars.length; index += 1) noise += Math.abs(bars[index]!.close - bars[index - 1]!.close);
   return noise > 0 ? signal / noise : null;
+}
+
+function triangleSessionPathDeltasAdr(row: ReplayRow, bars: TriangleBar[]) {
+  if (!bars.length) return [] as number[];
+  const deltas: number[] = [];
+  let previous = bars[0]!.open;
+  for (const bar of bars) {
+    const deltaAdr = trianglePriceMoveAdr(row, previous, bar.close);
+    if (deltaAdr !== null) deltas.push(Math.abs(deltaAdr));
+    previous = bar.close;
+  }
+  return deltas;
+}
+
+function triangleSessionNetDisplacementAdr(row: ReplayRow, bars: TriangleBar[]) {
+  if (!bars.length) return 0;
+  const displacement = trianglePriceMoveAdr(row, bars[0]!.open, bars.at(-1)!.close);
+  return displacement === null ? 0 : Math.abs(displacement);
+}
+
+function triangleCenterBalance(bars: TriangleBar[], center: number) {
+  if (!bars.length) return 0;
+  let above = 0;
+  let below = 0;
+  for (const bar of bars) {
+    if (bar.close > center) above += 1;
+    else if (bar.close < center) below += 1;
+  }
+  return 1 - Math.abs(above - below) / bars.length;
 }
 
 function triangleBarsFromRow(row: ReplayRow): TriangleBar[] {
@@ -1229,6 +1437,105 @@ function barsBetween(bars: TriangleBar[], startMs: number, endMs: number) {
 function triangleAdaptiveSpacing(sessionRangeAdr: number) {
   const raw = sessionRangeAdr / TRIANGLE_TARGET_GRID_SLOTS;
   return clampValue(TRIANGLE_MIN_SPACING_ADR, TRIANGLE_MAX_SPACING_ADR, raw);
+}
+
+function triangleFormulaicCostFloorAdr() {
+  return TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+}
+
+function triangleFormulaicQuantumAdr(options: {
+  sessionRangeAdr: number;
+  pathEfficiency: number;
+  costFloorAdr: number;
+}) {
+  const pe = clampValue(0, 1, options.pathEfficiency);
+  const raw = options.sessionRangeAdr / (2 + 2 * (1 - pe));
+  return Math.max(raw, options.costFloorAdr);
+}
+
+function triangleFormulaicSignalAdrBrick(gridQuantumAdr: number) {
+  return gridQuantumAdr / TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR;
+}
+
+function triangleFormulaicRangePass(sessionRangeAdr: number, gridQuantumAdr: number) {
+  return sessionRangeAdr + 1e-9 >= gridQuantumAdr * TRIANGLE_FORMULAIC_MIN_RANGE_TO_Q;
+}
+
+function triangleFormulaicV2ModeledRoundTripCostAdr(options: {
+  row: ReplayRow;
+  markPrice: number;
+  timestampUtc: string;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const quote = quoteCurrency(options.row.pair);
+  const usdPerQuote = options.conversionRates.getUsdPerCurrency(quote, options.timestampUtc, options.tickIndex);
+  if (usdPerQuote === null || usdPerQuote <= 0 || options.markPrice <= 0 || options.row.pair_adr_pct <= 0) {
+    return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  }
+  const units = options.runtimeOptions.lotSize * STANDARD_FX_CONTRACT_UNITS;
+  const oneAdrPriceDelta = options.markPrice * options.row.pair_adr_pct / 100;
+  const oneAdrUsd = Math.abs(oneAdrPriceDelta * units * usdPerQuote);
+  if (!Number.isFinite(oneAdrUsd) || oneAdrUsd <= 0) return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  const modeledRoundTripUsd = Math.abs(options.runtimeOptions.commissionPerEntryPer001LotUsd * (options.runtimeOptions.lotSize / 0.01));
+  const modeledRoundTripAdr = modeledRoundTripUsd / oneAdrUsd;
+  if (!Number.isFinite(modeledRoundTripAdr) || modeledRoundTripAdr <= 0) return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  return Math.max(modeledRoundTripAdr, TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR);
+}
+
+function triangleFormulaicV2Metrics(options: {
+  session: TriangleGeometrySession;
+  row: ReplayRow;
+  markPrice: number;
+  timestampUtc: string;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const roundTripCostAdr = triangleFormulaicV2ModeledRoundTripCostAdr(options);
+  const oneWayCostAdr = roundTripCostAdr / 2;
+  const pCostAdr = options.session.close_delta_adr.reduce((sum, deltaAdr) => sum + Math.max(deltaAdr - oneWayCostAdr, 0), 0);
+  const bCostAdr = Math.max(0, pCostAdr - options.session.net_displacement_adr);
+  const qCostAdr = TRIANGLE_FORMULAIC_V2_COST_MULTIPLE * roundTripCostAdr;
+  const nEffective = 1 + Math.sqrt(bCostAdr / Math.max(qCostAdr, 1e-9));
+  const qBendAdr = options.session.session_range_adr / Math.max(nEffective, 1e-9);
+  const qFloorAdr = Math.max(qCostAdr, options.session.current_volatility_floor_adr);
+  const gridQuantumAdr = Math.max(qFloorAdr, qBendAdr);
+  const signalAdrBrick = Math.max(
+    gridQuantumAdr / TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR,
+    qCostAdr / 2,
+  );
+  const targetBandAdr = Math.max(
+    gridQuantumAdr / TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR,
+    qCostAdr / 2,
+  );
+  const geometryQuality = (bCostAdr / Math.max(gridQuantumAdr, 1e-9)) * options.session.median_center_balance;
+  const floorPinRatio = qBendAdr / Math.max(qFloorAdr, 1e-9);
+  const surplusBendAdr = Math.max(0, bCostAdr - TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE * qCostAdr);
+  const surplusGeometryQuality = (surplusBendAdr / Math.max(gridQuantumAdr, 1e-9))
+    * options.session.median_center_balance
+    * Math.min(1, floorPinRatio);
+  return {
+    centerType: "median_m1_close",
+    centerPrice: options.session.median_center,
+    roundTripCostAdr,
+    qCostAdr,
+    qBendAdr,
+    qFloorAdr,
+    floorPinRatio,
+    pRawAdr: options.session.path_raw_adr,
+    pCostAdr,
+    bCostAdr,
+    surplusBendAdr,
+    surplusGeometryQuality,
+    balance: options.session.median_center_balance,
+    geometryQuality,
+    currentVolatilityFloorAdr: options.session.current_volatility_floor_adr,
+    gridQuantumAdr,
+    signalAdrBrick,
+    targetBandAdr,
+  };
 }
 
 function triangleDisplacementPass(row: ReplayRow, bar: TriangleBar, side: Side, requiredAdr: number) {
@@ -1344,6 +1651,15 @@ function detectTriangleGeometrySessions(row: ReplayRow) {
     const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
     const sessionRangeAdr = triangleRangeAdr(row, rangeHigh, rangeLow);
     if (sessionRangeAdr === null) continue;
+    const closeValues = rangeBars.map((bar) => bar.close);
+    const medianCenter = median(closeValues);
+    if (medianCenter === null) continue;
+    const rangeClose = rangeBars.at(-1)!.close;
+    const pathDeltasAdr = triangleSessionPathDeltasAdr(row, rangeBars);
+    const pathRawAdr = pathDeltasAdr.reduce((sum, value) => sum + value, 0);
+    const netDisplacementAdr = triangleSessionNetDisplacementAdr(row, rangeBars);
+    const currentVolatilityFloorAdr = median(pathDeltasAdr) ?? 0;
+    const pivotCenter = (rangeHigh + rangeLow + rangeClose) / 3;
     const adaptiveSpacingAdr = triangleAdaptiveSpacing(sessionRangeAdr);
     const adaptiveSignalAdrBrick = clampValue(0.0125, 0.075, adaptiveSpacingAdr / 4);
     const rangeFloorAdr = Math.max(TRIANGLE_RANGE_FLOOR_MIN_ADR, TRIANGLE_TARGET_GRID_SLOTS * adaptiveSpacingAdr);
@@ -1363,7 +1679,14 @@ function detectTriangleGeometrySessions(row: ReplayRow) {
       range_high: rangeHigh,
       range_low: rangeLow,
       range_mid: (rangeHigh + rangeLow) / 2,
+      median_center: medianCenter,
+      pivot_center: pivotCenter,
       session_range_adr: round6(sessionRangeAdr),
+      path_raw_adr: round6(pathRawAdr),
+      net_displacement_adr: round6(netDisplacementAdr),
+      close_delta_adr: pathDeltasAdr.map((value) => round6(value)),
+      current_volatility_floor_adr: round6(currentVolatilityFloorAdr),
+      median_center_balance: round6(triangleCenterBalance(rangeBars, medianCenter)),
       adaptive_spacing_adr: round6(adaptiveSpacingAdr),
       adaptive_signal_adr_brick: round6(adaptiveSignalAdrBrick),
       range_condition_pass: rangeConditionPass,
@@ -1675,6 +1998,8 @@ function triangleStartGate(options: {
       signalAllowed: false,
       expansionAllowed: false,
       spacingAdr: null,
+      signalAdrBrick: null,
+      reversionTargetPrice: null,
       triggerKey: null,
     };
   }
@@ -1700,6 +2025,8 @@ function triangleStartGate(options: {
       requiredDistanceAdr,
     ),
     spacingAdr: options.trigger.adaptive_spacing_adr,
+    signalAdrBrick: options.trigger.adaptive_signal_adr_brick,
+    reversionTargetPrice: null,
     triggerKey: options.trigger.trigger_key,
   };
 }
@@ -1767,6 +2094,8 @@ function triangleV1StartGate(options: {
       signalAllowed: false,
       expansionAllowed: false,
       spacingAdr: null,
+      signalAdrBrick: null,
+      reversionTargetPrice: null,
       triggerKey: null,
     };
   }
@@ -1786,11 +2115,192 @@ function triangleV1StartGate(options: {
     signalAllowed: directionAllowed,
     expansionAllowed: allowed,
     spacingAdr: session.adaptive_spacing_adr,
+    signalAdrBrick: session.adaptive_signal_adr_brick,
+    reversionTargetPrice: null,
     triggerKey: [
       session.geometry_key,
       options.side,
       iso(options.timestampMs),
       pathEfficiency === null ? "pe_null" : `pe_${round6(pathEfficiency)}`,
+    ].join("|"),
+  };
+}
+
+function triangleFormulaicStartGate(options: {
+  ruleId: ActivationRuleId;
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  side: Side;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  currentBarIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const emptyGate = {
+    signalAllowed: false,
+    expansionAllowed: false,
+    spacingAdr: null as number | null,
+    signalAdrBrick: null as number | null,
+    reversionTargetPrice: null as number | null,
+    reversionTargetBandAdr: null as number | null,
+    centerType: null as string | null,
+    qCostAdr: null as number | null,
+    roundTripCostAdr: null as number | null,
+    pRawAdr: null as number | null,
+    pCostAdr: null as number | null,
+    bCostAdr: null as number | null,
+    qBendAdr: null as number | null,
+    qFloorAdr: null as number | null,
+    floorPinRatio: null as number | null,
+    surplusBendAdr: null as number | null,
+    surplusGeometryQuality: null as number | null,
+    balance: null as number | null,
+    geometryQuality: null as number | null,
+    currentVolatilityAdr: null as number | null,
+    addSpacingMode: null as string | null,
+    triggerKey: null as string | null,
+  };
+  const session = options.sessions
+    .filter((candidate) => options.timestampMs >= candidate.entry_start_ms && options.timestampMs <= candidate.entry_end_ms)
+    .sort((left, right) => right.entry_start_ms - left.entry_start_ms)[0] ?? null;
+  if (!session) {
+    return emptyGate;
+  }
+  const pathEfficiency = trianglePathEfficiencySoFar({
+    session,
+    currentBarIndex: options.currentBarIndex,
+  });
+  if (pathEfficiency === null) {
+    return emptyGate;
+  }
+  if (isTriangleFormulaicV2ActivationRule(options.ruleId)) {
+    const metrics = triangleFormulaicV2Metrics({
+      session,
+      row: options.row,
+      markPrice: options.markPrice,
+      timestampUtc: options.timestampUtc,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+      runtimeOptions: options.runtimeOptions,
+    });
+    const floorPinPass = metrics.floorPinRatio + 1e-9 >= TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO;
+    const geometryAllowed = isTriangleFormulaicV21SurplusActivationRule(options.ruleId)
+      ? metrics.surplusGeometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY && floorPinPass
+      : usesTriangleFormulaicV21FloorPin(options.ruleId)
+        ? metrics.geometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY && floorPinPass
+        : metrics.geometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY;
+    const distanceAdr = options.side === "LONG"
+      ? trianglePriceMoveAdr(options.row, options.markPrice, metrics.centerPrice)
+      : trianglePriceMoveAdr(options.row, metrics.centerPrice, options.markPrice);
+    const expansionAllowed = geometryAllowed && distanceAdr !== null && distanceAdr + 1e-9 >= metrics.gridQuantumAdr;
+    return {
+      signalAllowed: geometryAllowed,
+      expansionAllowed,
+      spacingAdr: round6(metrics.gridQuantumAdr),
+      signalAdrBrick: round6(metrics.signalAdrBrick),
+      reversionTargetPrice: metrics.centerPrice,
+      reversionTargetBandAdr: round6(metrics.targetBandAdr),
+      centerType: metrics.centerType,
+      qCostAdr: round6(metrics.qCostAdr),
+      roundTripCostAdr: round6(metrics.roundTripCostAdr),
+      pRawAdr: round6(metrics.pRawAdr),
+      pCostAdr: round6(metrics.pCostAdr),
+      bCostAdr: round6(metrics.bCostAdr),
+      qBendAdr: round6(metrics.qBendAdr),
+      qFloorAdr: round6(metrics.qFloorAdr),
+      floorPinRatio: round6(metrics.floorPinRatio),
+      surplusBendAdr: round6(metrics.surplusBendAdr),
+      surplusGeometryQuality: round6(metrics.surplusGeometryQuality),
+      balance: round6(metrics.balance),
+      geometryQuality: round6(metrics.geometryQuality),
+      currentVolatilityAdr: round6(metrics.currentVolatilityFloorAdr),
+      addSpacingMode: usesTriangleFormulaicV21ConvexAdds(options.ruleId)
+        ? "convex_adverse"
+        : usesTriangleFormulaicV22TerminalHorizon(options.ruleId) && usesTriangleFormulaicV22BasketSolvency(options.ruleId)
+          ? "terminal_horizon_basket_solvency"
+          : usesTriangleFormulaicV22TerminalHorizon(options.ruleId)
+            ? "terminal_horizon"
+            : usesTriangleFormulaicV22BasketSolvency(options.ruleId)
+              ? "basket_solvency"
+              : "fixed_q",
+      triggerKey: [
+        session.geometry_key,
+        TRIANGLE_FORMULAIC_V2_GEOMETRY_ID,
+        options.ruleId,
+        options.side,
+        iso(options.timestampMs),
+        `range_${round6(session.session_range_adr)}`,
+        `pe_${round6(pathEfficiency)}`,
+        `center_${metrics.centerType}`,
+        `qcost_${round6(metrics.qCostAdr)}`,
+        `rtcost_${round6(metrics.roundTripCostAdr)}`,
+        `praw_${round6(metrics.pRawAdr)}`,
+        `pcost_${round6(metrics.pCostAdr)}`,
+        `bcost_${round6(metrics.bCostAdr)}`,
+        `qbend_${round6(metrics.qBendAdr)}`,
+        `qfloor_${round6(metrics.qFloorAdr)}`,
+        `floorpin_${round6(metrics.floorPinRatio)}`,
+        `surplus_${round6(metrics.surplusBendAdr)}`,
+        `sgq_${round6(metrics.surplusGeometryQuality)}`,
+        `balance_${round6(metrics.balance)}`,
+        `gq_${round6(metrics.geometryQuality)}`,
+        `vol_${round6(metrics.currentVolatilityFloorAdr)}`,
+        `q_${round6(metrics.gridQuantumAdr)}`,
+        `brick_${round6(metrics.signalAdrBrick)}`,
+        `band_${round6(metrics.targetBandAdr)}`,
+        "target_center_band",
+      ].join("|"),
+    };
+  }
+  const costFloorAdr = triangleFormulaicCostFloorAdr();
+  const gridQuantumAdr = triangleFormulaicQuantumAdr({
+    sessionRangeAdr: session.session_range_adr,
+    pathEfficiency,
+    costFloorAdr,
+  });
+  const signalAdrBrick = triangleFormulaicSignalAdrBrick(gridQuantumAdr);
+  const geometryAllowed = pathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX
+    && triangleFormulaicRangePass(session.session_range_adr, gridQuantumAdr);
+  const distanceAdr = options.side === "LONG"
+    ? trianglePriceMoveAdr(options.row, options.markPrice, session.range_mid)
+    : trianglePriceMoveAdr(options.row, session.range_mid, options.markPrice);
+  const expansionAllowed = geometryAllowed && distanceAdr !== null && distanceAdr + 1e-9 >= gridQuantumAdr;
+  return {
+    signalAllowed: geometryAllowed,
+    expansionAllowed,
+    spacingAdr: round6(gridQuantumAdr),
+    signalAdrBrick: round6(signalAdrBrick),
+    reversionTargetPrice: session.range_mid,
+    reversionTargetBandAdr: null,
+    centerType: "session_midpoint",
+    qCostAdr: null,
+    roundTripCostAdr: null,
+    pRawAdr: session.path_raw_adr,
+    pCostAdr: null,
+    bCostAdr: null,
+    qBendAdr: null,
+    qFloorAdr: null,
+    floorPinRatio: null,
+    surplusBendAdr: null,
+    surplusGeometryQuality: null,
+    balance: null,
+    geometryQuality: null,
+    currentVolatilityAdr: session.current_volatility_floor_adr,
+    addSpacingMode: "fixed_q",
+    triggerKey: [
+      session.geometry_key,
+      TRIANGLE_FORMULAIC_GEOMETRY_ID,
+      options.side,
+      iso(options.timestampMs),
+      `range_${round6(session.session_range_adr)}`,
+      `pe_${round6(pathEfficiency)}`,
+      `cost_${round6(costFloorAdr)}`,
+      `q_${round6(gridQuantumAdr)}`,
+      `brick_${round6(signalAdrBrick)}`,
+      "target_session_mid",
     ].join("|"),
   };
 }
@@ -1807,6 +2317,19 @@ function fillPnlAdr(cycle: Cycle, fill: Fill, markPrice: number, currentAdrPct: 
 
 function cycleNetPnlAdr(cycle: Cycle, markPrice: number, currentAdrPct: number) {
   return cycle.fills.reduce((sum, fill) => sum + fillPnlAdr(cycle, fill, markPrice, currentAdrPct), 0);
+}
+
+function priceMoveAdr(fromPrice: number, toPrice: number, currentAdrPct: number) {
+  if (fromPrice <= 0 || currentAdrPct <= 0) return null;
+  return ((toPrice - fromPrice) / fromPrice) * 100 / currentAdrPct;
+}
+
+function priceDeltaForAdr(referencePrice: number, currentAdrPct: number, adrValue: number) {
+  return referencePrice * currentAdrPct / 100 * adrValue;
+}
+
+function adrToMarketPct(adrValue: number, currentAdrPct: number) {
+  return adrValue * currentAdrPct;
 }
 
 function fillPnlUsd(options: {
@@ -1892,6 +2415,14 @@ function createStats(): RuntimeStats {
     activationBlockedLong: 0,
     activationBlockedShort: 0,
     activationBlockedExpansion: 0,
+    terminalHorizonAddChecks: 0,
+    terminalHorizonBlockedAdds: 0,
+    basketSolvencyAddChecks: 0,
+    basketSolvencyBlockedAdds: 0,
+    feasibilityObservationCount: 0,
+    requiredReversionAdrSum: 0,
+    availableReversionAdrSum: 0,
+    reversionFeasibilityRatioSum: 0,
     activationStartedLong: 0,
     activationStartedShort: 0,
     closeEventCount: 0,
@@ -1901,8 +2432,11 @@ function createStats(): RuntimeStats {
     closeEventGrossProfitUsd: 0,
     closeEventGrossLossAbsUsd: 0,
     closeEventRealizedPnlAdrSum: 0,
+    closeEventRealizedMarketPctSum: 0,
     closeEventMfeAdrSum: 0,
     closeEventMaeAdrAbsSum: 0,
+    closeEventMfeMarketPctSum: 0,
+    closeEventMaeMarketPctAbsSum: 0,
     closeEventMfe1QHitCount: 0,
     closeEventMfe2QHitCount: 0,
     closeEventMfe3QHitCount: 0,
@@ -2020,6 +2554,24 @@ function startCycle(options: {
   timestampMs: number;
   runtimeOptions: Options;
   cycleSpacingAdr: number;
+  cycleSignalAdrBrick: number | null;
+  reversionTargetPrice: number | null;
+  reversionTargetBandAdr: number | null;
+  triangleGeometryCenterType: string | null;
+  triangleGeometryQCostAdr: number | null;
+  triangleGeometryRoundTripCostAdr: number | null;
+  triangleGeometryPRawAdr: number | null;
+  triangleGeometryPCostAdr: number | null;
+  triangleGeometryBCostAdr: number | null;
+  triangleGeometryQBendAdr: number | null;
+  triangleGeometryQFloorAdr: number | null;
+  triangleGeometryFloorPinRatio: number | null;
+  triangleGeometrySurplusBendAdr: number | null;
+  triangleGeometrySurplusQuality: number | null;
+  triangleGeometryBalance: number | null;
+  triangleGeometryQuality: number | null;
+  triangleGeometryCurrentVolatilityAdr: number | null;
+  triangleGeometryAddSpacingMode: string | null;
   triangleTriggerKey: string | null;
 }) {
   options.book.serial += 1;
@@ -2033,11 +2585,30 @@ function startCycle(options: {
     anchor_price: options.markPrice,
     cycle_adr_pct: options.row.pair_adr_pct,
     cycle_spacing_adr: options.cycleSpacingAdr,
+    cycle_signal_adr_brick: options.cycleSignalAdrBrick,
+    cycle_reversion_target_price: options.reversionTargetPrice,
+    cycle_reversion_target_band_adr: options.reversionTargetBandAdr,
+    triangle_geometry_center_type: options.triangleGeometryCenterType,
+    triangle_geometry_q_cost_adr: options.triangleGeometryQCostAdr,
+    triangle_geometry_round_trip_cost_adr: options.triangleGeometryRoundTripCostAdr,
+    triangle_geometry_p_raw_adr: options.triangleGeometryPRawAdr,
+    triangle_geometry_p_cost_adr: options.triangleGeometryPCostAdr,
+    triangle_geometry_b_cost_adr: options.triangleGeometryBCostAdr,
+    triangle_geometry_q_bend_adr: options.triangleGeometryQBendAdr,
+    triangle_geometry_q_floor_adr: options.triangleGeometryQFloorAdr,
+    triangle_geometry_floor_pin_ratio: options.triangleGeometryFloorPinRatio,
+    triangle_geometry_surplus_bend_adr: options.triangleGeometrySurplusBendAdr,
+    triangle_geometry_surplus_quality: options.triangleGeometrySurplusQuality,
+    triangle_geometry_balance: options.triangleGeometryBalance,
+    triangle_geometry_quality: options.triangleGeometryQuality,
+    triangle_geometry_current_volatility_adr: options.triangleGeometryCurrentVolatilityAdr,
+    triangle_geometry_add_spacing_mode: options.triangleGeometryAddSpacingMode,
     triangle_trigger_key: options.triangleTriggerKey,
     fills: [],
     entry_price_inverse_sum: 0,
     quantity_sum: 0,
     next_adverse_fill_level: 1,
+    next_adverse_fill_distance_adr: options.cycleSpacingAdr,
     next_favorable_fill_level: 1,
     min_pnl_adr: 0,
     max_pnl_adr: 0,
@@ -2103,7 +2674,8 @@ function addGridFills(options: {
 }) {
   const directed = directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct);
   const spacingAdr = options.cycle.cycle_spacing_adr;
-  while (directed <= -spacingAdr * options.cycle.next_adverse_fill_level) {
+  while (directed <= -nextAdverseFillDistanceAdr(options.cycle)) {
+    if (!triangleFormulaicV22AdverseAddAllowed(options)) break;
     const level = options.cycle.next_adverse_fill_level;
     const opened = openFill({
       ...options,
@@ -2112,6 +2684,12 @@ function addGridFills(options: {
     });
     if (!opened) break;
     options.cycle.next_adverse_fill_level += 1;
+    options.cycle.next_adverse_fill_distance_adr = nextAdverseFillDistanceAdr(options.cycle)
+      + nextAdverseSpacingAdr({
+        cycle: options.cycle,
+        markPrice: options.markPrice,
+        currentAdrPct: options.currentAdrPct,
+      });
   }
   if (options.runtimeOptions.gridAddMode === "adverse_and_favorable") {
     while (directed >= spacingAdr * options.cycle.next_favorable_fill_level) {
@@ -2127,6 +2705,144 @@ function addGridFills(options: {
   }
 }
 
+function triangleFormulaicV22AdverseAddAllowed(options: {
+  stats: RuntimeStats;
+  cycle: Cycle;
+  markPrice: number;
+  timestampMs: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const mode = options.cycle.triangle_geometry_add_spacing_mode;
+  const usesTerminalHorizon = mode === "terminal_horizon" || mode === "terminal_horizon_basket_solvency";
+  const usesBasketSolvency = mode === "basket_solvency" || mode === "terminal_horizon_basket_solvency";
+  if (!usesTerminalHorizon && !usesBasketSolvency) return true;
+
+  const feasibility = triangleFormulaicV22Feasibility({
+    cycle: options.cycle,
+    markPrice: options.markPrice,
+    timestampMs: options.timestampMs,
+    currentAdrPct: options.currentAdrPct,
+    runtimeOptions: options.runtimeOptions,
+    includeProposedAdd: true,
+  });
+  if (feasibility === null) return true;
+
+  options.stats.feasibilityObservationCount += 1;
+  options.stats.requiredReversionAdrSum = round6(options.stats.requiredReversionAdrSum + feasibility.requiredReversionAdr);
+  options.stats.availableReversionAdrSum = round6(options.stats.availableReversionAdrSum + feasibility.availableReversionAdr);
+  options.stats.reversionFeasibilityRatioSum = round6(options.stats.reversionFeasibilityRatioSum + feasibility.reversionFeasibilityRatio);
+
+  let allowed = true;
+  if (usesTerminalHorizon) {
+    options.stats.terminalHorizonAddChecks += 1;
+    if (!feasibility.terminalHorizonPass) {
+      options.stats.terminalHorizonBlockedAdds += 1;
+      allowed = false;
+    }
+  }
+  if (usesBasketSolvency) {
+    options.stats.basketSolvencyAddChecks += 1;
+    if (!feasibility.solvencyPass) {
+      options.stats.basketSolvencyBlockedAdds += 1;
+      allowed = false;
+    }
+  }
+  return allowed;
+}
+
+function triangleFormulaicV22Feasibility(options: {
+  cycle: Cycle;
+  markPrice: number;
+  timestampMs: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+  includeProposedAdd: boolean;
+}) {
+  const centerPrice = options.cycle.cycle_reversion_target_price;
+  const targetBandAdr = options.cycle.cycle_reversion_target_band_adr;
+  if (centerPrice === null || targetBandAdr === null || centerPrice <= 0 || options.markPrice <= 0 || options.currentAdrPct <= 0) return null;
+
+  const proposedQuantity = options.cycle.quantity_sum + (options.includeProposedAdd ? 1 : 0);
+  const proposedInverseSum = options.cycle.entry_price_inverse_sum + (options.includeProposedAdd ? 1 / options.markPrice : 0);
+  if (proposedQuantity <= 0 || proposedInverseSum <= 0) return null;
+
+  const averageEntry = proposedQuantity / proposedInverseSum;
+  const breakEvenBufferAdr = options.cycle.triangle_geometry_round_trip_cost_adr ?? TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  const breakEvenBufferPrice = priceDeltaForAdr(averageEntry, options.currentAdrPct, breakEvenBufferAdr);
+  const targetBandPrice = priceDeltaForAdr(centerPrice, options.currentAdrPct, targetBandAdr);
+  const targetLow = centerPrice - targetBandPrice;
+  const targetHigh = centerPrice + targetBandPrice;
+  const basketGreenPrice = options.cycle.side === "LONG"
+    ? averageEntry + breakEvenBufferPrice
+    : averageEntry - breakEvenBufferPrice;
+  const solvencyPass = options.cycle.side === "LONG"
+    ? basketGreenPrice <= targetHigh + 1e-12
+    : basketGreenPrice >= targetLow - 1e-12;
+
+  const requiredTargetPrice = options.cycle.side === "LONG"
+    ? Math.max(targetLow, basketGreenPrice)
+    : Math.min(targetHigh, basketGreenPrice);
+  const rawRequiredAdr = options.cycle.side === "LONG"
+    ? priceMoveAdr(options.markPrice, requiredTargetPrice, options.currentAdrPct)
+    : priceMoveAdr(requiredTargetPrice, options.markPrice, options.currentAdrPct);
+  const requiredReversionAdr = Math.max(0, rawRequiredAdr ?? 0);
+  const sessionMinutes = Math.max(1, sessionWindowLengthMinutes(options.runtimeOptions));
+  const minutesLeft = Math.max(0, minutesUntilSessionFlatten(options.runtimeOptions, options.timestampMs));
+  const bCostAdr = options.cycle.triangle_geometry_b_cost_adr ?? 0;
+  const balance = options.cycle.triangle_geometry_balance ?? 0;
+  const qCostAdr = options.cycle.triangle_geometry_q_cost_adr ?? TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+  const bendSpeedAdrPerMinute = bCostAdr / sessionMinutes;
+  const availableReversionAdr = Math.max(0, bendSpeedAdrPerMinute * minutesLeft * balance - qCostAdr);
+  const reversionFeasibilityRatio = requiredReversionAdr / Math.max(availableReversionAdr, TRIANGLE_FORMULAIC_V2_2_FEASIBILITY_EPSILON_ADR);
+  return {
+    requiredReversionAdr,
+    availableReversionAdr,
+    reversionFeasibilityRatio,
+    terminalHorizonPass: requiredReversionAdr <= availableReversionAdr + 1e-9,
+    solvencyPass,
+  };
+}
+
+function sessionWindowLengthMinutes(options: Options) {
+  if (options.sessionMode === "continuous") return 24 * 60;
+  const start = options.sessionTradeStartEtMinutes;
+  const flatten = options.sessionFlattenEtMinutes;
+  return start <= flatten ? Math.max(1, flatten - start) : (24 * 60 - start) + flatten;
+}
+
+function minutesUntilSessionFlatten(options: Options, timestampMs: number) {
+  if (options.sessionMode === "continuous") return 24 * 60;
+  const local = localSessionParts(timestampMs, options.sessionTimeZone);
+  const flattenMinutes = sessionFlattenMinutesForDate(options, local.dateKey);
+  if (local.minutes < flattenMinutes) return flattenMinutes - local.minutes;
+  if (local.minutes >= options.sessionTradeStartEtMinutes) return (24 * 60 - local.minutes) + options.sessionFlattenEtMinutes;
+  return 0;
+}
+
+function nextAdverseFillDistanceAdr(cycle: Cycle) {
+  if (cycle.triangle_geometry_add_spacing_mode === "convex_adverse") {
+    return cycle.next_adverse_fill_distance_adr;
+  }
+  return cycle.cycle_spacing_adr * cycle.next_adverse_fill_level;
+}
+
+function nextAdverseSpacingAdr(options: {
+  cycle: Cycle;
+  markPrice: number;
+  currentAdrPct: number;
+}) {
+  if (options.cycle.triangle_geometry_add_spacing_mode !== "convex_adverse") return options.cycle.cycle_spacing_adr;
+  const currentPnlAdr = cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  const maeAdr = Math.max(0, -Math.min(options.cycle.min_pnl_adr, currentPnlAdr));
+  const mfeAdr = Math.max(0, Math.max(options.cycle.max_pnl_adr, currentPnlAdr));
+  const qCostAdr = options.cycle.triangle_geometry_q_cost_adr ?? TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+  const depth = Math.max(0, options.cycle.next_adverse_fill_level - 1);
+  return options.cycle.cycle_spacing_adr
+    * Math.sqrt(1 + depth)
+    * Math.sqrt((maeAdr + qCostAdr) / Math.max(mfeAdr + qCostAdr, 1e-9));
+}
+
 function targetReached(options: {
   cycle: Cycle;
   signal: SignalSnapshot;
@@ -2136,6 +2852,18 @@ function targetReached(options: {
 }) {
   const pnlAdr = round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct));
   if (options.runtimeOptions.targetMode === "fixed_adr") return pnlAdr >= options.runtimeOptions.targetAdr;
+  if (options.runtimeOptions.targetMode === "session_mid_reversion" || options.runtimeOptions.targetMode === "session_center_band_reversion") {
+    const targetPrice = options.cycle.cycle_reversion_target_price;
+    if (targetPrice === null || pnlAdr <= 0) return false;
+    if (options.runtimeOptions.targetMode === "session_center_band_reversion") {
+      const bandAdr = options.cycle.cycle_reversion_target_band_adr ?? 0;
+      const bandPrice = targetPrice * options.currentAdrPct / 100 * Math.max(0, bandAdr);
+      return options.cycle.side === "LONG"
+        ? options.markPrice >= targetPrice - bandPrice
+        : options.markPrice <= targetPrice + bandPrice;
+    }
+    return options.cycle.side === "LONG" ? options.markPrice >= targetPrice : options.markPrice <= targetPrice;
+  }
   const ma = options.signal.david_ma;
   if (ma === null || pnlAdr <= 0) return false;
   return options.cycle.side === "LONG" ? options.markPrice >= ma : options.markPrice <= ma;
@@ -2286,6 +3014,7 @@ function closeCycle(options: {
     commissionUsd += fill.commission_usd;
   }
   const pricePnlAdr = cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  const pricePnlMarketPct = adrToMarketPct(pricePnlAdr, options.currentAdrPct);
   adjustOpenPositionStats(options.stats, options.cycle.side, -options.cycle.fills.length);
   if (options.closeReason === "end_of_test") {
     options.stats.endLiquidationPricePnlUsd = round6(options.stats.endLiquidationPricePnlUsd + pricePnlUsd);
@@ -2321,12 +3050,15 @@ function closeCycle(options: {
     adverse_fill_count: options.cycle.fills.filter((fill) => fill.kind === "adverse_recovery").length,
     expansion_fill_count: options.cycle.fills.filter((fill) => fill.kind === "favorable_expansion").length,
     price_pnl_adr: round6(pricePnlAdr),
+    price_pnl_market_pct: round6(pricePnlMarketPct),
     price_pnl_usd: round6(pricePnlUsd),
     commission_usd: round6(commissionUsd),
     swap_usd: round6(swapUsd),
     net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
     min_pnl_adr: round6(options.cycle.min_pnl_adr),
     max_pnl_adr: round6(options.cycle.max_pnl_adr),
+    min_pnl_market_pct: round6(adrToMarketPct(options.cycle.min_pnl_adr, options.currentAdrPct)),
+    max_pnl_market_pct: round6(adrToMarketPct(options.cycle.max_pnl_adr, options.currentAdrPct)),
     min_pnl_timestamp_utc: options.cycle.min_pnl_timestamp_utc,
     max_pnl_timestamp_utc: options.cycle.max_pnl_timestamp_utc,
     first_mfe_0_5q_timestamp_utc: options.cycle.first_mfe_0_5q_timestamp_utc,
@@ -2341,14 +3073,37 @@ function closeCycle(options: {
     completed_reset_ordinal: options.completedResetOrdinal,
     max_fill_age_days: round6(maxFillAgeDays),
     cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    cycle_signal_adr_brick: options.cycle.cycle_signal_adr_brick === null ? null : round6(options.cycle.cycle_signal_adr_brick),
+    reversion_target_price: options.cycle.cycle_reversion_target_price === null ? null : round6(options.cycle.cycle_reversion_target_price),
+    reversion_target_band_adr: options.cycle.cycle_reversion_target_band_adr === null ? null : round6(options.cycle.cycle_reversion_target_band_adr),
+    triangle_geometry_center_type: options.cycle.triangle_geometry_center_type,
+    triangle_geometry_q_cost_adr: options.cycle.triangle_geometry_q_cost_adr === null ? null : round6(options.cycle.triangle_geometry_q_cost_adr),
+    triangle_geometry_round_trip_cost_adr: options.cycle.triangle_geometry_round_trip_cost_adr === null ? null : round6(options.cycle.triangle_geometry_round_trip_cost_adr),
+    triangle_geometry_p_raw_adr: options.cycle.triangle_geometry_p_raw_adr === null ? null : round6(options.cycle.triangle_geometry_p_raw_adr),
+    triangle_geometry_p_cost_adr: options.cycle.triangle_geometry_p_cost_adr === null ? null : round6(options.cycle.triangle_geometry_p_cost_adr),
+    triangle_geometry_b_cost_adr: options.cycle.triangle_geometry_b_cost_adr === null ? null : round6(options.cycle.triangle_geometry_b_cost_adr),
+    triangle_geometry_q_bend_adr: options.cycle.triangle_geometry_q_bend_adr === null ? null : round6(options.cycle.triangle_geometry_q_bend_adr),
+    triangle_geometry_q_floor_adr: options.cycle.triangle_geometry_q_floor_adr === null ? null : round6(options.cycle.triangle_geometry_q_floor_adr),
+    triangle_geometry_floor_pin_ratio: options.cycle.triangle_geometry_floor_pin_ratio === null ? null : round6(options.cycle.triangle_geometry_floor_pin_ratio),
+    triangle_geometry_surplus_bend_adr: options.cycle.triangle_geometry_surplus_bend_adr === null ? null : round6(options.cycle.triangle_geometry_surplus_bend_adr),
+    triangle_geometry_surplus_quality: options.cycle.triangle_geometry_surplus_quality === null ? null : round6(options.cycle.triangle_geometry_surplus_quality),
+    triangle_geometry_balance: options.cycle.triangle_geometry_balance === null ? null : round6(options.cycle.triangle_geometry_balance),
+    triangle_geometry_quality: options.cycle.triangle_geometry_quality === null ? null : round6(options.cycle.triangle_geometry_quality),
+    triangle_geometry_current_volatility_adr: options.cycle.triangle_geometry_current_volatility_adr === null ? null : round6(options.cycle.triangle_geometry_current_volatility_adr),
+    triangle_geometry_add_spacing_mode: options.cycle.triangle_geometry_add_spacing_mode,
     triangle_trigger_key: options.cycle.triangle_trigger_key,
   };
   options.stats.closeEventCount += 1;
   const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+  const mfeMarketPct = Math.max(0, event.max_pnl_market_pct);
+  const maeMarketPctAbs = Math.max(0, -event.min_pnl_market_pct);
   const spacingAdr = event.cycle_spacing_adr;
   options.stats.closeEventRealizedPnlAdrSum = round6(options.stats.closeEventRealizedPnlAdrSum + event.price_pnl_adr);
+  options.stats.closeEventRealizedMarketPctSum = round6(options.stats.closeEventRealizedMarketPctSum + event.price_pnl_market_pct);
   options.stats.closeEventMfeAdrSum = round6(options.stats.closeEventMfeAdrSum + Math.max(0, event.max_pnl_adr));
   options.stats.closeEventMaeAdrAbsSum = round6(options.stats.closeEventMaeAdrAbsSum + maeAdrAbs);
+  options.stats.closeEventMfeMarketPctSum = round6(options.stats.closeEventMfeMarketPctSum + mfeMarketPct);
+  options.stats.closeEventMaeMarketPctAbsSum = round6(options.stats.closeEventMaeMarketPctAbsSum + maeMarketPctAbs);
   if (spacingAdr > 0) {
     if (event.max_pnl_adr >= spacingAdr) options.stats.closeEventMfe1QHitCount += 1;
     if (event.max_pnl_adr >= spacingAdr * 2) options.stats.closeEventMfe2QHitCount += 1;
@@ -2435,18 +3190,39 @@ function terminalInventoryRow(options: {
     max_fill_age_days: round6(maxFillAgeDays),
     avg_fill_age_days: round6(options.cycle.fills.length ? ageSum / options.cycle.fills.length : 0),
     cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    cycle_signal_adr_brick: options.cycle.cycle_signal_adr_brick === null ? null : round6(options.cycle.cycle_signal_adr_brick),
+    reversion_target_price: options.cycle.cycle_reversion_target_price === null ? null : round6(options.cycle.cycle_reversion_target_price),
+    reversion_target_band_adr: options.cycle.cycle_reversion_target_band_adr === null ? null : round6(options.cycle.cycle_reversion_target_band_adr),
+    triangle_geometry_center_type: options.cycle.triangle_geometry_center_type,
+    triangle_geometry_q_cost_adr: options.cycle.triangle_geometry_q_cost_adr === null ? null : round6(options.cycle.triangle_geometry_q_cost_adr),
+    triangle_geometry_round_trip_cost_adr: options.cycle.triangle_geometry_round_trip_cost_adr === null ? null : round6(options.cycle.triangle_geometry_round_trip_cost_adr),
+    triangle_geometry_p_raw_adr: options.cycle.triangle_geometry_p_raw_adr === null ? null : round6(options.cycle.triangle_geometry_p_raw_adr),
+    triangle_geometry_p_cost_adr: options.cycle.triangle_geometry_p_cost_adr === null ? null : round6(options.cycle.triangle_geometry_p_cost_adr),
+    triangle_geometry_b_cost_adr: options.cycle.triangle_geometry_b_cost_adr === null ? null : round6(options.cycle.triangle_geometry_b_cost_adr),
+    triangle_geometry_q_bend_adr: options.cycle.triangle_geometry_q_bend_adr === null ? null : round6(options.cycle.triangle_geometry_q_bend_adr),
+    triangle_geometry_q_floor_adr: options.cycle.triangle_geometry_q_floor_adr === null ? null : round6(options.cycle.triangle_geometry_q_floor_adr),
+    triangle_geometry_floor_pin_ratio: options.cycle.triangle_geometry_floor_pin_ratio === null ? null : round6(options.cycle.triangle_geometry_floor_pin_ratio),
+    triangle_geometry_surplus_bend_adr: options.cycle.triangle_geometry_surplus_bend_adr === null ? null : round6(options.cycle.triangle_geometry_surplus_bend_adr),
+    triangle_geometry_surplus_quality: options.cycle.triangle_geometry_surplus_quality === null ? null : round6(options.cycle.triangle_geometry_surplus_quality),
+    triangle_geometry_balance: options.cycle.triangle_geometry_balance === null ? null : round6(options.cycle.triangle_geometry_balance),
+    triangle_geometry_quality: options.cycle.triangle_geometry_quality === null ? null : round6(options.cycle.triangle_geometry_quality),
+    triangle_geometry_current_volatility_adr: options.cycle.triangle_geometry_current_volatility_adr === null ? null : round6(options.cycle.triangle_geometry_current_volatility_adr),
+    triangle_geometry_add_spacing_mode: options.cycle.triangle_geometry_add_spacing_mode,
     triangle_trigger_key: options.cycle.triangle_trigger_key,
     terminal_mark_price: round6(options.markPrice),
     terminal_david_ma: davidMa === null ? null : round6(davidMa),
     side_exit_distance_to_ma_adr: sideExitDistanceToMaAdr === null ? null : round6(sideExitDistanceToMaAdr),
     directed_move_from_anchor_adr: round6(directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct)),
     price_pnl_adr: round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct)),
+    price_pnl_market_pct: round6(adrToMarketPct(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct), options.currentAdrPct)),
     liquidation_price_pnl_usd: round6(pricePnlUsd),
     liquidation_swap_usd: round6(swapUsd),
     entry_commission_usd: round6(commissionUsd),
     liquidation_net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
     min_pnl_adr: round6(options.cycle.min_pnl_adr),
     max_pnl_adr: round6(options.cycle.max_pnl_adr),
+    min_pnl_market_pct: round6(adrToMarketPct(options.cycle.min_pnl_adr, options.currentAdrPct)),
+    max_pnl_market_pct: round6(adrToMarketPct(options.cycle.max_pnl_adr, options.currentAdrPct)),
   };
 }
 
@@ -2620,6 +3396,24 @@ function replayTick(options: {
     }
     if (options.sessionState.canOpenOrAdd) {
       let cycleSpacingAdr = options.runtimeOptions.spacingAdr;
+      let cycleSignalAdrBrick: number | null = null;
+      let reversionTargetPrice: number | null = null;
+      let reversionTargetBandAdr: number | null = null;
+      let triangleGeometryCenterType: string | null = null;
+      let triangleGeometryQCostAdr: number | null = null;
+      let triangleGeometryRoundTripCostAdr: number | null = null;
+      let triangleGeometryPRawAdr: number | null = null;
+      let triangleGeometryPCostAdr: number | null = null;
+      let triangleGeometryBCostAdr: number | null = null;
+      let triangleGeometryQBendAdr: number | null = null;
+      let triangleGeometryQFloorAdr: number | null = null;
+      let triangleGeometryFloorPinRatio: number | null = null;
+      let triangleGeometrySurplusBendAdr: number | null = null;
+      let triangleGeometrySurplusQuality: number | null = null;
+      let triangleGeometryBalance: number | null = null;
+      let triangleGeometryQuality: number | null = null;
+      let triangleGeometryCurrentVolatilityAdr: number | null = null;
+      let triangleGeometryAddSpacingMode: string | null = null;
       let triangleTriggerKey: string | null = null;
       let signalAllowed = false;
       let expansionAllowed = false;
@@ -2637,6 +3431,8 @@ function replayTick(options: {
         signalAllowed = gate.signalAllowed;
         expansionAllowed = gate.expansionAllowed;
         cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
         triangleTriggerKey = gate.triggerKey;
       } else if (isTriangleV1ActivationRule(options.activationRuleId)) {
         const gate = triangleV1StartGate({
@@ -2652,6 +3448,44 @@ function replayTick(options: {
         signalAllowed = gate.signalAllowed;
         expansionAllowed = gate.expansionAllowed;
         cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
+        triangleTriggerKey = gate.triggerKey;
+      } else if (isTriangleFormulaicActivationRule(options.activationRuleId)) {
+        const gate = triangleFormulaicStartGate({
+          ruleId: options.activationRuleId,
+          sessions: options.triangleGeometrySessions,
+          row: options.row,
+          side,
+          markPrice: options.markPrice,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          currentBarIndex: options.barIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
+        reversionTargetBandAdr = gate.reversionTargetBandAdr;
+        triangleGeometryCenterType = gate.centerType;
+        triangleGeometryQCostAdr = gate.qCostAdr;
+        triangleGeometryRoundTripCostAdr = gate.roundTripCostAdr;
+        triangleGeometryPRawAdr = gate.pRawAdr;
+        triangleGeometryPCostAdr = gate.pCostAdr;
+        triangleGeometryBCostAdr = gate.bCostAdr;
+        triangleGeometryQBendAdr = gate.qBendAdr;
+        triangleGeometryQFloorAdr = gate.qFloorAdr;
+        triangleGeometryFloorPinRatio = gate.floorPinRatio;
+        triangleGeometrySurplusBendAdr = gate.surplusBendAdr;
+        triangleGeometrySurplusQuality = gate.surplusGeometryQuality;
+        triangleGeometryBalance = gate.balance;
+        triangleGeometryQuality = gate.geometryQuality;
+        triangleGeometryCurrentVolatilityAdr = gate.currentVolatilityAdr;
+        triangleGeometryAddSpacingMode = gate.addSpacingMode;
         triangleTriggerKey = gate.triggerKey;
       } else {
         signalAllowed = options.activationRuleId === "raw_both"
@@ -2684,6 +3518,24 @@ function replayTick(options: {
         timestampMs: options.timestampMs,
         runtimeOptions: options.runtimeOptions,
         cycleSpacingAdr,
+        cycleSignalAdrBrick,
+        reversionTargetPrice,
+        reversionTargetBandAdr,
+        triangleGeometryCenterType,
+        triangleGeometryQCostAdr,
+        triangleGeometryRoundTripCostAdr,
+        triangleGeometryPRawAdr,
+        triangleGeometryPCostAdr,
+        triangleGeometryBCostAdr,
+        triangleGeometryQBendAdr,
+        triangleGeometryQFloorAdr,
+        triangleGeometryFloorPinRatio,
+        triangleGeometrySurplusBendAdr,
+        triangleGeometrySurplusQuality,
+        triangleGeometryBalance,
+        triangleGeometryQuality,
+        triangleGeometryCurrentVolatilityAdr,
+        triangleGeometryAddSpacingMode,
         triangleTriggerKey,
       });
       setSideCycle(book, side, cycle);
@@ -2706,7 +3558,7 @@ function replayRowForVariants(options: {
   const triangleTriggers = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule)
     ? detectTriangleTriggers(options.row)
     : [];
-  const triangleGeometrySessions = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule)
+  const triangleGeometrySessions = options.runtimeOptions.activationRuleIds.some((ruleId) => isTriangleV1ActivationRule(ruleId) || isTriangleFormulaicActivationRule(ruleId))
     ? detectTriangleGeometrySessions(options.row)
     : [];
   for (let index = 0; index < timestamps.length; index += 1) {
@@ -2891,6 +3743,14 @@ function drawdown(rows: Array<{ week_open_utc: string; value: number }>) {
 function strategyClass(ruleId: ActivationRuleId) {
   if (ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b") return "strict_katarakti";
   if (isTriangleV1ActivationRule(ruleId)) return "triangle_geometry_extension";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin") return "formulaic_directionless_geometry_v2_floorpin";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon") return "formulaic_directionless_geometry_v2_floorpin_horizon";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency") return "formulaic_directionless_geometry_v2_floorpin_solvency";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency") return "formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_surplus") return "formulaic_directionless_geometry_v2_surplus";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex") return "formulaic_directionless_geometry_v2_surplus_convex";
+  if (isTriangleFormulaicV2ActivationRule(ruleId)) return "formulaic_directionless_geometry_v2";
+  if (isTriangleFormulaicActivationRule(ruleId)) return "formulaic_directionless_geometry";
   if (ruleId === "david_contra") return "standalone_david_contra";
   if (ruleId === "candidate_b") return "standalone_candidate_b";
   return ruleId;
@@ -2907,11 +3767,14 @@ type CloseEventBreakdownAccumulator = {
   loss_count: number;
   flat_count: number;
   total_realized_pnl_adr: number;
+  total_realized_market_pct: number;
   net_usd: number;
   gross_profit_usd: number;
   gross_loss_abs_usd: number;
   mfe_adr_sum: number;
   mae_adr_abs_sum: number;
+  mfe_market_pct_sum: number;
+  mae_market_pct_abs_sum: number;
   mfe_1q_hit_count: number;
   mfe_2q_hit_count: number;
   mfe_3q_hit_count: number;
@@ -2953,11 +3816,14 @@ function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number
         loss_count: 0,
         flat_count: 0,
         total_realized_pnl_adr: 0,
+        total_realized_market_pct: 0,
         net_usd: 0,
         gross_profit_usd: 0,
         gross_loss_abs_usd: 0,
         mfe_adr_sum: 0,
         mae_adr_abs_sum: 0,
+        mfe_market_pct_sum: 0,
+        mae_market_pct_abs_sum: 0,
         mfe_1q_hit_count: 0,
         mfe_2q_hit_count: 0,
         mfe_3q_hit_count: 0,
@@ -2969,6 +3835,7 @@ function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number
       };
       accumulator.close_event_count += 1;
       accumulator.total_realized_pnl_adr = round6(accumulator.total_realized_pnl_adr + event.price_pnl_adr);
+      accumulator.total_realized_market_pct = round6(accumulator.total_realized_market_pct + event.price_pnl_market_pct);
       accumulator.net_usd = round6(accumulator.net_usd + event.net_usd);
       if (event.net_usd > 0) {
         accumulator.win_count += 1;
@@ -2981,8 +3848,12 @@ function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number
       }
       const mfeAdr = Math.max(0, event.max_pnl_adr);
       const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+      const mfeMarketPct = Math.max(0, event.max_pnl_market_pct);
+      const maeMarketPctAbs = Math.max(0, -event.min_pnl_market_pct);
       accumulator.mfe_adr_sum = round6(accumulator.mfe_adr_sum + mfeAdr);
       accumulator.mae_adr_abs_sum = round6(accumulator.mae_adr_abs_sum + maeAdrAbs);
+      accumulator.mfe_market_pct_sum = round6(accumulator.mfe_market_pct_sum + mfeMarketPct);
+      accumulator.mae_market_pct_abs_sum = round6(accumulator.mae_market_pct_abs_sum + maeMarketPctAbs);
       if (event.cycle_spacing_adr > 0) {
         if (mfeAdr >= event.cycle_spacing_adr) accumulator.mfe_1q_hit_count += 1;
         if (mfeAdr >= event.cycle_spacing_adr * 2) accumulator.mfe_2q_hit_count += 1;
@@ -3015,6 +3886,8 @@ function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number
       total_realized_pnl_adr: round6(row.total_realized_pnl_adr),
       adr_normalized_return_pct: round6(row.total_realized_pnl_adr),
       avg_realized_pnl_adr: row.close_event_count ? round6(row.total_realized_pnl_adr / row.close_event_count) : null,
+      total_realized_market_pct: round6(row.total_realized_market_pct),
+      avg_realized_market_pct: row.close_event_count ? round6(row.total_realized_market_pct / row.close_event_count) : null,
       net_usd: round2(row.net_usd),
       account_return_pct: round6((row.net_usd / initialDepositUsd) * 100),
       gross_profit_usd: round2(row.gross_profit_usd),
@@ -3022,6 +3895,8 @@ function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number
       profit_factor: profitFactorFromGross(row.gross_profit_usd, row.gross_loss_abs_usd),
       avg_mfe_adr: row.close_event_count ? round6(row.mfe_adr_sum / row.close_event_count) : null,
       avg_mae_adr_abs: row.close_event_count ? round6(row.mae_adr_abs_sum / row.close_event_count) : null,
+      avg_mfe_market_pct: row.close_event_count ? round6(row.mfe_market_pct_sum / row.close_event_count) : null,
+      avg_mae_market_pct_abs: row.close_event_count ? round6(row.mae_market_pct_abs_sum / row.close_event_count) : null,
       mfe_1q_hit_count: row.mfe_1q_hit_count,
       mfe_2q_hit_count: row.mfe_2q_hit_count,
       mfe_3q_hit_count: row.mfe_3q_hit_count,
@@ -3138,11 +4013,15 @@ function summarize(options: {
     close_event_win_pct: closeWinPct,
     close_event_total_realized_pnl_adr: round6(options.stats.closeEventRealizedPnlAdrSum),
     adr_normalized_return_pct: round6(options.stats.closeEventRealizedPnlAdrSum),
+    close_event_total_realized_market_pct: round6(options.stats.closeEventRealizedMarketPctSum),
     close_event_gross_profit_usd: round2(options.stats.closeEventGrossProfitUsd),
     close_event_gross_loss_abs_usd: round2(options.stats.closeEventGrossLossAbsUsd),
     close_event_avg_realized_pnl_adr: closeEventCount ? round6(options.stats.closeEventRealizedPnlAdrSum / closeEventCount) : null,
+    close_event_avg_realized_market_pct: closeEventCount ? round6(options.stats.closeEventRealizedMarketPctSum / closeEventCount) : null,
     close_event_avg_mfe_adr: closeEventCount ? round6(options.stats.closeEventMfeAdrSum / closeEventCount) : null,
     close_event_avg_mae_adr_abs: closeEventCount ? round6(options.stats.closeEventMaeAdrAbsSum / closeEventCount) : null,
+    close_event_avg_mfe_market_pct: closeEventCount ? round6(options.stats.closeEventMfeMarketPctSum / closeEventCount) : null,
+    close_event_avg_mae_market_pct_abs: closeEventCount ? round6(options.stats.closeEventMaeMarketPctAbsSum / closeEventCount) : null,
     close_event_mfe_1q_hit_count: options.stats.closeEventMfe1QHitCount,
     close_event_mfe_2q_hit_count: options.stats.closeEventMfe2QHitCount,
     close_event_mfe_3q_hit_count: options.stats.closeEventMfe3QHitCount,
@@ -3162,6 +4041,14 @@ function summarize(options: {
     activation_blocked_long: options.stats.activationBlockedLong,
     activation_blocked_short: options.stats.activationBlockedShort,
     activation_blocked_expansion: options.stats.activationBlockedExpansion,
+    terminal_horizon_add_checks: options.stats.terminalHorizonAddChecks,
+    terminal_horizon_blocked_adds: options.stats.terminalHorizonBlockedAdds,
+    basket_solvency_add_checks: options.stats.basketSolvencyAddChecks,
+    basket_solvency_blocked_adds: options.stats.basketSolvencyBlockedAdds,
+    feasibility_observation_count: options.stats.feasibilityObservationCount,
+    avg_required_reversion_adr: options.stats.feasibilityObservationCount ? round6(options.stats.requiredReversionAdrSum / options.stats.feasibilityObservationCount) : null,
+    avg_available_reversion_adr: options.stats.feasibilityObservationCount ? round6(options.stats.availableReversionAdrSum / options.stats.feasibilityObservationCount) : null,
+    avg_reversion_feasibility_ratio: options.stats.feasibilityObservationCount ? round6(options.stats.reversionFeasibilityRatioSum / options.stats.feasibilityObservationCount) : null,
     activation_started_long: options.stats.activationStartedLong,
     activation_started_short: options.stats.activationStartedShort,
     activation_long_allow_pct: longChecks ? round2((options.stats.activationAllowedLong / longChecks) * 100) : null,
@@ -3188,11 +4075,20 @@ function validationRows(options: {
 }) {
   const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
   const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
+  const triangleFormulaicEnabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicActivationRule);
+  const triangleFormulaicV1Enabled = options.runtimeOptions.activationRuleIds.includes("triangle_formulaic_directionless_geometry");
+  const triangleFormulaicV2Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV2ActivationRule);
+  const triangleFormulaicV21Enabled = options.runtimeOptions.activationRuleIds.some((ruleId) =>
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId));
+  const triangleFormulaicV22Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV22ActivationRule);
   return [
     { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
     { check: "continuous_carried_inventory", value: options.runtimeOptions.sessionMode === "continuous", expected: "true only in continuous session mode", passed: true },
     { check: "weekly_sample_end_close_disabled", value: true, expected: true, passed: true },
-    { check: "target_reset_uses_selected_target_mode", value: options.runtimeOptions.targetMode, expected: "fixed_adr_or_david_ma_reversion", passed: true },
+    { check: "target_reset_uses_selected_target_mode", value: options.runtimeOptions.targetMode, expected: "fixed_adr_or_david_ma_reversion_or_session_mid_reversion_or_session_center_band_reversion", passed: true },
     { check: "target_mode", value: options.runtimeOptions.targetMode, expected: "explicit", passed: true },
     { check: "target_adr", value: options.runtimeOptions.targetAdr, expected: ">0", passed: options.runtimeOptions.targetAdr > 0 },
     { check: "spacing_adr", value: options.runtimeOptions.spacingAdr, expected: ">0", passed: options.runtimeOptions.spacingAdr > 0 },
@@ -3221,6 +4117,22 @@ function validationRows(options: {
     { check: "triangle_v1_enabled", value: triangleV1Enabled, expected: "true when activation_rule_ids includes a triangle_v1 rule", passed: true },
     { check: "triangle_v1_formula_id", value: triangleV1Enabled ? TRIANGLE_V1_FORMULA_ID : "", expected: "visible when a triangle_v1 rule is enabled", passed: true },
     { check: "triangle_v1_start_gate", value: triangleV1Enabled ? "valid_geometry_session_mid_extension_direction_permission" : "", expected: "geometry plus extension plus Candidate B/David permission", passed: true },
+    { check: "triangle_formulaic_enabled", value: triangleFormulaicEnabled, expected: "true when activation_rule_ids includes a formulaic directionless geometry rule", passed: true },
+    { check: "triangle_formulaic_v1_id", value: triangleFormulaicV1Enabled ? TRIANGLE_FORMULAIC_GEOMETRY_ID : "", expected: "visible when the Gate 91 v1 formulaic rule is enabled", passed: true },
+    { check: "triangle_formulaic_v1_q_equation", value: triangleFormulaicV1Enabled ? "Q=max(R/(2+2*(1-PE)),C)" : "", expected: "range/path-efficiency/cost-floor equation", passed: true },
+    { check: "triangle_formulaic_v1_signal_brick", value: triangleFormulaicV1Enabled ? `Q/${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}` : "", expected: "derived from Q, not fixed ADR-event brick", passed: true },
+    { check: "triangle_formulaic_direction_policy", value: triangleFormulaicEnabled ? "directionless_symmetric_long_short" : "", expected: "no Candidate B or David direction dependency", passed: true },
+    { check: "triangle_formulaic_target", value: triangleFormulaicEnabled ? options.runtimeOptions.targetMode : "", expected: "session_mid_reversion_or_session_center_band_reversion", passed: !triangleFormulaicEnabled || options.runtimeOptions.targetMode === "session_mid_reversion" || options.runtimeOptions.targetMode === "session_center_band_reversion" },
+    { check: "triangle_formulaic_v2_enabled", value: triangleFormulaicV2Enabled, expected: "true when activation_rule_ids includes triangle_formulaic_directionless_geometry_v2", passed: true },
+    { check: "triangle_formulaic_v2_id", value: triangleFormulaicV2Enabled ? TRIANGLE_FORMULAIC_V2_GEOMETRY_ID : "", expected: "visible when the Gate 91 v2 formulaic rule is enabled", passed: true },
+    { check: "triangle_formulaic_v2_q_equation", value: triangleFormulaicV2Enabled ? "Q=max(Q_cost,current_volatility_floor,R/(1+sqrt(B_cost/Q_cost)))" : "", expected: "cost-adjusted bending path equation", passed: true },
+    { check: "triangle_formulaic_v2_target", value: triangleFormulaicV2Enabled ? options.runtimeOptions.targetMode : "", expected: "session_center_band_reversion", passed: !triangleFormulaicV2Enabled || options.runtimeOptions.targetMode === "session_center_band_reversion" },
+    { check: "triangle_formulaic_v2_receipts", value: triangleFormulaicV2Enabled ? "q_cost,p_raw,p_cost,b_cost,balance,geometry_quality,target_band" : "", expected: "close-events and terminal-inventory rows carry v2 geometry receipts", passed: true },
+    { check: "triangle_formulaic_v2_1_enabled", value: triangleFormulaicV21Enabled, expected: "true when activation_rule_ids includes a v2.1 floorpin/surplus rule", passed: true },
+    { check: "triangle_formulaic_v2_1_floor_pin_ratio", value: triangleFormulaicV21Enabled ? TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO : "", expected: "Q_bend / Q_floor minimum when v2.1 floor-pin rejection is enabled", passed: true },
+    { check: "triangle_formulaic_v2_1_surplus_quality", value: triangleFormulaicV21Enabled ? `surplus_bend=max(0,B_cost-${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE}*Q_cost)` : "", expected: "surplus quality receipt when v2.1 surplus rules are enabled", passed: true },
+    { check: "triangle_formulaic_v2_2_enabled", value: triangleFormulaicV22Enabled, expected: "true when activation_rule_ids includes a v2.2 terminal-horizon/solvency rule", passed: true },
+    { check: "triangle_formulaic_v2_2_add_gate", value: triangleFormulaicV22Enabled ? "required_reversion_distance<=available_reversion_budget and/or basket_green_price inside target band" : "", expected: "v2.2 applies no-feed gates to adverse adds only", passed: true },
     { check: "david_ma_settings", value: davidSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "stochastic_settings", value: stochasticSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
     { check: "summary_only", value: options.runtimeOptions.summaryOnly, expected: "explicit", passed: true },
@@ -3269,7 +4181,39 @@ function metricRows() {
     { metric: "triangle_v1_candidate_b_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in Candidate B side; Katarakti is not required" },
     { metric: "triangle_v1_david_contra_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in David contra side; Katarakti is not required" },
     { metric: "triangle_v1_candidate_or_david_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension when Candidate B or David contra permits the side" },
-    { metric: "cycle_spacing_adr", definition: "actual ADR spacing assigned to the side cycle at start; triangle_v0 uses completed session range divided into target slots and clamped to the configured rails" },
+    { metric: "triangle_formulaic_directionless_geometry", definition: "Gate 91 scaffold rule that ignores direction evidence, computes Q from completed session range plus current path efficiency plus cost floor, starts symmetric long/short extensions away from session midpoint, and targets session-mid reversion" },
+    { metric: "triangle_formulaic_q_equation", definition: `Gate 91 equation: Q = max(R / (2 + 2 * (1 - PE)), C), where C=${TRIANGLE_FORMULAIC_COST_FLOOR_ADR} ADR and PE above ${TRIANGLE_PATH_EFFICIENCY_LOW_MAX} is rejected as too clean/trendy` },
+    { metric: "triangle_formulaic_directionless_geometry_v2", definition: "Gate 91 v2 scaffold rule that ignores direction evidence, computes Q from cost-adjusted bending path, targets a median-session center band, and starts symmetric long/short extensions away from that center" },
+    { metric: "triangle_formulaic_v2_q_equation", definition: `Gate 91 v2 equation: Q = max(Q_cost, current_volatility_floor, R / (1 + sqrt(B_cost / Q_cost))), where Q_cost is ${TRIANGLE_FORMULAIC_V2_COST_MULTIPLE}x the modeled round-trip cost in ADR units` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin", definition: `Gate 91 v2.1 scaffold rule that keeps v2 geometry but rejects sessions unless Q_bend / Q_floor is at least ${TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO}` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_surplus", definition: "Gate 91 v2.1 scaffold rule that keeps the floor-pin rejection and replaces raw geometry quality with surplus geometry quality after cost drag" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_surplus_convex", definition: "Gate 91 v2.1 scaffold rule that adds convex inventory-aware adverse add spacing to the surplus geometry rule" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_horizon", definition: "Gate 91 v2.2 scaffold rule that keeps v2.1 floor-pin starts and blocks adverse adds when required reversion distance exceeds available cost-adjusted movement budget before flatten" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_solvency", definition: "Gate 91 v2.2 scaffold rule that keeps v2.1 floor-pin starts and blocks adverse adds when the proposed basket cannot become green inside the center target band" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency", definition: "Gate 91 v2.2 scaffold rule that applies both terminal-horizon and basket-solvency no-feed gates to adverse adds" },
+    { metric: "terminal_horizon_blocked_adds", definition: "count of proposed adverse adds blocked because required reversion distance was greater than available cost-adjusted movement budget before daily flatten" },
+    { metric: "basket_solvency_blocked_adds", definition: "count of proposed adverse adds blocked because the basket green-close price would not fit inside the center target band after the proposed add" },
+    { metric: "avg_required_reversion_adr", definition: "average ADR move required from the proposed add price for the basket to close green inside the target band" },
+    { metric: "avg_available_reversion_adr", definition: "average remaining cost-adjusted bending-path movement budget before session flatten" },
+    { metric: "avg_reversion_feasibility_ratio", definition: "average required_reversion_distance_adr / available_reversion_budget_adr for v2.2 adverse-add feasibility checks" },
+    { metric: "reversion_target_band_adr", definition: `per-cycle center-band target radius in ADR units; v2 sets it to max(Q/${TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR}, Q_cost/2) and closes only when the basket is price-green inside the band` },
+    { metric: "triangle_geometry_q_cost_adr", definition: "per-cycle v2 economic spacing floor in ADR units; commission-derived round-trip cost is used when USD conversion is available, otherwise the legacy fallback floor is receipted" },
+    { metric: "triangle_geometry_round_trip_cost_adr", definition: "per-cycle modeled round-trip cost in ADR units used by v2 geometry; spread and slippage are not included in this runner" },
+    { metric: "triangle_geometry_p_raw_adr", definition: "completed-session total absolute close-path movement in ADR units before cost filtering" },
+    { metric: "triangle_geometry_p_cost_adr", definition: "completed-session path movement after subtracting one-way cost from each close-path delta and flooring each delta at zero" },
+    { metric: "triangle_geometry_b_cost_adr", definition: "completed-session cost-adjusted bending path: max(P_cost - net session displacement, 0)" },
+    { metric: "triangle_geometry_q_bend_adr", definition: "bend-derived quantum before floor selection: R / (1 + sqrt(B_cost / Q_cost))" },
+    { metric: "triangle_geometry_q_floor_adr", definition: "minimum tradable quantum floor used by v2/v2.1: max(Q_cost, current_volatility_floor)" },
+    { metric: "triangle_geometry_floor_pin_ratio", definition: "Q_bend / Q_floor; v2.1 floor-pin rules reject sessions below the structural minimum ratio" },
+    { metric: "triangle_geometry_surplus_bend_adr", definition: `surplus bending movement after cost drag: max(0, B_cost - ${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE} * Q_cost)` },
+    { metric: "triangle_geometry_surplus_quality", definition: "v2.1 quality score: (surplus_bend / Q) * balance * min(1, Q_bend / Q_floor)" },
+    { metric: "triangle_geometry_balance", definition: "completed-session time balance around the median M1 close center; 1 is balanced, 0 is one-sided occupancy" },
+    { metric: "triangle_geometry_quality", definition: "v2 geometry score: (B_cost / Q) * balance; the first v2 scaffold requires this to be at least one" },
+    { metric: "triangle_geometry_current_volatility_adr", definition: "completed-session median absolute close-path delta in ADR units used as the v2 current-volatility floor" },
+    { metric: "triangle_geometry_add_spacing_mode", definition: "fixed_q for normal adverse-only grid adds, or convex_adverse for v2.1 inventory-aware spacing that widens with depth and pain/profit ratio" },
+    { metric: "cycle_signal_adr_brick", definition: `per-cycle derived signal event brick; Gate 91 v1 sets it to Q/${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}, and v2 sets it to max(Q/${TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR}, Q_cost/2) instead of using a fixed ADR-event brick` },
+    { metric: "reversion_target_price", definition: "per-cycle non-David reversion target price; Gate 91 v1 formulaic geometry uses the completed session midpoint, and v2 uses the completed-session median M1 close center" },
+    { metric: "cycle_spacing_adr", definition: "actual ADR spacing assigned to the side cycle at start; triangle_v0/v1 use the Gate 90D adaptive spacing receipt, Gate 91 v1 uses Q from range/path efficiency/cost floor, and Gate 91 v2 uses cost-adjusted bending-path Q" },
     { metric: "triangle_trigger_key", definition: "stable provenance key for the session box, side, sweep, and displacement trigger that started a triangle_v0 cycle" },
     { metric: "triangle_v0_formula_id", definition: "scaffold formula identifier for the Gate 90D bounded Triangle v0 replay path" },
     { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
@@ -3278,9 +4222,13 @@ function metricRows() {
     { metric: "close_event_win_pct", definition: "winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included" },
     { metric: "adr_normalized_return_pct", definition: "price-movement return normalized by each pair's ADR; one ADR is reported as one percent for cross-currency comparison; commission and swap remain costed in USD fields" },
     { metric: "close_event_total_realized_pnl_adr", definition: "sum of close-cycle realized price PnL in ADR units; same numeric value as adr_normalized_return_pct because one ADR is reported as one percent" },
+    { metric: "close_event_total_realized_market_pct", definition: "sum of close-cycle realized raw market-percent movement before ADR normalization; fill-weighted and still separate from costed USD account return" },
     { metric: "close_event_avg_realized_pnl_adr", definition: "average realized price PnL per closed side cycle in ADR units, before commission and swap" },
+    { metric: "close_event_avg_realized_market_pct", definition: "average realized raw market-percent movement per closed side cycle, before ADR normalization and before commission/swap" },
     { metric: "close_event_avg_mfe_adr", definition: "average Maximum Favorable Excursion per closed side cycle in ADR units, computed from observed cycle max_pnl_adr" },
     { metric: "close_event_avg_mae_adr_abs", definition: "average absolute Maximum Adverse Excursion per closed side cycle in ADR units, computed from observed negative cycle min_pnl_adr" },
+    { metric: "close_event_avg_mfe_market_pct", definition: "average raw market-percent Maximum Favorable Excursion per closed side cycle" },
+    { metric: "close_event_avg_mae_market_pct_abs", definition: "average absolute raw market-percent Maximum Adverse Excursion per closed side cycle" },
     { metric: "first_mfe_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named favorable quantum threshold; used for live-safe profit-first diagnostics" },
     { metric: "first_mae_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named adverse quantum threshold; used for live-safe pain-first diagnostics" },
     { metric: "max_pnl_timestamp_utc", definition: "timestamp when observed cycle MFE was first set to its maximum value in the replay path" },
@@ -3308,6 +4256,15 @@ function renderReport(options: {
 }) {
   const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
   const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
+  const triangleFormulaicEnabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicActivationRule);
+  const triangleFormulaicV1Enabled = options.runtimeOptions.activationRuleIds.includes("triangle_formulaic_directionless_geometry");
+  const triangleFormulaicV2Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV2ActivationRule);
+  const triangleFormulaicV21Enabled = options.runtimeOptions.activationRuleIds.some((ruleId) =>
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId));
+  const triangleFormulaicV22Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV22ActivationRule);
   const summaryTable = renderTable(options.summaryRows, [
     "variant_id",
     "activation_rule_id",
@@ -3352,9 +4309,13 @@ function renderReport(options: {
     "close_event_win_pct",
     "adr_normalized_return_pct",
     "close_event_total_realized_pnl_adr",
+    "close_event_total_realized_market_pct",
     "close_event_avg_realized_pnl_adr",
+    "close_event_avg_realized_market_pct",
     "close_event_avg_mfe_adr",
     "close_event_avg_mae_adr_abs",
+    "close_event_avg_mfe_market_pct",
+    "close_event_avg_mae_market_pct_abs",
     "close_event_mfe_1q_hit_pct",
     "close_event_mfe_2q_hit_pct",
     "close_event_mfe_3q_hit_pct",
@@ -3369,6 +4330,13 @@ function renderReport(options: {
     "activation_blocked_long",
     "activation_blocked_short",
     "activation_blocked_expansion",
+    "terminal_horizon_add_checks",
+    "terminal_horizon_blocked_adds",
+    "basket_solvency_add_checks",
+    "basket_solvency_blocked_adds",
+    "avg_required_reversion_adr",
+    "avg_available_reversion_adr",
+    "avg_reversion_feasibility_ratio",
     "activation_long_allow_pct",
     "activation_short_allow_pct",
     "summary_only",
@@ -3395,6 +4363,11 @@ ${triangleV0Enabled ? `- Triangle v0 formula id: \`${TRIANGLE_V0_FORMULA_ID}\`; 
 ${options.runtimeOptions.activationRuleIds.includes("triangle_v0_no_candidate_b") ? "- `triangle_v0_no_candidate_b` is enabled: Candidate B is removed from the Triangle direction formula and David-only side agreement is required." : ""}
 ${triangleV1Enabled ? `- Triangle v1 formula id: \`${TRIANGLE_V1_FORMULA_ID}\`; starts require valid harvestable session geometry, session-mid extension, and Candidate B / David direction permission. Strict Katarakti is not required for v1 starts.
 - Triangle v1 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v1 formula is disabled for this run."}
+${triangleFormulaicEnabled ? "- Gate 91 formulaic geometry is enabled: directionless first pass, no Candidate B or David side dependency." : "- Gate 91 formulaic geometry is disabled for this run."}
+${triangleFormulaicV1Enabled ? `- Gate 91 v1 formulaic geometry id: \`${TRIANGLE_FORMULAIC_GEOMETRY_ID}\`; Q equation \`Q = max(R / (2 + 2 * (1 - PE)), C)\`, cost floor \`${TRIANGLE_FORMULAIC_COST_FLOOR_ADR}\` ADR, PE reject threshold \`${TRIANGLE_PATH_EFFICIENCY_LOW_MAX}\`, signal event brick \`Q / ${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}\`, and exact session-mid reversion target receipts.` : ""}
+${triangleFormulaicV2Enabled ? `- Gate 91 v2 formulaic geometry id: \`${TRIANGLE_FORMULAIC_V2_GEOMETRY_ID}\`; Q equation \`Q = max(Q_cost, current_volatility_floor, R / (1 + sqrt(B_cost / Q_cost)))\`, center \`median M1 close\`, signal event brick \`max(Q / ${TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR}, Q_cost / 2)\`, target band \`max(Q / ${TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR}, Q_cost / 2)\`, and geometry quality floor \`${TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY}\`.` : ""}
+${triangleFormulaicV21Enabled ? `- Gate 91 v2.1 variants are enabled. Floor-pin rejection requires \`Q_bend / Q_floor >= ${TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO}\`. Surplus-quality variants require \`surplus_geometry_quality >= ${TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY}\`, where surplus bend subtracts \`${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE} * Q_cost\`. The convex variant widens adverse add spacing with depth and MAE/MFE state.` : ""}
+${triangleFormulaicV22Enabled ? "- Gate 91 v2.2 variants are enabled. Terminal-horizon and basket-solvency no-feed rules apply only to proposed adverse adds; starts remain v2.1 floor-pin starts." : ""}
 - Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
 - David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
 - Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.
@@ -3406,7 +4379,7 @@ ${triangleV1Enabled ? `- Triangle v1 formula id: \`${TRIANGLE_V1_FORMULA_ID}\`; 
 - Protection modes are diagnostic replay controls only. \`lock_1q_stop_adds\` blocks new adds after a cycle reaches \`1Q\` MFE; trail modes close after Q-denominated giveback; protected flatten closes green cycles, holds small-red cycles, and closes ugly-red cycles at \`-1Q\`; live-state guards use first MFE/MAE quantum timestamps observed while the cycle is open; EOD hold-red modes close green cycles at flatten and carry red cycles forward.
 - Bar path mode: \`${options.runtimeOptions.barPathMode}\`.
 - Continuous mode carries side-grid positions across warehouse week boundaries; session-window mode carries only until target reset, session flatten, or terminal liquidation.
-- Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA.
+- Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA; session_mid_reversion closes only profitable returns to the formulaic session midpoint; session_center_band_reversion closes only profitable returns into the formulaic center band.
 - In \`ny_daily_window\`, target closes are still allowed whenever a tick exists, but starts/adds are blocked outside the configured clean session and unresolved cycles are force-closed at the flatten boundary.
 - In \`ny_daily_window\`, any cycle still open at the selected test endpoint is closed as a session flatten at the last available mark; this prevents endpoint terminal inventory from masquerading as a live overnight hold.
 - Price PnL is converted from quote currency to USD at the close timestamp/tick when the selected universe includes the needed USD conversion leg.

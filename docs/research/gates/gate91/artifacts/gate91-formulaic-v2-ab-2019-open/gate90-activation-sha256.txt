@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T20:54:50.446Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json 99752B08ED6710F9573A175E778A79FB122B82C777594AC2B8EC970E990E3360 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/activation-summary.rows.json
+weekly_json A18D73E2F0A1641BF5E8C2B9650DEBEE731A4B4579A73628AC8992F40A6E096B docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/close-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/terminal-inventory.rows.json
+validation_json 92B1A78043C1FA7C527B593B86D07E61E7A5DF8D1D32A54E4B8289033C6608D7 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/validation.rows.json
+metric_definitions_json 890F5EA19F30E000FDF35E70E4352D3FDEB4B6CC59ED236595567FE555A8BBAA docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/metric-definitions.rows.json
+command_receipt CB951240F86F640470CCCB6EC804DBDA65B5FEBE2452CD715A934406F93DE6CE docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/command-receipt.json
+run_summary_json 63B469C1A58EC3DBC6A4EC241058ED4221D1A7954DD218AA3B91C77B8D05F2E7 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/gate90-run-summary.json
+report 33836E19006B936803FD5709E97FBE1DBDDBA3D07FEF11DB5CDE384842881853 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2019-open/GATE91_FORMULAIC_V2_AB_2019_OPEN.md

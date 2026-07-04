@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T23:39:55.666Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json 01C8BB1E2E8DA1501E986DBCB4E91B1C651B41D382DDCF0796091F8D1E3C8E19 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/activation-summary.rows.json
+weekly_json 9C7E0F79E1DAAF3035B7364B7F99B9FF673B7540480D0A93DE3752A2C8102CCD docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/close-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/terminal-inventory.rows.json
+validation_json BD68CECE582206856E8D0F0B9115650B2D9CF657E19466379ABB46FB72337A09 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/validation.rows.json
+metric_definitions_json 223D892311BC33781366F8AF7B82662D167284E0350585FEC949395034F03CFD docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/metric-definitions.rows.json
+command_receipt CFADF8F6B8B3DC64B489CB1480A9BDCFF452F9ED3B23E109DF6AE9B31EB59800 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/command-receipt.json
+run_summary_json 8B81C27C88461D3AC5365960E3A2795FE948AC3D0804249E32F7B457B4C4D4DE docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/gate90-run-summary.json
+report D2BA525C08F1C57D662F0C632374738CB5CFC8FE65616FEC2F58412506033D09 docs/research/gates/gate91/artifacts/gate91-formulaic-v22-ab-2026-open/GATE91_FORMULAIC_V22_AB_2026_OPEN.md

@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T19:47:59.261Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json C31412AB17D2B700D286960F2D1968E784042B8FE2F47D7179D671EDA90C0C7A docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/activation-summary.rows.json
+weekly_json 46A42C822CC606008BAFDE128558DBEEB50E08E5FB077A92D06F75CAC4A74781 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/close-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/terminal-inventory.rows.json
+validation_json 4F00742E638C7A76C8AC538563DD0F36A7463305188AA4FEE9174A535097A026 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/validation.rows.json
+metric_definitions_json 93BCF3C2438073E1D6C07C9ACE11841CB3A42E1639CF9C426A14BA92D5D4DB30 docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/metric-definitions.rows.json
+command_receipt C1B975E51243633E049089BB49514EC729E3F1577FB242B3FC896D2EC71FBA4E docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/command-receipt.json
+run_summary_json 4F2F6B79C647AB460273EFC7FC3618EE49D1B28F14D2A5BF0742A4A22E7FD4DB docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/gate90-run-summary.json
+report 5891372505D76BC3A5FBB3603CC1D60C092A23CD5276E9B804995C7D31A9F72E docs/research/gates/gate91/artifacts/gate91-formulaic-ab-2019-open/GATE91_FORMULAIC_AB_2019_OPEN.md

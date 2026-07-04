@@ -8,10 +8,66 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
-Current state: Gate 90D Triangle evidence is complete as research-only
-diagnostics. Gate 91 `formulaic-triangle-grid-geometry` is the intended next
-gate and should be opened in a fresh chat. Gate 91 is about deriving a durable
-grid-geometry equation, not optimizing clamp ladders.
+Current state: Gate 91 `formulaic-triangle-grid-geometry` v2.2 diagnostic is
+complete as research-only evidence. The runner now supports v1 formulaic
+directionless geometry, v2 cost-bend center-band geometry, v2.1
+floor-pin/surplus/convex variants, and v2.2 terminal-horizon / basket-solvency
+add gates with Q-bend, Q-floor, floor-pin ratio, surplus-quality, add-spacing
+mode, required reversion, available reversion, and add-feasibility receipts.
+Verdict:
+`FAIL_V2_2_TERMINAL_HORIZON_SOLVENCY_NOT_BETTER_THAN_V2_1_NO_PROMOTION`.
+
+Latest Gate 91 report:
+`docs/research/gates/gate91/GATE91_FORMULAIC_V22_TERMINAL_HORIZON_SOLVENCY_DIAGNOSTIC_2026-07-03.md`.
+
+Supporting Gate 91 reports:
+
+- First directionless scaffold:
+  `docs/research/gates/gate91/GATE91_FORMULAIC_DIRECTIONLESS_GEOMETRY_AB_DIAGNOSTIC_2026-07-03.md`.
+- Outside-review synthesis:
+  `docs/research/gates/gate91/GATE91_OUTSIDE_REVIEW_GRID_GEOMETRY_SYNTHESIS_2026-07-03.md`.
+- V2 cost-bend center-band diagnostic:
+  `docs/research/gates/gate91/GATE91_FORMULAIC_V2_COST_BEND_CENTER_BAND_DIAGNOSTIC_2026-07-03.md`.
+- V2.1 outside-review synthesis:
+  `docs/research/gates/gate91/GATE91_V2_1_OUTSIDE_REVIEW_SYNTHESIS_2026-07-03.md`.
+- V2.1 floor-pin/surplus/convex diagnostic:
+  `docs/research/gates/gate91/GATE91_FORMULAIC_V21_FLOORPIN_SURPLUS_CONVEX_DIAGNOSTIC_2026-07-03.md`.
+- V2.2 outside-review synthesis:
+  `docs/research/gates/gate91/GATE91_V2_2_OUTSIDE_REVIEW_SYNTHESIS_2026-07-03.md`.
+- V2.3 outside-review synthesis:
+  `docs/research/gates/gate91/GATE91_V2_3_OUTSIDE_REVIEW_SYNTHESIS_2026-07-03.md`.
+- V2.3 next-chat fourth-reviewer prompt:
+  `docs/research/gates/gate91/NEXT_CHAT_GATE91_V23_REVIEW_PROMPT_2026-07-03.md`.
+
+Gate 91 v2.1 read: floor-pin/surplus is the current best geometry filter, but
+it is not a finished standalone algo. In 2026, old v2 baseline returned
+`+900.59` ADR units, `+10.89%` fixed-lot account, PF `1.026`, max open `377`,
+max depth `127`, max DD `-39.82%`. V2.1 surplus returned `+497.26` ADR units,
+`+10.77%` account, PF `1.070`, max open `187`, max depth `83`, max DD
+`-10.08%`, and Calmar `2.252`. That is a real shape improvement, but PF,
+Sharpe, Sortino, MFE/MAE, and expectancy are still below fund-manager targets.
+In 2019, floor-pin/surplus cut exposure but gave up too much return/DD versus
+old v2. The convex add-spacing row cut 2026 max open to `75` and max depth to
+`9`, but account return fell to `+2.64%` and PF stayed only `1.030`; treat it
+as too blunt in this first form.
+
+Gate 91 v2.2 read: terminal-horizon and basket-solvency add gates did not beat
+v2.1 floor-pin. Basket solvency was non-binding in both bounded windows
+(`0` solvency blocks). Terminal horizon blocked about `84%` of add-feasibility
+checks and cut max depth, but lowered performance: 2019 account return fell
+from `23.55%` to `19.25%`, PF from `1.098` to `1.083`, and Return/DD from
+`0.951` to `0.781`; 2026 account return fell from `10.76%` to `5.27%`, PF
+from `1.070` to `1.034`, Calmar from `2.245` to `0.805`, and Return/DD from
+`1.065` to `0.392`. Treat the exact terminal-horizon veto as rejected, not as
+the next base.
+
+Next Gate 91 work should keep Direction and Katarakti out. The next Codex chat
+should act as a fourth reviewer before implementation and decide the smallest
+bounded v2.3 pure-grid add-feed throttle test. Candidate rows: v2.1 floor-pin
+baseline, reversion-evidence add throttle, late-session reversion-evidence add
+throttle, and progress-gate last-3 center distance. Do not add Candidate B,
+David direction, Katarakti, red-news, MT5/live/app work, broad matrix work, or
+year-by-year expansion yet.
 
 Gate 89 outputs:
 
