@@ -105,6 +105,7 @@
     "engine:gate92:limnihedge-legacy-parity": "tsx engine/scripts/verification/build-gate92-limnihedge-legacy-parity.ts",
     "engine:gate93:limnihedge-triangle-overlay": "tsx engine/scripts/verification/build-gate93-limnihedge-triangle-overlay-diagnostic.ts",
     "engine:gate94:limnihedge-type3-movement-candles": "tsx engine/scripts/verification/build-gate94-limnihedge-type3-movement-candle-diagnostic.ts",
+    "engine:gate95:limnihedge-type3-28pair-repo-discovery": "tsx engine/scripts/verification/build-gate95-limnihedge-type3-28pair-repo-discovery.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
