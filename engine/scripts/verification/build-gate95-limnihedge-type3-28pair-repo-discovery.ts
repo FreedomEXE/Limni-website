@@ -999,7 +999,9 @@ function groupBy<T>(rows: T[], getKey: (row: T) => string) {
 
 function appendRows<T>(map: Map<string, T[]>, key: string, rows: T[]) {
   const current = map.get(key);
-  if (current) current.push(...rows);
+  if (current) {
+    for (const row of rows) current.push(row);
+  }
   else map.set(key, [...rows]);
 }
 
