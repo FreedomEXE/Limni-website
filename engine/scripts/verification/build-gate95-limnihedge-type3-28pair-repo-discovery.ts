@@ -823,11 +823,9 @@ function replayVariant(params: {
   directionMode: DirectionMode;
   candleStreamId: CandleStreamId;
   candles: ReplayCandle[];
-  admissions: AdmissionRow[];
+  acceptedEntries: EntryCandidateRow[];
 }) {
-  const accepted = params.admissions
-    .filter((row) => row.variant_id === params.variantId && row.variant_acceptance_status === "accepted")
-    .sort((left, right) => left.timestamp_utc.localeCompare(right.timestamp_utc));
+  const accepted = [...params.acceptedEntries].sort((left, right) => left.timestamp_utc.localeCompare(right.timestamp_utc));
   const entriesByTime = new Map<string, EntryCandidateRow[]>();
   for (const entry of accepted) entriesByTime.set(entry.timestamp_utc, [...(entriesByTime.get(entry.timestamp_utc) ?? []), entry]);
   const positions: OpenPosition[] = [];
@@ -984,6 +982,18 @@ function replayVariant(params: {
   }
 
   return { exits, openInventory, stats: withHash(stats as unknown as Record<string, unknown>) as unknown as VariantRuntimeStats & { content_hash: string } };
+}
+
+function admissionIndex(admissions: AdmissionRow[]) {
+  const index = new Map<string, EntryCandidateRow[]>();
+  for (const row of admissions) {
+    if (row.variant_acceptance_status !== "accepted") continue;
+    const key = `${row.variant_id}|${row.symbol}`;
+    const current = index.get(key);
+    if (current) current.push(row);
+    else index.set(key, [row]);
+  }
+  return index;
 }
 
 function groupBy<T>(rows: T[], getKey: (row: T) => string) {
@@ -1372,6 +1382,7 @@ async function main() {
   }
 
   const admissions = buildAdmissionRows(allEntries);
+  const acceptedByVariantSymbol = admissionIndex(admissions);
   const variantConfigs = CANDLE_STREAMS.flatMap((stream) => DIRECTION_MODES.map((mode) => withHash({
     variant_id: variantId(stream.id, mode),
     candle_stream_id: stream.id,
@@ -1396,7 +1407,7 @@ async function main() {
           directionMode: mode,
           candleStreamId: stream.id,
           candles: symbolCandles,
-          admissions,
+          acceptedEntries: acceptedByVariantSymbol.get(`${id}|${symbolCandles[0]?.symbol ?? ""}`) ?? [],
         });
         exits.push(...replay.exits);
         inventory.push(...replay.openInventory);
