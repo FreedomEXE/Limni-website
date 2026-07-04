@@ -1,0 +1,14 @@
+gate_id Gate 95: limnihedge-type3-28pair-repo-discovery
+command npm run engine:gate95:limnihedge-type3-28pair-repo-discovery
+generated_at 2026-07-04T22:36:48.541Z
+git_commit 7cc2aedf530bf841d15d490c16cce589b8a72428
+config 989D86646E171C878383C81A2C076844D0057CDE62CA45DF2757DBD588FA7836 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/gate95-config.json
+report D1E23D551EEDB0503F65E873679D11950577DC4C49E0D401FFFF6CE0DCD6C67E docs/research/gates/gate95/GATE95_LIMNIHEDGE_TYPE3_ALL28_OOS_2025_2026_2026-07-04.md
+entry_candidates 68E91A2728B1C7273AD5FD92519C5F81A8806718528397158845DC5F1962D0DF docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-candidates.rows.json
+admissions 78C4C0F5F79396099A6FC84B55376A9A49A0B0011B80C677F77EFB4448C21B98 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-admissions.rows.json
+exits 4EE1457BC309F7B4857B29F3388CAB7A2538CBB1C2D2FDF72B036B98226D908F docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/trade-exits.rows.json
+open_inventory A86D374CC00116798C08D3C65514F32AE8034222DF888E64B0092B0B2F0A5743 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/open-inventory.rows.json
+terminal_liquidations 17E39A671FBB2B5D5F37A486253BEFB95902C1FB3395C7B11FFBB39CFDD0EFAF docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/terminal-liquidations.rows.json
+validation 6A6DB1C284A06189D7143B3745C8FDD5269515C15CD3013CEF81E68FB7B1E3C6 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/validation.rows.json
+run_summary 18DAA483ADA0E8CFB26F0053CB0BF91E71EF35C3C7A1A3EE15D45B6DB16407D4 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/gate95-run-summary.json
+command_receipt CE1F7AAAC2FAC04C7D8AB561B3558FAD7205D2EFF822534A77CC882A20785D44 docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/command-receipt.json

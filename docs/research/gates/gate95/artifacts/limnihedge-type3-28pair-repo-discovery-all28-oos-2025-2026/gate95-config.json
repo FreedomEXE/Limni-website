@@ -1,0 +1,141 @@
+{
+  "gate_id": "Gate 95: limnihedge-type3-28pair-repo-discovery",
+  "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+  "gate74b_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "gate74b_warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+  "candidate_b_source_id": "candidate_b_macro_anchor_with_cot_warning",
+  "universe_28_pairs": [
+    "AUDCAD",
+    "AUDCHF",
+    "AUDJPY",
+    "AUDNZD",
+    "AUDUSD",
+    "CADCHF",
+    "CADJPY",
+    "CHFJPY",
+    "EURAUD",
+    "EURCAD",
+    "EURCHF",
+    "EURGBP",
+    "EURJPY",
+    "EURNZD",
+    "EURUSD",
+    "GBPAUD",
+    "GBPCAD",
+    "GBPCHF",
+    "GBPJPY",
+    "GBPNZD",
+    "GBPUSD",
+    "NZDCAD",
+    "NZDCHF",
+    "NZDJPY",
+    "NZDUSD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "selected_pairs": [
+    "AUDCAD",
+    "AUDCHF",
+    "AUDJPY",
+    "AUDNZD",
+    "AUDUSD",
+    "CADCHF",
+    "CADJPY",
+    "CHFJPY",
+    "EURAUD",
+    "EURCAD",
+    "EURCHF",
+    "EURGBP",
+    "EURJPY",
+    "EURNZD",
+    "EURUSD",
+    "GBPAUD",
+    "GBPCAD",
+    "GBPCHF",
+    "GBPJPY",
+    "GBPNZD",
+    "GBPUSD",
+    "NZDCAD",
+    "NZDCHF",
+    "NZDJPY",
+    "NZDUSD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "run_mode": "smoke_or_bounded_subset",
+  "date_from": "2025-01-01T00:00:00.000Z",
+  "date_to": "2026-05-31T23:59:59.999Z",
+  "split": {
+    "train": "2019-04-14..2023-12-31",
+    "validation": "2024-01-01..2024-12-31",
+    "final_oos": "2025-01-01..2026-05-31"
+  },
+  "type3_formula_version": "legacy_liminihedge_v1_type3_four_closed_david_bars_plus_counter_displacement",
+  "david_profile": {
+    "ma_period": 100,
+    "rsi_period": 100,
+    "overbought": 70,
+    "oversold": 30
+  },
+  "trade_lots": 0.01,
+  "type3_lot_multiplier": 2,
+  "lifecycle": {
+    "trail_start_pips": 20,
+    "trail_step_pips": 1,
+    "trail_stop_pips": 10,
+    "tp_pips": 0,
+    "sl_pips": 0
+  },
+  "candle_streams": [
+    {
+      "id": "time_h1",
+      "kind": "time",
+      "brickAdr": null
+    },
+    {
+      "id": "adr_event_0_025",
+      "kind": "movement",
+      "brickAdr": 0.025
+    },
+    {
+      "id": "adr_event_0_05",
+      "kind": "movement",
+      "brickAdr": 0.05
+    },
+    {
+      "id": "adr_event_0_075",
+      "kind": "movement",
+      "brickAdr": 0.075
+    },
+    {
+      "id": "adr_event_0_10",
+      "kind": "movement",
+      "brickAdr": 0.1
+    }
+  ],
+  "direction_modes": [
+    "type3_both_no_direction",
+    "type3_long_only",
+    "type3_short_only",
+    "candidate_b_agreement_strict",
+    "candidate_b_fade_strict"
+  ],
+  "cost_model": {
+    "commission_usd_per_lot": -7,
+    "swap": "unavailable_in_gate95_canonical_first_pass"
+  },
+  "geometry_shadow_only": [
+    "path_efficiency",
+    "range_adr",
+    "floorpin",
+    "surplus",
+    "formulaic_q",
+    "lrmg_radius"
+  ],
+  "katarakti_shadow_only": true,
+  "kill_criteria_reference": "outside_review_2026_07_04",
+  "config_hash": "36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118",
+  "content_hash": "36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118"
+}

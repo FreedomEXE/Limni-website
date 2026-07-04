@@ -1,0 +1,16 @@
+[
+{"check":"outside_review_converted_to_bounded_gate95_contract","value":"25 variants; geometry/Katarakti shadow only; no MT5 mutation","expected":"bounded reviewer plan","passed":true,"content_hash":"558787BFE84AAECC6CD18723FE7D9E46F43649F43884FCA9FD2A6ED085742486"},
+{"check":"gate92_parity_guard_passed","value":"PASS_GATE92_LIMNIHEDGE_LEGACY_PARITY_INTAKE_READY_FOR_FULL_REPLAY","expected":"PASS_GATE92_LIMNIHEDGE_LEGACY_PARITY_INTAKE_READY_FOR_FULL_REPLAY","passed":true,"content_hash":"FE305AE774684912047DDA195402D0202F4E561009945E934F57F7640445D139"},
+{"check":"gate92_validation_failures","value":0,"expected":0,"passed":true,"content_hash":"C4F69E1E57AC3520323B1763A24590F79D56AA2A3ED74B8148FE2A63E75EF1F7"},
+{"check":"gate74b_price_bundle","value":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","expected":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","passed":true,"content_hash":"87356AFEF00C69DB97603E0B526FFF548B222CD964C58CA87394FB535A3C52FF"},
+{"check":"gate74b_manifest_status","value":"complete","expected":"complete","passed":true,"content_hash":"BEB490C5C70EBD91D4DBE9222B2759165D27FD72F84616F38C9ADDD9F1BFAB1C"},
+{"check":"run_mode","value":"smoke_or_bounded_subset","expected":"full_gate95_matrix or smoke_or_bounded_subset","passed":true,"content_hash":"B6BC8B4981FEF6155CCCDCDD2F0C9A022FFC2F73FD2AC62D6CAFFB18989F78E0"},
+{"check":"selected_pair_count","value":28,"expected":"28 for full run; lower only for explicit smoke","passed":true,"content_hash":"CB7A9FB1DBF2B932313FB0C4DB44CE4EC6A9B8B94F40D9A6141F4B7BBB2F5263"},
+{"check":"variant_count","value":25,"expected":25,"passed":true,"content_hash":"9550F04FED24B0DC527AB7BF2DE05B08E3E4EC760485677235C9FED473BAC294"},
+{"check":"entry_candidates_materialized","value":131046,"expected":">0","passed":true,"content_hash":"F72699006BBDA6C67C5EBB8EFEA0D3483D6EA276E3D55454CB40D92A672C542B"},
+{"check":"admission_rows_materialized","value":655230,"expected":"entries x 5 direction modes per stream","passed":true,"content_hash":"7719E06098FCAD32A9761D27CBB82659223C10D3A27CC62BA674B672E335CB72"},
+{"check":"trade_exit_rows_materialized","value":615015,"expected":">0 for non-empty candidate set","passed":true,"content_hash":"8B05DD4B1F6DD6DEDBE83DEBFA6DDC57C19874D2D2F130B5696577788D81AAC8"},
+{"check":"terminal_open_inventory_receipted","value":28917,"expected":">=0 explicit ledger","passed":true,"content_hash":"CE231EB746D74D4EB3BCEA57B82C30137E2FF90D2D59B64FE75E65E6E0A01A67"},
+{"check":"mt5_ea_mutated_by_gate95_script","value":"repo-side research only","expected":"reference-only EA","passed":true,"content_hash":"1DDE7B7CC7B2799E93A62D994A27F053C1BB845C290FD92F6DF333EF90293FAE"},
+{"check":"gate95_config_hash","value":"36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118","expected":"non-empty","passed":true,"content_hash":"F1653901967AAE31EE06D70BC24BA3D34E860C51A0D42DEFB999F7F136441567"}
+]

@@ -1,0 +1,15 @@
+{
+  "gate_id": "Gate 95: limnihedge-type3-28pair-repo-discovery",
+  "verdict": "PASS_GATE95_SMOKE_OR_BOUNDED_SUBSET_REPLAY_RESEARCH_ONLY_NO_PROMOTION",
+  "config_hash": "36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118",
+  "run_mode": "smoke_or_bounded_subset",
+  "selected_pair_count": 28,
+  "entry_candidate_rows": 131046,
+  "admission_rows": 655230,
+  "trade_exit_rows": 615015,
+  "open_inventory_rows": 28917,
+  "terminal_liquidation_rows": 28917,
+  "variant_rows": 25,
+  "validation_failures": 0,
+  "content_hash": "57B3F7B483E9F2D3D202846C50C0E087FFA4BCF20A91DA1C904BCE6CD499DBD8"
+}

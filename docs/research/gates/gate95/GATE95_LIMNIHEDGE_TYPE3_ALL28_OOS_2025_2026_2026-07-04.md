@@ -90,6 +90,10 @@ Frozen: no MT5 EA mutation, no live MT5 trading, no broad MT5 optimization, no D
 
 This is research evidence only. The lifecycle replay uses reconstructed canonical candles and modeled commission, with swap unavailable instead of borrowed from saved MT5 reports. Any promising row still needs narrower Gate 96 lifecycle, cost, and inventory proof before MT5 or live work.
 
+## Artifact Durability
+
+The committed report is paired with committed summary/config/validation/receipt artifacts for review. The full row ledgers for entry candidates, admissions, exits, open inventory, and terminal liquidations are intentionally local-only because they are very large; their SHA-256 hashes are bound in `gate95-sha256.txt`.
+
 ## Artifacts
 
 - config: `docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/gate95-config.json`
