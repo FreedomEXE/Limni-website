@@ -1,0 +1,3 @@
+0	2026.07.03 23:20:19.051	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Scripts\LimniLRMGCreateChart.mq5 - 0 errors, 0 warnings, 1743 ms elapsed, cpu='X64 Regular'
+0	2026.07.03 23:59:33.445	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Scripts\LimniLRMGCreateChart.mq5 - 0 errors, 0 warnings, 1607 ms elapsed, cpu='X64 Regular'
+0	2026.07.04 00:13:13.695	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Scripts\LimniLRMGCreateChart.mq5 - 0 errors, 0 warnings, 1438 ms elapsed, cpu='X64 Regular'

@@ -1,0 +1,15 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-04T00:41:15.902Z
+git_commit ace6f7837d8ca3f5a7f52ddfd926e71f983e98d8
+summary_json D8269D4D752B8A8C187FAD8F65DBEA2638D978B3F26DAEDBC042CAA1D0A1955B docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/activation-summary.rows.json
+weekly_json 8EE555C8FF20F667FCAC9BEF1670C2A84B04D6D5A43A01278EC682F5D7EB174F docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/close-events.rows.json
+add_throttle_events_json 451743A7073A31C185F7A341684261A4E6D43927FBFCDC85613DFA7A1BA095C4 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/add-throttle-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/terminal-inventory.rows.json
+validation_json 87049C46F7259B104C3BE741D7D1AB1390668D4B7CD1CE41EE972D30F2A47A92 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/validation.rows.json
+metric_definitions_json DC7707D7423CF304E2026AF3D7CC1A2E41CCDA4A1186AE4B422E407B70ECA0A3 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/metric-definitions.rows.json
+command_receipt C1344295B96C9B33F3756A0559488F63E6294C0C09983E683F481EB553D2DC72 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/command-receipt.json
+run_summary_json 8C1767AE438EBA9A3D66023E35AD964FAC6ABD48534CD54918053B1C9ABF82C7 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/gate90-run-summary.json
+report E33ED5A97104DE2A992500793D4158C53CE9E2B3E42444B31824F670C68D5809 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-ab-2026-open/GATE91_FORMULAIC_V23_AB_2026_OPEN.md

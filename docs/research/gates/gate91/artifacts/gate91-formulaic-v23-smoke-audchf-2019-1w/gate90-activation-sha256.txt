@@ -1,0 +1,15 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-04T00:22:35.555Z
+git_commit ace6f7837d8ca3f5a7f52ddfd926e71f983e98d8
+summary_json 06EB9FAD397D7F104A16080B66214811926A7B2A19E72963D75CEEA46E2B69A2 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json 45FE90D4B87465F5937CADD4C4530FD11BE22A1EEE3939F714FC3A49DDCDEA65 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 667B0648236F4882831D7D44CD0631928EAC46B915C72F4512B7CEBF2119E3D3 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/close-events.rows.json
+add_throttle_events_json 10D8CDFBB8E81D742A3413E79E48BC3AD2FDF85E5DD19C4116B977C15A0317A1 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/add-throttle-events.rows.json
+close_event_breakdowns_json 56A4AAACCF7ACC9B87B53F11B0734C0B2555BE2F3DE87ADC39BC70E9EF758875 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json 5D32561D8D16F30C2D34BF3D2374111A75D0FA190E8FD9133EC1958DFBCA4535 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json DC7707D7423CF304E2026AF3D7CC1A2E41CCDA4A1186AE4B422E407B70ECA0A3 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt 9ACC268E04CAE157AC679C1BEB330AA4A2394BA710C9AB48DA2C8CDF56CF48D1 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 568ED763ABEF017DCBEAC409F4F80363B39BDC3CBADD254E47648F479646B913 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/gate90-run-summary.json
+report 2EE7554BA5DD9C7B8B4DCFE7B3E0CCDAD89688EA88053E34A4A6A223186F8573 docs/research/gates/gate91/artifacts/gate91-formulaic-v23-smoke-audchf-2019-1w/GATE91_FORMULAIC_V23_SMOKE_AUDCHF_2019_1W.md

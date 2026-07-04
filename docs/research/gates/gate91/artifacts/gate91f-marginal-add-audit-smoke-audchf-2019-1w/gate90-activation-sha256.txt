@@ -1,0 +1,16 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-04T01:16:40.717Z
+git_commit ace6f7837d8ca3f5a7f52ddfd926e71f983e98d8
+summary_json 221BCE65336E3A5264448BE2ABE7D492D0DD33F8D0F210F32CC7B03F69B37071 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json 465AF2EED5C42583279B6BC1F0A724CB6C77B414BFF2BAA29EF11441C592DE74 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 7A419BABCC304C48734F5519BAB8D7DC1127EF47731B72A7B94893270BD1B42E docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/close-events.rows.json
+add_throttle_events_json C00BEC79C445965D6E1E1024A65EAA4D5303782CC5A1A0F550F85FF4C90B3935 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/add-throttle-events.rows.json
+marginal_add_audit_json 11A7B8E0842E49852638C004ACC453B1F418DD5E41BD674B72A256D7085120B5 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/marginal-add-audit.rows.json
+close_event_breakdowns_json C810263DE1A5DE50C1611A6D1BB8633BDAAA0FAF9BE461F0C53699F51FA3F583 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json 8733B89D611CC8848FFB756AA44AD694EFC552003EB604E60ABDE9EBB1C28178 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 798B6FCAB5957BF0BA07E10585D4D736AC77B1F1AD466F3EE6CEFA3B5A296F08 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt DDA1A70C0F4A3439E56147CFE9BC4B5D5F9FB8FB7D516A811C88DBA443EF8FD6 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json C8BB7F98BC29BCF96CE9DBD9CC5BBBED80B5D64E82E64C7EAF4DF7A3BEE3B669 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/gate90-run-summary.json
+report EF82CC1BE42FAE636B1058C34ECABA7FB87DB168025EB4A1C9AD4CF7B10DB6C1 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-smoke-audchf-2019-1w/GATE91F_MARGINAL_ADD_AUDIT_SMOKE_AUDCHF_2019_1W.md

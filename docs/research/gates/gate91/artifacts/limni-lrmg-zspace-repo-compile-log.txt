@@ -1,0 +1,3 @@
+0	2026.07.03 23:40:21.268	Compile	C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 1040 msec elapsed, cpu='X64 Regular'
+0	2026.07.03 23:45:08.781	Compile	C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 977 msec elapsed, cpu='X64 Regular'
+0	2026.07.03 23:52:23.002	Compile	C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 984 msec elapsed, cpu='X64 Regular'

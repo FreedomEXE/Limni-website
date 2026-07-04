@@ -8,17 +8,33 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
-Current state: Gate 91 `formulaic-triangle-grid-geometry` v2.2 diagnostic is
-complete as research-only evidence. The runner now supports v1 formulaic
-directionless geometry, v2 cost-bend center-band geometry, v2.1
-floor-pin/surplus/convex variants, and v2.2 terminal-horizon / basket-solvency
-add gates with Q-bend, Q-floor, floor-pin ratio, surplus-quality, add-spacing
-mode, required reversion, available reversion, and add-feasibility receipts.
-Verdict:
-`FAIL_V2_2_TERMINAL_HORIZON_SOLVENCY_NOT_BETTER_THAN_V2_1_NO_PROMOTION`.
+Current state: Gate 91 `formulaic-triangle-grid-geometry` Gate 91F marginal
+add value audit is complete as research-only evidence. The runner now
+supports v1 formulaic directionless geometry, v2 cost-bend center-band geometry,
+v2.1 floor-pin/surplus/convex variants, v2.2 terminal-horizon / basket-solvency
+add gates, and v2.3 local add-throttle rows with unique
+`add-throttle-events.rows.*` receipts. It also emits Gate 91F
+`marginal-add-audit.rows.*` direct-fill contribution receipts for the v2.1
+floor-pin baseline. Verdict:
+`PASS_GATE91F_MARGINAL_ADD_VALUE_AUDIT_COMPLETE_NO_PROMOTION`.
+
+LRMG visual recovery checkpoint: the later MT5 visual-study work is not a
+keeper yet. Freedom rejected the current generated chart because bars are not
+equal-size bricks and the moving average / `0` line no longer behaves like the
+earlier equal-brick offline chart. Do not continue from the bottom-pane
+oscillator or the latest transformed-candle generated chart as if they are
+acceptable. Next chat should recover from
+`docs/research/gates/gate91/NEXT_CHAT_LRMG_VISUAL_RECOVERY_PROMPT_2026-07-04.md`
+and restore a full generated/offline LRMG chart with canonical M1 source,
+equal visual bricks/blocks, and a moving closed-brick median line. Direction,
+Katarakti, David, cost guard, live MT5 trading, and backtest matrix expansion
+remain frozen.
 
 Latest Gate 91 report:
-`docs/research/gates/gate91/GATE91_FORMULAIC_V22_TERMINAL_HORIZON_SOLVENCY_DIAGNOSTIC_2026-07-03.md`.
+`docs/research/gates/gate91/GATE91F_MARGINAL_ADD_VALUE_AUDIT_2026-07-03.md`.
+
+Prior Gate 91 v2.3 report:
+`docs/research/gates/gate91/GATE91_FORMULAIC_V23_ADD_FEED_THROTTLE_DIAGNOSTIC_2026-07-03.md`.
 
 Supporting Gate 91 reports:
 
@@ -61,13 +77,35 @@ from `1.070` to `1.034`, Calmar from `2.245` to `0.805`, and Return/DD from
 `1.065` to `0.392`. Treat the exact terminal-horizon veto as rejected, not as
 the next base.
 
-Next Gate 91 work should keep Direction and Katarakti out. The next Codex chat
-should act as a fourth reviewer before implementation and decide the smallest
-bounded v2.3 pure-grid add-feed throttle test. Candidate rows: v2.1 floor-pin
-baseline, reversion-evidence add throttle, late-session reversion-evidence add
-throttle, and progress-gate last-3 center distance. Do not add Candidate B,
-David direction, Katarakti, red-news, MT5/live/app work, broad matrix work, or
-year-by-year expansion yet.
+Gate 91 v2.3 read: the first adverse add bypasses the throttle. Three rows were
+tested against the v2.1 floor-pin base: all-session local reversion evidence,
+late-session local reversion evidence, and late-session last-3 center progress.
+Smoke, 2019, and 2026 validations each had `59` rows and `0` failed. The
+late-session reversion row improved 2019 (`+26.59%` account, PF `1.116`, max
+depth `32`, Return/DD `1.380`) versus v2.1 floor-pin (`+23.55%`, PF `1.098`,
+max depth `46`, Return/DD `0.951`), but failed to travel to 2026 (`+6.82%`,
+PF `1.044`, Return/DD `0.586`) versus v2.1 floor-pin (`+10.76%`, PF `1.070`,
+Return/DD `1.065`). All-session reversion and progress-last3 were too blunt.
+Current pure-grid keeper remains `triangle_formulaic_directionless_geometry_v2_floorpin`.
+
+Gate 91F read: marginal direct-fill audit over the v2.1 floor-pin baseline
+explains the v2.3 failure. Continued adds were not globally bad by direct value:
+2019 continued adds averaged `+0.140727` USD / `+0.033337` ADR, and 2026
+continued adds averaged `+0.096745` USD / `+0.032316` ADR. The decisive split
+was late reversion fail: in 2019 it was nearly flat (`+0.014055` USD,
+`-0.003701` ADR), but in 2026 it was strongly positive (`+0.475899` USD,
+`+0.083850` ADR). This explains why the late throttle improved 2019 but damaged
+2026. Candidate fills rarely changed target eligibility at the actual close
+mark (`0.78%` in 2019, `1.17%` in 2026), so the remaining problem is unresolved
+flatten-cycle exposure, not a stable local no-bend add population.
+
+Next Gate 91 decision: do not promote v2.3, do not implement the proposed
+tiered late-session reversion throttle as the next keeper, and do not keep
+tuning this add-throttle family by default. The bounded evidence says pure
+directionless add throttling is near its standalone ceiling under the
+daily-flatten surface. Direction and Katarakti are still frozen until Freedom
+explicitly opens them; no Candidate B, David direction, red-news, MT5/live/app
+work, broad matrix work, or year-by-year expansion is open.
 
 Gate 89 outputs:
 
@@ -680,31 +718,15 @@ Gate 90 read:
 
 Next action:
 
-- Open Gate 91 in a fresh chat and work only on formulaic Triangle grid
-  geometry. First task: inspect current Gate 90 runner / Triangle helpers, add a
-  new formulaic directionless geometry scaffold behind a new activation id, run
-  one-pair smoke, then bounded 2019 and 2026 A/B diagnostics. Preserve daily
-  flatten and `-1Q` before `+0.5Q` pain-stop risk layer.
+- Superseded by the Hot Recovery Override above. Gate 91 formulaic geometry
+  v2/v2.1/v2.2/v2.3 diagnostics have now run. Current recommendation is no
+  v2.3 promotion and no further pure-grid throttle rows without a new review.
+- If Freedom explicitly opens the next design step, keep it bounded and decide
+  whether to leave pure directionless geometry or reopen Direction/Katarakti as
+  separate evidence layers. Do not implicitly reopen them from this backlog
+  note.
 - Do not continue with 2020/year-by-year tests or restart the full matrix as the
-  next action; Freedom wants algorithm design review first.
-- Next evidence pass should not merely broaden current v1. Use the new
-  start-mode and broad-green receipts to design the tighter v1 shape: valid
-  harvestable geometry as parent regime, Candidate B / David as direction
-  evidence, session-mid extension as the general start family, and Katarakti as
-  confluence / larger-target evidence. Add churn controls before replay freeze:
-  minimum extension distance, neutral-alignment extra distance, heat guard via
-  `max(pair_heat, account_heat)`, target-size segmentation from MFE/MAE, and
-  1Q/2Q lockout receipts.
-- If focusing no-Candidate-B for bot simplicity, do not use the broad v1
-  David-only extension as-is. Open-price MFE says it is too loose and does not
-  earn larger targets. The next no-Candidate-B design should keep David-only
-  direction, tighten start quality toward strict Triangle/Katarakti evidence,
-  and attack session-flatten losers before expanding target size. The first
-  naive Q-protection sweep did not improve strict baseline; the bad-cycle
-  classifier says next protection instrumentation should log first `0.5Q/1Q`
-  MFE timestamps, first `1Q/2Q` MAE timestamps, peak/giveback timing,
-  `max(pair_heat, account_heat)`, and start-date/currency cluster exposure.
-  Report headline returns in ADR-normalized percent from here.
+  next action.
 - Do not rerun the same 150-command foreground matrix as-is.
 - Interpret Gate 90C with the known caveat that session-flatten lifecycle
   semantics still need explanation because OOS had nonzero swap and max fill
