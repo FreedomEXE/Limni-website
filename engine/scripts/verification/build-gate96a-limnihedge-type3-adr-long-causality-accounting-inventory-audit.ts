@@ -23,6 +23,7 @@ import {
   writeShaManifest,
   writeText,
 } from "./gate65-utils";
+import { correctedFxPnl, type AccountingPriceSeries } from "./limnihedge-corrected-accounting";
 
 const GATE_ID = "Gate 96A: limnihedge-type3-adr-long-causality-accounting-inventory-audit";
 const GATE_DATE = "2026-07-04";
@@ -33,7 +34,6 @@ const DEFAULT_ARTIFACT_DIR =
   "docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit";
 const DEFAULT_REPORT_PATH =
   `docs/research/gates/gate96a/GATE96A_LIMNIHEDGE_TYPE3_ADR_LONG_CAUSALITY_ACCOUNTING_INVENTORY_AUDIT_${GATE_DATE}.md`;
-const STANDARD_FX_CONTRACT_UNITS = 100_000;
 
 const AUDIT_VARIANTS = [
   "adr_event_0_025_type3_long_only",
@@ -301,10 +301,6 @@ function quoteCurrency(pair: string) {
   return pair.slice(3, 6);
 }
 
-function pipSize(symbol: string) {
-  return symbol.endsWith("JPY") ? 0.01 : 0.0001;
-}
-
 function addMs(iso: string, ms: number) {
   return new Date(Date.parse(iso) + ms).toISOString();
 }
@@ -430,39 +426,26 @@ function priceAtOrBefore(series: PriceBar[], timestampUtc: string) {
   return found;
 }
 
-function conversionRate(quote: string, timestampUtc: string, prices: Map<string, PriceSeries>) {
-  if (quote === "USD") return { symbol: "USD", rate: 1, source: "quote_usd" };
-  const direct = `${quote}USD`;
-  const directPrice = prices.get(direct) ? priceAtOrBefore(prices.get(direct)!.rawBars, timestampUtc) : null;
-  if (directPrice && directPrice.close > 0) return { symbol: direct, rate: directPrice.close, source: "direct_quote_usd" };
-  const inverse = `USD${quote}`;
-  const inversePrice = prices.get(inverse) ? priceAtOrBefore(prices.get(inverse)!.rawBars, timestampUtc) : null;
-  if (inversePrice && inversePrice.close > 0) return { symbol: inverse, rate: 1 / inversePrice.close, source: "inverse_usd_quote" };
-  return { symbol: `${quote}USD_OR_USD${quote}`, rate: null, source: "missing_conversion_price" };
-}
-
 function pnl(symbol: string, side: Side, lotSize: number, entryPrice: number, exitPrice: number, exitTime: string, prices: Map<string, PriceSeries>): PnlResult {
-  const units = lotSize * STANDARD_FX_CONTRACT_UNITS;
-  const rawQuotePnl = side === "BUY" ? (exitPrice - entryPrice) * units : (entryPrice - exitPrice) * units;
-  const quote = quoteCurrency(symbol);
-  const conversion = baseCurrency(symbol) === "USD" && exitPrice > 0
-    ? { symbol, rate: 1 / exitPrice, source: "base_usd_inverse_exit_price" }
-    : conversionRate(quote, exitTime, prices);
-  const usdPricePnl = conversion.rate === null ? null : rawQuotePnl * conversion.rate;
-  const commission = -7 * lotSize;
-  const pips = Math.abs(exitPrice - entryPrice) / pipSize(symbol);
-  const expectedPipValue = conversion.rate === null ? null : pipSize(symbol) * units * conversion.rate;
-  const actualPipValue = usdPricePnl === null || pips === 0 ? null : Math.abs(usdPricePnl / pips);
+  const result = correctedFxPnl({
+    symbol,
+    side,
+    lotSize,
+    entryPrice,
+    exitPrice,
+    exitTimeUtc: exitTime,
+    prices: prices as Map<string, AccountingPriceSeries>,
+  });
   return {
-    rawQuotePnl,
-    conversionSymbol: conversion.symbol,
-    conversionRate: conversion.rate,
-    conversionRateSource: conversion.source,
-    usdPricePnl,
-    commission,
-    net: usdPricePnl === null ? null : usdPricePnl + commission,
-    expectedPipValue,
-    actualPipValue,
+    rawQuotePnl: result.rawQuotePnl,
+    conversionSymbol: result.conversionSymbol,
+    conversionRate: result.conversionRate,
+    conversionRateSource: result.conversionRateSource,
+    usdPricePnl: result.usdPricePnl,
+    commission: result.commission,
+    net: result.net,
+    expectedPipValue: result.expectedPipValue,
+    actualPipValue: result.actualPipValue,
   };
 }
 

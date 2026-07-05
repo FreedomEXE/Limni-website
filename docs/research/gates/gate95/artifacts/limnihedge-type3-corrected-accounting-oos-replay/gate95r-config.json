@@ -1,0 +1,43 @@
+{
+  "gate_id": "Gate 95R: limnihedge-type3-corrected-accounting-oos-replay",
+  "gate_date": "2026-07-04",
+  "source_gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+  "gate74b_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "date_from": "2025-01-01T00:00:00.000Z",
+  "date_to": "2026-05-31T23:59:59.999Z",
+  "variant_count": 25,
+  "corrected_accounting_helper": "engine/scripts/verification/limnihedge-corrected-accounting.ts",
+  "frozen": [
+    "no_strategy_logic_change",
+    "no_new_variants",
+    "no_2019_2024",
+    "no_mt5_mutation",
+    "no_lifecycle_changes",
+    "no_signal_integration"
+  ],
+  "cost_stress": [
+    {
+      "id": "base_commission",
+      "commissionUsdPerLot": -7,
+      "slippagePips": 0
+    },
+    {
+      "id": "double_commission",
+      "commissionUsdPerLot": -14,
+      "slippagePips": 0
+    },
+    {
+      "id": "base_commission_plus_0_1_pip_slippage",
+      "commissionUsdPerLot": -7,
+      "slippagePips": 0.1
+    },
+    {
+      "id": "base_commission_plus_0_2_pip_slippage",
+      "commissionUsdPerLot": -7,
+      "slippagePips": 0.2
+    }
+  ],
+  "swap_unavailable_blocker": true,
+  "content_hash": "8B6F6E6746814DEF5F80793FB7D22979C03C01E38A74C81BF7585B754EC76913"
+}
