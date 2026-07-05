@@ -5,6 +5,7 @@
 #property copyright "LIMNI LTD"
 #property version   "1.00"
 #property strict
+#property tester_indicator "David_MA_Color_V1f_Updated.ex5"
 
 #include <Trade/Trade.mqh>
 
@@ -13,6 +14,32 @@ enum LimniKataraktiMode
    KTR_LOOSE = 0,
    KTR_BALANCED = 1,
    KTR_EXTREME = 2
+};
+
+enum LimniDavidDirectionMode
+{
+   DAVID_OFF = 0,
+   DAVID_WITH = 1,
+   DAVID_AGAINST = 2
+};
+
+enum LimniDavidMaType
+{
+   DAVID_SMA = 0,
+   DAVID_EMA = 1,
+   DAVID_SMMA = 2,
+   DAVID_LWMA = 3
+};
+
+enum LimniDavidMaPrice
+{
+   DAVID_PRICE_CLOSE = 0,
+   DAVID_PRICE_OPEN = 1,
+   DAVID_PRICE_HIGH = 2,
+   DAVID_PRICE_LOW = 3,
+   DAVID_PRICE_MEDIAN = 4,
+   DAVID_PRICE_TYPICAL = 5,
+   DAVID_PRICE_WEIGHTED = 6
 };
 
 input string T0 = "|--------< LimniKataraktiEA >--------|";
@@ -43,7 +70,18 @@ input bool EnableShorts = true;
 input int MinSweepPoints = 0;
 input int MinDisplacementBodyPoints = 0;
 
-input string T4 = "Basket";
+input string T4 = "David Direction";
+input LimniDavidDirectionMode DavidMode = DAVID_OFF;
+input string DavidIndicatorName = "David_MA_Color_V1f_Updated";
+input int DavidMAPeriod = 35;
+input LimniDavidMaType DavidMAType = DAVID_LWMA;
+input LimniDavidMaPrice DavidMAPrice = DAVID_PRICE_CLOSE;
+input bool DavidUseRsiFilter = true;
+input int DavidRsiPeriod = 9;
+input int DavidRsiOverBought = 63;
+input int DavidRsiOverSold = 37;
+
+input string T5 = "Basket";
 input int AdrLookbackDays = 10;
 input int AdrMinDays = 5;
 input double TpAdrUnits = 0.0;
@@ -58,13 +96,14 @@ input bool EnableWeeklyCutoff = false;
 input int FridayCutoffHour = 16;
 input int FridayCutoffMinute = 0;
 
-input string T5 = "Export";
+input string T6 = "Export";
 input bool ExportCsv = true;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniKataraktiEA";
 
 CTrade g_trade;
 int g_stochHandle = INVALID_HANDLE;
+int g_davidHandle = INVALID_HANDLE;
 datetime g_lastM1BarTime = 0;
 
 double g_bootstrapPrices[];
@@ -123,6 +162,11 @@ int g_unresolvedBaskets = 0;
 int g_weeklyCutoffCloses = 0;
 double g_weeklyCutoffNetAdr = 0.0;
 
+int g_lastDavidDirection = 0;
+double g_lastDavidDown = EMPTY_VALUE;
+double g_lastDavidUp = EMPTY_VALUE;
+int g_entryDavidDirection = 0;
+
 int g_eventsFile = INVALID_HANDLE;
 int g_basketsFile = INVALID_HANDLE;
 string g_runId = "";
@@ -134,6 +178,29 @@ string SideName(const int direction)
    if(direction < 0)
       return "SHORT";
    return "NONE";
+}
+
+string DavidModeName()
+{
+   if(DavidMode == DAVID_WITH)
+      return "WITH";
+   if(DavidMode == DAVID_AGAINST)
+      return "AGAINST";
+   return "OFF";
+}
+
+string DavidDirectionName(const int direction)
+{
+   if(direction > 0)
+      return "UP";
+   if(direction < 0)
+      return "DOWN";
+   return "UNKNOWN";
+}
+
+bool IndicatorValueReady(const double value)
+{
+   return MathIsValidNumber(value) && value != EMPTY_VALUE;
 }
 
 string SafePart(string value)
@@ -604,6 +671,55 @@ bool CurrentStoch(double &value)
    return true;
 }
 
+bool CurrentDavidDirection(int &direction)
+{
+   direction = 0;
+   g_lastDavidDirection = 0;
+   g_lastDavidDown = EMPTY_VALUE;
+   g_lastDavidUp = EMPTY_VALUE;
+
+   if(DavidMode == DAVID_OFF)
+      return true;
+
+   if(g_davidHandle == INVALID_HANDLE)
+      return false;
+
+   double downBuffer[];
+   double upBuffer[];
+   ArraySetAsSeries(downBuffer, true);
+   ArraySetAsSeries(upBuffer, true);
+
+   bool copiedDown = CopyBuffer(g_davidHandle, 0, 1, 1, downBuffer) == 1;
+   bool copiedUp = CopyBuffer(g_davidHandle, 1, 1, 1, upBuffer) == 1;
+   if(copiedDown)
+      g_lastDavidDown = downBuffer[0];
+   if(copiedUp)
+      g_lastDavidUp = upBuffer[0];
+
+   if(copiedDown && IndicatorValueReady(downBuffer[0]))
+      direction = -1;
+   else if(copiedUp && IndicatorValueReady(upBuffer[0]))
+      direction = 1;
+   else
+      return false;
+
+   g_lastDavidDirection = direction;
+   return true;
+}
+
+bool DavidAllowsDirection(const int tradeDirection, const int davidDirection)
+{
+   if(DavidMode == DAVID_OFF)
+      return true;
+   if(davidDirection == 0)
+      return false;
+   if(DavidMode == DAVID_WITH)
+      return tradeDirection == davidDirection;
+   if(DavidMode == DAVID_AGAINST)
+      return tradeDirection == -davidDirection;
+   return true;
+}
+
 void OpenCsvFiles()
 {
    if(!ExportCsv)
@@ -629,6 +745,10 @@ void OpenCsvFiles()
          "adr",
          "lrmg_line",
          "stoch",
+         "david_mode",
+         "david_direction",
+         "david_down",
+         "david_up",
          "fills",
          "avg_entry",
          "open_adr",
@@ -647,6 +767,8 @@ void OpenCsvFiles()
          "side",
          "entry_time",
          "exit_time",
+         "david_mode",
+         "david_direction_at_entry",
          "entry_adr",
          "fills",
          "avg_entry",
@@ -701,6 +823,10 @@ void LogEvent(
       DoubleToString(adr, _Digits),
       g_lrmgReady ? DoubleToString(g_lrmgLine, _Digits) : "",
       (stoch != EMPTY_VALUE && MathIsValidNumber(stoch)) ? DoubleToString(stoch, 4) : "",
+      DavidModeName(),
+      DavidDirectionName(g_lastDavidDirection),
+      IndicatorValueReady(g_lastDavidDown) ? DoubleToString(g_lastDavidDown, _Digits) : "",
+      IndicatorValueReady(g_lastDavidUp) ? DoubleToString(g_lastDavidUp, _Digits) : "",
       g_fillCount,
       g_basketOpen ? DoubleToString(g_avgEntry, _Digits) : "",
       (openAdr != EMPTY_VALUE && MathIsValidNumber(openAdr)) ? DoubleToString(openAdr, 6) : "",
@@ -782,6 +908,8 @@ void RecordBasketRow(const datetime exitTime, const double exitPrice, const doub
       SideName(g_direction),
       Stamp(g_entryTime),
       Stamp(exitTime),
+      DavidModeName(),
+      DavidDirectionName(g_entryDavidDirection),
       DoubleToString(g_entryAdr, _Digits),
       g_fillCount,
       DoubleToString(g_avgEntry, _Digits),
@@ -809,6 +937,7 @@ void ResetBasket()
    g_basketMaeAdr = 0.0;
    g_basketMfeAdr = 0.0;
    g_basketMinOpenAdr = 0.0;
+   g_entryDavidDirection = 0;
 }
 
 bool AddBasketFill(const datetime t, const int direction, const double requestedPrice, const double adr, const string reason)
@@ -830,6 +959,7 @@ bool AddBasketFill(const datetime t, const int direction, const double requested
       g_basketMaeAdr = 0.0;
       g_basketMfeAdr = 0.0;
       g_basketMinOpenAdr = 0.0;
+      g_entryDavidDirection = g_lastDavidDirection;
       g_trailStopPrice = 0.0;
       g_trailExtreme = 0.0;
    }
@@ -1012,16 +1142,22 @@ void ProcessClosedM1Bar(const MqlRates &bar)
 
    double adr = 0.0;
    double stoch = 0.0;
+   int davidDirection = 0;
    bool adrReady = CurrentAdr(adr);
    bool stochReady = CurrentStoch(stoch);
+   bool davidReady = CurrentDavidDirection(davidDirection);
    bool belowLrmg = g_lrmgReady && bar.close < g_lrmgLine;
    bool aboveLrmg = g_lrmgReady && bar.close > g_lrmgLine;
 
-   bool buySignal = EnableLongs && ktrLong && belowLrmg && stochReady && stoch <= Oversold;
-   bool sellSignal = EnableShorts && ktrShort && aboveLrmg && stochReady && stoch >= Overbought;
+   bool buyRawSignal = EnableLongs && ktrLong && belowLrmg && stochReady && stoch <= Oversold;
+   bool sellRawSignal = EnableShorts && ktrShort && aboveLrmg && stochReady && stoch >= Overbought;
+   bool buySignal = buyRawSignal && davidReady && DavidAllowsDirection(1, davidDirection);
+   bool sellSignal = sellRawSignal && davidReady && DavidAllowsDirection(-1, davidDirection);
 
-   if((buySignal || sellSignal) && adrReady)
-      LogEvent(bar.time, buySignal ? "BUY_SIGNAL" : "SELL_SIGNAL", buySignal ? 1 : -1, bar.close, adr, stoch, 0.0, "signal");
+   if(buyRawSignal && adrReady)
+      LogEvent(bar.time, buySignal ? "BUY_SIGNAL" : "BUY_BLOCKED_DAVID", 1, bar.close, adr, stoch, 0.0, buySignal ? "signal" : "david_blocked");
+   if(sellRawSignal && adrReady)
+      LogEvent(bar.time, sellSignal ? "SELL_SIGNAL" : "SELL_BLOCKED_DAVID", -1, bar.close, adr, stoch, 0.0, sellSignal ? "signal" : "david_blocked");
 
    if(g_basketOpen || !adrReady || !CanStartNewBasket(bar.time))
       return;
@@ -1063,6 +1199,15 @@ void WriteSummary()
    FileWrite(handle, "pair_contribution_net_adr", DoubleToString(g_netAdr, 6));
    FileWrite(handle, "weekly_cutoff_closes", g_weeklyCutoffCloses);
    FileWrite(handle, "weekly_cutoff_net_adr", DoubleToString(g_weeklyCutoffNetAdr, 6));
+   FileWrite(handle, "david_mode", DavidModeName());
+   FileWrite(handle, "david_indicator", DavidIndicatorName);
+   FileWrite(handle, "david_ma_period", DavidMAPeriod);
+   FileWrite(handle, "david_ma_type", (int)DavidMAType);
+   FileWrite(handle, "david_ma_price", (int)DavidMAPrice);
+   FileWrite(handle, "david_rsi_filter", DavidUseRsiFilter ? "true" : "false");
+   FileWrite(handle, "david_rsi_period", DavidRsiPeriod);
+   FileWrite(handle, "david_rsi_overbought", DavidRsiOverBought);
+   FileWrite(handle, "david_rsi_oversold", DavidRsiOverSold);
    FileWrite(handle, "place_tester_orders", PlaceTesterOrders ? "true" : "false");
    FileClose(handle);
 }
@@ -1089,8 +1234,41 @@ int OnInit()
       return INIT_FAILED;
    }
 
+   if(DavidMode != DAVID_OFF)
+   {
+      ResetLastError();
+      g_davidHandle = iCustom(
+         _Symbol,
+         PERIOD_M1,
+         DavidIndicatorName,
+         "<------LIMNI HEDGE MA------>",
+         "",
+         "MA Settings",
+         DavidMAPeriod,
+         DavidMAType,
+         DavidMAPrice,
+         "",
+         "RSI Filter Settings",
+         DavidUseRsiFilter,
+         DavidRsiPeriod,
+         DavidRsiOverBought,
+         DavidRsiOverSold,
+         "",
+         "MA Dots Settings:",
+         3,
+         clrSkyBlue,
+         clrYellow
+      );
+
+      if(g_davidHandle == INVALID_HANDLE)
+      {
+         Print("LimniKataraktiEA failed to create M1 David MA handle for ", DavidIndicatorName, ". error=", GetLastError());
+         return INIT_FAILED;
+      }
+   }
+
    OpenCsvFiles();
-   Print("LimniKataraktiEA initialized on ", _Symbol, ". Run on M1 Strategy Tester for the intended validation path. CSV run_id=", g_runId);
+   Print("LimniKataraktiEA initialized on ", _Symbol, ". DavidMode=", DavidModeName(), ". Run on M1 Strategy Tester for the intended validation path. CSV run_id=", g_runId);
    return INIT_SUCCEEDED;
 }
 
@@ -1112,8 +1290,15 @@ void OnDeinit(const int reason)
       g_stochHandle = INVALID_HANDLE;
    }
 
+   if(g_davidHandle != INVALID_HANDLE)
+   {
+      IndicatorRelease(g_davidHandle);
+      g_davidHandle = INVALID_HANDLE;
+   }
+
    Print(
       "LimniKataraktiEA finished. symbol=", _Symbol,
+      " david_mode=", DavidModeName(),
       " closed_baskets=", g_closedBaskets,
       " net_adr=", DoubleToString(g_netAdr, 6),
       " win_rate=", g_closedBaskets > 0 ? DoubleToString((double)g_wins * 100.0 / (double)g_closedBaskets, 2) : "0.00",

@@ -1,0 +1,51 @@
+{
+  "gate_id": "Gate 95S: limnihedge-type3-weekly-profit-cutoff-overlay",
+  "gate_date": "2026-07-05",
+  "source_gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "source_gate95r_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-corrected-accounting-oos-replay",
+  "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+  "gate74b_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "date_from": "2025-01-01T00:00:00.000Z",
+  "date_to": "2026-05-31T23:59:59.999Z",
+  "cutoff_timezone": "America/New_York",
+  "mark_price_source": "latest_available_gate74b_raw_path_price_at_or_before_cutoff",
+  "cutoff_hours_ny": [
+    12,
+    14,
+    16,
+    18
+  ],
+  "profit_conditions": [
+    {
+      "id": "corrected_marked_net_gt_0",
+      "label": "corrected_marked_net_gt_0"
+    },
+    {
+      "id": "corrected_marked_net_gt_1x_commission",
+      "label": "corrected_marked_net_gt_1x_commission"
+    }
+  ],
+  "target_variants": [
+    "adr_event_0_025_type3_long_only",
+    "adr_event_0_05_type3_long_only",
+    "adr_event_0_075_type3_long_only",
+    "time_h1_type3_long_only"
+  ],
+  "corrected_accounting_helper": "engine/scripts/verification/limnihedge-corrected-accounting.ts",
+  "frozen": [
+    "no_entry_rerun",
+    "no_2019_2024",
+    "no_mt5_mutation",
+    "no_new_signals",
+    "no_candidate_b_changes",
+    "no_katarakti_changes",
+    "no_lrmg_changes",
+    "no_q_triangle_changes",
+    "no_optimization"
+  ],
+  "cost_stress": [
+    "double_commission",
+    "base_commission_plus_0_1_pip_slippage"
+  ],
+  "content_hash": "ACFA0AC302A1ED8C71E07976F4FAD753832869DA7B87E0FD6196B197B75090A2"
+}

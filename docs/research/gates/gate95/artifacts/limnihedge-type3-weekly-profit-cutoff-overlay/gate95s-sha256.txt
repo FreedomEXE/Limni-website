@@ -1,0 +1,13 @@
+gate_id Gate 95S: limnihedge-type3-weekly-profit-cutoff-overlay
+command npm run engine:gate95s:limnihedge-type3-weekly-profit-cutoff-overlay
+generated_at 2026-07-05T04:17:34.807Z
+git_commit 0fa7ea206e9d99a36f260a0e34c53774840196da
+config 1E1252CE24EA71797F45AE36B268548C40EC13A74B5F9044EDC1385FB4119964 docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/gate95s-config.json
+baseline_summary DA85469B3691689E1CD0520CB755BE0BDF8505A4CABF6F3FB938AD2B382B0CDD docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/baseline-corrected-summary.rows.json
+weekly_cutoff_matrix 308B63326325BA457C715796B483ADD015218B8C34913C6B8FBECE10FBB51DC4 docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/weekly-cutoff-matrix.rows.json
+weekly_cutoff_decision CEA786334D20717C37B9BB3EA3E34D331C3DF3022669D952C0DC1726113F6760 docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/weekly-cutoff-decision.rows.json
+weekly_cutoff_closure_and_terminal 913FB4AB9415CBD711ED566AC74E9105F4BE243335B504459B24392DF26100CB docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/weekly-cutoff-closure-and-terminal.rows.json
+validation BC50BEB7697CDE74C29C4471665DEA02535C93404ECAAD5E2AA3AC3A4C589F0F docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/validation.rows.json
+run_summary 4078C96D1E84CB6296BDF240999E3610D0DB84013F37AF92626883B323E266BF docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/gate95s-run-summary.json
+command_receipt 9CAE62CED15F5230CC10E9827B69BBD75A3003EECC3EE4E8BAF64597BD96FE0F docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay/command-receipt.json
+report A4B5F4C2E761EA6662437467B5312A4C699FE79A3A7553B08E395DEDECA57651 docs/research/gates/gate95/GATE95S_LIMNIHEDGE_TYPE3_WEEKLY_PROFIT_CUTOFF_OVERLAY_2026-07-05.md

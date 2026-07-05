@@ -1,0 +1,13 @@
+{
+  "gate_id": "Gate 95U: limnihedge-type3-loser-hedge-account-tp-overlay",
+  "verdict": "FAIL_GATE95U_HEDGE_ACCOUNT_TP_NO_IMPROVED_ROW",
+  "source_gate95_trade_rows": 102241,
+  "needed_pairs": 24,
+  "baseline_rows": 4,
+  "matrix_rows": 32,
+  "decision_rows": 4,
+  "account_tp_cycle_rows": 89,
+  "improved_rows": 0,
+  "validation_failures": 0,
+  "content_hash": "C17113E8002C4BB894694943A2B8DD992AE35FC3AE1F5870C2DB90987A16F886"
+}

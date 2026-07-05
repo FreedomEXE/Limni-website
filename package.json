@@ -107,6 +107,8 @@
     "engine:gate94:limnihedge-type3-movement-candles": "tsx engine/scripts/verification/build-gate94-limnihedge-type3-movement-candle-diagnostic.ts",
     "engine:gate95:limnihedge-type3-28pair-repo-discovery": "tsx engine/scripts/verification/build-gate95-limnihedge-type3-28pair-repo-discovery.ts",
     "engine:gate95r:limnihedge-type3-corrected-accounting-oos-replay": "node --max-old-space-size=8192 --import tsx engine/scripts/verification/build-gate95r-limnihedge-type3-corrected-accounting-oos-replay.ts",
+    "engine:gate95s:limnihedge-type3-weekly-profit-cutoff-overlay": "node --max-old-space-size=8192 --import tsx engine/scripts/verification/build-gate95s-limnihedge-type3-weekly-profit-cutoff-overlay.ts",
+    "engine:gate95u:limnihedge-type3-loser-hedge-account-tp-overlay": "node --max-old-space-size=8192 --import tsx engine/scripts/verification/build-gate95u-limnihedge-type3-loser-hedge-account-tp-overlay.ts",
     "engine:gate96a:limnihedge-type3-adr-long-causality-accounting-inventory-audit": "node --max-old-space-size=8192 --import tsx engine/scripts/verification/build-gate96a-limnihedge-type3-adr-long-causality-accounting-inventory-audit.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",

@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 95S: limnihedge-type3-weekly-profit-cutoff-overlay",
+  "verdict": "FAIL_GATE95S_WEEKLY_CUTOFF_NO_IMPROVED_ROW",
+  "source_gate95_trade_rows": 102241,
+  "needed_pairs": 24,
+  "baseline_rows": 4,
+  "matrix_rows": 32,
+  "decision_rows": 4,
+  "improved_rows": 0,
+  "validation_failures": 0,
+  "content_hash": "B203A726CA1975CB039B5E4EF42B9F28494D6305B8197FAB4CAC8E84D16E913D"
+}
