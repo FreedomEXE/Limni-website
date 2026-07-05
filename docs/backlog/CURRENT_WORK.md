@@ -8,6 +8,53 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
+### Current Override - 2026-07-05
+
+Active lane: `LimniKataraktiEA` / Gate 97 to Gate 98.
+
+Gate 97 `limni-katarakti-ea-multipair-baseline-manual-smoke` is complete as a
+manual MT5 Strategy Tester smoke checkpoint. Report:
+`docs/research/gates/gate97/GATE97_LIMNI_KATARAKTI_EA_MULTIPAIRS_BASELINE_MANUAL_SMOKE_2026-07-05.md`.
+
+Current EA under work:
+`automation/mt5/Experts/LimniKataraktiEA.mq5`. Do not switch back to
+`automation/mt5/Experts/LimniHedge_V1.mq5` unless Freedom explicitly reopens
+that lane.
+
+Gate 97 preserved three 2026 YTD 28-pair uncapped tight-TP runs:
+
+- David OFF: `658` closed baskets, `+140.921307` closed-plus-marked ADR,
+  `1` unresolved terminal basket, worst DD `-45.098982` ADR, unresolved USDCAD
+  short reached `44` fills.
+- David AGAINST: `334` closed baskets, `+90.300000` closed-plus-marked ADR,
+  `0` unresolved terminal baskets, worst DD `-21.161269` ADR, max fill `21`.
+- David WITH: `325` closed baskets, `+50.921307` closed-plus-marked ADR,
+  `1` unresolved terminal basket, same unresolved USDCAD short shape as OFF.
+
+All three used `KTR_LOOSE`, TP `0.10 ADR`, SL `0`, grid spacing `0.10 ADR`,
+MaxBasketEntries `500`, trailing disabled, David MA `35`, David RSI
+`1000/60/40`, and Stoch `1000/100/100` with `10/90`. The `1000/60/40`
+settings are trial-and-error prototype settings, not proven optimal.
+
+Freedom's latest decision: `David WITH` is a dud for now; `David OFF` and
+`David AGAINST` are interesting but not understood enough. Pause David tuning
+and open Gate 98 `katarakti-entry-stack-ablation`.
+
+Gate 98 next-chat prompt:
+`docs/research/gates/gate98/NEXT_CHAT_GATE98_KATARAKTI_ENTRY_STACK_ABLATION_PROMPT_2026-07-05.md`.
+
+Gate 98 objective: isolate Katarakti first. Add a small `EntryStackPreset` or
+`IsolationMode` to `LimniKataraktiEA` unless inspection proves a separate EA is
+cleaner. First test `K_ONLY` for `KTR_LOOSE`, `KTR_BALANCED`, and
+`KTR_EXTREME`; then add stochastic, LRMG reversal/overextension, and only later
+David AGAINST. Preserve the existing basket/grid/TP/accounting/export receipts.
+
+Stop lines: no LimniHedge_V1 changes, no Gate 95/Type3 runner work, no live/app
+integration, no grid-cap/lifecycle guard tests, no David parameter tuning, and
+no promotion claims until Katarakti-only and first layer ablations are reviewed.
+
+### Historical Override
+
 Current state: Gate 91 `formulaic-triangle-grid-geometry` Gate 91F marginal
 add value audit is complete as research-only evidence. The runner now
 supports v1 formulaic directionless geometry, v2 cost-bend center-band geometry,
