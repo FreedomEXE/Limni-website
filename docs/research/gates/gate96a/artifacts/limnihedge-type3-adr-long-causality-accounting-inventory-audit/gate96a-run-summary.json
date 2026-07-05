@@ -1,0 +1,13 @@
+{
+  "gate_id": "Gate 96A: limnihedge-type3-adr-long-causality-accounting-inventory-audit",
+  "verdict": "FAIL_GATE96A_ADR_LONG_AUDIT_BLOCKED_NO_HISTORY_EXPANSION",
+  "audit_variant_count": 2,
+  "control_variant_count": 4,
+  "scoped_trade_rows": 199927,
+  "audit_trade_rows": 99076,
+  "causality_rows": 62736,
+  "pnl_reconciliation_rows": 99076,
+  "month_end_mark_rows": 34,
+  "validation_failures": 2,
+  "content_hash": "7FDA28EF7794E02A3A0C6F5D0898D4A508FDE0C98335BD68436A0BCF7F117365"
+}

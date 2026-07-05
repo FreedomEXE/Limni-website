@@ -1,0 +1,34 @@
+{
+  "gate_id": "Gate 96A: limnihedge-type3-adr-long-causality-accounting-inventory-audit",
+  "gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "gate95_config_hash": "36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118",
+  "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+  "gate74b_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "date_from": "2025-01-01T00:00:00.000Z",
+  "date_to": "2026-05-31T23:59:59.999Z",
+  "audit_variants": [
+    "adr_event_0_025_type3_long_only",
+    "adr_event_0_05_type3_long_only"
+  ],
+  "control_variants": [
+    "adr_event_0_025_type3_short_only",
+    "adr_event_0_05_type3_short_only",
+    "time_h1_type3_long_only",
+    "time_h1_type3_short_only"
+  ],
+  "candidate_b_variants_for_decomposition": [
+    "adr_event_0_025_candidate_b_agreement_strict",
+    "adr_event_0_025_candidate_b_fade_strict",
+    "adr_event_0_05_candidate_b_agreement_strict",
+    "adr_event_0_05_candidate_b_fade_strict"
+  ],
+  "null_control_semantics": "matched-hold audit controls, not lifecycle strategy variants",
+  "frozen": [
+    "no_2019_2024",
+    "no_optimization",
+    "no_mt5_mutation",
+    "no_candidate_b_variants",
+    "no_katarakti_integration"
+  ],
+  "content_hash": "F77BBD457464DEC2C6FFEB3C1782DECB5FBE84BE15A317BCCAFE22C7ED844020"
+}

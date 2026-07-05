@@ -1,0 +1,10 @@
+[
+{"variant_id":"adr_event_0_025_candidate_b_agreement_strict","bucket":"agree","side":"BUY","trades":27093,"net_actual":93880.01,"net_gate95_model":2771908.22,"content_hash":"4EBFFBF363AAB31643DE446A68959DEFF84399BE9CE3F1C565E0D8A3009CB2E7"},
+{"variant_id":"adr_event_0_025_candidate_b_agreement_strict","bucket":"agree","side":"SELL","trades":55622,"net_actual":-170894.22,"net_gate95_model":-28063882.18,"content_hash":"9E28BDED79C1ECB9DDD0EE58B9BDA5816A1156E37544B9F19A4DB335E88925B9"},
+{"variant_id":"adr_event_0_025_candidate_b_fade_strict","bucket":"fade","side":"BUY","trades":63071,"net_actual":147918.05,"net_gate95_model":6539271.26,"content_hash":"CB0E940921039892566E98FD20676C3E7CA6E6D0B91112DC65A8817EBC9EACBC"},
+{"variant_id":"adr_event_0_025_candidate_b_fade_strict","bucket":"fade","side":"SELL","trades":33668,"net_actual":53205.89,"net_gate95_model":-5755108.34,"content_hash":"BBD8C36CAC02A05C116EA7CD982D5B06D5D3A0A5DAA7A42BE193E45D791FA84E"},
+{"variant_id":"adr_event_0_05_candidate_b_agreement_strict","bucket":"agree","side":"BUY","trades":2219,"net_actual":9948.16,"net_gate95_model":636429.96,"content_hash":"14C18B3342AD6CC149338EF8C87C49FF6E0C4A45DF22B928EAA54965032CAB5F"},
+{"variant_id":"adr_event_0_05_candidate_b_agreement_strict","bucket":"agree","side":"SELL","trades":6648,"net_actual":-29402.11,"net_gate95_model":-3544917.3,"content_hash":"0EE9CBD7611A448E332AC18504E313C6CB78E5F16176C85A41B33FC57CA30171"},
+{"variant_id":"adr_event_0_05_candidate_b_fade_strict","bucket":"fade","side":"BUY","trades":6693,"net_actual":11255.27,"net_gate95_model":217198.33,"content_hash":"21D35924D097C1BE05C5C22D6111818757DB83A632244EF31ECA140E91352EFA"},
+{"variant_id":"adr_event_0_05_candidate_b_fade_strict","bucket":"fade","side":"SELL","trades":4369,"net_actual":16502.95,"net_gate95_model":153607.78,"content_hash":"91B0DCFD557A266949FE3F80E4AA84E2F95C8B339ECA06FAFEA0F5149CEFE653"}
+]
