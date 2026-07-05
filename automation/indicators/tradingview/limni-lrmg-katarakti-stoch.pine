@@ -1,0 +1,608 @@
+// This Pine Script(TM) source code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+// Property of Freedom_EXE (c) 2026
+
+//@version=6
+indicator("Limni LRMG Katarakti Stoch", shorttitle="Limni LRMG KTR", overlay=true, format=format.price, max_labels_count=500, max_lines_count=100, max_boxes_count=100)
+
+// -- Source -----------------------------------------------------------------
+sourceGroup = "Source"
+sourceMode = input.string("Lower timeframe (M1 precision)", "LRMG/Katarakti Source", options=["Chart bars (longest history)", "Lower timeframe (M1 precision)"], group=sourceGroup)
+sourceTimeframe = input.timeframe("1", "Lower Source Timeframe", group=sourceGroup)
+maxSourceBarsPerChartBar = input.int(1500, "Max Lower Bars Per Chart Bar", minval=1, maxval=5000, group=sourceGroup)
+lowerTfCalcBarsCount = input.int(100000, "Lower TF Request Bars", minval=1000, maxval=200000, group=sourceGroup)
+
+// -- LRMG price anchor -------------------------------------------------------
+lrmgGroup = "LRMG 0 Line"
+showLrmgLine = input.bool(true, "Show LRMG 0 Line", group=lrmgGroup)
+bootstrapBars = input.int(720, "Bootstrap Bars", minval=50, maxval=5000, group=lrmgGroup)
+medianBrickWindow = input.int(55, "Median Brick Window", minval=1, maxval=500, group=lrmgGroup)
+maxBricksPerBar = input.int(200, "Max Bricks Per Bar", minval=1, maxval=1000, group=lrmgGroup)
+lrmgLineColor = input.color(color.rgb(0, 191, 255), "Line Color", group=lrmgGroup)
+lrmgLineWidth = input.int(2, "Line Width", minval=1, maxval=5, group=lrmgGroup)
+
+// -- Stochastic filter -------------------------------------------------------
+stochGroup = "Stochastic"
+kPeriod = input.int(1000, "K Period", minval=1, group=stochGroup)
+slowing = input.int(50, "Slowing", minval=1, group=stochGroup)
+dPeriod = input.int(100, "D Period", minval=1, group=stochGroup)
+oversold = input.float(20.0, "Oversold", minval=0.0, maxval=50.0, step=0.5, group=stochGroup)
+overbought = input.float(80.0, "Overbought", minval=50.0, maxval=100.0, step=0.5, group=stochGroup)
+useDForFilter = input.bool(false, "Use D For Filter", group=stochGroup)
+
+// -- P/L tracker -------------------------------------------------------------
+plGroup = "P/L Tracker"
+enablePlTracker = input.bool(true, "Enable P/L Tracker", group=plGroup)
+adrLookback = input.int(10, "ADR Lookback Days", minval=1, maxval=50, group=plGroup)
+adrMinDays = input.int(5, "ADR Min Required Days", minval=1, maxval=50, group=plGroup)
+tpAdrUnits = input.float(0.10, "TP ADR Units (0 = off)", minval=0.0, step=0.01, group=plGroup)
+slAdrUnits = input.float(0.10, "SL ADR Units (0 = off)", minval=0.0, step=0.01, group=plGroup)
+enableGridAdds = input.bool(true, "Enable Grid Adds", group=plGroup)
+maxGridEntries = input.int(5, "Max Basket Entries", minval=1, maxval=50, group=plGroup)
+gridSpacingAdrUnits = input.float(0.10, "Grid Spacing ADR Units", minval=0.001, step=0.01, group=plGroup)
+sameBarExitPolicy = input.string("SL first", "If TP And SL Hit Same Bar", options=["SL first", "TP first"], group=plGroup)
+showPlLevels = input.bool(true, "Show Active Basket Levels", group=plGroup)
+enableTrailingStop = input.bool(true, "Enable Trailing Stop", group=plGroup)
+trailStartAdrUnits = input.float(0.10, "Trail Start ADR Units", minval=0.0, step=0.01, group=plGroup)
+trailDistanceAdrUnits = input.float(0.10, "Trail Distance ADR Units", minval=0.001, step=0.01, group=plGroup)
+
+// -- Katarakti trigger -------------------------------------------------------
+ktrGroup = "Katarakti"
+timezoneInput = input.string("Etc/UTC", "Session Timezone", group=ktrGroup)
+kataraktiMode = input.string("Balanced", "Katarakti Mode", options=["Loose", "Balanced", "Extreme"], group=ktrGroup)
+drawSignalBoxes = input.bool(false, "Draw Trigger Boxes", group=ktrGroup)
+enableLongs = input.bool(true, "Enable Buys", group=ktrGroup)
+enableShorts = input.bool(true, "Enable Sells", group=ktrGroup)
+boxPaddingFraction = input.float(0.08, "Box Vertical Padding Fraction", minval=0.0, maxval=1.0, step=0.01, group=ktrGroup)
+sweepDepthRangeFraction = kataraktiMode == "Extreme" ? 0.12 : kataraktiMode == "Loose" ? 0.05 : 0.0833333333
+displacementBodyRangeFraction = kataraktiMode == "Extreme" ? 0.06 : kataraktiMode == "Loose" ? 0.04 : 0.0666666667
+closeZoneMax = kataraktiMode == "Extreme" ? 0.18 : kataraktiMode == "Loose" ? 0.40 : 0.25
+minSweepTicks = 0
+minDisplacementBodyTicks = 0
+
+// -- Visuals ----------------------------------------------------------------
+visualGroup = "Visuals"
+buyColor = input.color(color.lime, "Buy Arrow", group=visualGroup)
+sellColor = input.color(color.red, "Sell Arrow", group=visualGroup)
+showDebugTable = input.bool(true, "Show Debug Table", group=visualGroup)
+
+pathMovement(array<float> values) =>
+    int n = array.size(values)
+    float movement = 0.0
+    if n > 1
+        for i = 1 to n - 1
+            movement += math.abs(array.get(values, i) - array.get(values, i - 1))
+    movement
+
+pathBounds(array<float> values) =>
+    int n = array.size(values)
+    float lo = n > 0 ? array.get(values, 0) : na
+    float hi = n > 0 ? array.get(values, 0) : na
+    if n > 1
+        for i = 1 to n - 1
+            float v = array.get(values, i)
+            lo := math.min(lo, v)
+            hi := math.max(hi, v)
+    [lo, hi]
+
+pathBelowPrice(array<float> values, float probe) =>
+    int n = array.size(values)
+    float below = 0.0
+    if n > 1
+        for i = 1 to n - 1
+            float a = array.get(values, i - 1)
+            float b = array.get(values, i)
+            float lo = math.min(a, b)
+            float hi = math.max(a, b)
+            float span = hi - lo
+            if span > 0.0
+                if probe >= hi
+                    below += span
+                else if probe > lo
+                    below += probe - lo
+    below
+
+movementMedian(array<float> values, float totalMovement) =>
+    [lo0, hi0] = pathBounds(values)
+    float lo = lo0
+    float hi = hi0
+    float center = array.size(values) > 0 ? array.get(values, 0) : na
+    if not na(lo) and not na(hi) and hi > lo and totalMovement > 0.0
+        float half = totalMovement / 2.0
+        for _ = 0 to 47
+            float mid = (lo + hi) / 2.0
+            float below = pathBelowPrice(values, mid)
+            if below >= half
+                hi := mid
+            else
+                lo := mid
+        center := (lo + hi) / 2.0
+    center
+
+movementRadius(array<float> values, float center, float totalMovement) =>
+    int n = array.size(values)
+    float integral = 0.0
+    if n > 1 and totalMovement > 0.0 and not na(center)
+        for i = 1 to n - 1
+            float a = array.get(values, i - 1)
+            float b = array.get(values, i)
+            float lo = math.min(a, b)
+            float hi = math.max(a, b)
+            if hi > lo
+                float u = hi - center
+                float v = lo - center
+                integral += (math.pow(u, 3.0) - math.pow(v, 3.0)) / 3.0
+    integral > 0.0 and totalMovement > 0.0 ? math.sqrt(integral / totalMovement) : na
+
+medianLastValues(array<float> values, int window) =>
+    int n = array.size(values)
+    float result = 0.0
+    if n > 0
+        int start = math.max(0, n - window)
+        int sampleCount = n - start
+        array<float> sample = array.new<float>(0)
+        for i = start to n - 1
+            array.push(sample, array.get(values, i))
+        array.sort(sample, order.ascending)
+        int mid = int(math.floor(sampleCount / 2.0))
+        result := sampleCount % 2 == 1 ? array.get(sample, mid) : (array.get(sample, mid - 1) + array.get(sample, mid)) / 2.0
+    result
+
+displacementPass(bool isLong, float requiredBody, float barOpen, float barHigh, float barLow, float barClose) =>
+    float candleRange = barHigh - barLow
+    float body = math.abs(barClose - barOpen)
+    bool correctDirection = isLong ? barClose > barOpen : barClose < barOpen
+    float closeZone = isLong ? (barHigh - barClose) / candleRange : (barClose - barLow) / candleRange
+    candleRange > 0.0 and correctDirection and body + syminfo.mintick * 0.1 >= requiredBody and closeZone <= closeZoneMax
+
+drawTriggerBox(bool isLong, int leftBar, int rightBar, float boxTop, float boxBottom) =>
+    if drawSignalBoxes and not na(leftBar) and not na(rightBar)
+        int l = math.max(leftBar, bar_index - 500)
+        int r = math.max(rightBar, l)
+        float top = math.max(boxTop, boxBottom)
+        float bottom = math.min(boxTop, boxBottom)
+        float pad = math.max((top - bottom) * boxPaddingFraction, syminfo.mintick * 20.0)
+        box.new(l, top + pad, r + 2, bottom - pad, bgcolor=color.new(isLong ? buyColor : sellColor, 88), border_color=color.new(isLong ? buyColor : sellColor, 20), border_width=1)
+
+calcAdrStats() =>
+    float rangeSum = 0.0
+    float validCnt = 0.0
+    for i = 1 to adrLookback
+        bool ok = not na(high[i]) and not na(low[i]) and high[i] > 0.0 and low[i] > 0.0
+        if ok
+            rangeSum += high[i] - low[i]
+            validCnt += 1.0
+    [rangeSum, validCnt]
+
+[dailyAdrSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
+float currentAdrDistance = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrCount : na
+
+[sourceTimes, sourceOpens, sourceHighs, sourceLows, sourceCloses] = request.security_lower_tf(syminfo.tickerid, sourceTimeframe, [time, open, high, low, close], ignore_invalid_timeframe=true, calc_bars_count=lowerTfCalcBarsCount)
+bool useLowerSource = sourceMode == "Lower timeframe (M1 precision)"
+int lowerSourceCount = array.size(sourceCloses)
+int sourceIterations = useLowerSource ? int(math.min(lowerSourceCount, maxSourceBarsPerChartBar)) : 1
+int sourceStart = useLowerSource ? int(math.max(0, lowerSourceCount - sourceIterations)) : 0
+bool sourceReady = not useLowerSource or sourceIterations > 0
+
+// LRMG bootstrap and anchor state. This ports the MT5 quick visual line:
+// q = bootstrap movement radius, bricks close when price moves q from base,
+// plotted line = median of recent closed brick levels converted back to price.
+var array<float> bootstrapPrices = array.new<float>(0)
+var array<float> closedBrickLevels = array.new<float>(0)
+var float lrmgQuantum = na
+var float lrmgBasePrice = na
+var int lrmgCurrentLevel = 0
+var float lrmgLine = na
+
+if barstate.isfirst
+    array.clear(bootstrapPrices)
+    array.clear(closedBrickLevels)
+    lrmgQuantum := na
+    lrmgBasePrice := na
+    lrmgCurrentLevel := 0
+    lrmgLine := na
+
+if sourceReady
+    for sourceOffset = 0 to sourceIterations - 1
+        int sourceIndex = sourceStart + sourceOffset
+        float sourceClose = useLowerSource ? array.get(sourceCloses, sourceIndex) : close
+        if not na(sourceClose)
+            if na(lrmgQuantum)
+                array.push(bootstrapPrices, sourceClose)
+                if array.size(bootstrapPrices) == bootstrapBars
+                    float movement = pathMovement(bootstrapPrices)
+                    float center = movementMedian(bootstrapPrices, movement)
+                    float radius = movementRadius(bootstrapPrices, center, movement)
+                    if not na(radius) and radius > 0.0
+                        lrmgQuantum := radius
+                        lrmgBasePrice := array.get(bootstrapPrices, 0)
+                        lrmgCurrentLevel := 0
+                        lrmgLine := lrmgBasePrice
+            else
+                int upGuard = 0
+                while sourceClose >= lrmgBasePrice + (lrmgCurrentLevel + 1.0) * lrmgQuantum and upGuard < maxBricksPerBar
+                    lrmgCurrentLevel += 1
+                    array.push(closedBrickLevels, lrmgCurrentLevel * 1.0)
+                    upGuard += 1
+                int downGuard = 0
+                while sourceClose <= lrmgBasePrice + (lrmgCurrentLevel - 1.0) * lrmgQuantum and downGuard < maxBricksPerBar
+                    lrmgCurrentLevel -= 1
+                    array.push(closedBrickLevels, lrmgCurrentLevel * 1.0)
+                    downGuard += 1
+                float medianLevel = medianLastValues(closedBrickLevels, medianBrickWindow)
+                lrmgLine := lrmgBasePrice + medianLevel * lrmgQuantum
+
+plot(showLrmgLine ? lrmgLine : na, "LRMG 0 Line", color=lrmgLineColor, linewidth=lrmgLineWidth)
+
+// Stochastic main line. D is available for optional filtering but not plotted.
+float rawK = ta.stoch(close, high, low, kPeriod)
+float stochMain = ta.sma(rawK, slowing)
+float stochD = ta.sma(stochMain, dPeriod)
+float stochFilter = useDForFilter ? stochD : stochMain
+bool stochOversold = not na(stochFilter) and stochFilter <= oversold
+bool stochOverbought = not na(stochFilter) and stochFilter >= overbought
+
+// Katarakti session geometry. Uses the same source stream as LRMG.
+var float rangeAHigh = na
+var float rangeALow = na
+var float rangeBHigh = na
+var float rangeBLow = na
+var float entryBHigh = na
+var float entryBLow = na
+var int lastKtrDayId = na
+var bool lastInRangeA = false
+var bool lastInRangeB = false
+var int lastEntryWindow = 0
+var int longStage = 0
+var int shortStage = 0
+var int longAge = 0
+var int shortAge = 0
+var int longLeftBar = na
+var int shortLeftBar = na
+
+if barstate.isfirst
+    rangeAHigh := na
+    rangeALow := na
+    rangeBHigh := na
+    rangeBLow := na
+    entryBHigh := na
+    entryBLow := na
+    lastKtrDayId := na
+    lastInRangeA := false
+    lastInRangeB := false
+    lastEntryWindow := 0
+    longStage := 0
+    shortStage := 0
+    longAge := 0
+    shortAge := 0
+    longLeftBar := na
+    shortLeftBar := na
+
+bool ktrLong = false
+bool ktrShort = false
+float ktrLongPrice = na
+float ktrShortPrice = na
+bool activeRangeReady = false
+float activeRange = na
+int activeWindowId = 0
+
+if sourceReady
+    for sourceOffset = 0 to sourceIterations - 1
+        int sourceIndex = sourceStart + sourceOffset
+        int sourceTime = useLowerSource ? array.get(sourceTimes, sourceIndex) : time
+        float sourceOpen = useLowerSource ? array.get(sourceOpens, sourceIndex) : open
+        float sourceHigh = useLowerSource ? array.get(sourceHighs, sourceIndex) : high
+        float sourceLow = useLowerSource ? array.get(sourceLows, sourceIndex) : low
+        float sourceClose = useLowerSource ? array.get(sourceCloses, sourceIndex) : close
+
+        int tod = hour(sourceTime, timezoneInput) * 60 + minute(sourceTime, timezoneInput)
+        bool inRangeA = tod >= 0 and tod < 13 * 60
+        bool inEntryA = tod >= 13 * 60 and tod < 21 * 60
+        bool inRangeB = tod >= 13 * 60 and tod < 21 * 60
+        bool inEntryB = tod >= 0 and tod < 13 * 60
+        int dayId = year(sourceTime, timezoneInput) * 10000 + month(sourceTime, timezoneInput) * 100 + dayofmonth(sourceTime, timezoneInput)
+        bool newDay = not na(lastKtrDayId) and dayId != lastKtrDayId
+        bool rangeAStart = inRangeA and not lastInRangeA
+        bool rangeBStart = inRangeB and not lastInRangeB
+
+        if newDay
+            entryBHigh := rangeBHigh
+            entryBLow := rangeBLow
+            rangeAHigh := na
+            rangeALow := na
+            rangeBHigh := na
+            rangeBLow := na
+
+        if rangeAStart
+            rangeAHigh := na
+            rangeALow := na
+
+        if rangeBStart
+            rangeBHigh := na
+            rangeBLow := na
+
+        if inRangeA
+            rangeAHigh := na(rangeAHigh) ? sourceHigh : math.max(rangeAHigh, sourceHigh)
+            rangeALow := na(rangeALow) ? sourceLow : math.min(rangeALow, sourceLow)
+
+        if inRangeB
+            rangeBHigh := na(rangeBHigh) ? sourceHigh : math.max(rangeBHigh, sourceHigh)
+            rangeBLow := na(rangeBLow) ? sourceLow : math.min(rangeBLow, sourceLow)
+
+        bool activeEntry = inEntryA or inEntryB
+        activeWindowId := inEntryA ? 1 : inEntryB ? 2 : 0
+        float activeHigh = inEntryA ? rangeAHigh : inEntryB ? entryBHigh : na
+        float activeLow = inEntryA ? rangeALow : inEntryB ? entryBLow : na
+        activeRangeReady := activeEntry and not na(activeHigh) and not na(activeLow) and activeHigh > activeLow
+        activeRange := activeRangeReady ? activeHigh - activeLow : na
+        float requiredSweep = activeRangeReady ? math.max(minSweepTicks * syminfo.mintick, activeRange * sweepDepthRangeFraction) : na
+        float requiredBody = activeRangeReady ? math.max(minDisplacementBodyTicks * syminfo.mintick, activeRange * displacementBodyRangeFraction) : na
+
+        if not activeEntry or activeWindowId != lastEntryWindow
+            longStage := 0
+            shortStage := 0
+            longAge := 0
+            shortAge := 0
+            longLeftBar := na
+            shortLeftBar := na
+
+        lastEntryWindow := activeWindowId
+
+        if activeRangeReady
+            if longStage > 0
+                longAge += 1
+                if longAge > 1
+                    longStage := 0
+                    longAge := 0
+                    longLeftBar := na
+            if shortStage > 0
+                shortAge += 1
+                if shortAge > 1
+                    shortStage := 0
+                    shortAge := 0
+                    shortLeftBar := na
+
+            bool longSweep = sourceLow <= activeLow - requiredSweep
+            bool shortSweep = sourceHigh >= activeHigh + requiredSweep
+
+            if longSweep
+                longStage := 1
+                longAge := 0
+                longLeftBar := bar_index
+            if shortSweep
+                shortStage := 1
+                shortAge := 0
+                shortLeftBar := bar_index
+
+            if longStage == 1 and sourceClose > activeLow
+                longStage := 2
+                longAge := 0
+            if shortStage == 1 and sourceClose < activeHigh
+                shortStage := 2
+                shortAge := 0
+
+            if longStage == 2 and displacementPass(true, requiredBody, sourceOpen, sourceHigh, sourceLow, sourceClose)
+                ktrLong := true
+                ktrLongPrice := sourceClose
+                drawTriggerBox(true, longLeftBar, bar_index, math.max(activeHigh, sourceHigh), math.min(activeLow, sourceLow))
+                longStage := 0
+                longAge := 0
+                longLeftBar := na
+
+            if shortStage == 2 and displacementPass(false, requiredBody, sourceOpen, sourceHigh, sourceLow, sourceClose)
+                ktrShort := true
+                ktrShortPrice := sourceClose
+                drawTriggerBox(false, shortLeftBar, bar_index, math.max(activeHigh, sourceHigh), math.min(activeLow, sourceLow))
+                shortStage := 0
+                shortAge := 0
+                shortLeftBar := na
+
+        lastKtrDayId := dayId
+        lastInRangeA := inRangeA
+        lastInRangeB := inRangeB
+
+bool belowLrmg = not na(lrmgLine) and close < lrmgLine
+bool aboveLrmg = not na(lrmgLine) and close > lrmgLine
+bool buySignal = enableLongs and ktrLong and belowLrmg and stochOversold
+bool sellSignal = enableShorts and ktrShort and aboveLrmg and stochOverbought
+
+// Indicator-side P/L tracker. This is one simulated directional basket at a time.
+var bool plTradeOpen = false
+var int plDirection = 0
+var int plEntryBar = na
+var float plEntryPrice = na
+var float plEntrySum = 0.0
+var float plTpPrice = na
+var float plSlPrice = na
+var float plTrailStopPrice = na
+var float plTrailExtreme = na
+var float plNextGridPrice = na
+var float plEntryAdr = na
+var int plBasketEntries = 0
+var int plBaskets = 0
+var int plEntries = 0
+var int plClosedTrades = 0
+var int plWins = 0
+var int plLosses = 0
+var float plNetAdr = 0.0
+
+bool plExitWin = false
+bool plExitLoss = false
+bool plExitTrail = false
+bool plGridAddLong = false
+bool plGridAddShort = false
+float plOpenAdr = na
+
+if enablePlTracker and plTradeOpen and bar_index > plEntryBar
+    bool trailReady = enableTrailingStop and trailDistanceAdrUnits > 0.0 and not na(plEntryAdr) and plEntryAdr > 0.0
+    if trailReady
+        if plDirection == 1
+            bool startHit = high >= plEntryPrice + plEntryAdr * trailStartAdrUnits
+            if startHit
+                plTrailExtreme := na(plTrailExtreme) ? high : math.max(plTrailExtreme, high)
+                plTrailStopPrice := plTrailExtreme - plEntryAdr * trailDistanceAdrUnits
+        else if plDirection == -1
+            bool startHit = low <= plEntryPrice - plEntryAdr * trailStartAdrUnits
+            if startHit
+                plTrailExtreme := na(plTrailExtreme) ? low : math.min(plTrailExtreme, low)
+                plTrailStopPrice := plTrailExtreme + plEntryAdr * trailDistanceAdrUnits
+
+    bool tpEnabled = not na(plTpPrice)
+    bool tpHit = tpEnabled and (plDirection == 1 ? high >= plTpPrice : low <= plTpPrice)
+    bool slEnabled = not na(plSlPrice)
+    bool slHit = slEnabled and (plDirection == 1 ? low <= plSlPrice : high >= plSlPrice)
+    bool trailEnabled = not na(plTrailStopPrice)
+    bool trailHit = trailEnabled and (plDirection == 1 ? low <= plTrailStopPrice : high >= plTrailStopPrice)
+    bool exitAtTp = tpHit and (not slHit or sameBarExitPolicy == "TP first")
+    bool exitAtSl = slHit and (not tpHit or sameBarExitPolicy == "SL first")
+    bool exitAtTrail = trailHit and not exitAtTp and not exitAtSl
+    if exitAtTp or exitAtSl or exitAtTrail
+        float exitPrice = exitAtTp ? plTpPrice : exitAtSl ? plSlPrice : plTrailStopPrice
+        float closedAdr = plDirection == 1 ? ((exitPrice * plBasketEntries - plEntrySum) / plEntryAdr) : ((plEntrySum - exitPrice * plBasketEntries) / plEntryAdr)
+        plNetAdr += closedAdr
+        plClosedTrades += 1
+        plExitTrail := exitAtTrail
+        if closedAdr >= 0.0
+            plWins += 1
+            plExitWin := exitAtTp
+        else
+            plLosses += 1
+            plExitLoss := exitAtSl
+        plTradeOpen := false
+        plDirection := 0
+        plEntryBar := na
+        plEntryPrice := na
+        plEntrySum := 0.0
+        plTpPrice := na
+        plSlPrice := na
+        plTrailStopPrice := na
+        plTrailExtreme := na
+        plNextGridPrice := na
+        plEntryAdr := na
+        plBasketEntries := 0
+
+bool plAdrReady = enablePlTracker and not na(currentAdrDistance) and currentAdrDistance > 0.0
+if plAdrReady and not plTradeOpen
+    if buySignal
+        float entry = useLowerSource and not na(ktrLongPrice) ? ktrLongPrice : close
+        plTradeOpen := true
+        plDirection := 1
+        plEntryBar := bar_index
+        plEntryPrice := entry
+        plEntrySum := entry
+        plEntryAdr := currentAdrDistance
+        plBasketEntries := 1
+        plTpPrice := tpAdrUnits > 0.0 ? entry + currentAdrDistance * tpAdrUnits : na
+        plSlPrice := slAdrUnits > 0.0 ? entry - currentAdrDistance * slAdrUnits : na
+        plTrailStopPrice := na
+        plTrailExtreme := na
+        plNextGridPrice := enableGridAdds and maxGridEntries > 1 ? entry - currentAdrDistance * gridSpacingAdrUnits : na
+        plBaskets += 1
+        plEntries += 1
+    else if sellSignal
+        float entry = useLowerSource and not na(ktrShortPrice) ? ktrShortPrice : close
+        plTradeOpen := true
+        plDirection := -1
+        plEntryBar := bar_index
+        plEntryPrice := entry
+        plEntrySum := entry
+        plEntryAdr := currentAdrDistance
+        plBasketEntries := 1
+        plTpPrice := tpAdrUnits > 0.0 ? entry - currentAdrDistance * tpAdrUnits : na
+        plSlPrice := slAdrUnits > 0.0 ? entry + currentAdrDistance * slAdrUnits : na
+        plTrailStopPrice := na
+        plTrailExtreme := na
+        plNextGridPrice := enableGridAdds and maxGridEntries > 1 ? entry + currentAdrDistance * gridSpacingAdrUnits : na
+        plBaskets += 1
+        plEntries += 1
+
+if enablePlTracker and plTradeOpen and enableGridAdds and bar_index > plEntryBar and not na(plEntryAdr) and plEntryAdr > 0.0 and not na(plNextGridPrice)
+    float gridStep = plEntryAdr * gridSpacingAdrUnits
+    bool gridHit = plDirection == 1 ? low <= plNextGridPrice : high >= plNextGridPrice
+    int gridGuard = 0
+    while gridHit and plBasketEntries < maxGridEntries and gridGuard < maxGridEntries
+        float gridEntry = plNextGridPrice
+        plEntrySum += gridEntry
+        plBasketEntries += 1
+        plEntries += 1
+        plEntryPrice := plEntrySum / (plBasketEntries * 1.0)
+        plTpPrice := tpAdrUnits > 0.0 ? (plDirection == 1 ? plEntryPrice + plEntryAdr * tpAdrUnits : plEntryPrice - plEntryAdr * tpAdrUnits) : na
+        plSlPrice := slAdrUnits > 0.0 ? (plDirection == 1 ? plEntryPrice - plEntryAdr * slAdrUnits : plEntryPrice + plEntryAdr * slAdrUnits) : na
+        plNextGridPrice := plBasketEntries < maxGridEntries ? (plDirection == 1 ? gridEntry - gridStep : gridEntry + gridStep) : na
+        plGridAddLong := plGridAddLong or plDirection == 1
+        plGridAddShort := plGridAddShort or plDirection == -1
+        gridGuard += 1
+        gridHit := not na(plNextGridPrice) and (plDirection == 1 ? low <= plNextGridPrice : high >= plNextGridPrice)
+
+if plTradeOpen and not na(plEntryAdr) and plEntryAdr > 0.0
+    plOpenAdr := plDirection == 1 ? (close * plBasketEntries - plEntrySum) / plEntryAdr : (plEntrySum - close * plBasketEntries) / plEntryAdr
+
+float plWinRate = plClosedTrades > 0 ? plWins * 100.0 / plClosedTrades : na
+string plDirectionText = plDirection == 1 ? "LONG" : "SHORT"
+string plActiveText = plTradeOpen ? plDirectionText + " x" + str.tostring(plBasketEntries) : "-"
+int plActiveFills = plTradeOpen ? plBasketEntries : 0
+
+plotshape(buySignal, title="Limni Buy", style=shape.triangleup, location=location.belowbar, color=buyColor, size=size.small, text="BUY")
+plotshape(sellSignal, title="Limni Sell", style=shape.triangledown, location=location.abovebar, color=sellColor, size=size.small, text="SELL")
+plotshape(plExitWin, title="P/L TP", style=shape.diamond, location=location.abovebar, color=buyColor, size=size.tiny, text="TP")
+plotshape(plExitLoss, title="P/L SL", style=shape.diamond, location=location.belowbar, color=sellColor, size=size.tiny, text="SL")
+plotshape(plExitTrail, title="P/L Trail", style=shape.diamond, location=location.abovebar, color=color.yellow, size=size.tiny, text="TR")
+plotshape(plGridAddLong, title="Grid Buy Add", style=shape.square, location=location.belowbar, color=color.new(buyColor, 20), size=size.tiny, text="ADD")
+plotshape(plGridAddShort, title="Grid Sell Add", style=shape.square, location=location.abovebar, color=color.new(sellColor, 20), size=size.tiny, text="ADD")
+
+plot(showPlLevels and plTradeOpen ? plTpPrice : na, "Active TP", color=color.new(buyColor, 0), linewidth=1, style=plot.style_linebr)
+plot(showPlLevels and plTradeOpen ? plSlPrice : na, "Active SL", color=color.new(sellColor, 0), linewidth=1, style=plot.style_linebr)
+plot(showPlLevels and plTradeOpen ? plTrailStopPrice : na, "Active Trail", color=color.new(color.yellow, 0), linewidth=1, style=plot.style_linebr)
+plot(showPlLevels and plTradeOpen ? plEntryPrice : na, "Basket Average Entry", color=color.new(color.white, 0), linewidth=1, style=plot.style_linebr)
+plot(showPlLevels and plTradeOpen ? plNextGridPrice : na, "Next Grid Add", color=color.new(color.yellow, 0), linewidth=1, style=plot.style_linebr)
+
+alertcondition(buySignal, "Limni Buy", "Stoch oversold + below LRMG 0 line + Katarakti buy trigger")
+alertcondition(sellSignal, "Limni Sell", "Stoch overbought + above LRMG 0 line + Katarakti sell trigger")
+
+plot(stochMain, "Stoch Main", display=display.data_window)
+plot(stochD, "Stoch D", display=display.data_window)
+plot(lrmgQuantum, "LRMG Quantum", display=display.data_window)
+plot(activeRangeReady ? activeRange : na, "Katarakti Active Range", display=display.data_window)
+plot(currentAdrDistance, "P/L ADR Distance", display=display.data_window)
+plot(plOpenAdr, "P/L Open ADR", display=display.data_window)
+plot(plTradeOpen ? plBasketEntries * 1.0 : na, "P/L Basket Entries", display=display.data_window)
+plot(plTrailStopPrice, "P/L Trail Stop", display=display.data_window)
+
+var table debugTable = table.new(position.top_right, 2, 16, border_width=1, bgcolor=color.new(color.black, 20), border_color=color.new(color.white, 60))
+if showDebugTable and barstate.islast
+    table.clear(debugTable, 0, 0, 1, 15)
+    table.cell(debugTable, 0, 0, "Limni LRMG KTR", text_color=color.white, bgcolor=color.new(color.white, 85))
+    table.cell(debugTable, 1, 0, syminfo.ticker, text_color=color.white, bgcolor=color.new(color.white, 85))
+    table.cell(debugTable, 0, 1, "LRMG", text_color=color.white)
+    table.cell(debugTable, 1, 1, not na(lrmgLine) ? str.tostring(lrmgLine, format.mintick) : "bootstrapping", text_color=color.white)
+    table.cell(debugTable, 0, 2, "K", text_color=color.white)
+    table.cell(debugTable, 1, 2, not na(stochMain) ? str.tostring(stochMain, "#.##") : "-", text_color=stochOversold ? buyColor : stochOverbought ? sellColor : color.white)
+    table.cell(debugTable, 0, 3, "Window", text_color=color.white)
+    table.cell(debugTable, 1, 3, activeWindowId == 1 ? "A entry" : activeWindowId == 2 ? "B entry" : "range", text_color=color.white)
+    table.cell(debugTable, 0, 4, "Range", text_color=color.white)
+    table.cell(debugTable, 1, 4, activeRangeReady ? str.tostring(activeRange, format.mintick) : "-", text_color=color.white)
+    table.cell(debugTable, 0, 5, "Position", text_color=color.white)
+    table.cell(debugTable, 1, 5, belowLrmg ? "below 0" : aboveLrmg ? "above 0" : "-", text_color=belowLrmg ? buyColor : aboveLrmg ? sellColor : color.white)
+    table.cell(debugTable, 0, 6, "Signal", text_color=color.white)
+    table.cell(debugTable, 1, 6, buySignal ? "BUY" : sellSignal ? "SELL" : "-", text_color=buySignal ? buyColor : sellSignal ? sellColor : color.white)
+    table.cell(debugTable, 0, 7, "Source", text_color=color.white)
+    table.cell(debugTable, 1, 7, useLowerSource ? sourceTimeframe + " (" + str.tostring(lowerSourceCount) + ")" : "chart", text_color=sourceReady ? color.white : color.orange)
+    table.cell(debugTable, 0, 8, "ADR", text_color=color.white)
+    table.cell(debugTable, 1, 8, not na(currentAdrDistance) ? str.tostring(currentAdrDistance, format.mintick) : "-", text_color=plAdrReady ? color.white : color.orange)
+    table.cell(debugTable, 0, 9, "Active", text_color=color.white)
+    table.cell(debugTable, 1, 9, plActiveText, text_color=plDirection == 1 ? buyColor : plDirection == -1 ? sellColor : color.white)
+    table.cell(debugTable, 0, 10, "Fills", text_color=color.white)
+    table.cell(debugTable, 1, 10, str.tostring(plActiveFills) + " / " + str.tostring(plEntries), text_color=color.white)
+    table.cell(debugTable, 0, 11, "Closed", text_color=color.white)
+    table.cell(debugTable, 1, 11, str.tostring(plClosedTrades) + " / " + str.tostring(plBaskets), text_color=color.white)
+    table.cell(debugTable, 0, 12, "Win%", text_color=color.white)
+    table.cell(debugTable, 1, 12, not na(plWinRate) ? str.tostring(plWinRate, "#.##") + "%" : "-", text_color=color.white)
+    table.cell(debugTable, 0, 13, "Net ADR", text_color=color.white)
+    table.cell(debugTable, 1, 13, str.tostring(plNetAdr, "#.##"), text_color=plNetAdr > 0 ? buyColor : plNetAdr < 0 ? sellColor : color.white)
+    table.cell(debugTable, 0, 14, "Open ADR", text_color=color.white)
+    table.cell(debugTable, 1, 14, not na(plOpenAdr) ? str.tostring(plOpenAdr, "#.##") : "-", text_color=not na(plOpenAdr) and plOpenAdr > 0 ? buyColor : not na(plOpenAdr) and plOpenAdr < 0 ? sellColor : color.white)
+    table.cell(debugTable, 0, 15, "Trail", text_color=color.white)
+    table.cell(debugTable, 1, 15, not na(plTrailStopPrice) ? str.tostring(plTrailStopPrice, format.mintick) : "-", text_color=not na(plTrailStopPrice) ? color.yellow : color.white)
+
+if not showDebugTable and barstate.islast
+    table.clear(debugTable, 0, 0, 1, 15)

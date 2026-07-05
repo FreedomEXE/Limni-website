@@ -72,6 +72,17 @@ docs/research/gates/gate90/artifacts/oos-session-window-5w-*/
 docs/research/gates/gate90/artifacts/gate90c-combined-variant-smoke-*/
 docs/research/gates/gate90/artifacts/gate90c-full-window-*/
 
+# Large local-only research row ledgers; compact summaries and SHA manifests are committed explicitly.
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-mechanical-smoke-2026-04/
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-smoke/
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/open-inventory.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/terminal-liquidations.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/trade-exits.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-admissions.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-candidates.rows.csv
+docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/causality-audit.rows.csv
+docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/pnl-reconciliation.rows.csv
+
 # Python
 __pycache__/
 *.pyc

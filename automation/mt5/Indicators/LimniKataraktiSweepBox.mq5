@@ -4,12 +4,15 @@
 //|                                      Visual review indicator     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.01"
+#property version   "1.04"
 #property indicator_chart_window
 #property indicator_plots 0
 
-input int    LookbackBars = 15000; // M1 bars copied for calculation
-input int    MaxSignalsToDraw = 80;
+input string StartDate = ""; // blank = oldest loaded chart bar
+input string EndDate = ""; // blank = newest loaded chart bar
+input int    RequestPaddingDays = 2;
+input int    LookbackBars = 0; // optional safety cap after date-range copy; 0 = no cap
+input int    MaxSignalsToDraw = 0; // 0 = draw all detected signals
 input double ChartTimeUtcOffsetHours = 0.0; // chart/server time minus UTC
 
 input double SweepDepthRangeFraction = 0.0833333333; // approx range / 12
@@ -36,6 +39,82 @@ input int    BoxRightPaddingM1Bars = 2;
 input double BoxVerticalPaddingFraction = 0.08;
 
 string PREFIX = "LIMNI_KATARAKTI_SWEEP_BOX_";
+
+bool IsBlank(const string value)
+{
+   return StringLen(value) == 0;
+}
+
+datetime ParseInputDate(const string value, const datetime fallback)
+{
+   if(IsBlank(value))
+      return fallback;
+
+   datetime parsed = StringToTime(value);
+   if(parsed <= 0)
+      return fallback;
+
+   return parsed;
+}
+
+int TerminalMaxHistoryBars()
+{
+   long max_bars = TerminalInfoInteger(TERMINAL_MAXBARS);
+   if(max_bars <= 0)
+      return 1000000;
+   if(max_bars > INT_MAX)
+      return INT_MAX;
+   return (int)max_bars;
+}
+
+void ChartTimeRange(const datetime &time[], const int rates_total, datetime &oldest, datetime &newest)
+{
+   oldest = 0;
+   newest = 0;
+
+   for(int i = 0; i < rates_total; i++)
+   {
+      if(time[i] <= 0)
+         continue;
+
+      if(oldest == 0 || time[i] < oldest)
+         oldest = time[i];
+      if(newest == 0 || time[i] > newest)
+         newest = time[i];
+   }
+}
+
+bool SeriesFirstDate(const ENUM_TIMEFRAMES period, datetime &first_date)
+{
+   long raw = 0;
+   if(!SeriesInfoInteger(_Symbol, period, SERIES_FIRSTDATE, raw) || raw <= 0)
+      return false;
+
+   first_date = (datetime)raw;
+   return true;
+}
+
+void ApplyLookbackCap(MqlRates &rates[], int &count)
+{
+   if(LookbackBars <= 0 || count <= LookbackBars)
+      return;
+
+   int capped = MathMax(100, LookbackBars);
+   if(count <= capped)
+      return;
+
+   MqlRates trimmed[];
+   ArrayResize(trimmed, capped);
+   int start = count - capped;
+   for(int i = 0; i < capped; i++)
+      trimmed[i] = rates[start + i];
+
+   ArrayResize(rates, capped);
+   for(int i = 0; i < capped; i++)
+      rates[i] = trimmed[i];
+
+   count = capped;
+}
 
 int IndexFromLogical(const int rates_total, const bool series, const int logical_index)
 {
@@ -90,6 +169,11 @@ void DeleteObjects()
 bool InWindow(const datetime t_utc, const datetime start_utc, const datetime end_utc)
 {
    return t_utc >= start_utc && t_utc < end_utc;
+}
+
+bool SignalLimitReached(const int signals_drawn)
+{
+   return MaxSignalsToDraw > 0 && signals_drawn >= MaxSignalsToDraw;
 }
 
 bool DisplacementPass(
@@ -322,7 +406,7 @@ void DetectWindow(
    double required_sweep_price = MathMax(min_sweep, range_price * SweepDepthRangeFraction);
    double required_body_price = MathMax(min_body, range_price * DisplacementBodyRangeFraction);
 
-   for(int logical = start_logical; logical <= process_to && signals_drawn < MaxSignalsToDraw; logical++)
+   for(int logical = start_logical; logical <= process_to && !SignalLimitReached(signals_drawn); logical++)
    {
       int idx = IndexFromLogical(rates_total, series, logical);
       datetime t_utc = BarUtc(time[idx]);
@@ -346,7 +430,7 @@ void DetectWindow(
          }
       }
 
-      if(DrawShortSweeps && signals_drawn < MaxSignalsToDraw)
+      if(DrawShortSweeps && !SignalLimitReached(signals_drawn))
       {
          double up_depth = high[idx] - range_high;
          if(up_depth + _Point * 0.1 >= required_sweep_price)
@@ -393,20 +477,62 @@ int OnCalculate(
 {
    MqlRates m1_rates[];
    ArraySetAsSeries(m1_rates, false);
-   int requested_bars = MathMax(LookbackBars, 100);
-   int copied = CopyRates(_Symbol, PERIOD_M1, 0, requested_bars, m1_rates);
+   int available_m1_bars = Bars(_Symbol, PERIOD_M1);
+
+   datetime chart_oldest = 0;
+   datetime chart_newest = 0;
+   ChartTimeRange(time, rates_total, chart_oldest, chart_newest);
+   if(chart_oldest <= 0 || chart_newest <= 0)
+      return rates_total;
+
+   int padding_days = MathMax(0, RequestPaddingDays);
+   datetime fallback_start = (datetime)(chart_oldest - (long)padding_days * 86400);
+   datetime fallback_end = (datetime)(chart_newest + (long)MathMax(1, padding_days) * 86400);
+   datetime request_start = ParseInputDate(StartDate, fallback_start);
+   datetime request_end = ParseInputDate(EndDate, fallback_end);
+   if(request_end < chart_newest)
+      request_end = chart_newest;
+
+   datetime local_m1_first = 0;
+   if(SeriesFirstDate(PERIOD_M1, local_m1_first) && local_m1_first > request_start)
+      request_start = local_m1_first;
+
+   if(request_end <= request_start)
+      return rates_total;
+
+   ResetLastError();
+   int copied = CopyRates(_Symbol, PERIOD_M1, request_start, request_end, m1_rates);
+   int copy_error = GetLastError();
    if(copied < 50)
    {
       if(ShowDebugComment)
       {
          Comment(
             "Limni Katarakti Sweep Box\n",
-            "M1 data unavailable or too short\n",
-            "copied M1 bars: ", IntegerToString(copied)
+            "M1 date-range data unavailable or too short\n",
+            "requested: ", TimeToString(request_start, TIME_DATE | TIME_MINUTES),
+            " -> ", TimeToString(request_end, TIME_DATE | TIME_MINUTES), "\n",
+            "copied M1 bars: ", IntegerToString(copied), "\n",
+            "error: ", IntegerToString(copy_error), "\n",
+            "terminal max bars: ", IntegerToString(TerminalMaxHistoryBars())
          );
       }
       return rates_total;
    }
+
+   if(m1_rates[0].time > m1_rates[copied - 1].time)
+   {
+      MqlRates ordered[];
+      ArrayResize(ordered, copied);
+      for(int i = 0; i < copied; i++)
+         ordered[i] = m1_rates[copied - 1 - i];
+
+      ArrayResize(m1_rates, copied);
+      for(int i = 0; i < copied; i++)
+         m1_rates[i] = ordered[i];
+   }
+
+   ApplyLookbackCap(m1_rates, copied);
 
    datetime calc_time[];
    double calc_open[];
@@ -437,7 +563,8 @@ int OnCalculate(
    if(process_to < 20)
       return rates_total;
 
-   int start_logical = MathMax(0, process_to - LookbackBars);
+   int effective_lookback = LookbackBars <= 0 ? copied : MathMin(LookbackBars, copied);
+   int start_logical = MathMax(0, process_to - effective_lookback + 1);
    int first_idx = IndexFromLogical(calc_total, series, start_logical);
    int last_idx = IndexFromLogical(calc_total, series, process_to);
 
@@ -449,7 +576,7 @@ int OnCalculate(
    DeleteObjects();
 
    int signals_drawn = 0;
-   for(datetime day = day_start; day <= day_end && signals_drawn < MaxSignalsToDraw; day += 86400)
+   for(datetime day = day_start; day <= day_end && !SignalLimitReached(signals_drawn); day += 86400)
    {
       DetectWindow(
          WindowId("ny", day),
@@ -486,8 +613,13 @@ int OnCalculate(
          "Limni Katarakti Sweep Box\n",
          "signals: ", IntegerToString(signals_drawn), "\n",
          "calculation: M1\n",
+         "available M1 bars: ", IntegerToString(available_m1_bars), "\n",
+         "requested: ", TimeToString(request_start, TIME_DATE | TIME_MINUTES),
+         " -> ", TimeToString(request_end, TIME_DATE | TIME_MINUTES), "\n",
          "copied M1 bars: ", IntegerToString(copied), "\n",
-         "lookback M1 bars: ", IntegerToString(LookbackBars), "\n",
+         "lookback M1 bars: ", LookbackBars <= 0 ? "date range" : IntegerToString(LookbackBars), "\n",
+         "max signals: ", MaxSignalsToDraw <= 0 ? "all detected" : IntegerToString(MaxSignalsToDraw), "\n",
+         "terminal max bars: ", IntegerToString(TerminalMaxHistoryBars()), "\n",
          "chart UTC offset hours: ", DoubleToString(ChartTimeUtcOffsetHours, 2)
       );
    }
