@@ -16,25 +16,25 @@ Rows are ranked only by closed + marked corrected equity, then PF, equity DD, ne
 
 | variant_id | trade_rows | corrected_closed_plus_marked_net_actual | corrected_profit_factor_closed_plus_marked | corrected_max_equity_dd_actual | corrected_net_to_max_equity_dd | terminal_marked_loss_share_of_closed_net | top_pair_contribution_pct | top_3_pair_contribution_pct | stress_double_commission_net | stress_slippage_0_1_net | continue_candidate | continue_fail_reasons |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| adr_event_0_025_type3_long_only | 90164 | 241798.06 | 3.386761 | -4619.06 | 52.347894 | 0.293841 |  | 0 | 229175.1 | 240300.04 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_025_candidate_b_fade_strict | 96739 | 201123.94 | 2.200589 | -19782.64 | 10.166689 | 0.453852 |  | 0 | 187580.48 | 199537.42 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_025_type3_both_no_direction | 179454 | 124109.74 | 1.210584 | -90844.84 | 1.366173 | 0.825839 |  | 0 | 98986.18 | 121065.32 | false | pf_below_1_25;negative_month_worse_than_25pct_net;terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_05_candidate_b_fade_strict | 11062 | 27758.23 | 2.287908 | -7422.91 | 3.739534 | 0.436355 |  | 0 | 26209.55 | 27557.08 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_05_type3_long_only | 8912 | 21203.43 | 2.085265 | -5066.9 | 4.184695 | 0.47848 |  | 0 | 19955.75 | 21022.57 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_075_type3_both_no_direction | 4226 | 18942.45 | 9.437209 | -402.81 | 47.025769 | 0.092043 |  | 0 | 18350.81 | 18862.46 | false | top_pair_gt_25pct_net |
-| adr_event_0_075_candidate_b_fade_strict | 3016 | 12943.4 | 6.895105 | -759.84 | 17.034373 | 0.135168 |  | 0 | 12521.16 | 12886.64 | false | top_pair_gt_25pct_net |
-| adr_event_0_075_type3_long_only | 2621 | 11589.14 | 6.301022 | -1101.02 | 10.525824 | 0.138387 |  | 0 | 11222.2 | 11530.56 | false | top_pair_gt_25pct_net |
-| adr_event_0_05_type3_both_no_direction | 19929 | 8304.27 | 1.106569 | -17152.49 | 0.484144 | 0.9036 |  | 0 | 5514.21 | 7976.42 | false | pf_below_1_25;net_to_max_equity_dd_below_1;negative_month_worse_than_25pct_net;terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_075_type3_short_only | 1605 | 7353.31 | 125.845076 | -170.47 | 43.135491 | 0.007946 |  | 0 | 7128.61 | 7331.9 | false | top_pair_gt_25pct_net |
-| adr_event_0_075_candidate_b_agreement_strict | 1210 | 5999.05 | 122.215992 | -72.08 | 83.227686 | 0 |  | 0 | 5829.65 | 5975.81 | false | top_pair_gt_25pct_net |
-| adr_event_0_10_type3_both_no_direction | 852 | 3069.39 | 3.680562 | -1066.79 | 2.87722 | 0.252157 |  | 0 | 2950.11 | 3053.52 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
+| adr_event_0_025_type3_long_only | 90164 | 241798.06 | 3.386761 | -4619.06 | 52.347894 | 0.293841 | 15.921976 | 34.452207 | 229175.1 | 240300.04 | false | terminal_inventory_loss_share_gte_25pct_closed_net |
+| adr_event_0_025_candidate_b_fade_strict | 96739 | 201123.94 | 2.200589 | -19782.64 | 10.166689 | 0.453852 | 12.390554 | 33.556577 | 187580.48 | 199537.42 | false | terminal_inventory_loss_share_gte_25pct_closed_net |
+| adr_event_0_025_type3_both_no_direction | 179454 | 124109.74 | 1.210584 | -90844.84 | 1.366173 | 0.825839 | 35.858065 | 102.694337 | 98986.18 | 121065.32 | false | pf_below_1_25;negative_month_worse_than_25pct_net;terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_05_candidate_b_fade_strict | 11062 | 27758.23 | 2.287908 | -7422.91 | 3.739534 | 0.436355 | 33.488271 | 72.598191 | 26209.55 | 27557.08 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_05_type3_long_only | 8912 | 21203.43 | 2.085265 | -5066.9 | 4.184695 | 0.47848 | 47.404781 | 90.979615 | 19955.75 | 21022.57 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_075_type3_both_no_direction | 4226 | 18942.45 | 9.437209 | -402.81 | 47.025769 | 0.092043 | 24.344264 | 67.700377 | 18350.81 | 18862.46 | false | top3_pairs_gt_55pct_net |
+| adr_event_0_075_candidate_b_fade_strict | 3016 | 12943.4 | 6.895105 | -759.84 | 17.034373 | 0.135168 | 33.183403 | 75.004028 | 12521.16 | 12886.64 | false | top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_075_type3_long_only | 2621 | 11589.14 | 6.301022 | -1101.02 | 10.525824 | 0.138387 | 39.790691 | 92.126487 | 11222.2 | 11530.56 | false | top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_05_type3_both_no_direction | 19929 | 8304.27 | 1.106569 | -17152.49 | 0.484144 | 0.9036 | 121.039366 | 297.531748 | 5514.21 | 7976.42 | false | pf_below_1_25;net_to_max_equity_dd_below_1;negative_month_worse_than_25pct_net;terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net;remove_best_pair_flips_or_missing_net |
+| adr_event_0_075_type3_short_only | 1605 | 7353.31 | 125.845076 | -170.47 | 43.135491 | 0.007946 | 53.426029 | 100.000038 | 7128.61 | 7331.9 | false | top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_075_candidate_b_agreement_strict | 1210 | 5999.05 | 122.215992 | -72.08 | 83.227686 | 0 | 36.048531 | 79.315037 | 5829.65 | 5975.81 | false | top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
+| adr_event_0_10_type3_both_no_direction | 852 | 3069.39 | 3.680562 | -1066.79 | 2.87722 | 0.252157 | 69.990146 | 100.000026 | 2950.11 | 3053.52 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
 
 ## Candidate Rows
 
 | variant_id | corrected_closed_net_actual | corrected_terminal_marked_actual | corrected_closed_plus_marked_net_actual | corrected_profit_factor_closed_plus_marked | worst_marked_month_delta_actual | stress_double_commission_net | stress_slippage_0_1_net | stress_slippage_0_2_net | continue_candidate | continue_fail_reasons |
 |---|---|---|---|---|---|---|---|---|---|---|
-| adr_event_0_025_type3_long_only | 342412.87 | -100614.81 | 241798.06 | 3.386761 | -4619.07 | 229175.1 | 240300.04 | 238802.01 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
-| adr_event_0_05_type3_long_only | 40657.02 | -19453.59 | 21203.43 | 2.085265 | -5066.9 | 19955.75 | 21022.57 | 20841.71 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net |
+| adr_event_0_025_type3_long_only | 342412.87 | -100614.81 | 241798.06 | 3.386761 | -4619.07 | 229175.1 | 240300.04 | 238802.01 | false | terminal_inventory_loss_share_gte_25pct_closed_net |
+| adr_event_0_05_type3_long_only | 40657.02 | -19453.59 | 21203.43 | 2.085265 | -5066.9 | 19955.75 | 21022.57 | 20841.71 | false | terminal_inventory_loss_share_gte_25pct_closed_net;top_pair_gt_25pct_net;top3_pairs_gt_55pct_net |
 
 ## Inventory Summary
 

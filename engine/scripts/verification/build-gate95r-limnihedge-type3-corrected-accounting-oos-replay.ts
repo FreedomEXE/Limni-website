@@ -797,10 +797,11 @@ async function main() {
 
   const pairRowsByVariant = new Map<string, Array<{ symbol: string; net: number }>>();
   for (const row of pairSummaryRows) {
-    const [variantId, symbol] = String(row.symbol).split("|");
+    const variantId = String(row.variant_id);
+    const symbol = String(row.symbol);
     const rows = pairRowsByVariant.get(variantId!) ?? [];
-    rows.push({ symbol: symbol!, net: numberValue(row.corrected_net_actual as number) });
-    pairRowsByVariant.set(variantId!, rows);
+    rows.push({ symbol, net: numberValue(row.corrected_net_actual as number) });
+    pairRowsByVariant.set(variantId, rows);
   }
 
   const inventorySummaryRows: Record<string, unknown>[] = [];
