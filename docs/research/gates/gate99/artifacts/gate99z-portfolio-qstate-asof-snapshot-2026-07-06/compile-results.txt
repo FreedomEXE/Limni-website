@@ -1,0 +1,5 @@
+repo-LimniPortfolioEA: Result: 0 errors, 0 warnings, MetaEditor exit code 1
+repo-StateMap: Result: 0 errors, 0 warnings, MetaEditor exit code 1
+active-LimniPortfolioEA: Result: 0 errors, 0 warnings, MetaEditor exit code 1
+active-StateMap: Result: 0 errors, 0 warnings, MetaEditor exit code 1
+MetaEditor exit code 1 is the known local clean-log pattern; compile logs are authoritative.

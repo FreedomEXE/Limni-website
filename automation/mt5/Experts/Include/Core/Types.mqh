@@ -190,7 +190,8 @@ enum LP_ReceiptKind
    LP_RECEIPT_GRID_INVENTORY = 17,
    LP_RECEIPT_NEWS_GUARD = 18,
    LP_RECEIPT_Q_STATE = 19,
-   LP_RECEIPT_PORTFOLIO_SELECTOR = 20
+   LP_RECEIPT_PORTFOLIO_SELECTOR = 20,
+   LP_RECEIPT_PORTFOLIO_Q_STATE = 21
 };
 
 struct LP_Config
@@ -291,6 +292,7 @@ struct LP_SignalSnapshot
    int variant_id;
    datetime source_bar_time;
    datetime source_m1_time;
+   datetime portfolio_asof_m1_time;
    int direction;
    int market_mode;
    int pair_state;
@@ -318,8 +320,21 @@ struct LP_SignalSnapshot
    bool news_allowed;
    bool receipt_required;
    ulong feature_hash;
+   ulong portfolio_snapshot_hash;
+   int portfolio_valid_pair_count;
    string reason_code;
    string reason;
+};
+
+struct LP_PortfolioQStateSnapshot
+{
+   datetime asof_m1_time;
+   int valid_pair_count;
+   int expected_pair_count;
+   ulong snapshot_hash;
+   bool valid;
+   string reason_code;
+   string detail;
 };
 
 struct LP_TradeIntent
@@ -581,6 +596,17 @@ void LP_ResetHarvestDecision(LP_HarvestDecision &decision)
    decision.entry_group_position_count = 0;
    decision.grid_group_position_count = 0;
    decision.reason = "";
+}
+
+void LP_ResetPortfolioQStateSnapshot(LP_PortfolioQStateSnapshot &snapshot)
+{
+   snapshot.asof_m1_time = 0;
+   snapshot.valid_pair_count = 0;
+   snapshot.expected_pair_count = LP_SYMBOL_COUNT;
+   snapshot.snapshot_hash = 0;
+   snapshot.valid = false;
+   snapshot.reason_code = "";
+   snapshot.detail = "";
 }
 
 ulong LP_HashString(const string value)

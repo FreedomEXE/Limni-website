@@ -310,6 +310,7 @@ private:
    {
       string payload = snapshot.symbol + "|" +
          LP_Stamp(snapshot.source_bar_time) + "|" +
+         LP_Stamp(snapshot.portfolio_asof_m1_time) + "|" +
          snapshot.formula_id + "|" +
          (string)snapshot.formula_hash + "|" +
          DoubleToString(snapshot.q, 8) + "|" +
@@ -319,6 +320,39 @@ private:
          IntegerToString(snapshot.market_mode) + "|" +
          IntegerToString(snapshot.katarakti_signal);
       snapshot.feature_hash = LP_HashString(payload);
+   }
+
+   void CopyFeaturesToSnapshot(
+      const LP_SymbolMeta &meta,
+      const LimniQStatePairFeatures &features,
+      LP_SignalSnapshot &snapshot
+   )
+   {
+      snapshot.symbol_id = meta.symbol_id;
+      snapshot.symbol = meta.broker_symbol;
+      snapshot.lane_id = LP_LANE_TREND_FOLLOW;
+      snapshot.variant_id = LP_VARIANT_STRICT;
+      snapshot.source_bar_time = features.source_m1_time;
+      snapshot.source_m1_time = features.source_m1_time;
+      snapshot.formula_id = features.formula_id;
+      snapshot.formula_hash = features.formula_hash;
+      snapshot.price = features.price;
+      snapshot.q = features.q;
+      snapshot.anchor = features.anchor;
+      snapshot.trend_persistence = features.trend_persistence;
+      snapshot.anchor_displacement = features.anchor_displacement;
+      snapshot.event_direction_persistence = features.event_direction_persistence;
+      snapshot.range_position = features.range_position;
+      snapshot.sweep_resolution = features.sweep_resolution;
+      snapshot.spread_cost_q = features.spread_cost_q;
+      snapshot.pair_q_score = features.pair_q_score;
+      snapshot.score = features.pair_q_score;
+      snapshot.confidence = features.confidence;
+      snapshot.katarakti_signal = features.katarakti_signal;
+      snapshot.event_count = features.event_count;
+      snapshot.reason_code = features.reason_code;
+      snapshot.valid = true;
+      snapshot.reason = features.reason_code;
    }
 
 public:
@@ -394,6 +428,38 @@ public:
       m_ready_count++;
 
       m_state[meta.symbol_id] = state;
+      return true;
+   }
+
+   bool BuildQStatePairSnapshot(
+      const LP_SymbolMeta &meta,
+      LP_SignalSnapshot &snapshot
+   )
+   {
+      LP_ResetSignalSnapshot(snapshot);
+      snapshot.symbol_id = meta.symbol_id;
+      snapshot.symbol = meta.broker_symbol;
+      snapshot.lane_id = LP_LANE_TREND_FOLLOW;
+      snapshot.variant_id = LP_VARIANT_STRICT;
+
+      if(!meta.tradable || meta.symbol_id < 0 || meta.symbol_id >= LP_SYMBOL_COUNT)
+      {
+         snapshot.reason = "not_tradable_or_bad_symbol";
+         snapshot.reason_code = "not_tradable_or_bad_symbol";
+         return false;
+      }
+
+      LimniQStatePairFeatures features;
+      if(!LimniQStateBuildPairFeatures(meta.broker_symbol, features))
+      {
+         snapshot.reason = features.reason_code;
+         snapshot.reason_code = features.reason_code;
+         snapshot.formula_id = features.formula_id;
+         snapshot.formula_hash = features.formula_hash;
+         return false;
+      }
+
+      CopyFeaturesToSnapshot(meta, features, snapshot);
       return true;
    }
 
@@ -478,6 +544,7 @@ public:
          bool changed = snapshots[i].feature_hash != m_state[i].last_feature_hash ||
             snapshots[i].pair_state != m_state[i].last_pair_state;
          snapshots[i].receipt_required = changed;
+         m_state[i].last_bar_time = snapshots[i].source_m1_time;
          m_state[i].last_feature_hash = snapshots[i].feature_hash;
          m_state[i].last_pair_state = snapshots[i].pair_state;
       }

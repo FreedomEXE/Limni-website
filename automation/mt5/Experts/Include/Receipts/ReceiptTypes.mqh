@@ -30,6 +30,7 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_NEWS_GUARD: return "news_guard";
       case LP_RECEIPT_Q_STATE: return "q_state";
       case LP_RECEIPT_PORTFOLIO_SELECTOR: return "portfolio_selector";
+      case LP_RECEIPT_PORTFOLIO_Q_STATE: return "portfolio_q_state";
    }
    return "unknown";
 }

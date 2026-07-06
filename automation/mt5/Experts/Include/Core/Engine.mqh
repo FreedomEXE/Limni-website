@@ -43,6 +43,8 @@ private:
    ulong m_last_attribution_hash;
    ulong m_last_currency_exposure_hash;
    ulong m_last_grid_inventory_hash;
+   datetime m_last_portfolio_qstate_asof;
+   ulong m_last_portfolio_qstate_hash;
    LP_SignalSnapshot m_latest_signals[LP_SYMBOL_COUNT];
    bool m_signal_available[LP_SYMBOL_COUNT];
 
@@ -86,6 +88,39 @@ private:
       return id;
    }
 
+   void ClearSignalAvailability()
+   {
+      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
+         m_signal_available[i] = false;
+   }
+
+   void WritePortfolioQStateReceipt(
+      const LP_PortfolioQStateSnapshot &snapshot,
+      const string status
+   )
+   {
+      m_receipts.Write(
+         LP_RECEIPT_PORTFOLIO_Q_STATE,
+         "",
+         status,
+         "formula_id=" + LimniQStateFormulaId() +
+            "|formula_hash=" + (string)LimniQStateFormulaHash() +
+            "|portfolio_asof_m1_time=" + LP_Stamp(snapshot.asof_m1_time) +
+            "|valid_pair_count=" + IntegerToString(snapshot.valid_pair_count) +
+            "|expected_pair_count=" + IntegerToString(snapshot.expected_pair_count) +
+            "|snapshot_hash=" + (string)snapshot.snapshot_hash +
+            "|valid=" + LP_BoolText(snapshot.valid) +
+            "|reason_code=" + snapshot.reason_code +
+            "|detail=" + snapshot.detail,
+         0,
+         0,
+         snapshot.snapshot_hash,
+         0,
+         0,
+         0
+      );
+   }
+
    void WriteQStateReceipt(const LP_SignalSnapshot &signal)
    {
       m_receipts.Write(
@@ -96,6 +131,9 @@ private:
             "|formula_id=" + signal.formula_id +
             "|formula_hash=" + (string)signal.formula_hash +
             "|source_m1_time=" + LP_Stamp(signal.source_m1_time) +
+            "|portfolio_asof_m1_time=" + LP_Stamp(signal.portfolio_asof_m1_time) +
+            "|portfolio_valid_pair_count=" + IntegerToString(signal.portfolio_valid_pair_count) +
+            "|portfolio_snapshot_hash=" + (string)signal.portfolio_snapshot_hash +
             "|market_mode=" + LP_MarketModeName(signal.market_mode) +
             "|direction=" + IntegerToString(signal.direction) +
             "|confidence=" + DoubleToString(signal.confidence, 6) +
@@ -125,6 +163,106 @@ private:
          0,
          0
       );
+   }
+
+   ulong BuildPortfolioQStateHash(const LP_SignalSnapshot &signals[])
+   {
+      string payload = LimniQStateFormulaId() + "|" + (string)LimniQStateFormulaHash();
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         const LP_SignalSnapshot signal = signals[symbol_id];
+         payload += "|" + IntegerToString(symbol_id) +
+            ":" + LP_Stamp(signal.source_m1_time) +
+            ":" + DoubleToString(signal.pair_q_score, 6) +
+            ":" + DoubleToString(signal.base_currency_score, 6) +
+            ":" + DoubleToString(signal.quote_currency_score, 6) +
+            ":" + DoubleToString(signal.pair_direction_score, 6) +
+            ":" + IntegerToString(signal.pair_state) +
+            ":" + IntegerToString(signal.market_mode);
+      }
+      return LP_HashString(payload);
+   }
+
+   bool BuildPortfolioQStateSnapshot(
+      LP_PortfolioQStateSnapshot &snapshot,
+      LP_SignalSnapshot &signals[],
+      bool &available[]
+   )
+   {
+      LP_ResetPortfolioQStateSnapshot(snapshot);
+      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
+      {
+         LP_ResetSignalSnapshot(signals[i]);
+         available[i] = false;
+      }
+
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_SymbolMeta meta;
+         if(!m_symbol_cache.Get(symbol_id, meta))
+         {
+            snapshot.reason_code = "symbol_meta_unavailable";
+            snapshot.detail = "symbol_id=" + IntegerToString(symbol_id);
+            return false;
+         }
+
+         LP_TickSnapshot tick;
+         m_tick_cache.RefreshTick(meta.broker_symbol, tick);
+
+         LP_SignalSnapshot signal;
+         if(!m_lrmg_state.BuildQStatePairSnapshot(meta, signal))
+         {
+            snapshot.reason_code = signal.reason_code == "" ? "pair_qstate_build_failed" : signal.reason_code;
+            snapshot.detail = "symbol=" + meta.broker_symbol;
+            return false;
+         }
+
+         if(snapshot.asof_m1_time <= 0)
+            snapshot.asof_m1_time = signal.source_m1_time;
+         else if(signal.source_m1_time != snapshot.asof_m1_time)
+         {
+            snapshot.reason_code = "mixed_source_m1_time";
+            snapshot.detail = "symbol=" + meta.broker_symbol +
+               "|expected=" + LP_Stamp(snapshot.asof_m1_time) +
+               "|actual=" + LP_Stamp(signal.source_m1_time);
+            return false;
+         }
+
+         LP_CalendarDecision calendar;
+         LP_EvaluateCalendar(snapshot.asof_m1_time, m_config, calendar);
+         m_news_calendar.Apply(snapshot.asof_m1_time, meta, m_config, calendar);
+         signal.session_allowed = !calendar.week_boundary_blocked;
+         signal.news_allowed = !calendar.news_blocked;
+         signal.reason = calendar.reason;
+
+         signals[symbol_id] = signal;
+         available[symbol_id] = true;
+         snapshot.valid_pair_count++;
+      }
+
+      if(snapshot.valid_pair_count != LP_SYMBOL_COUNT)
+      {
+         snapshot.reason_code = "incomplete_portfolio_qstate";
+         snapshot.detail = "valid_pair_count=" + IntegerToString(snapshot.valid_pair_count);
+         return false;
+      }
+
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         signals[symbol_id].portfolio_asof_m1_time = snapshot.asof_m1_time;
+         signals[symbol_id].portfolio_valid_pair_count = snapshot.valid_pair_count;
+      }
+
+      m_lrmg_state.ApplyCurrencyQState(signals, available, m_config);
+      snapshot.snapshot_hash = BuildPortfolioQStateHash(signals);
+      snapshot.valid = true;
+      snapshot.reason_code = "portfolio_qstate_ready";
+      snapshot.detail = "all_pairs_same_closed_m1";
+
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         signals[symbol_id].portfolio_snapshot_hash = snapshot.snapshot_hash;
+
+      return true;
    }
 
    void AddHarvestCloseIntent(const LP_HarvestDecision &harvest, LP_IntentBus &bus)
@@ -168,6 +306,8 @@ public:
       m_last_attribution_hash = 0;
       m_last_currency_exposure_hash = 0;
       m_last_grid_inventory_hash = 0;
+      m_last_portfolio_qstate_asof = 0;
+      m_last_portfolio_qstate_hash = 0;
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
       {
          LP_ResetSignalSnapshot(m_latest_signals[i]);
@@ -381,10 +521,6 @@ public:
          AddHarvestCloseIntent(harvest, m_intent_bus);
 
       int cycle_new_bars = 0;
-      bool signal_updated[LP_SYMBOL_COUNT];
-      for(int reset_i = 0; reset_i < LP_SYMBOL_COUNT; reset_i++)
-         signal_updated[reset_i] = false;
-
       for(int i = 0; i < m_symbol_cache.Count(); i++)
       {
          LP_SymbolMeta meta;
@@ -402,69 +538,79 @@ public:
             continue;
 
          cycle_new_bars++;
-         LP_CalendarDecision calendar;
-         LP_EvaluateCalendar(clock_state.last_bar_time, m_config, calendar);
-         m_news_calendar.Apply(clock_state.last_bar_time, meta, m_config, calendar);
-
-         LP_SignalSnapshot signal;
-         if(m_lrmg_state.BuildSnapshot(meta, clock_state.last_bar_time, m_config, signal))
-         {
-            signal.session_allowed = !calendar.week_boundary_blocked;
-            signal.news_allowed = !calendar.news_blocked;
-            signal.reason = calendar.reason;
-            m_latest_signals[meta.symbol_id] = signal;
-            m_signal_available[meta.symbol_id] = true;
-            signal_updated[meta.symbol_id] = true;
-         }
       }
 
       if(cycle_new_bars > 0)
       {
-         m_lrmg_state.ApplyCurrencyQState(m_latest_signals, m_signal_available, m_config);
+         LP_SignalSnapshot portfolio_signals[LP_SYMBOL_COUNT];
+         bool portfolio_available[LP_SYMBOL_COUNT];
+         LP_PortfolioQStateSnapshot qstate_snapshot;
+         bool portfolio_qstate_ready = BuildPortfolioQStateSnapshot(qstate_snapshot, portfolio_signals, portfolio_available);
 
-         for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         if(!portfolio_qstate_ready)
          {
-            if(!signal_updated[symbol_id] || !m_signal_available[symbol_id])
-               continue;
-
-            LP_SignalSnapshot signal = m_latest_signals[symbol_id];
-            if(signal.valid)
-               WriteQStateReceipt(signal);
+            ClearSignalAvailability();
+            WritePortfolioQStateReceipt(qstate_snapshot, "fail_closed");
          }
-
-         if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+         else if(qstate_snapshot.asof_m1_time != m_last_portfolio_qstate_asof ||
+            qstate_snapshot.snapshot_hash != m_last_portfolio_qstate_hash)
          {
-            m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
-            m_intent_selector.WriteReceipt(m_receipts);
-
-            for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
+            for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
             {
-               int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
-               if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
-                  continue;
+               m_latest_signals[symbol_id] = portfolio_signals[symbol_id];
+               m_signal_available[symbol_id] = portfolio_available[symbol_id];
+            }
+            m_last_portfolio_qstate_asof = qstate_snapshot.asof_m1_time;
+            m_last_portfolio_qstate_hash = qstate_snapshot.snapshot_hash;
+            WritePortfolioQStateReceipt(qstate_snapshot, "ready");
 
-               LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
-               int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
-               m_total_intents += emitted;
-               if(emitted > 0)
+            for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+            {
+               LP_SignalSnapshot signal = m_latest_signals[symbol_id];
+               if(signal.valid)
+                  WriteQStateReceipt(signal);
+            }
+
+            if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+            {
+               m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
+               m_intent_selector.WriteReceipt(m_receipts);
+
+               for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
                {
-                  m_receipts.Write(
-                     LP_RECEIPT_SIGNAL,
-                     signal.symbol,
-                     "intents_emitted_after_selector",
-                     "emitted=" + IntegerToString(emitted) +
-                        "|selector_rank=" + IntegerToString(selected_index + 1) +
-                        "|pair_state=" + LP_PairStateName(signal.pair_state) +
-                        "|market_mode=" + LP_MarketModeName(signal.market_mode),
-                     signal.lane_id,
-                     signal.variant_id,
-                     0,
-                     0,
-                     0,
-                     0
-                  );
+                  int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
+                  if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
+                     continue;
+
+                  LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
+                  int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
+                  m_total_intents += emitted;
+                  if(emitted > 0)
+                  {
+                     m_receipts.Write(
+                        LP_RECEIPT_SIGNAL,
+                        signal.symbol,
+                        "intents_emitted_after_selector",
+                        "emitted=" + IntegerToString(emitted) +
+                           "|selector_rank=" + IntegerToString(selected_index + 1) +
+                           "|portfolio_asof_m1_time=" + LP_Stamp(signal.portfolio_asof_m1_time) +
+                           "|portfolio_snapshot_hash=" + (string)signal.portfolio_snapshot_hash +
+                           "|pair_state=" + LP_PairStateName(signal.pair_state) +
+                           "|market_mode=" + LP_MarketModeName(signal.market_mode),
+                        signal.lane_id,
+                        signal.variant_id,
+                        signal.portfolio_snapshot_hash,
+                        0,
+                        0,
+                        0
+                     );
+                  }
                }
             }
+         }
+         else
+         {
+            WritePortfolioQStateReceipt(qstate_snapshot, "duplicate_asof");
          }
       }
 
@@ -497,6 +643,8 @@ public:
             "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
                "|intents=" + IntegerToString(m_intent_bus.Count()) +
+               "|portfolio_qstate_asof=" + LP_Stamp(m_last_portfolio_qstate_asof) +
+               "|portfolio_qstate_hash=" + (string)m_last_portfolio_qstate_hash +
                "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
                "|open_grids=" + IntegerToString(portfolio.open_grid_count) +
                "|harvest_state=" + LP_HarvestStateName(harvest.state) +

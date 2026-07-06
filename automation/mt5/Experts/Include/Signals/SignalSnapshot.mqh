@@ -14,6 +14,7 @@ void LP_ResetSignalSnapshot(LP_SignalSnapshot &snapshot)
    snapshot.variant_id = LP_VARIANT_NONE;
    snapshot.source_bar_time = 0;
    snapshot.source_m1_time = 0;
+   snapshot.portfolio_asof_m1_time = 0;
    snapshot.direction = LP_SIDE_NONE;
    snapshot.market_mode = LP_MARKET_UNKNOWN;
    snapshot.pair_state = LP_PAIR_STATE_NEUTRAL;
@@ -41,6 +42,8 @@ void LP_ResetSignalSnapshot(LP_SignalSnapshot &snapshot)
    snapshot.news_allowed = false;
    snapshot.receipt_required = false;
    snapshot.feature_hash = 0;
+   snapshot.portfolio_snapshot_hash = 0;
+   snapshot.portfolio_valid_pair_count = 0;
    snapshot.reason_code = "";
    snapshot.reason = "";
 }
