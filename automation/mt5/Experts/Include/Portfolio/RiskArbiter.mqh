@@ -90,6 +90,11 @@ private:
             reason = "open_intent_missing_direction_or_lots";
             return false;
          }
+         if(intent.action == LP_INTENT_ADD_GRID_LEG && intent.grid_key <= 0)
+         {
+            reason = "add_grid_missing_grid";
+            return false;
+         }
       }
 
       if(IsReduceAction(intent.action))

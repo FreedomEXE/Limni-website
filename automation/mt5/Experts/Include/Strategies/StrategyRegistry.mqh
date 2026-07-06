@@ -20,6 +20,7 @@ public:
    void Reset()
    {
       m_enabled = false;
+      m_trend_follow.Reset();
    }
 
    void SetEnabled(const bool enabled)
@@ -27,13 +28,23 @@ public:
       m_enabled = enabled;
    }
 
-   int EvaluateAll(const LP_SignalSnapshot &snapshot, LP_IntentBus &bus)
+   void Configure(const ulong config_hash)
+   {
+      m_trend_follow.Configure(config_hash);
+   }
+
+   int EvaluateAll(
+      const LP_SignalSnapshot &snapshot,
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_IntentBus &bus
+   )
    {
       if(!m_enabled)
          return 0;
 
       int emitted = 0;
-      emitted += m_trend_follow.Evaluate(snapshot, bus);
+      emitted += m_trend_follow.Evaluate(snapshot, config, grid_book, bus);
       emitted += m_reversal.Evaluate(snapshot, bus);
       return emitted;
    }

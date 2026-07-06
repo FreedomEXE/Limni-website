@@ -7,6 +7,29 @@
 #include "..\\Core\\Types.mqh"
 #include "ReceiptWriter.mqh"
 
+void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
+{
+   receipts.Write(
+      LP_RECEIPT_INTENT,
+      intent.symbol,
+      "intent",
+      "action=" + IntegerToString(intent.action) +
+         "|direction=" + IntegerToString(intent.direction) +
+         "|lots=" + DoubleToString(intent.requested_lots, 4) +
+         "|score=" + DoubleToString(intent.score, 6) +
+         "|grid_key=" + (string)intent.grid_key +
+         "|source_bar_time=" + LP_Stamp(intent.source_bar_time) +
+         "|expires_at=" + LP_Stamp(intent.expires_at) +
+         "|reason=" + intent.human_reason,
+      intent.lane_id,
+      intent.variant_id,
+      intent.grid_key,
+      intent.intent_id,
+      0,
+      0
+   );
+}
+
 void LP_LogRiskDecision(LP_ReceiptWriter &receipts, const LP_RiskDecision &decision)
 {
    receipts.Write(
@@ -23,6 +46,27 @@ void LP_LogRiskDecision(LP_ReceiptWriter &receipts, const LP_RiskDecision &decis
       decision.intent_id,
       decision.decision_id,
       0
+   );
+}
+
+void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
+{
+   receipts.Write(
+      LP_RECEIPT_TRADE_PLAN,
+      plan.symbol,
+      plan.executable ? "plan_executable" : "plan_not_executable",
+      "plan_id=" + (string)plan.plan_id +
+         "|action=" + IntegerToString(plan.action) +
+         "|direction=" + IntegerToString(plan.direction) +
+         "|lots=" + DoubleToString(plan.lots, 4) +
+         "|reason=" + plan.reason +
+         "|comment=" + plan.comment,
+      plan.lane_id,
+      plan.variant_id,
+      0,
+      plan.intent_id,
+      plan.decision_id,
+      plan.magic
    );
 }
 

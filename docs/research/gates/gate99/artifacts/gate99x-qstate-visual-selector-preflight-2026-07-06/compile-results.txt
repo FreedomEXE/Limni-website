@@ -1,0 +1,46 @@
+Gate 99X - Q-State visual and selector preflight compile results
+Generated UTC: 2026-07-06T22:01:58Z
+Git HEAD at compile time: 37a4bdc076aa1941969a826baf27575fdfba628d
+Branch: codex/gate88-mt5-lifecycle-protection-controls
+
+repo-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 57972 msec elapsed, cpu='X64 Regular'
+Log SHA256: 409ECDD8DC2FB94B01F529C9EE50BD6CE328C8E8F28628847A7794C4D712B8C8
+
+repo-Katarakti-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 5225 msec elapsed, cpu='X64 Regular'
+Log SHA256: E317E85610B36723018BE4DE52D483CFFF0E5538C20CABA8048DECD1B6BC0A46
+
+repo-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 6648 msec elapsed, cpu='X64 Regular'
+Log SHA256: DDBB86126CE38B5028BFE896830BF95D359F2F862CB958F24DA664F2FD22CE09
+
+active-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 50174 msec elapsed, cpu='X64 Regular'
+Log SHA256: ED5361398B5514563C80393F6A685A5ED6467BC5E31D6E696CC36877EE502AC7
+
+active-Katarakti-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 12263 msec elapsed, cpu='X64 Regular'
+Log SHA256: 4ACDE9AD4B4C7D01FEE40361A23FA60D26579EDE3E3946E27D0B593D21F744D3
+
+active-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 6682 msec elapsed, cpu='X64 Regular'
+Log SHA256: AAC98F34B1113B061BFA4762AC0EF0A7DE04882136559A301E2857AA464301FC
+
+Katarakti placement hotfix - 2026-07-06T22:14:39Z
+Reason: chart review showed the Gate 99X above/below-centerline visual split disturbed the old marker placement.
+Action: restored the pre-99X four-buffer close-offset Katarakti visual surface.
+
+repo-Katarakti-hotfix-restore-placement-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2189 msec elapsed, cpu='X64 Regular'
+Log SHA256: 84F90EF1700BC467F6B30029DE6BABB89B1224464F2707F7D34991DE6E8B9833
+
+active-Katarakti-hotfix-restore-placement-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2013 msec elapsed, cpu='X64 Regular'
+Log SHA256: 5B1D3DB868652580D4C1E6E2EC7EB006826A6D9222F5CF0DF6E46B0C908DB9EC
+
+Interpretation
+MetaEditor exit code 1 with clean compile logs is the known local MT5 pattern for this repo. The proof line is the compile log result above.
+
+Verdict
+PASS_GATE99X_QSTATE_VISUAL_SELECTOR_PREFLIGHT_COMPILES_NO_LIVE_CLAIM_NO_BACKTEST_CLAIM

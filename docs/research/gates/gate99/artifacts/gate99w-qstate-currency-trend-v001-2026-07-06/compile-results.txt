@@ -1,0 +1,25 @@
+Gate 99W - Q-State Currency Trend v001 compile results
+Generated UTC: 2026-07-06T21:35:18Z
+Git HEAD at compile time: 37a4bdc076aa1941969a826baf27575fdfba628d
+Branch: codex/gate88-mt5-lifecycle-protection-controls
+
+Repo compile
+Source: automation/mt5/Experts/Limni/LimniPortfolioEA.mq5
+Log: docs/research/gates/gate99/artifacts/gate99w-qstate-currency-trend-v001-2026-07-06/repo-LimniPortfolioEA-compile-log.txt
+MetaEditor process exit code: 1
+Log result: Result: 0 errors, 0 warnings, 11608 msec elapsed, cpu='X64 Regular'
+Log SHA256: 94D6F9AAB9B4B54ACFAEDA7E1B5B4090CE8FD6606724882471FE77E16FEC6AB4
+
+Active terminal compile
+Source: C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB/MQL5/Experts/Limni/LimniPortfolioEA.mq5
+Log: docs/research/gates/gate99/artifacts/gate99w-qstate-currency-trend-v001-2026-07-06/active-LimniPortfolioEA-compile-log.txt
+MetaEditor process exit code: 1
+Log result: Result: 0 errors, 0 warnings, 12239 msec elapsed, cpu='X64 Regular'
+Log SHA256: 039BF025DF333B8934C3868984705FE985C7309E37538ACAB67639D6E9C55B6E
+
+Interpretation
+MetaEditor exit code 1 with clean compile logs is the known local MT5 pattern
+for this repo. The proof line is the compile log result above.
+
+Verdict
+PASS_GATE99W_QSTATE_CURRENCY_TREND_V001_COMPILES_NO_LIVE_CLAIM_NO_BACKTEST_CLAIM

@@ -64,6 +64,26 @@ enum LP_VariantId
    LP_VARIANT_LOOSE = 2
 };
 
+enum LP_MarketMode
+{
+   LP_MARKET_UNKNOWN = 0,
+   LP_MARKET_TREND_UP = 1,
+   LP_MARKET_TREND_DOWN = -1,
+   LP_MARKET_RANGE = 2,
+   LP_MARKET_TRANSITION = 3,
+   LP_MARKET_STRESS = 4
+};
+
+enum LP_PairDirectionState
+{
+   LP_PAIR_STATE_STRONG_SHORT = -2,
+   LP_PAIR_STATE_WEAK_SHORT = -1,
+   LP_PAIR_STATE_NEUTRAL = 0,
+   LP_PAIR_STATE_WEAK_LONG = 1,
+   LP_PAIR_STATE_STRONG_LONG = 2,
+   LP_PAIR_STATE_STRESS = 3
+};
+
 enum LP_Side
 {
    LP_SIDE_SHORT = -1,
@@ -145,7 +165,8 @@ enum LP_HarvestStateCode
    LP_HARVEST_HWM_ACTIVE = 3,
    LP_HARVEST_SOFT_LOCK_ACTIVE = 4,
    LP_HARVEST_GRID_WINDDOWN_ACTIVE = 5,
-   LP_HARVEST_EMERGENCY_LIQUIDATION_ARMED = 6
+   LP_HARVEST_EMERGENCY_LIQUIDATION_ARMED = 6,
+   LP_HARVEST_COOLDOWN = 7
 };
 
 enum LP_ReceiptKind
@@ -167,7 +188,9 @@ enum LP_ReceiptKind
    LP_RECEIPT_HARVEST_STATE = 15,
    LP_RECEIPT_CURRENCY_EXPOSURE = 16,
    LP_RECEIPT_GRID_INVENTORY = 17,
-   LP_RECEIPT_NEWS_GUARD = 18
+   LP_RECEIPT_NEWS_GUARD = 18,
+   LP_RECEIPT_Q_STATE = 19,
+   LP_RECEIPT_PORTFOLIO_SELECTOR = 20
 };
 
 struct LP_Config
@@ -201,6 +224,7 @@ struct LP_Config
    bool harvest_grid_winddown_on_breach;
    bool harvest_arm_emergency_liquidation;
    bool enable_currency_exposure_guard;
+   bool enable_qstate_trend_variant;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
@@ -208,6 +232,15 @@ struct LP_Config
    double max_single_order_lots;
    int max_close_positions_per_step;
    int news_minimum_impact;
+   int qstate_scale_lookback_days;
+   double qstate_fixed_lots;
+   double qstate_grid_spacing_q;
+   int qstate_grid_cap;
+   double qstate_weak_threshold;
+   double qstate_strong_threshold;
+   double qstate_max_spread_cost_q;
+   int qstate_intent_expiry_minutes;
+   bool qstate_reentry_next_day_after_harvest;
 };
 
 struct LP_SymbolMeta
@@ -257,11 +290,35 @@ struct LP_SignalSnapshot
    int lane_id;
    int variant_id;
    datetime source_bar_time;
+   datetime source_m1_time;
    int direction;
+   int market_mode;
+   int pair_state;
+   string formula_id;
+   ulong formula_hash;
    double score;
+   double price;
+   double q;
+   double anchor;
+   double trend_persistence;
+   double anchor_displacement;
+   double event_direction_persistence;
+   double range_position;
+   double sweep_resolution;
+   double spread_cost_q;
+   double pair_q_score;
+   double base_currency_score;
+   double quote_currency_score;
+   double pair_direction_score;
+   double confidence;
+   int katarakti_signal;
+   int event_count;
    bool valid;
    bool session_allowed;
    bool news_allowed;
+   bool receipt_required;
+   ulong feature_hash;
+   string reason_code;
    string reason;
 };
 
@@ -466,7 +523,39 @@ string LP_HarvestStateName(const int state)
       return "grid_winddown_active";
    if(state == LP_HARVEST_EMERGENCY_LIQUIDATION_ARMED)
       return "emergency_liquidation_armed";
+   if(state == LP_HARVEST_COOLDOWN)
+      return "cooldown";
    return "disabled";
+}
+
+string LP_MarketModeName(const int mode)
+{
+   if(mode == LP_MARKET_TREND_UP)
+      return "trend_up";
+   if(mode == LP_MARKET_TREND_DOWN)
+      return "trend_down";
+   if(mode == LP_MARKET_RANGE)
+      return "range";
+   if(mode == LP_MARKET_TRANSITION)
+      return "transition";
+   if(mode == LP_MARKET_STRESS)
+      return "stress";
+   return "unknown";
+}
+
+string LP_PairStateName(const int state)
+{
+   if(state == LP_PAIR_STATE_STRONG_LONG)
+      return "strong_long";
+   if(state == LP_PAIR_STATE_WEAK_LONG)
+      return "weak_long";
+   if(state == LP_PAIR_STATE_WEAK_SHORT)
+      return "weak_short";
+   if(state == LP_PAIR_STATE_STRONG_SHORT)
+      return "strong_short";
+   if(state == LP_PAIR_STATE_STRESS)
+      return "stress_no_new_risk";
+   return "neutral";
 }
 
 void LP_ResetHarvestDecision(LP_HarvestDecision &decision)

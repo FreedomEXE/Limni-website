@@ -7,6 +7,7 @@
 #include "..\\Core\\BuildInfo.mqh"
 #include "..\\Core\\Types.mqh"
 #include "..\\Market\\SessionCalendar.mqh"
+#include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
 #include "ReceiptWriter.mqh"
 
 void LP_WriteRunManifest(
@@ -31,7 +32,10 @@ void LP_WriteRunManifest(
          "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
          "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
          "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor) +
-         "|currency_guard=" + LP_BoolText(config.enable_currency_exposure_guard),
+         "|currency_guard=" + LP_BoolText(config.enable_currency_exposure_guard) +
+         "|qstate_trend_variant=" + LP_BoolText(config.enable_qstate_trend_variant) +
+         "|qstate_formula_id=" + LimniQStateFormulaId() +
+         "|qstate_formula_hash=" + (string)LimniQStateFormulaHash(),
       0,
       0,
       0,
@@ -63,6 +67,7 @@ void LP_WriteRunManifest(
    receipts.Summary("harvest_grid_winddown_on_breach", LP_BoolText(config.harvest_grid_winddown_on_breach));
    receipts.Summary("harvest_arm_emergency_liquidation", LP_BoolText(config.harvest_arm_emergency_liquidation));
    receipts.Summary("currency_exposure_guard_enabled", LP_BoolText(config.enable_currency_exposure_guard));
+   receipts.Summary("qstate_trend_variant_enabled", LP_BoolText(config.enable_qstate_trend_variant));
    receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));
    receipts.Summary("max_same_direction_grids_per_currency", IntegerToString(config.max_same_direction_grids_per_currency));
@@ -70,6 +75,23 @@ void LP_WriteRunManifest(
    receipts.Summary("max_single_order_lots", DoubleToString(config.max_single_order_lots, 2));
    receipts.Summary("max_close_positions_per_step", IntegerToString(config.max_close_positions_per_step));
    receipts.Summary("news_minimum_impact", IntegerToString(config.news_minimum_impact));
+   receipts.Summary("qstate_variant_id", "g99w-qstate-v001");
+   receipts.Summary("qstate_formula_id", LimniQStateFormulaId());
+   receipts.Summary("qstate_formula_hash", (string)LimniQStateFormulaHash());
+   receipts.Summary("qstate_source_timeframe", "PERIOD_M1_CLOSED_ONLY");
+   receipts.Summary("qstate_rolling_window_m1", IntegerToString(LIMNI_QSTATE_V001_ROLLING_WINDOW_M1));
+   receipts.Summary("qstate_min_history_m1", IntegerToString(LIMNI_QSTATE_V001_MIN_HISTORY_M1));
+   receipts.Summary("qstate_z_clip", DoubleToString(LIMNI_QSTATE_V001_Z_CLIP, 2));
+   receipts.Summary("qstate_portfolio_selector", "ranked_currency_balanced_subset");
+   receipts.Summary("qstate_scale_lookback_days", IntegerToString(config.qstate_scale_lookback_days));
+   receipts.Summary("qstate_fixed_lots", DoubleToString(config.qstate_fixed_lots, 4));
+   receipts.Summary("qstate_grid_spacing_q", DoubleToString(config.qstate_grid_spacing_q, 2));
+   receipts.Summary("qstate_grid_cap", IntegerToString(config.qstate_grid_cap));
+   receipts.Summary("qstate_weak_threshold", DoubleToString(config.qstate_weak_threshold, 2));
+   receipts.Summary("qstate_strong_threshold", DoubleToString(config.qstate_strong_threshold, 2));
+   receipts.Summary("qstate_max_spread_cost_q", DoubleToString(config.qstate_max_spread_cost_q, 2));
+   receipts.Summary("qstate_intent_expiry_minutes", IntegerToString(config.qstate_intent_expiry_minutes));
+   receipts.Summary("qstate_reentry_next_day_after_harvest", LP_BoolText(config.qstate_reentry_next_day_after_harvest));
 }
 
 #endif // __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__

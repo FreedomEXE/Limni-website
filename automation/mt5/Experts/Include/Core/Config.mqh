@@ -5,6 +5,7 @@
 #define __LIMNI_PORTFOLIO_CONFIG_MQH__
 
 #include "Types.mqh"
+#include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
 
 input string LP_INPUT_0 = "********** LimniPortfolioEA **********";
 input string LP_INPUT_1 = "----- Execution Barrier -----";
@@ -35,6 +36,7 @@ input bool HarvestGridWinddownOnBreach = true;
 input bool HarvestArmEmergencyLiquidation = false;
 input string LP_INPUT_5 = "----- Portfolio Risk Guards -----";
 input bool EnableCurrencyExposureGuard = true;
+input bool EnableQStateTrendVariant = true;
 input double MaxCurrencySignedLots = 5.0;
 input double MaxCurrencyGrossLots = 10.0;
 input int MaxSameDirectionGridsPerCurrency = 4;
@@ -42,7 +44,13 @@ input int MaxManagedPositions = 200;
 input double MaxSingleOrderLots = 1.0;
 input int MaxClosePositionsPerStep = 10;
 input int NewsMinimumImpact = 3;
-input string LP_INPUT_6 = "----- Diagnostics -----";
+input string LP_INPUT_6 = "----- Q-State Execution Controls v001 -----";
+input double QStateFixedLots = 0.01;
+input double QStateGridSpacingQ = 1.0;
+input int QStateGridCap = 50;
+input int QStateIntentExpiryMinutes = 10;
+input bool QStateReentryNextDayAfterHarvest = true;
+input string LP_INPUT_7 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -78,6 +86,7 @@ void LP_LoadConfig(LP_Config &config)
    config.harvest_grid_winddown_on_breach = HarvestGridWinddownOnBreach;
    config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
    config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
+   config.enable_qstate_trend_variant = EnableQStateTrendVariant;
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
@@ -85,6 +94,15 @@ void LP_LoadConfig(LP_Config &config)
    config.max_single_order_lots = MaxSingleOrderLots;
    config.max_close_positions_per_step = MaxClosePositionsPerStep;
    config.news_minimum_impact = NewsMinimumImpact;
+   config.qstate_scale_lookback_days = LIMNI_QSTATE_V001_SCALE_LOOKBACK_DAYS;
+   config.qstate_fixed_lots = QStateFixedLots;
+   config.qstate_grid_spacing_q = QStateGridSpacingQ;
+   config.qstate_grid_cap = QStateGridCap;
+   config.qstate_weak_threshold = LIMNI_QSTATE_V001_WEAK_THRESHOLD;
+   config.qstate_strong_threshold = LIMNI_QSTATE_V001_STRONG_THRESHOLD;
+   config.qstate_max_spread_cost_q = LIMNI_QSTATE_V001_MAX_SPREAD_COST_Q;
+   config.qstate_intent_expiry_minutes = QStateIntentExpiryMinutes;
+   config.qstate_reentry_next_day_after_harvest = QStateReentryNextDayAfterHarvest;
 }
 
 ulong LP_ConfigHash(const LP_Config &config)
@@ -109,13 +127,23 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.harvest_grid_winddown_on_breach) + "|" +
       LP_BoolText(config.harvest_arm_emergency_liquidation) + "|" +
       LP_BoolText(config.enable_currency_exposure_guard) + "|" +
+      LP_BoolText(config.enable_qstate_trend_variant) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +
       IntegerToString(config.max_managed_positions) + "|" +
       DoubleToString(config.max_single_order_lots, 2) + "|" +
       IntegerToString(config.max_close_positions_per_step) + "|" +
-      IntegerToString(config.news_minimum_impact);
+      IntegerToString(config.news_minimum_impact) + "|" +
+      IntegerToString(config.qstate_scale_lookback_days) + "|" +
+      DoubleToString(config.qstate_fixed_lots, 4) + "|" +
+      DoubleToString(config.qstate_grid_spacing_q, 2) + "|" +
+      IntegerToString(config.qstate_grid_cap) + "|" +
+      DoubleToString(config.qstate_weak_threshold, 2) + "|" +
+      DoubleToString(config.qstate_strong_threshold, 2) + "|" +
+      DoubleToString(config.qstate_max_spread_cost_q, 2) + "|" +
+      IntegerToString(config.qstate_intent_expiry_minutes) + "|" +
+      LP_BoolText(config.qstate_reentry_next_day_after_harvest);
    return LP_HashString(payload);
 }
 

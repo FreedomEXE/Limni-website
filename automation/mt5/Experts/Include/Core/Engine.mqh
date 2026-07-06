@@ -15,6 +15,7 @@
 #include "..\\Market\\M1Clock.mqh"
 #include "..\\Signals\\LrmgState.mqh"
 #include "..\\Strategies\\StrategyRegistry.mqh"
+#include "..\\Strategies\\PortfolioIntentSelector.mqh"
 #include "..\\Strategies\\IntentBus.mqh"
 #include "..\\Portfolio\\PositionIndex.mqh"
 #include "..\\Portfolio\\GridBook.mqh"
@@ -38,9 +39,12 @@ private:
    int m_step_count;
    int m_total_new_bars;
    int m_total_intents;
+   ulong m_next_system_intent_id;
    ulong m_last_attribution_hash;
    ulong m_last_currency_exposure_hash;
    ulong m_last_grid_inventory_hash;
+   LP_SignalSnapshot m_latest_signals[LP_SYMBOL_COUNT];
+   bool m_signal_available[LP_SYMBOL_COUNT];
 
    LP_ReceiptWriter m_receipts;
    LP_SymbolSpecCache m_symbol_cache;
@@ -49,6 +53,7 @@ private:
    LP_M1Clock m_clock;
    LP_LrmgState m_lrmg_state;
    LP_StrategyRegistry m_strategy_registry;
+   LP_PortfolioIntentSelector m_intent_selector;
    LP_IntentBus m_intent_bus;
    LP_PositionIndex m_position_index;
    LP_GridBook m_grid_book;
@@ -74,6 +79,82 @@ private:
       Print(LP_EA_NAME, " ", status, ": ", message);
    }
 
+   ulong NextSystemIntentId()
+   {
+      ulong id = m_next_system_intent_id;
+      m_next_system_intent_id++;
+      return id;
+   }
+
+   void WriteQStateReceipt(const LP_SignalSnapshot &signal)
+   {
+      m_receipts.Write(
+         LP_RECEIPT_Q_STATE,
+         signal.symbol,
+         LP_PairStateName(signal.pair_state),
+         "variant_id=g99w-qstate-v001" +
+            "|formula_id=" + signal.formula_id +
+            "|formula_hash=" + (string)signal.formula_hash +
+            "|source_m1_time=" + LP_Stamp(signal.source_m1_time) +
+            "|market_mode=" + LP_MarketModeName(signal.market_mode) +
+            "|direction=" + IntegerToString(signal.direction) +
+            "|confidence=" + DoubleToString(signal.confidence, 6) +
+            "|reason_code=" + signal.reason_code +
+            "|price=" + DoubleToString(signal.price, 5) +
+            "|q=" + DoubleToString(signal.q, 8) +
+            "|anchor=" + DoubleToString(signal.anchor, 5) +
+            "|trend_persistence=" + DoubleToString(signal.trend_persistence, 6) +
+            "|anchor_displacement=" + DoubleToString(signal.anchor_displacement, 6) +
+            "|event_direction_persistence=" + DoubleToString(signal.event_direction_persistence, 6) +
+            "|range_position=" + DoubleToString(signal.range_position, 6) +
+            "|sweep_resolution=" + DoubleToString(signal.sweep_resolution, 6) +
+            "|spread_cost_q=" + DoubleToString(signal.spread_cost_q, 6) +
+            "|pair_q_score=" + DoubleToString(signal.pair_q_score, 6) +
+            "|base_currency_score=" + DoubleToString(signal.base_currency_score, 6) +
+            "|quote_currency_score=" + DoubleToString(signal.quote_currency_score, 6) +
+            "|pair_direction_score=" + DoubleToString(signal.pair_direction_score, 6) +
+            "|katarakti_signal=" + IntegerToString(signal.katarakti_signal) +
+            "|event_count=" + IntegerToString(signal.event_count) +
+            "|feature_hash=" + (string)signal.feature_hash +
+            "|session_allowed=" + LP_BoolText(signal.session_allowed) +
+            "|news_allowed=" + LP_BoolText(signal.news_allowed),
+         signal.lane_id,
+         signal.variant_id,
+         0,
+         0,
+         0,
+         0
+      );
+   }
+
+   void AddHarvestCloseIntent(const LP_HarvestDecision &harvest, LP_IntentBus &bus)
+   {
+      LP_TradeIntent intent;
+      intent.intent_id = NextSystemIntentId();
+      intent.symbol_id = -1;
+      intent.symbol = "";
+      intent.lane_id = LP_LANE_NONE;
+      intent.variant_id = LP_VARIANT_NONE;
+      intent.action = LP_INTENT_CLOSE_ALL_EA;
+      intent.direction = LP_SIDE_NONE;
+      intent.emitted_at = TimeCurrent();
+      intent.source_bar_time = harvest.asof;
+      intent.expires_at = 0;
+      intent.requested_lots = 0.0;
+      intent.max_slippage_points = 10.0;
+      intent.priority = 100;
+      intent.score = harvest.managed_floating_pnl;
+      intent.grid_key = 0;
+      intent.config_hash = m_config_hash;
+      intent.strategy_version_hash = LP_HashString("gate99w_harvest_close_all_next_day_reentry");
+      intent.human_reason = "portfolio_harvest_state=" + LP_HarvestStateName(harvest.state) +
+         "|reason=" + harvest.reason +
+         "|managed_floating_pnl=" + DoubleToString(harvest.managed_floating_pnl, 2) +
+         "|hwm=" + DoubleToString(harvest.high_watermark_money, 2) +
+         "|trail_floor=" + DoubleToString(harvest.trail_floor_money, 2);
+      bus.Add(intent);
+   }
+
 public:
    void Reset()
    {
@@ -83,15 +164,22 @@ public:
       m_step_count = 0;
       m_total_new_bars = 0;
       m_total_intents = 0;
+      m_next_system_intent_id = 990900000001;
       m_last_attribution_hash = 0;
       m_last_currency_exposure_hash = 0;
       m_last_grid_inventory_hash = 0;
+      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
+      {
+         LP_ResetSignalSnapshot(m_latest_signals[i]);
+         m_signal_available[i] = false;
+      }
       m_receipts.Reset();
       m_symbol_cache.Reset();
       m_news_calendar.Reset();
       m_clock.Reset();
       m_lrmg_state.Reset();
       m_strategy_registry.Reset();
+      m_intent_selector.Reset();
       m_intent_bus.Reset();
       m_position_index.Reset();
       m_grid_book.Reset();
@@ -150,6 +238,7 @@ public:
       m_account_guard.Configure(m_config);
       m_currency_guard.Configure(m_config);
       m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
+      m_strategy_registry.Configure(m_config_hash);
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
@@ -287,7 +376,15 @@ public:
       if(harvest.receipt_required)
          LP_WriteHarvestState(m_receipts, harvest);
 
+      string harvest_close_reason = "";
+      if(m_account_guard.RequiresAccountClose(portfolio, harvest_close_reason))
+         AddHarvestCloseIntent(harvest, m_intent_bus);
+
       int cycle_new_bars = 0;
+      bool signal_updated[LP_SYMBOL_COUNT];
+      for(int reset_i = 0; reset_i < LP_SYMBOL_COUNT; reset_i++)
+         signal_updated[reset_i] = false;
+
       for(int i = 0; i < m_symbol_cache.Count(); i++)
       {
          LP_SymbolMeta meta;
@@ -310,27 +407,63 @@ public:
          m_news_calendar.Apply(clock_state.last_bar_time, meta, m_config, calendar);
 
          LP_SignalSnapshot signal;
-         if(m_lrmg_state.BuildSnapshot(meta, clock_state.last_bar_time, signal))
+         if(m_lrmg_state.BuildSnapshot(meta, clock_state.last_bar_time, m_config, signal))
          {
             signal.session_allowed = !calendar.week_boundary_blocked;
             signal.news_allowed = !calendar.news_blocked;
             signal.reason = calendar.reason;
-            int emitted = m_strategy_registry.EvaluateAll(signal, m_intent_bus);
-            m_total_intents += emitted;
-            if(emitted > 0)
+            m_latest_signals[meta.symbol_id] = signal;
+            m_signal_available[meta.symbol_id] = true;
+            signal_updated[meta.symbol_id] = true;
+         }
+      }
+
+      if(cycle_new_bars > 0)
+      {
+         m_lrmg_state.ApplyCurrencyQState(m_latest_signals, m_signal_available, m_config);
+
+         for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         {
+            if(!signal_updated[symbol_id] || !m_signal_available[symbol_id])
+               continue;
+
+            LP_SignalSnapshot signal = m_latest_signals[symbol_id];
+            if(signal.valid)
+               WriteQStateReceipt(signal);
+         }
+
+         if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+         {
+            m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
+            m_intent_selector.WriteReceipt(m_receipts);
+
+            for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
             {
-               m_receipts.Write(
-                  LP_RECEIPT_SIGNAL,
-                  meta.broker_symbol,
-                  "intents_emitted",
-                  "emitted=" + IntegerToString(emitted) + "|calendar=" + calendar.reason,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0
-               );
+               int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
+               if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
+                  continue;
+
+               LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
+               int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
+               m_total_intents += emitted;
+               if(emitted > 0)
+               {
+                  m_receipts.Write(
+                     LP_RECEIPT_SIGNAL,
+                     signal.symbol,
+                     "intents_emitted_after_selector",
+                     "emitted=" + IntegerToString(emitted) +
+                        "|selector_rank=" + IntegerToString(selected_index + 1) +
+                        "|pair_state=" + LP_PairStateName(signal.pair_state) +
+                        "|market_mode=" + LP_MarketModeName(signal.market_mode),
+                     signal.lane_id,
+                     signal.variant_id,
+                     0,
+                     0,
+                     0,
+                     0
+                  );
+               }
             }
          }
       }
@@ -343,10 +476,14 @@ public:
          if(!m_intent_bus.Get(intent_index, intent))
             continue;
 
+         LP_LogTradeIntent(m_receipts, intent);
+
          LP_RiskDecision decision;
          LP_TradePlan plan;
          m_risk_arbiter.Decide(intent, portfolio, m_currency_guard, decision, plan);
          LP_LogRiskDecision(m_receipts, decision);
+         if(plan.executable)
+            LP_LogTradePlan(m_receipts, plan);
          if(plan.executable)
             m_trade_router.Execute(plan, m_receipts);
       }

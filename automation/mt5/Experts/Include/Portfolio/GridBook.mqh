@@ -20,6 +20,9 @@ struct LP_GridInventoryRow
    int position_count;
    double lots;
    double floating_pnl;
+   double avg_entry_price;
+   double min_entry_price;
+   double max_entry_price;
 };
 
 class LP_GridBook
@@ -43,6 +46,9 @@ private:
       row.position_count = 0;
       row.lots = 0.0;
       row.floating_pnl = 0.0;
+      row.avg_entry_price = 0.0;
+      row.min_entry_price = 0.0;
+      row.max_entry_price = 0.0;
    }
 
    int FindRow(const ulong grid_key)
@@ -107,9 +113,17 @@ public:
          }
 
          double lots = PositionGetDouble(POSITION_VOLUME);
+         double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
          double pnl = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
          m_rows[row_index].position_count++;
+         double previous_lots = m_rows[row_index].lots;
          m_rows[row_index].lots += lots;
+         if(m_rows[row_index].lots > 0.0)
+            m_rows[row_index].avg_entry_price = (m_rows[row_index].avg_entry_price * previous_lots + open_price * lots) / m_rows[row_index].lots;
+         if(m_rows[row_index].min_entry_price <= 0.0 || open_price < m_rows[row_index].min_entry_price)
+            m_rows[row_index].min_entry_price = open_price;
+         if(open_price > m_rows[row_index].max_entry_price)
+            m_rows[row_index].max_entry_price = open_price;
          m_rows[row_index].floating_pnl += pnl;
          m_grid_position_count++;
          m_grid_lots += lots;
@@ -153,9 +167,47 @@ public:
             ":family=" + IntegerToString(m_rows[i].grid_family) +
             ":positions=" + IntegerToString(m_rows[i].position_count) +
             ":lots=" + DoubleToString(m_rows[i].lots, 2) +
+            ":avg_entry=" + DoubleToString(m_rows[i].avg_entry_price, 5) +
+            ":min_entry=" + DoubleToString(m_rows[i].min_entry_price, 5) +
+            ":max_entry=" + DoubleToString(m_rows[i].max_entry_price, 5) +
             ":pnl=" + DoubleToString(m_rows[i].floating_pnl, 2);
       }
       return message;
+   }
+
+   bool FindGrid(
+      const int symbol_id,
+      const int lane_id,
+      const int variant_id,
+      const int direction,
+      LP_GridInventoryRow &row
+   )
+   {
+      ResetRow(row);
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].symbol_id == symbol_id &&
+            m_rows[i].lane_id == lane_id &&
+            m_rows[i].variant_id == variant_id &&
+            m_rows[i].direction == direction)
+         {
+            row = m_rows[i];
+            return true;
+         }
+      }
+      return false;
+   }
+
+   bool HasSymbolLaneGrid(const int symbol_id, const int lane_id, const int variant_id)
+   {
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].symbol_id == symbol_id &&
+            m_rows[i].lane_id == lane_id &&
+            m_rows[i].variant_id == variant_id)
+            return true;
+      }
+      return false;
    }
 
    void WriteReceipt(LP_ReceiptWriter &receipts)
