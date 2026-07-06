@@ -9,6 +9,7 @@
 #include "Config.mqh"
 #include "SymbolUniverse.mqh"
 #include "..\\Market\\SessionCalendar.mqh"
+#include "..\\Market\\NewsCalendar.mqh"
 #include "..\\Market\\SymbolSpecCache.mqh"
 #include "..\\Market\\TickBarCache.mqh"
 #include "..\\Market\\M1Clock.mqh"
@@ -38,9 +39,12 @@ private:
    int m_total_new_bars;
    int m_total_intents;
    ulong m_last_attribution_hash;
+   ulong m_last_currency_exposure_hash;
+   ulong m_last_grid_inventory_hash;
 
    LP_ReceiptWriter m_receipts;
    LP_SymbolSpecCache m_symbol_cache;
+   LP_NewsCalendar m_news_calendar;
    LP_TickBarCache m_tick_cache;
    LP_M1Clock m_clock;
    LP_LrmgState m_lrmg_state;
@@ -80,8 +84,11 @@ public:
       m_total_new_bars = 0;
       m_total_intents = 0;
       m_last_attribution_hash = 0;
+      m_last_currency_exposure_hash = 0;
+      m_last_grid_inventory_hash = 0;
       m_receipts.Reset();
       m_symbol_cache.Reset();
+      m_news_calendar.Reset();
       m_clock.Reset();
       m_lrmg_state.Reset();
       m_strategy_registry.Reset();
@@ -131,16 +138,32 @@ public:
          return INIT_FAILED;
       }
 
+      bool news_ok = m_news_calendar.Load(m_config, m_receipts);
+      if(!news_ok)
+      {
+         WriteError("init_failed", "news_guard_source_unavailable");
+         m_receipts.Flush();
+         return INIT_FAILED;
+      }
+
       m_position_index.Refresh();
       m_account_guard.Configure(m_config);
+      m_currency_guard.Configure(m_config);
       m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
       m_position_index.BuildPortfolioState(m_config_hash, state);
+      m_currency_guard.Refresh();
+      m_grid_book.Refresh();
+      state.open_grid_count = m_grid_book.OpenGridCount();
       LP_WritePortfolioSummary(m_receipts, state);
       LP_WritePositionAttribution(m_receipts, state);
       m_last_attribution_hash = state.position_snapshot_hash;
+      m_currency_guard.WriteReceipt(m_receipts);
+      m_last_currency_exposure_hash = m_currency_guard.SnapshotHash();
+      m_grid_book.WriteReceipt(m_receipts);
+      m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
 
       LP_HarvestDecision harvest;
       m_account_guard.Evaluate(state, harvest);
@@ -176,6 +199,8 @@ public:
 
       LP_PortfolioState state;
       m_position_index.BuildPortfolioState(m_config_hash, state);
+      m_grid_book.Refresh();
+      state.open_grid_count = m_grid_book.OpenGridCount();
       LP_WritePortfolioSummary(m_receipts, state);
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
@@ -235,11 +260,24 @@ public:
 
       LP_PortfolioState portfolio;
       m_position_index.BuildPortfolioState(m_config_hash, portfolio);
+      m_currency_guard.Refresh();
+      m_grid_book.Refresh();
+      portfolio.open_grid_count = m_grid_book.OpenGridCount();
 
       if(m_step_count == 1 || portfolio.position_snapshot_hash != m_last_attribution_hash)
       {
          LP_WritePositionAttribution(m_receipts, portfolio);
          m_last_attribution_hash = portfolio.position_snapshot_hash;
+      }
+      if(m_step_count == 1 || m_currency_guard.SnapshotHash() != m_last_currency_exposure_hash)
+      {
+         m_currency_guard.WriteReceipt(m_receipts);
+         m_last_currency_exposure_hash = m_currency_guard.SnapshotHash();
+      }
+      if(m_step_count == 1 || m_grid_book.SnapshotHash() != m_last_grid_inventory_hash)
+      {
+         m_grid_book.WriteReceipt(m_receipts);
+         m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
       }
 
       LP_HarvestDecision harvest;
@@ -269,6 +307,7 @@ public:
          cycle_new_bars++;
          LP_CalendarDecision calendar;
          LP_EvaluateCalendar(clock_state.last_bar_time, m_config, calendar);
+         m_news_calendar.Apply(clock_state.last_bar_time, meta, m_config, calendar);
 
          LP_SignalSnapshot signal;
          if(m_lrmg_state.BuildSnapshot(meta, clock_state.last_bar_time, signal))
@@ -322,6 +361,7 @@ public:
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
                "|intents=" + IntegerToString(m_intent_bus.Count()) +
                "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
+               "|open_grids=" + IntegerToString(portfolio.open_grid_count) +
                "|harvest_state=" + LP_HarvestStateName(harvest.state) +
                "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries),
             0,

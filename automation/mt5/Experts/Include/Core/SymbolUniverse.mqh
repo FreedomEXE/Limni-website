@@ -88,6 +88,17 @@ bool LP_SymbolNameMatchesCanonical(const string symbol, const string canonical)
    return StringSubstr(symbol, 0, 6) == canonical;
 }
 
+int LP_SymbolIdFromBrokerSymbol(const string symbol)
+{
+   for(int i = 0; i < LP_SYMBOL_COUNT; i++)
+   {
+      string canonical = LP_CanonicalSymbol(i);
+      if(LP_SymbolNameMatchesCanonical(symbol, canonical))
+         return i;
+   }
+   return -1;
+}
+
 string LP_ResolveBrokerSymbol(const string canonical, const string suffix)
 {
    string explicitName = canonical + suffix;

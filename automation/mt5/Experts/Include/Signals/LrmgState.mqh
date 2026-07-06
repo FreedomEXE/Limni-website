@@ -25,7 +25,7 @@ public:
       snapshot.symbol = meta.broker_symbol;
       snapshot.source_bar_time = source_bar_time;
       snapshot.valid = meta.tradable && source_bar_time > 0;
-      snapshot.reason = snapshot.valid ? "gate99n_signal_placeholder" : "not_ready";
+      snapshot.reason = snapshot.valid ? "gate99s_signal_placeholder" : "not_ready";
       if(snapshot.valid)
          m_ready_count++;
       return snapshot.valid;

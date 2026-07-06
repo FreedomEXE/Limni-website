@@ -86,6 +86,27 @@ bool LP_DecodeMagic(const long magic, LP_MagicParts &parts)
    return parts.valid;
 }
 
+ulong LP_BuildGridKey(
+   const int symbol_id,
+   const int lane_id,
+   const int variant_id,
+   const int direction,
+   const int grid_family
+)
+{
+   int direction_code = direction > 0 ? 1 : (direction < 0 ? 2 : 0);
+   return (ulong)MathMax(0, symbol_id) * 1000000000 +
+      (ulong)MathMax(0, lane_id) * 10000000 +
+      (ulong)MathMax(0, variant_id) * 100000 +
+      (ulong)direction_code * 10000 +
+      (ulong)MathMax(0, grid_family);
+}
+
+ulong LP_BuildGridKeyFromParts(const LP_MagicParts &parts)
+{
+   return LP_BuildGridKey(parts.symbol_id, parts.lane_id, parts.variant_id, parts.direction, parts.grid_family);
+}
+
 string LP_BuildComment(const string canonical_symbol, const int lane_id, const int variant_id, const int direction, const ulong config_hash)
 {
    string side = direction > 0 ? "B" : (direction < 0 ? "S" : "N");

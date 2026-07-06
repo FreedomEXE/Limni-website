@@ -175,7 +175,7 @@ public:
 
    bool RequiresAccountClose(const LP_PortfolioState &state, string &reason)
    {
-      reason = "account_close_execution_disabled_gate99r";
+      reason = "account_close_execution_disabled_gate99s";
       return false;
    }
 };

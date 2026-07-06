@@ -30,7 +30,14 @@ input double HarvestTrailMoney = 0.0;
 input bool HarvestSoftLockOnBreach = true;
 input bool HarvestGridWinddownOnBreach = true;
 input bool HarvestArmEmergencyLiquidation = false;
-input string LP_INPUT_5 = "----- Diagnostics -----";
+input string LP_INPUT_5 = "----- Portfolio Risk Guards -----";
+input bool EnableCurrencyExposureGuard = true;
+input double MaxCurrencySignedLots = 5.0;
+input double MaxCurrencyGrossLots = 10.0;
+input int MaxSameDirectionGridsPerCurrency = 4;
+input int MaxManagedPositions = 200;
+input int NewsMinimumImpact = 3;
+input string LP_INPUT_6 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -62,6 +69,12 @@ void LP_LoadConfig(LP_Config &config)
    config.harvest_soft_lock_on_breach = HarvestSoftLockOnBreach;
    config.harvest_grid_winddown_on_breach = HarvestGridWinddownOnBreach;
    config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
+   config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
+   config.max_currency_signed_lots = MaxCurrencySignedLots;
+   config.max_currency_gross_lots = MaxCurrencyGrossLots;
+   config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
+   config.max_managed_positions = MaxManagedPositions;
+   config.news_minimum_impact = NewsMinimumImpact;
 }
 
 ulong LP_ConfigHash(const LP_Config &config)
@@ -81,7 +94,13 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.harvest_trail_money, 2) + "|" +
       LP_BoolText(config.harvest_soft_lock_on_breach) + "|" +
       LP_BoolText(config.harvest_grid_winddown_on_breach) + "|" +
-      LP_BoolText(config.harvest_arm_emergency_liquidation);
+      LP_BoolText(config.harvest_arm_emergency_liquidation) + "|" +
+      LP_BoolText(config.enable_currency_exposure_guard) + "|" +
+      DoubleToString(config.max_currency_signed_lots, 2) + "|" +
+      DoubleToString(config.max_currency_gross_lots, 2) + "|" +
+      IntegerToString(config.max_same_direction_grids_per_currency) + "|" +
+      IntegerToString(config.max_managed_positions) + "|" +
+      IntegerToString(config.news_minimum_impact);
    return LP_HashString(payload);
 }
 

@@ -27,7 +27,8 @@ void LP_WriteRunManifest(
          "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
          "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
          "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
-         "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor),
+         "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor) +
+         "|currency_guard=" + LP_BoolText(config.enable_currency_exposure_guard),
       0,
       0,
       0,
@@ -55,6 +56,12 @@ void LP_WriteRunManifest(
    receipts.Summary("harvest_soft_lock_on_breach", LP_BoolText(config.harvest_soft_lock_on_breach));
    receipts.Summary("harvest_grid_winddown_on_breach", LP_BoolText(config.harvest_grid_winddown_on_breach));
    receipts.Summary("harvest_arm_emergency_liquidation", LP_BoolText(config.harvest_arm_emergency_liquidation));
+   receipts.Summary("currency_exposure_guard_enabled", LP_BoolText(config.enable_currency_exposure_guard));
+   receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
+   receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));
+   receipts.Summary("max_same_direction_grids_per_currency", IntegerToString(config.max_same_direction_grids_per_currency));
+   receipts.Summary("max_managed_positions", IntegerToString(config.max_managed_positions));
+   receipts.Summary("news_minimum_impact", IntegerToString(config.news_minimum_impact));
 }
 
 #endif // __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__

@@ -66,7 +66,7 @@ public:
 
       decision.decision = LP_RISK_REJECT;
       decision.reason = LP_RISK_REASON_NO_STRATEGY;
-      decision.explanation = "gate99n_zero_trading_skeleton";
+      decision.explanation = "gate99s_no_strategy_lane_approved";
       return false;
    }
 };

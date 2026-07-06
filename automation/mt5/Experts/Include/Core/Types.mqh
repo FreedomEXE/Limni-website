@@ -102,7 +102,10 @@ enum LP_RiskReason
    LP_RISK_REASON_SPREAD = 6,
    LP_RISK_REASON_RECOVERY_LOCKED = 7,
    LP_RISK_REASON_DUPLICATE = 8,
-   LP_RISK_REASON_NO_STRATEGY = 9
+   LP_RISK_REASON_NO_STRATEGY = 9,
+   LP_RISK_REASON_INVALID_INTENT = 10,
+   LP_RISK_REASON_SYMBOL_NOT_TRADABLE = 11,
+   LP_RISK_REASON_SIZE_LIMIT = 12
 };
 
 enum LP_ExecutionMode
@@ -161,7 +164,10 @@ enum LP_ReceiptKind
    LP_RECEIPT_RUN_END = 12,
    LP_RECEIPT_ERROR = 13,
    LP_RECEIPT_POSITION_ATTRIBUTION = 14,
-   LP_RECEIPT_HARVEST_STATE = 15
+   LP_RECEIPT_HARVEST_STATE = 15,
+   LP_RECEIPT_CURRENCY_EXPOSURE = 16,
+   LP_RECEIPT_GRID_INVENTORY = 17,
+   LP_RECEIPT_NEWS_GUARD = 18
 };
 
 struct LP_Config
@@ -191,6 +197,12 @@ struct LP_Config
    bool harvest_soft_lock_on_breach;
    bool harvest_grid_winddown_on_breach;
    bool harvest_arm_emergency_liquidation;
+   bool enable_currency_exposure_guard;
+   double max_currency_signed_lots;
+   double max_currency_gross_lots;
+   int max_same_direction_grids_per_currency;
+   int max_managed_positions;
+   int news_minimum_impact;
 };
 
 struct LP_SymbolMeta
@@ -361,6 +373,15 @@ struct LP_CurrencyExposure
    double gross_lots;
    int active_grid_count;
    int same_direction_grid_count;
+};
+
+struct LP_NewsEvent
+{
+   datetime server_time;
+   string currency;
+   int currency_id;
+   int impact;
+   string title;
 };
 
 string LP_BoolText(const bool value)

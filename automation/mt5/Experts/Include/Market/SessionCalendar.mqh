@@ -61,14 +61,13 @@ bool LP_NewsBlockedNow(const datetime server_time, const LP_Config &config, stri
    if(config.news_guard_mode == LP_NEWS_GUARD_DISABLED)
       return false;
 
-   // Gate 99N establishes the contract. Event ingestion is a later gate.
    if(!LP_NewsSourceConfigured(config))
    {
       reason = "news_source_missing";
       return config.news_guard_mode == LP_NEWS_GUARD_REQUIRED_FOR_LIVE;
    }
 
-   reason = "news_guard_configured_no_events_loaded_gate99n";
+   reason = "news_guard_configured";
    return false;
 }
 

@@ -25,6 +25,9 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_ERROR: return "error";
       case LP_RECEIPT_POSITION_ATTRIBUTION: return "position_attribution";
       case LP_RECEIPT_HARVEST_STATE: return "harvest_state";
+      case LP_RECEIPT_CURRENCY_EXPOSURE: return "currency_exposure";
+      case LP_RECEIPT_GRID_INVENTORY: return "grid_inventory";
+      case LP_RECEIPT_NEWS_GUARD: return "news_guard";
    }
    return "unknown";
 }

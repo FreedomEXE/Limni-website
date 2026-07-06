@@ -83,11 +83,11 @@ public:
          return false;
       }
 
-      // Gate 99N produces no executable plans. Future gates add order building here.
+      // Gate 99S keeps order building disabled until an approved strategy lane exists.
       receipts.Write(
          LP_RECEIPT_ORDER_REQUEST,
          plan.symbol,
-         "not_implemented_gate99n",
+         "not_implemented_gate99s",
          "plan_id=" + (string)plan.plan_id,
          plan.lane_id,
          plan.variant_id,

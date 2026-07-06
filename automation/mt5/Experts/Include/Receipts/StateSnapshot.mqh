@@ -22,6 +22,7 @@ void LP_WritePortfolioSummary(LP_ReceiptWriter &receipts, const LP_PortfolioStat
    receipts.Summary("managed_position_count", IntegerToString(state.managed_position_count));
    receipts.Summary("entry_group_position_count", IntegerToString(state.entry_group_position_count));
    receipts.Summary("grid_group_position_count", IntegerToString(state.grid_group_position_count));
+   receipts.Summary("open_grid_count", IntegerToString(state.open_grid_count));
    receipts.Summary("external_position_count", IntegerToString(state.external_position_count));
    receipts.Summary("unknown_managed_position_count", IntegerToString(state.unknown_managed_position_count));
    receipts.Summary("position_snapshot_hash", (string)state.position_snapshot_hash);
