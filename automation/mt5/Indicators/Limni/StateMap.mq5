@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.00"
+#property version   "1.10"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -23,25 +23,25 @@
 #include "..\\Include\\LimniQStateCore.mqh"
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
-const string STATE_MAP_PANEL_NAME = "Limni_StateMap_Panel";
-const string STATE_MAP_BACKGROUND_NAME = "Limni_StateMap_Background";
+const int STATE_MAP_PANEL_WIDTH = 330;
+const int STATE_MAP_PANEL_HEIGHT = 118;
+const int STATE_MAP_PANEL_RIGHT = 18;
+const int STATE_MAP_PANEL_TOP = 22;
+const color STATE_MAP_PANEL_BG = C'20,24,28';
+const color STATE_MAP_PANEL_BORDER = C'70,78,86';
+const color STATE_MAP_TITLE_COLOR = C'170,182,190';
+const color STATE_MAP_TEXT_COLOR = C'220,226,230';
+const color STATE_MAP_LONG_COLOR = clrLimeGreen;
+const color STATE_MAP_SHORT_COLOR = clrTomato;
+const color STATE_MAP_NEUTRAL_COLOR = clrSilver;
+const color STATE_MAP_STRESS_COLOR = clrOrange;
 
-input bool ShowPriceAnchor = true;
-input bool ShowTrendState = true;
-input bool ShowStochastic = true;
-input bool ShowQStateDirection = true;
-input bool ShowQStateDetails = true;
-input bool ShowPanel = true;
-input bool ShowBackground = false;
-input int PanelFontSize = 11;
-input int PanelRightPadding = 18;
-input int PanelTopPadding = 24;
-input color LongColor = clrLimeGreen;
-input color ShortColor = clrTomato;
-input color NeutralColor = clrSilver;
-input color StressColor = clrOrange;
-input color BackgroundColor = clrBlack;
-input bool ShowDebugComment = false;
+const string STATE_MAP_BACKGROUND_NAME = "Limni_StateMap_Background";
+const string STATE_MAP_TITLE_NAME = "Limni_StateMap_Title";
+const string STATE_MAP_STATE_NAME = "Limni_StateMap_State";
+const string STATE_MAP_META_NAME = "Limni_StateMap_Meta";
+const string STATE_MAP_CONTEXT_NAME = "Limni_StateMap_Context";
+const string STATE_MAP_SYNC_NAME = "Limni_StateMap_Sync";
 
 double PriceAnchorBuffer[];
 double StateAnchorBuffer[];
@@ -49,18 +49,18 @@ double StateColorBuffer[];
 
 datetime g_last_qstate_refresh_bar = 0;
 string g_qstate_label = "NO TRADE";
-string g_qstate_details = "";
 string g_qstate_reason = "not_refreshed";
+string g_qstate_details = "";
 datetime g_qstate_asof = 0;
 double g_qstate_score = 0.0;
 double g_qstate_confidence = 0.0;
-color g_qstate_color = clrSilver;
+color g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
 
 void StateMapSetQStateFailure(const string reason, const string details)
 {
    g_qstate_label = "FAIL CLOSED";
-   g_qstate_color = NeutralColor;
-   g_qstate_reason = reason;
+   g_qstate_color = STATE_MAP_STRESS_COLOR;
+   g_qstate_reason = reason == "" ? "qstate_unavailable" : reason;
    g_qstate_asof = 0;
    g_qstate_score = 0.0;
    g_qstate_confidence = 0.0;
@@ -69,75 +69,74 @@ void StateMapSetQStateFailure(const string reason, const string details)
 
 void StateMapDeleteObjects()
 {
-   ObjectDelete(0, STATE_MAP_PANEL_NAME);
    ObjectDelete(0, STATE_MAP_BACKGROUND_NAME);
+   ObjectDelete(0, STATE_MAP_TITLE_NAME);
+   ObjectDelete(0, STATE_MAP_STATE_NAME);
+   ObjectDelete(0, STATE_MAP_META_NAME);
+   ObjectDelete(0, STATE_MAP_CONTEXT_NAME);
+   ObjectDelete(0, STATE_MAP_SYNC_NAME);
 }
 
-void StateMapEnsureBackground()
+void StateMapSetLabel(
+   const string name,
+   const string text,
+   const color text_color,
+   const int font_size,
+   const int y_offset,
+   const string font_name
+)
 {
-   if(!ShowBackground || !ShowPanel)
-   {
-      ObjectDelete(0, STATE_MAP_BACKGROUND_NAME);
-      return;
-   }
+   if(ObjectFind(0, name) < 0)
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
 
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_ANCHOR, ANCHOR_RIGHT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, STATE_MAP_PANEL_RIGHT + 16);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, STATE_MAP_PANEL_TOP + y_offset);
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, font_size);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, text_color);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+   ObjectSetString(0, name, OBJPROP_FONT, font_name);
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+}
+
+void StateMapEnsurePanelBackground()
+{
    if(ObjectFind(0, STATE_MAP_BACKGROUND_NAME) < 0)
       ObjectCreate(0, STATE_MAP_BACKGROUND_NAME, OBJ_RECTANGLE_LABEL, 0, 0, 0);
 
    ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
    ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_ANCHOR, ANCHOR_RIGHT_UPPER);
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_XDISTANCE, MathMax(0, PanelRightPadding - 10));
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_YDISTANCE, MathMax(0, PanelTopPadding - 8));
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_XSIZE, 420);
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_YSIZE, 146);
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_BGCOLOR, BackgroundColor);
-   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_COLOR, BackgroundColor);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_XDISTANCE, STATE_MAP_PANEL_RIGHT);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_YDISTANCE, STATE_MAP_PANEL_TOP);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_XSIZE, STATE_MAP_PANEL_WIDTH);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_YSIZE, STATE_MAP_PANEL_HEIGHT);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_BGCOLOR, STATE_MAP_PANEL_BG);
+   ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_COLOR, STATE_MAP_PANEL_BORDER);
    ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_BACK, false);
    ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, STATE_MAP_BACKGROUND_NAME, OBJPROP_HIDDEN, true);
 }
 
-void StateMapEnsurePanel()
-{
-   if(!ShowPanel)
-   {
-      StateMapDeleteObjects();
-      return;
-   }
-
-   StateMapEnsureBackground();
-
-   if(ObjectFind(0, STATE_MAP_PANEL_NAME) < 0)
-      ObjectCreate(0, STATE_MAP_PANEL_NAME, OBJ_LABEL, 0, 0, 0);
-
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_ANCHOR, ANCHOR_RIGHT_UPPER);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_XDISTANCE, PanelRightPadding);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_YDISTANCE, PanelTopPadding);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_FONTSIZE, PanelFontSize);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_HIDDEN, true);
-   ObjectSetString(0, STATE_MAP_PANEL_NAME, OBJPROP_FONT, "Consolas");
-}
-
 string StateMapTrendLabel(const int state)
 {
    if(state > 0)
-      return "trend_up";
+      return "trend up";
    if(state < 0)
-      return "trend_down";
-   return "neutral";
+      return "trend down";
+   return "trend neutral";
 }
 
 color StateMapQStateColor(const LimniQStateDirection &decision)
 {
    if(decision.state == LIMNI_QSTATE_PAIR_STATE_STRESS)
-      return StressColor;
+      return STATE_MAP_STRESS_COLOR;
    if(decision.trade_direction == LIMNI_QSTATE_SIDE_LONG)
-      return LongColor;
+      return STATE_MAP_LONG_COLOR;
    if(decision.trade_direction == LIMNI_QSTATE_SIDE_SHORT)
-      return ShortColor;
-   return NeutralColor;
+      return STATE_MAP_SHORT_COLOR;
+   return STATE_MAP_NEUTRAL_COLOR;
 }
 
 ulong StateMapPortfolioQStateHash(const LimniQStatePairFeatures &features[], const double &ccy_scores[])
@@ -281,39 +280,32 @@ void StateMapRenderPanel(
    const int latest_trend_state,
    const double latest_stoch,
    const int copied,
-   const int day_count,
    const int valid_q_day_count
 )
 {
-   if(!ShowPanel)
-      return;
+   StateMapEnsurePanelBackground();
 
-   StateMapEnsurePanel();
+   string meta = "Score " + DoubleToString(g_qstate_score, 3) +
+      "   Conf " + DoubleToString(g_qstate_confidence, 2);
+   if(g_qstate_asof > 0)
+      meta += "   M1 " + TimeToString(g_qstate_asof, TIME_MINUTES);
+   else
+      meta += "   M1 syncing";
 
-   string text = "Limni State Map";
-   if(ShowQStateDirection)
-   {
-      text += "\nQState: " + g_qstate_label + " | " + g_qstate_reason;
-      if(ShowQStateDetails)
-      {
-         text += "\nScore: " + DoubleToString(g_qstate_score, 3) +
-            " Conf: " + DoubleToString(g_qstate_confidence, 2);
-         if(g_qstate_asof > 0)
-            text += " AsOf: " + TimeToString(g_qstate_asof, TIME_MINUTES);
-      }
-   }
-   if(ShowTrendState)
-      text += "\nTrend: " + StateMapTrendLabel(latest_trend_state);
-   if(ShowStochastic)
-      text += "\nStoch: " + (latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 2));
-   if(ShowPriceAnchor)
-      text += "\nAnchor: " + (latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits));
-   text += "\nM1 bars: " + IntegerToString(copied) +
-      " days: " + IntegerToString(day_count) +
-      " q-days: " + IntegerToString(valid_q_day_count);
+   string context = StateMapTrendLabel(latest_trend_state) +
+      "   Stoch " + (latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1));
+   if(latest_anchor != EMPTY_VALUE)
+      context += "   Anchor " + DoubleToString(latest_anchor, _Digits);
 
-   ObjectSetString(0, STATE_MAP_PANEL_NAME, OBJPROP_TEXT, text);
-   ObjectSetInteger(0, STATE_MAP_PANEL_NAME, OBJPROP_COLOR, ShowQStateDirection ? g_qstate_color : NeutralColor);
+   string sync = g_qstate_reason +
+      "   bars " + IntegerToString(copied) +
+      "   q-days " + IntegerToString(valid_q_day_count);
+
+   StateMapSetLabel(STATE_MAP_TITLE_NAME, "LIMNI STATE MAP", STATE_MAP_TITLE_COLOR, 9, 10, "Consolas");
+   StateMapSetLabel(STATE_MAP_STATE_NAME, g_qstate_label, g_qstate_color, 24, 28, "Arial Black");
+   StateMapSetLabel(STATE_MAP_META_NAME, meta, STATE_MAP_TEXT_COLOR, 9, 64, "Consolas");
+   StateMapSetLabel(STATE_MAP_CONTEXT_NAME, context, STATE_MAP_TEXT_COLOR, 9, 82, "Consolas");
+   StateMapSetLabel(STATE_MAP_SYNC_NAME, sync, STATE_MAP_TITLE_COLOR, 8, 100, "Consolas");
 }
 
 int OnInit()
@@ -325,15 +317,13 @@ int OnInit()
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, EMPTY_VALUE);
    IndicatorSetString(INDICATOR_SHORTNAME, "Limni State Map");
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
-   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0, 0);
+   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
    return INIT_SUCCEEDED;
 }
 
 void OnDeinit(const int reason)
 {
    StateMapDeleteObjects();
-   if(ShowDebugComment)
-      Comment("");
 }
 
 int OnCalculate(
@@ -406,30 +396,26 @@ int OnCalculate(
    LimniClearDoubleBuffer(next_state_anchor, rates_total);
    LimniFillDoubleBuffer(next_state_color, rates_total, 2.0);
 
-   if(ShowPriceAnchor)
-      LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_line, next_price_anchor);
+   LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_line, next_price_anchor);
 
-   if(ShowTrendState)
+   int source_count = ArraySize(source_times);
+   int source_index = 0;
+   for(int logical = 0; logical < rates_total; logical++)
    {
-      int source_count = ArraySize(source_times);
-      int source_index = 0;
-      for(int logical = 0; logical < rates_total; logical++)
-      {
-         int idx = LimniChronIndex(rates_total, chart_series, logical);
-         datetime bar_time = time[idx];
-         while(source_index + 1 < source_count && source_times[source_index + 1] <= bar_time)
-            source_index++;
+      int idx = LimniChronIndex(rates_total, chart_series, logical);
+      datetime bar_time = time[idx];
+      while(source_index + 1 < source_count && source_times[source_index + 1] <= bar_time)
+         source_index++;
 
-         if(source_count > 0 && source_times[source_index] <= bar_time && source_line[source_index] != EMPTY_VALUE)
-         {
-            next_state_anchor[idx] = source_line[source_index];
-            if(source_ma_state[source_index] > 0)
-               next_state_color[idx] = 0.0;
-            else if(source_ma_state[source_index] < 0)
-               next_state_color[idx] = 1.0;
-            else
-               next_state_color[idx] = 2.0;
-         }
+      if(source_count > 0 && source_times[source_index] <= bar_time && source_line[source_index] != EMPTY_VALUE)
+      {
+         next_state_anchor[idx] = source_line[source_index];
+         if(source_ma_state[source_index] > 0)
+            next_state_color[idx] = 0.0;
+         else if(source_ma_state[source_index] < 0)
+            next_state_color[idx] = 1.0;
+         else
+            next_state_color[idx] = 2.0;
       }
    }
 
@@ -440,7 +426,7 @@ int OnCalculate(
    datetime latest_closed_m1 = iTime(_Symbol, PERIOD_M1, 1);
    if(latest_closed_m1 <= 0)
       latest_closed_m1 = TimeCurrent();
-   if(ShowQStateDirection && (prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar))
+   if(prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar)
    {
       StateMapRefreshQState();
       g_last_qstate_refresh_bar = latest_closed_m1;
@@ -456,20 +442,8 @@ int OnCalculate(
       latest_trend_state,
       latest_stoch,
       copied,
-      day_count,
       valid_q_day_count
    );
-
-   if(ShowDebugComment)
-   {
-      Comment(
-         "Limni State Map\n",
-         "qstate: ", g_qstate_label, "\n",
-         g_qstate_details, "\n",
-         "source bars: ", IntegerToString(copied), "\n",
-         "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)
-      );
-   }
 
    return rates_total;
 }

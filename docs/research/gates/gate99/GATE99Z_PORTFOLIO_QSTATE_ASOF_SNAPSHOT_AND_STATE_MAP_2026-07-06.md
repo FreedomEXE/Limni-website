@@ -91,9 +91,10 @@ data-validation failures such as `mixed_source_m1_time` from looking identical.
 
 Katarakti is deliberately excluded from `StateMap.mq5` in this gate.
 
-The old standalone indicators were not archived in this pass because they are
-still useful comparison targets until State Map visual parity is manually
-confirmed.
+Follow-up cleanup archived the old standalone PriceAnchor, TrendState, and
+QStateDirection viewers under root `archive/` after manual visual review accepted
+State Map as the replacement surface. Stochastic remains active as the separate
+oscillator view.
 
 ## Changed Files
 
@@ -155,9 +156,10 @@ Before any MT5 performance backtest claim:
    across chart timeframes.
 3. Run an EA tester smoke and compare q_state receipt fields against the State
    Map panel details for the same symbol/time.
-4. Compare State Map Price Anchor / Trend / Stochastic against the old
-   standalone indicators.
-5. Only after that, decide whether old indicators should be archived or wrapped.
+4. Compare EA q_state receipt fields against State Map for the same
+   symbol/time.
+5. Review the frequent NO TRADE transitions as an architecture question before
+   using q-state to drive basket close/reopen behavior.
 ```
 
 Katarakti remains excluded until the EA and State Map parity checks pass.
