@@ -37,6 +37,7 @@ private:
    int m_step_count;
    int m_total_new_bars;
    int m_total_intents;
+   ulong m_last_attribution_hash;
 
    LP_ReceiptWriter m_receipts;
    LP_SymbolSpecCache m_symbol_cache;
@@ -78,6 +79,7 @@ public:
       m_step_count = 0;
       m_total_new_bars = 0;
       m_total_intents = 0;
+      m_last_attribution_hash = 0;
       m_receipts.Reset();
       m_symbol_cache.Reset();
       m_clock.Reset();
@@ -130,12 +132,20 @@ public:
       }
 
       m_position_index.Refresh();
+      m_account_guard.Configure(m_config);
       m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
       m_position_index.BuildPortfolioState(m_config_hash, state);
       LP_WritePortfolioSummary(m_receipts, state);
+      LP_WritePositionAttribution(m_receipts, state);
+      m_last_attribution_hash = state.position_snapshot_hash;
+
+      LP_HarvestDecision harvest;
+      m_account_guard.Evaluate(state, harvest);
+      if(harvest.receipt_required)
+         LP_WriteHarvestState(m_receipts, harvest);
 
       if(m_config.use_timer_watchdog)
          EventSetTimer(5);
@@ -226,11 +236,18 @@ public:
       LP_PortfolioState portfolio;
       m_position_index.BuildPortfolioState(m_config_hash, portfolio);
 
-      string account_reason = "";
-      if(m_account_guard.RequiresAccountClose(portfolio, account_reason))
+      if(m_step_count == 1 || portfolio.position_snapshot_hash != m_last_attribution_hash)
       {
-         m_receipts.Write(LP_RECEIPT_ACCOUNT_GOVERNOR, "", "close_required", account_reason, 0, 0, 0, 0, 0, 0);
+         LP_WritePositionAttribution(m_receipts, portfolio);
+         m_last_attribution_hash = portfolio.position_snapshot_hash;
       }
+
+      LP_HarvestDecision harvest;
+      m_account_guard.Evaluate(portfolio, harvest);
+      if(harvest.block_new_entries)
+         portfolio.recovery_state = LP_RECOVERY_LOCKED;
+      if(harvest.receipt_required)
+         LP_WriteHarvestState(m_receipts, harvest);
 
       int cycle_new_bars = 0;
       for(int i = 0; i < m_symbol_cache.Count(); i++)
@@ -304,7 +321,9 @@ public:
             "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
                "|intents=" + IntegerToString(m_intent_bus.Count()) +
-               "|managed_positions=" + IntegerToString(portfolio.managed_position_count),
+               "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
+               "|harvest_state=" + LP_HarvestStateName(harvest.state) +
+               "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries),
             0,
             0,
             0,

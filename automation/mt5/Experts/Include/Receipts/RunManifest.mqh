@@ -26,7 +26,8 @@ void LP_WriteRunManifest(
          "|allow_live_trading=" + LP_BoolText(config.allow_live_trading) +
          "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
          "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
-         "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard),
+         "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
+         "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor),
       0,
       0,
       0,
@@ -48,6 +49,12 @@ void LP_WriteRunManifest(
    receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
    receipts.Summary("news_calendar_file", config.news_calendar_file);
    receipts.Summary("week_boundary_description", LP_WeekBoundaryDescription());
+   receipts.Summary("portfolio_harvest_governor_enabled", LP_BoolText(config.enable_portfolio_harvest_governor));
+   receipts.Summary("harvest_initial_target_money", DoubleToString(config.harvest_initial_target_money, 2));
+   receipts.Summary("harvest_trail_money", DoubleToString(config.harvest_trail_money, 2));
+   receipts.Summary("harvest_soft_lock_on_breach", LP_BoolText(config.harvest_soft_lock_on_breach));
+   receipts.Summary("harvest_grid_winddown_on_breach", LP_BoolText(config.harvest_grid_winddown_on_breach));
+   receipts.Summary("harvest_arm_emergency_liquidation", LP_BoolText(config.harvest_arm_emergency_liquidation));
 }
 
 #endif // __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__

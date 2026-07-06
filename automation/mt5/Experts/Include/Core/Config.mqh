@@ -23,7 +23,14 @@ input LP_NewsGuardMode NewsGuardMode = LP_NEWS_GUARD_REQUIRED_FOR_LIVE;
 input string NewsCalendarFile = "LimniPortfolioEA\\news_events.csv";
 input int NewsBlockBeforeMinutes = 30;
 input int NewsBlockAfterMinutes = 30;
-input string LP_INPUT_4 = "----- Diagnostics -----";
+input string LP_INPUT_4 = "----- Portfolio Harvest Governor -----";
+input bool EnablePortfolioHarvestGovernor = false;
+input double HarvestInitialTargetMoney = 0.0;
+input double HarvestTrailMoney = 0.0;
+input bool HarvestSoftLockOnBreach = true;
+input bool HarvestGridWinddownOnBreach = true;
+input bool HarvestArmEmergencyLiquidation = false;
+input string LP_INPUT_5 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -49,6 +56,12 @@ void LP_LoadConfig(LP_Config &config)
    config.output_folder = OutputFolder;
    config.news_calendar_file = NewsCalendarFile;
    config.export_to_common_files = ExportToCommonFiles;
+   config.enable_portfolio_harvest_governor = EnablePortfolioHarvestGovernor;
+   config.harvest_initial_target_money = HarvestInitialTargetMoney;
+   config.harvest_trail_money = HarvestTrailMoney;
+   config.harvest_soft_lock_on_breach = HarvestSoftLockOnBreach;
+   config.harvest_grid_winddown_on_breach = HarvestGridWinddownOnBreach;
+   config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
 }
 
 ulong LP_ConfigHash(const LP_Config &config)
@@ -62,7 +75,13 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.require_all_symbols) + "|" +
       DoubleToString(config.broker_to_est_offset_hours, 2) + "|" +
       config.broker_symbol_suffix + "|" +
-      config.news_calendar_file;
+      config.news_calendar_file + "|" +
+      LP_BoolText(config.enable_portfolio_harvest_governor) + "|" +
+      DoubleToString(config.harvest_initial_target_money, 2) + "|" +
+      DoubleToString(config.harvest_trail_money, 2) + "|" +
+      LP_BoolText(config.harvest_soft_lock_on_breach) + "|" +
+      LP_BoolText(config.harvest_grid_winddown_on_breach) + "|" +
+      LP_BoolText(config.harvest_arm_emergency_liquidation);
    return LP_HashString(payload);
 }
 

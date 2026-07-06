@@ -23,6 +23,8 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_ACCOUNT_GOVERNOR: return "account_governor";
       case LP_RECEIPT_RUN_END: return "run_end";
       case LP_RECEIPT_ERROR: return "error";
+      case LP_RECEIPT_POSITION_ATTRIBUTION: return "position_attribution";
+      case LP_RECEIPT_HARVEST_STATE: return "harvest_state";
    }
    return "unknown";
 }

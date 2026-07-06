@@ -1,14 +1,14 @@
 /*-----------------------------------------------
-  LimniPortfolioEA institutional skeleton
-  Gate 99N
+  LimniPortfolioEA portfolio harvest foundation
+  Gate 99R
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_BUILD_INFO_MQH__
 #define __LIMNI_PORTFOLIO_BUILD_INFO_MQH__
 
 const string LP_EA_NAME = "LimniPortfolioEA";
-const string LP_EA_VERSION = "0.1.0-gate99n";
-const string LP_BUILD_GATE = "Gate99N";
-const string LP_BUILD_SCOPE = "institutional-skeleton-zero-trading";
+const string LP_EA_VERSION = "0.1.1-gate99r";
+const string LP_BUILD_GATE = "Gate99R";
+const string LP_BUILD_SCOPE = "portfolio-harvest-governor-zero-trading";
 const long LP_MAGIC_BASE = 930000000000000;
 const int LP_MAGIC_MAJOR_VERSION = 1;
 

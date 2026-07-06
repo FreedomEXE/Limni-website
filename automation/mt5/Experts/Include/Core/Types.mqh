@@ -126,6 +126,25 @@ enum LP_RecoveryState
    LP_RECOVERY_LOCKED = 1
 };
 
+enum LP_PositionGroup
+{
+   LP_POSITION_GROUP_UNKNOWN = 0,
+   LP_POSITION_GROUP_ENTRY = 1,
+   LP_POSITION_GROUP_GRID = 2,
+   LP_POSITION_GROUP_EXTERNAL = 3
+};
+
+enum LP_HarvestStateCode
+{
+   LP_HARVEST_DISABLED = 0,
+   LP_HARVEST_CONFIG_INVALID = 1,
+   LP_HARVEST_ARMED_INITIAL_TARGET = 2,
+   LP_HARVEST_HWM_ACTIVE = 3,
+   LP_HARVEST_SOFT_LOCK_ACTIVE = 4,
+   LP_HARVEST_GRID_WINDDOWN_ACTIVE = 5,
+   LP_HARVEST_EMERGENCY_LIQUIDATION_ARMED = 6
+};
+
 enum LP_ReceiptKind
 {
    LP_RECEIPT_RUN_START = 1,
@@ -140,7 +159,9 @@ enum LP_ReceiptKind
    LP_RECEIPT_TRADE_TRANSACTION = 10,
    LP_RECEIPT_ACCOUNT_GOVERNOR = 11,
    LP_RECEIPT_RUN_END = 12,
-   LP_RECEIPT_ERROR = 13
+   LP_RECEIPT_ERROR = 13,
+   LP_RECEIPT_POSITION_ATTRIBUTION = 14,
+   LP_RECEIPT_HARVEST_STATE = 15
 };
 
 struct LP_Config
@@ -164,6 +185,12 @@ struct LP_Config
    string output_folder;
    string news_calendar_file;
    bool export_to_common_files;
+   bool enable_portfolio_harvest_governor;
+   double harvest_initial_target_money;
+   double harvest_trail_money;
+   bool harvest_soft_lock_on_breach;
+   bool harvest_grid_winddown_on_breach;
+   bool harvest_arm_emergency_liquidation;
 };
 
 struct LP_SymbolMeta
@@ -287,12 +314,44 @@ struct LP_PortfolioState
    double margin;
    double free_margin;
    double ea_floating_pnl;
+   double entry_group_floating_pnl;
+   double grid_group_floating_pnl;
+   double external_floating_pnl;
    int open_position_count;
    int managed_position_count;
+   int entry_group_position_count;
+   int grid_group_position_count;
+   int external_position_count;
+   int unknown_managed_position_count;
    int open_grid_count;
    ulong position_snapshot_hash;
    ulong config_hash;
    int recovery_state;
+};
+
+struct LP_HarvestDecision
+{
+   datetime asof;
+   int previous_state;
+   int state;
+   bool enabled;
+   bool config_valid;
+   bool block_new_entries;
+   bool soft_lock_active;
+   bool grid_winddown_active;
+   bool emergency_liquidation_armed;
+   bool receipt_required;
+   double target_money;
+   double trail_money;
+   double managed_floating_pnl;
+   double entry_group_floating_pnl;
+   double grid_group_floating_pnl;
+   double high_watermark_money;
+   double trail_floor_money;
+   int managed_position_count;
+   int entry_group_position_count;
+   int grid_group_position_count;
+   string reason;
 };
 
 struct LP_CurrencyExposure
@@ -354,6 +413,59 @@ string LP_NewsGuardModeName(const LP_NewsGuardMode mode)
    if(mode == LP_NEWS_GUARD_REQUIRED_FOR_LIVE)
       return "NEWS_GUARD_REQUIRED_FOR_LIVE";
    return "NEWS_GUARD_DISABLED";
+}
+
+string LP_PositionGroupName(const int group)
+{
+   if(group == LP_POSITION_GROUP_ENTRY)
+      return "entry";
+   if(group == LP_POSITION_GROUP_GRID)
+      return "grid";
+   if(group == LP_POSITION_GROUP_EXTERNAL)
+      return "external";
+   return "unknown";
+}
+
+string LP_HarvestStateName(const int state)
+{
+   if(state == LP_HARVEST_CONFIG_INVALID)
+      return "config_invalid";
+   if(state == LP_HARVEST_ARMED_INITIAL_TARGET)
+      return "armed_initial_target";
+   if(state == LP_HARVEST_HWM_ACTIVE)
+      return "hwm_active";
+   if(state == LP_HARVEST_SOFT_LOCK_ACTIVE)
+      return "soft_lock_active";
+   if(state == LP_HARVEST_GRID_WINDDOWN_ACTIVE)
+      return "grid_winddown_active";
+   if(state == LP_HARVEST_EMERGENCY_LIQUIDATION_ARMED)
+      return "emergency_liquidation_armed";
+   return "disabled";
+}
+
+void LP_ResetHarvestDecision(LP_HarvestDecision &decision)
+{
+   decision.asof = 0;
+   decision.previous_state = LP_HARVEST_DISABLED;
+   decision.state = LP_HARVEST_DISABLED;
+   decision.enabled = false;
+   decision.config_valid = false;
+   decision.block_new_entries = false;
+   decision.soft_lock_active = false;
+   decision.grid_winddown_active = false;
+   decision.emergency_liquidation_armed = false;
+   decision.receipt_required = false;
+   decision.target_money = 0.0;
+   decision.trail_money = 0.0;
+   decision.managed_floating_pnl = 0.0;
+   decision.entry_group_floating_pnl = 0.0;
+   decision.grid_group_floating_pnl = 0.0;
+   decision.high_watermark_money = 0.0;
+   decision.trail_floor_money = 0.0;
+   decision.managed_position_count = 0;
+   decision.entry_group_position_count = 0;
+   decision.grid_group_position_count = 0;
+   decision.reason = "";
 }
 
 ulong LP_HashString(const string value)
