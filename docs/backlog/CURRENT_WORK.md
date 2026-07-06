@@ -10,7 +10,8 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ### Current Override - 2026-07-05
 
-Active lane: `LimniKataraktiEA` / Gate 97 to Gate 98.
+Active lane: `LimniKataraktiEA` / Gate 98 closeout to Gate 99
+non-time-based FormulaShadow review.
 
 Gate 97 `limni-katarakti-ea-multipair-baseline-manual-smoke` is complete as a
 manual MT5 Strategy Tester smoke checkpoint. Report:
@@ -36,22 +37,214 @@ MaxBasketEntries `500`, trailing disabled, David MA `35`, David RSI
 `1000/60/40`, and Stoch `1000/100/100` with `10/90`. The `1000/60/40`
 settings are trial-and-error prototype settings, not proven optimal.
 
-Freedom's latest decision: `David WITH` is a dud for now; `David OFF` and
-`David AGAINST` are interesting but not understood enough. Pause David tuning
-and open Gate 98 `katarakti-entry-stack-ablation`.
+Freedom's Gate 98 closeout decision: stop the current time-based parameter
+tuning path. Ask ChatGPT Pro for review, then open Gate 99 only after that
+review is read. The intended next shape is a non-time-based FormulaShadow /
+shadow EA rebuild using price action, volatility, ADR, LRMG/event logic, and
+portfolio heat.
 
 Gate 98 next-chat prompt:
 `docs/research/gates/gate98/NEXT_CHAT_GATE98_KATARAKTI_ENTRY_STACK_ABLATION_PROMPT_2026-07-05.md`.
 
-Gate 98 objective: isolate Katarakti first. Add a small `EntryStackPreset` or
-`IsolationMode` to `LimniKataraktiEA` unless inspection proves a separate EA is
-cleaner. First test `K_ONLY` for `KTR_LOOSE`, `KTR_BALANCED`, and
-`KTR_EXTREME`; then add stochastic, LRMG reversal/overextension, and only later
-David AGAINST. Preserve the existing basket/grid/TP/accounting/export receipts.
+Gate 98 closeout and review handoff:
+
+- Closeout:
+  `docs/research/gates/gate98/GATE98_KATARAKTI_ENTRY_STACK_ABLATION_CLOSEOUT_2026-07-05.md`.
+- ChatGPT Pro review prompt:
+  `docs/research/gates/gate98/CHATGPT_REVIEW_GATE98_NON_TIME_BASED_FORMULASHADOW_PROMPT_2026-07-05.md`.
+- Next Codex chat prompt:
+  `docs/research/gates/gate98/NEXT_CHAT_GATE99_NON_TIME_BASED_FORMULASHADOW_PROMPT_2026-07-05.md`.
+
+Gate 98 objective: isolate Katarakti first. The EA has been simplified for
+manual MT5 piloting. Katarakti is locked internally to Loose (`KTR_LOOSE`),
+Katarakti/LRMG formula parameters, export/multi-symbol/tester plumbing, and
+cutoff plumbing are locked to the current 28-pair Common Files canon, and the
+old visible `EntryStackPreset` selector is replaced by direct layer controls:
+`Stochastic`, `LRMG`, and `David`. Receipts still export a derived
+`entry_stack_preset` name plus active layer booleans, raw Katarakti candidates,
+block reasons, final accepted/blocked decision, modeled/actual/accounting
+prices, same-bar ambiguity counters, and aggregate pair-contribution config.
+
+Visible MT5 inputs after the cleanup: `Longs`, `Shorts`, `Lots`, `Slippage`,
+`GridSpacing`, `ExitScope`, `TP`, `SL`, `Trail`, `TrailStart`,
+`TrailDistance`, `GridCap`, `Stochastic`, `K`, `Slowing`, `D`, `Oversold`,
+`Overbought`, `UseD`, `LRMG`, `David`, `RSIFilter`, `RSI`, `RSI_OB`, and
+`RSI_OS`. `GridCap=0` means no grid adds beyond the initial entry.
+`ExitScope=EXIT_ACCOUNT` is now wired for manual backtests: pair-level
+TP/SL/trail checks are disabled, the control signal is magic-filtered MT5 open
+position money after expected close-side commission, and `TP`, `SL`,
+`TrailStart`, and `TrailDistance` mean percent of account balance
+(`exit_unit=PCT_BALANCE`). The trigger computes gross open money from
+`sum(POSITION_PROFIT + POSITION_SWAP)`, subtracts estimated close commission at
+`7.00 * lots`, then checks `100 * netOpenMoney / AccountBalance`. When the
+account trigger fires, all
+currently tracked pair baskets close with `account_tp`, `account_sl`, or
+`account_trail`, then normal entry scanning resumes on later symbol bars.
+Events and basket receipts include `account_close_group_id`, pre-close
+gross money / estimated close fee / net money / net pct / balance / equity /
+profit / position-count context. Each account harvest also writes a flushed
+`*_account_exits.csv` row with pre/post balance, realized money, positions
+closed/failed, estimated close fee, and realized-minus-expected net money.
+`EXIT_PAIR` still uses raw ADR geometry (`exit_unit=ADR`).
+
+Compile/install proof exists for the Gate 98 cleanup: the repo copy and active
+terminal copy both compiled through MetaEditor with `0 errors, 0 warnings`; the
+active terminal source hash matches the repo source hash
+`8B20E5BAAE4EEA7B9C55D71867D53EB1D9C63330D973196A42EF5614B25BA6DB`.
+Fresh closeout compile logs are under
+`docs/research/gates/gate98/artifacts/compile-closeout-2026-07-05/`.
+
+Patched rerun `2026_01_01_00_00_00_TESTER_84` replicated Freedom's strong
+random config shape: `K_DAVID_AGAINST`, `ExitScope=ACCOUNT`, `TP=1.00`,
+`SL=0`, `Trail=true`, `TrailStart=1.00`, `TrailDistance=2.00`,
+`GridSpacing=0.10`, `GridCap=500`, David RSI `9/63/37`, no Stoch, no LRMG.
+It stayed strong on headline numbers (`+7125.72` account money, `+1454.268324`
+closed-plus-marked ADR, `55` account exit cycles) but is diagnostic only: the
+new `*_account_exits.csv` exposed an April close-path failure where MT5
+positions remained open after a market-close account exit attempt. The EA now
+fails closed in that case: if tester orders do not actually close the expected
+positions, it logs `EXIT_BLOCKED`, does not record the basket close, and does
+not reset internal basket state.
+
+Clean close-path rerun `2026_01_01_00_00_00_TESTER_181` used the same
+`K_DAVID_AGAINST`, `ExitScope=ACCOUNT`, David RSI `9/63/37`, grid `0.10`, cap
+`500` shape, but it was not an exact `TESTER_84` duplicate: `TP=1.00`, `SL=0`,
+`Trail=true`, `TrailStart=0`, `TrailDistance=0`, so account trailing was
+effectively off and every account exit was `account_tp`. It passed the new
+account-exit integrity check: `53` account-exit rows, `positions_failed=0`,
+`negative_realized=0`, min `pre_net_open_pct_magic=1.000018`, and total
+realized account money `+7737.32`. It exported `+1457.699855` closed ADR,
+`-32.959256` terminal marked ADR, `+1424.740599` closed-plus-marked ADR,
+`74.0000%` win rate, and `28` unresolved open baskets. One Friday
+market-close attempt at `2026.04.10 23:58:00` logged `21` `EXIT_BLOCKED` rows
+for group `36`; those were not counted as closes, and the next real account TP
+on `2026.04.13 00:03:00` closed `129` positions with `positions_failed=0` and
+`+179.38` realized money.
+
+Six-year check `2020_01_01_00_00_00_TESTER_260` used the clean account-TP-only
+shape (`K_DAVID_AGAINST`, `ExitScope=ACCOUNT`, `TP=1.00`, `SL=0`, effective
+trail off, David RSI `9/63/37`, grid `0.10`, cap `500`) and failed in the
+March 2020 shock. Receipt integrity was clean: `16` account exits, all
+`account_tp`, `positions_failed=0`, `negative_realized=0`, and `+1989.77`
+realized account money through the last successful TP on `2020.03.04 23:46`.
+Failure came from unresolved terminal exposure, not close execution: by
+`2020.03.09 05:15` there were `25` open-end baskets, `507` open fills,
+`-965.343315` terminal marked ADR, `-573.835125` closed-plus-marked ADR, and
+`account_open_pct_min=-80.835579`. Worst terminal contributors were `CADJPY`
+long `-133.297272` ADR, `EURAUD` short `-106.425382`, `USDCHF` long
+`-99.888810`, `AUDJPY` long `-98.190968`, `NZDJPY` long `-90.418381`, and
+`EURCAD` short `-85.090909`.
+
+First Gate 98 six-year `K_ONLY` read:
+
+- `2020_01_01_00_00_00_TESTER_878`: `entry_stack_preset=K_ONLY`,
+  `configured_david_mode=AGAINST`, `effective_david_mode=OFF`,
+  `david_filter_enabled=false`, `stoch_filter_enabled=false`,
+  `lrmg_reversal_filter_enabled=false`, `katarakti_mode=0` (`KTR_LOOSE`).
+  This is true `K_ONLY / KTR_LOOSE`, not active David AGAINST.
+- Result: `1772` closed baskets, `+564.900000` closed ADR, `-1470.525835`
+  terminal marked ADR, `-905.625835` closed-plus-marked ADR, `11` unresolved
+  terminal baskets, worst open drawdown `-190.398731` ADR, worst MAE
+  `193.162664`, max fill count `62`.
+- Terminal failures were concentrated in March 2020 open-end baskets, led by
+  `AUDCHF.i` long `-481.607506` ADR at `88` fills and `EURNZD.i` short
+  `-476.566180` ADR at `88` fills. Interpretation: Loose Katarakti alone
+  produces many tight-TP winners, but it does not control terminal inventory.
+- Older manual KTR_EXTREME context existed during the workstream, but the
+  `TESTER_30` receipt ID was later overwritten by the current David WITH
+  ablation. Do not cite `TESTER_30` as KTR_EXTREME. Use the Gate 98 closeout
+  table as the current receipt truth.
+
+First Gate 98 2026 YTD / six-month `K_ONLY` receipt:
+
+- `2026_01_01_00_00_00_TESTER_168`: 28 symbols, `entry_stack_preset=K_ONLY`,
+  `effective_david_mode=OFF`, `configured_david_mode=OFF`,
+  `david_filter_enabled=false`, `stoch_filter_enabled=false`,
+  `lrmg_reversal_filter_enabled=false`, `katarakti_mode=0` (`KTR_LOOSE`).
+  Per-symbol summaries were consistent: TP `0.10 ADR`, SL `0`, grid spacing
+  `0.10 ADR`, MaxBasketEntries `500`, trailing disabled,
+  `execution_price_mode=MT5_ORDER_FILL`. `UseDForFilter=true` was present but
+  irrelevant because the Stoch layer was disabled by `K_ONLY`.
+- Event receipt: `4566` accepted BUY/SELL signal rows, all with
+  `raw_katarakti_candidate=true`; blocked signals were only
+  `blocked_existing_basket`. Basket close reasons: `4555` TP, `11` open_end.
+- Result: `+1567.000000` closed ADR, `-227.824957` terminal marked ADR,
+  `+1339.175043` closed-plus-marked ADR, `11` unresolved terminal baskets,
+  worst open drawdown `-1130.093967` ADR, worst MAE `1130.798722`, max fill
+  count `150`. Interpretation: configuration is correct for clean
+  `K_ONLY / KTR_LOOSE`, but fixed `0.10 ADR` TP still leaves large tail risk.
+
+Freedom-run cheap six-year context reviewed from MT5 Common Files on
+2026-07-05:
+
+- `2020_01_01_00_00_00_TESTER_210`: old-stack David OFF with `KTR_LOOSE`,
+  TP `0.10 ADR`, SL `0`, grid spacing `0.10 ADR`, MaxBasketEntries `500`.
+  It did not survive March 2020: `253` closed baskets, `+81.700000` closed
+  ADR, `-907.650920` terminal marked ADR, `-825.950920` closed-plus-marked
+  ADR, `2` unresolved terminal baskets (`GBPCHF.i` long at `114` fills and
+  `GBPUSD.i` long at `61` fills).
+- `2020_01_01_00_00_00_TESTER_15`: old-stack David OFF with `KTR_EXTREME`
+  and the same TP/grid/risk settings. It did survive the six-year window:
+  `1267` closed baskets, `+420.400000` closed ADR, `-59.378693` terminal
+  marked ADR, `+361.021307` closed-plus-marked ADR, `1` unresolved terminal
+  basket (`USDCAD.i` short at `44` fills). Hidden inventory risk remained
+  severe: worst open drawdown `-329.637149` ADR, worst MAE `330.858378`, max
+  fill count `81`.
+- Interpretation: stricter Katarakti has real filtering value even with David
+  direction disabled, but this is not true Gate 98 `K_ONLY`. These runs
+  predate the `EntryStackPreset` switch and still include the existing LRMG and
+  Stoch entry filters with David set OFF. Treat them as manual context only,
+  not as a promotion or a reason to resume David tuning.
+
+Saved MT5 report context from
+`C:/Users/User/Desktop/LIMNI/Baktests/LimniKatarakti_v1/ALL 28 6 YEARS OHLC.html`:
+
+- This historical six-year OHLC winner used `DavidMode=2` (AGAINST),
+  `KataraktiMode=0` (`KTR_LOOSE`), `TpAdrUnits=0`, `SlAdrUnits=0`,
+  `EnableTrailingStop=true`, `TrailStartAdrUnits=0.2`,
+  `TrailDistanceAdrUnits=0.1`, `GridSpacingAdrUnits=0.1`, and
+  `MaxBasketEntries=5000`.
+- Report headline: initial deposit `$10,000`, total net profit `$19,105.34`,
+  profit factor `1.85`, total trades `16,971`, but equity drawdown maximal was
+  `$7,735.60` / `74.81%`.
+- End-of-test liquidations were negative, not a hidden benefit: `70` EURUSD
+  close deals, about `-$939.86` net. Interpretation: the trail materially
+  changed the exit model and let winners run beyond the fixed `0.10 ADR` TP,
+  but this remains high-drawdown historical context, not promotion evidence.
+
+Portfolio-harvest hypothesis parked for a later exit/lifecycle gate:
+
+- Freedom observed in TradingView that LRMG + Katarakti + Stoch, no David MA,
+  with positions allowed to run from the available March 30 history, showed
+  roughly `+385 ADR` open across 28 FX pairs and roughly `+300 ADR` even after
+  adding BTC, SP500, and gold with large SP500 short exposure.
+- Interpretation to test later: fixed tiny per-basket TP may be clipping
+  winners while leaving tail baskets to dominate. A future account-level
+  equity harvest / account trail could close the portfolio when aggregate open
+  ADR reaches a threshold and trail from the aggregate high-water mark. This is
+  not Gate 98 scope and is not proof yet because the TradingView snapshot does
+  not establish path drawdown, margin survivability, or closed-trade drag.
+
+Gate 98 closeout read: stop the current parameter-tuning path. The only
+six-year raw-stack survivor was `KTR_LOOSE` + Stoch `1000/100/100` with
+`10/90` + LRMG reversal + David AGAINST RSI `9/63/37` + `ExitScope=ACCOUNT`
++ `TP=1.00` percent of balance + `GridSpacing=0.10` + `GridCap=500`. It
+survived on paper but carried severe heat and concentration risk. K-only,
+K+Stoch, K+LRMG+Stoch without David, K+Stoch+David without LRMG,
+K+LRMG+David without Stoch, David WITH, faster Stoch, and looser Stoch all
+failed in the six-year checks. Treat this as evidence that the time-based stack
+is a useful reference specimen but too fragile to optimize into the final
+product.
+
+Next action: wait for ChatGPT Pro review, then open Gate 99 for a
+non-time-based FormulaShadow rebuild. Target pure price action / volatility /
+ADR / LRMG-event logic with no time-based final events if possible and no
+parameter optimization as the main research method. Preserve the current EA as
+a reference specimen until Gate 99 is explicitly opened.
 
 Stop lines: no LimniHedge_V1 changes, no Gate 95/Type3 runner work, no live/app
-integration, no grid-cap/lifecycle guard tests, no David parameter tuning, and
-no promotion claims until Katarakti-only and first layer ablations are reviewed.
+integration, no more David tuning, no more current-stack Stoch sweeps, no
+Candidate B or regime overlay implementation yet, and no promotion claims.
 
 ### Historical Override
 

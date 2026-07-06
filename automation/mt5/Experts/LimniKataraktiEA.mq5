@@ -48,75 +48,88 @@ enum LimniExecutionPriceMode
    EXECUTION_INTERNAL_BAR_PRICE = 1
 };
 
-input string T0 = "|--------< LimniKataraktiEA >--------|";
-input bool RequireStrategyTester = true;
-input bool PlaceTesterOrders = true;
-input LimniExecutionPriceMode ExecutionPriceMode = EXECUTION_MT5_ORDER_FILL;
-input double LotSize = 0.01;
-input long MagicNumber = 960096;
-input int SlippagePoints = 10;
+enum LimniExitScope
+{
+   EXIT_PAIR = 0,
+   EXIT_ACCOUNT = 1
+};
 
-input string T1 = "LRMG";
-input int BootstrapBars = 720;
-input int MedianBrickWindow = 55;
-input int MaxBricksPerBar = 200;
+input string T0 = "LimniKataraktiEA";
+input bool Longs = true;
+input bool Shorts = true;
+input double Lots = 0.01;
+input int Slippage = 10;
+input double GridSpacing = 0.10;
 
-input string T2 = "Stochastic";
-input int StochKPeriod = 1000;
-input int StochSlowing = 50;
-input int StochDPeriod = 100;
-input double Oversold = 20.0;
-input double Overbought = 80.0;
-input bool UseDForFilter = false;
+input string T1 = "Exit";
+input LimniExitScope ExitScope = EXIT_PAIR;
+input double TP = 0.10;
+input double SL = 0.0;
+input bool Trail = true;
+input double TrailStart = 0.20;
+input double TrailDistance = 0.20;
+input int GridCap = 500;
 
-input string T3 = "Katarakti";
-input LimniKataraktiMode KataraktiMode = KTR_LOOSE;
-input double ChartTimeUtcOffsetHours = 0.0; // broker/chart time minus UTC
-input bool EnableLongs = true;
-input bool EnableShorts = true;
-input int MinSweepPoints = 0;
-input int MinDisplacementBodyPoints = 0;
+input string T2 = "Katarakti";
 
-input string T4 = "David Direction";
-input LimniDavidDirectionMode DavidMode = DAVID_OFF;
-input string DavidIndicatorName = "David_MA_Color_V1f_Updated";
-input int DavidMAPeriod = 35;
-input LimniDavidMaType DavidMAType = DAVID_LWMA;
-input LimniDavidMaPrice DavidMAPrice = DAVID_PRICE_CLOSE;
-input bool DavidUseRsiFilter = true;
-input int DavidRsiPeriod = 9;
-input int DavidRsiOverBought = 63;
-input int DavidRsiOverSold = 37;
+input string T3 = "Stochastic";
+input bool Stochastic = false;
+input int K = 1000;
+input int Slowing = 100;
+input int D = 100;
+input double Oversold = 10.0;
+input double Overbought = 90.0;
+input bool UseD = false;
 
-input string T5 = "Basket";
-input int AdrLookbackDays = 10;
-input int AdrMinDays = 5;
-input double TpAdrUnits = 0.0;
-input double SlAdrUnits = 0.0;
-input bool EnableGridAdds = true;
-input int MaxBasketEntries = 50;
-input double GridSpacingAdrUnits = 0.10;
-input bool EnableTrailingStop = true;
-input double TrailStartAdrUnits = 0.20;
-input double TrailDistanceAdrUnits = 0.20;
-input bool EnableWeeklyCutoff = false;
-input int FridayCutoffHour = 16;
-input int FridayCutoffMinute = 0;
+input string T4 = "LRMG";
+input bool LRMG = false;
 
-input string T6 = "Multi Symbol";
-input bool EnableMultiSymbol = false;
-input string SymbolsCsv = "";
-input bool UseDefaultFx28Symbols = true;
-input bool FailIfAnySymbolUnavailable = true;
-input bool RequireM1PeriodDriver = false;
-input bool UseTimerPump = false;
-input int TimerSeconds = 1;
-input bool ExportAggregateCsv = true;
+input string T5 = "David MA";
+input LimniDavidDirectionMode David = DAVID_OFF;
+input bool RSIFilter = true;
+input int RSI = 1000;
+input int RSI_OB = 60;
+input int RSI_OS = 40;
 
-input string T7 = "Export";
-input bool ExportCsv = true;
-input bool ExportToCommonFiles = true;
-input string OutputFolder = "LimniKataraktiEA";
+const bool RequireStrategyTester = true;
+const bool PlaceTesterOrders = true;
+const LimniExecutionPriceMode ExecutionPriceMode = EXECUTION_MT5_ORDER_FILL;
+const long MagicNumber = 960096;
+
+const int BootstrapBars = 720;
+const int MedianBrickWindow = 55;
+const int MaxBricksPerBar = 200;
+
+const LimniKataraktiMode KataraktiMode = KTR_LOOSE;
+const double ChartTimeUtcOffsetHours = 0.0;
+const int MinSweepPoints = 0;
+const int MinDisplacementBodyPoints = 0;
+
+const string DavidIndicatorName = "David_MA_Color_V1f_Updated";
+const int DavidMAPeriod = 35;
+const LimniDavidMaType DavidMAType = DAVID_LWMA;
+const LimniDavidMaPrice DavidMAPrice = DAVID_PRICE_CLOSE;
+
+const int AdrLookbackDays = 10;
+const int AdrMinDays = 5;
+const bool EnableGridAdds = true;
+const bool EnableWeeklyCutoff = false;
+const int FridayCutoffHour = 16;
+const int FridayCutoffMinute = 0;
+
+const bool EnableMultiSymbol = true;
+const string SymbolsCsv = "";
+const bool UseDefaultFx28Symbols = true;
+const bool FailIfAnySymbolUnavailable = true;
+const bool RequireM1PeriodDriver = false;
+const bool UseTimerPump = false;
+const int TimerSeconds = 1;
+const bool ExportAggregateCsv = true;
+
+const bool ExportCsv = true;
+const bool ExportToCommonFiles = true;
+const string OutputFolder = "LimniKataraktiEA";
+const double AccountExitCloseCommissionPerLot = 7.00;
 
 CTrade g_trade;
 int g_stochHandle = INVALID_HANDLE;
@@ -189,6 +202,8 @@ long g_maxBasketSeconds = 0;
 int g_unresolvedBaskets = 0;
 int g_weeklyCutoffCloses = 0;
 double g_weeklyCutoffNetAdr = 0.0;
+int g_pairAccountExitCloses = 0;
+double g_pairAccountExitNetAdr = 0.0;
 int g_longBaskets = 0;
 int g_shortBaskets = 0;
 double g_longNetAdr = 0.0;
@@ -222,6 +237,41 @@ string g_effectiveSymbolsCsv = "";
 string g_symbolSource = "";
 int g_aggregateSummaryFile = INVALID_HANDLE;
 int g_aggregatePairFile = INVALID_HANDLE;
+int g_accountExitFile = INVALID_HANDLE;
+bool g_accountTrailArmed = false;
+double g_accountTrailPeakPct = 0.0;
+double g_accountTrailStopPct = 0.0;
+bool g_accountOpenPctObserved = false;
+double g_accountMaxOpenPct = 0.0;
+double g_accountMinOpenPct = 0.0;
+int g_accountExitCycles = 0;
+int g_accountExitBasketsClosed = 0;
+double g_accountExitNetAdr = 0.0;
+double g_accountExitMoney = 0.0;
+double g_accountExitEstimatedCloseFee = 0.0;
+double g_accountLastExitGrossOpenMoney = 0.0;
+double g_accountLastExitEstimatedCloseFee = 0.0;
+double g_accountLastExitNetOpenMoney = 0.0;
+double g_accountLastExitOpenMoney = 0.0;
+double g_accountLastExitOpenPct = 0.0;
+double g_accountLastExitBalance = 0.0;
+double g_accountLastExitEquity = 0.0;
+double g_accountLastExitProfitTotal = 0.0;
+double g_accountLastExitRealizedMoney = 0.0;
+int g_accountLastExitPositionsRequested = 0;
+int g_accountLastExitPositionsClosed = 0;
+int g_accountLastExitPositionsFailed = 0;
+int g_accountCloseGroupId = 0;
+int g_activeAccountCloseGroupId = 0;
+double g_activeAccountPreCloseGrossMoney = 0.0;
+double g_activeAccountPreCloseEstimatedCloseFee = 0.0;
+double g_activeAccountPreCloseNetMoney = 0.0;
+double g_activeAccountPreCloseNetPct = 0.0;
+double g_activeAccountPreCloseBalance = 0.0;
+double g_activeAccountPreCloseEquity = 0.0;
+double g_activeAccountPreCloseProfitTotal = 0.0;
+int g_activeAccountPreClosePositions = 0;
+string g_accountLastExitReason = "";
 
 class KataraktiSymbolState
 {
@@ -299,6 +349,8 @@ public:
    int unresolvedBaskets;
    int weeklyCutoffCloses;
    double weeklyCutoffNetAdr;
+   int pairAccountExitCloses;
+   double pairAccountExitNetAdr;
    int longBaskets;
    int shortBaskets;
    double longNetAdr;
@@ -396,6 +448,8 @@ public:
       unresolvedBaskets = 0;
       weeklyCutoffCloses = 0;
       weeklyCutoffNetAdr = 0.0;
+      pairAccountExitCloses = 0;
+      pairAccountExitNetAdr = 0.0;
       longBaskets = 0;
       shortBaskets = 0;
       longNetAdr = 0.0;
@@ -433,13 +487,80 @@ string SideName(const int direction)
    return "NONE";
 }
 
-string DavidModeName()
+string BoolText(const bool value)
 {
-   if(DavidMode == DAVID_WITH)
+   return value ? "true" : "false";
+}
+
+string EntryStackPresetName()
+{
+   bool stoch = Stochastic;
+   bool lrmg = LRMG;
+   LimniDavidDirectionMode david = David;
+
+   if(david == DAVID_OFF)
+   {
+      if(stoch && lrmg)
+         return "K_LRMG_REVERSAL_STOCH";
+      if(stoch)
+         return "K_STOCH";
+      if(lrmg)
+         return "K_LRMG_REVERSAL";
+      return "K_ONLY";
+   }
+
+   string suffix = david == DAVID_WITH ? "DAVID_WITH" : "DAVID_AGAINST";
+   if(stoch && lrmg)
+      return david == DAVID_WITH ? "K_FULL_WITH" : "K_FULL_AGAINST";
+   if(stoch)
+      return "K_STOCH_" + suffix;
+   if(lrmg)
+      return "K_LRMG_REVERSAL_" + suffix;
+   return "K_" + suffix;
+}
+
+bool EntryStackUsesStochFilter()
+{
+   return Stochastic;
+}
+
+bool EntryStackUsesLrmgReversalFilter()
+{
+   return LRMG;
+}
+
+LimniDavidDirectionMode EffectiveDavidMode()
+{
+   return David;
+}
+
+bool EntryStackUsesDavidFilter()
+{
+   return EffectiveDavidMode() != DAVID_OFF;
+}
+
+bool GridAddsEnabled()
+{
+   return EnableGridAdds && GridCap > 0;
+}
+
+string DavidModeNameOf(const LimniDavidDirectionMode mode)
+{
+   if(mode == DAVID_WITH)
       return "WITH";
-   if(DavidMode == DAVID_AGAINST)
+   if(mode == DAVID_AGAINST)
       return "AGAINST";
    return "OFF";
+}
+
+string DavidModeName()
+{
+   return DavidModeNameOf(EffectiveDavidMode());
+}
+
+string ConfiguredDavidModeName()
+{
+   return DavidModeNameOf(David);
 }
 
 string ExecutionPriceModeName()
@@ -447,6 +568,31 @@ string ExecutionPriceModeName()
    if(ExecutionPriceMode == EXECUTION_INTERNAL_BAR_PRICE)
       return "INTERNAL_BAR_PRICE";
    return "MT5_ORDER_FILL";
+}
+
+string ExitScopeName()
+{
+   return ExitScope == EXIT_ACCOUNT ? "ACCOUNT" : "PAIR";
+}
+
+string ExitUnitName()
+{
+   return ExitScope == EXIT_ACCOUNT ? "PCT_BALANCE" : "ADR";
+}
+
+bool PairExitScope()
+{
+   return ExitScope == EXIT_PAIR;
+}
+
+bool AccountExitScope()
+{
+   return ExitScope == EXIT_ACCOUNT;
+}
+
+bool AccountExitReason(const string reason)
+{
+   return StringFind(reason, "account_") == 0;
 }
 
 string DavidDirectionName(const int direction)
@@ -680,6 +826,8 @@ void LoadState(KataraktiSymbolState &state)
    g_unresolvedBaskets = state.unresolvedBaskets;
    g_weeklyCutoffCloses = state.weeklyCutoffCloses;
    g_weeklyCutoffNetAdr = state.weeklyCutoffNetAdr;
+   g_pairAccountExitCloses = state.pairAccountExitCloses;
+   g_pairAccountExitNetAdr = state.pairAccountExitNetAdr;
    g_longBaskets = state.longBaskets;
    g_shortBaskets = state.shortBaskets;
    g_longNetAdr = state.longNetAdr;
@@ -786,6 +934,8 @@ void SaveState(KataraktiSymbolState &state)
    state.unresolvedBaskets = g_unresolvedBaskets;
    state.weeklyCutoffCloses = g_weeklyCutoffCloses;
    state.weeklyCutoffNetAdr = g_weeklyCutoffNetAdr;
+   state.pairAccountExitCloses = g_pairAccountExitCloses;
+   state.pairAccountExitNetAdr = g_pairAccountExitNetAdr;
    state.longBaskets = g_longBaskets;
    state.shortBaskets = g_shortBaskets;
    state.longNetAdr = g_longNetAdr;
@@ -1272,7 +1422,7 @@ bool CurrentStoch(double &value)
 
    double buffer[];
    ArraySetAsSeries(buffer, true);
-   int line = UseDForFilter ? 1 : 0;
+   int line = UseD ? 1 : 0;
    if(CopyBuffer(g_stochHandle, line, 1, 1, buffer) != 1)
       return false;
 
@@ -1289,8 +1439,9 @@ bool CurrentDavidDirection(int &direction)
    g_lastDavidDirection = 0;
    g_lastDavidDown = EMPTY_VALUE;
    g_lastDavidUp = EMPTY_VALUE;
+   LimniDavidDirectionMode davidMode = EffectiveDavidMode();
 
-   if(DavidMode == DAVID_OFF)
+   if(davidMode == DAVID_OFF)
       return true;
 
    if(g_davidHandle == INVALID_HANDLE)
@@ -1321,13 +1472,14 @@ bool CurrentDavidDirection(int &direction)
 
 bool DavidAllowsDirection(const int tradeDirection, const int davidDirection)
 {
-   if(DavidMode == DAVID_OFF)
+   LimniDavidDirectionMode davidMode = EffectiveDavidMode();
+   if(davidMode == DAVID_OFF)
       return true;
    if(davidDirection == 0)
       return false;
-   if(DavidMode == DAVID_WITH)
+   if(davidMode == DAVID_WITH)
       return tradeDirection == davidDirection;
-   if(DavidMode == DAVID_AGAINST)
+   if(davidMode == DAVID_AGAINST)
       return tradeDirection == -davidDirection;
    return true;
 }
@@ -1368,11 +1520,46 @@ void OpenCsvFiles()
          "david_direction",
          "david_down",
          "david_up",
-         "fills",
-         "avg_entry",
-         "open_adr",
-         "net_adr",
-         "reason"
+          "fills",
+          "avg_entry",
+          "open_adr",
+          "net_adr",
+           "reason",
+           "entry_stack_preset",
+             "effective_david_mode",
+            "configured_david_mode",
+            "exit_scope",
+            "exit_unit",
+            "account_close_group_id",
+            "account_open_gross_money_magic",
+            "account_estimated_close_fee_magic",
+            "account_open_net_money_magic",
+            "account_open_net_pct_magic",
+            "account_balance",
+            "account_equity",
+            "account_profit_total",
+            "account_positions_count_magic",
+            "account_trail_peak_pct",
+            "account_trail_stop_pct",
+            "katarakti_mode",
+          "stoch_filter_enabled",
+          "lrmg_reversal_filter_enabled",
+          "david_filter_enabled",
+          "raw_katarakti_candidate",
+          "katarakti_long",
+          "katarakti_short",
+          "stoch_ready",
+          "stoch_pass",
+          "lrmg_ready",
+          "lrmg_pass",
+          "david_ready",
+          "david_pass",
+          "side_enabled",
+          "adr_ready",
+          "existing_basket_block",
+          "start_window_block",
+          "final_decision",
+          "block_reason"
        );
        FileFlush(g_eventsFile);
     }
@@ -1407,7 +1594,18 @@ void OpenCsvFiles()
          "mae_adr",
          "mfe_adr",
          "duration_minutes",
-         "close_reason"
+          "close_reason",
+          "exit_scope",
+          "exit_unit",
+          "account_close_group_id",
+          "account_pre_close_gross_money_magic",
+          "account_pre_close_estimated_close_fee_magic",
+          "account_pre_close_net_money_magic",
+          "account_pre_close_net_pct_magic",
+          "account_pre_close_balance",
+          "account_pre_close_equity",
+          "account_pre_close_profit_total",
+          "account_pre_close_positions_magic"
        );
        FileFlush(g_basketsFile);
     }
@@ -1430,7 +1628,7 @@ void CloseCsvFiles()
    }
 }
 
-void LogEventDetailed(
+void WriteEventRow(
    const datetime t,
    const string eventName,
    const int side,
@@ -1442,7 +1640,22 @@ void LogEventDetailed(
    const bool hasExecutionReceipt,
    const double modeledPrice,
    const double actualPrice,
-   const double accountingPrice
+   const double accountingPrice,
+   const string rawKataraktiCandidate,
+   const string kataraktiLong,
+   const string kataraktiShort,
+   const string stochReady,
+   const string stochPass,
+   const string lrmgReady,
+   const string lrmgPass,
+   const string davidReady,
+   const string davidPass,
+   const string sideEnabled,
+   const string adrReady,
+   const string existingBasketBlock,
+   const string startWindowBlock,
+   const string finalDecision,
+   const string blockReason
 )
 {
    if(g_eventsFile == INVALID_HANDLE)
@@ -1452,6 +1665,9 @@ void LogEventDetailed(
    string actualPriceText = hasExecutionReceipt ? PriceString(actualPrice) : "";
    string accountingPriceText = hasExecutionReceipt ? PriceString(accountingPrice) : "";
    string actualMinusModeledText = hasExecutionReceipt ? PriceString(actualPrice - modeledPrice) : "";
+   bool accountCloseContext = g_activeAccountCloseGroupId > 0 && AccountExitReason(reason);
+   string accountCloseGroupText = accountCloseContext ? IntegerToString(g_activeAccountCloseGroupId) : "";
+   string accountPositionsText = accountCloseContext ? IntegerToString(g_activeAccountPreClosePositions) : "";
 
    FileWrite(
       g_eventsFile,
@@ -1476,7 +1692,88 @@ void LogEventDetailed(
       g_basketOpen ? PriceString(g_avgEntry) : "",
       (openAdr != EMPTY_VALUE && MathIsValidNumber(openAdr)) ? DoubleToString(openAdr, 6) : "",
       DoubleToString(g_netAdr, 6),
-      reason
+      reason,
+      EntryStackPresetName(),
+      DavidModeName(),
+      ConfiguredDavidModeName(),
+      ExitScopeName(),
+      ExitUnitName(),
+      accountCloseGroupText,
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseGrossMoney, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseEstimatedCloseFee, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseNetMoney, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseNetPct, 6) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseBalance, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseEquity, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseProfitTotal, 2) : "",
+      accountPositionsText,
+      accountCloseContext && g_accountTrailArmed ? DoubleToString(g_accountTrailPeakPct, 6) : "",
+      accountCloseContext && g_accountTrailArmed ? DoubleToString(g_accountTrailStopPct, 6) : "",
+      (int)KataraktiMode,
+      BoolText(EntryStackUsesStochFilter()),
+      BoolText(EntryStackUsesLrmgReversalFilter()),
+      BoolText(EntryStackUsesDavidFilter()),
+      rawKataraktiCandidate,
+      kataraktiLong,
+      kataraktiShort,
+      stochReady,
+      stochPass,
+      lrmgReady,
+      lrmgPass,
+      davidReady,
+      davidPass,
+      sideEnabled,
+      adrReady,
+      existingBasketBlock,
+      startWindowBlock,
+      finalDecision,
+      blockReason
+   );
+}
+
+void LogEventDetailed(
+   const datetime t,
+   const string eventName,
+   const int side,
+   const double price,
+   const double adr,
+   const double stoch,
+   const double openAdr,
+   const string reason,
+   const bool hasExecutionReceipt,
+   const double modeledPrice,
+   const double actualPrice,
+   const double accountingPrice
+)
+{
+   WriteEventRow(
+      t,
+      eventName,
+      side,
+      price,
+      adr,
+      stoch,
+      openAdr,
+      reason,
+      hasExecutionReceipt,
+      modeledPrice,
+      actualPrice,
+      accountingPrice,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
    );
 }
 
@@ -1492,6 +1789,110 @@ void LogEvent(
 )
 {
    LogEventDetailed(t, eventName, side, price, adr, stoch, openAdr, reason, false, 0.0, 0.0, 0.0);
+}
+
+string EntryCandidateEventName(const int side, const string blockReason)
+{
+   string prefix = side > 0 ? "BUY" : "SELL";
+   if(blockReason == "accepted")
+      return prefix + "_SIGNAL";
+   if(blockReason == "blocked_side")
+      return prefix + "_BLOCKED_SIDE";
+   if(blockReason == "blocked_stoch")
+      return prefix + "_BLOCKED_STOCH";
+   if(blockReason == "blocked_lrmg")
+      return prefix + "_BLOCKED_LRMG";
+   if(blockReason == "blocked_david")
+      return prefix + "_BLOCKED_DAVID";
+   if(blockReason == "blocked_adr")
+      return prefix + "_BLOCKED_ADR";
+   if(blockReason == "blocked_existing_basket")
+      return prefix + "_BLOCKED_EXISTING_BASKET";
+   if(blockReason == "blocked_start_window")
+      return prefix + "_BLOCKED_START_WINDOW";
+   if(blockReason == "blocked_opposite_signal")
+      return prefix + "_BLOCKED_OPPOSITE_SIGNAL";
+   return prefix + "_BLOCKED";
+}
+
+string EntryBlockReason(
+   const bool sideEnabled,
+   const bool stochPass,
+   const bool lrmgPass,
+   const bool davidPass,
+   const bool adrReady,
+   const bool basketOpen,
+   const bool canStart
+)
+{
+   if(!sideEnabled)
+      return "blocked_side";
+   if(!stochPass)
+      return "blocked_stoch";
+   if(!lrmgPass)
+      return "blocked_lrmg";
+   if(!davidPass)
+      return "blocked_david";
+   if(!adrReady)
+      return "blocked_adr";
+   if(basketOpen)
+      return "blocked_existing_basket";
+   if(!canStart)
+      return "blocked_start_window";
+   return "accepted";
+}
+
+void LogEntryCandidate(
+   const datetime t,
+   const int side,
+   const double price,
+   const double adr,
+   const bool adrReady,
+   const double stoch,
+   const bool kataraktiLong,
+   const bool kataraktiShort,
+   const bool stochReady,
+   const bool stochPass,
+   const bool lrmgPass,
+   const bool davidReady,
+   const bool davidPass,
+   const bool sideEnabled,
+   const bool basketOpen,
+   const bool canStart,
+   const string blockReason
+)
+{
+   string decision = blockReason == "accepted" ? "accepted" : "blocked";
+   string reason = blockReason == "accepted" ? "signal" : blockReason;
+   WriteEventRow(
+      t,
+      EntryCandidateEventName(side, blockReason),
+      side,
+      price,
+      adr,
+      stoch,
+      EMPTY_VALUE,
+      reason,
+      false,
+      0.0,
+      0.0,
+      0.0,
+      "true",
+      BoolText(kataraktiLong),
+      BoolText(kataraktiShort),
+      BoolText(stochReady),
+      BoolText(stochPass),
+      BoolText(g_lrmgReady),
+      BoolText(lrmgPass),
+      BoolText(davidReady),
+      BoolText(davidPass),
+      BoolText(sideEnabled),
+      BoolText(adrReady),
+      BoolText(basketOpen),
+      BoolText(!canStart),
+      decision,
+      blockReason
+   );
 }
 
 bool SendTesterOrder(const int direction, const double modeledPrice, double &actualPrice)
@@ -1513,8 +1914,8 @@ bool SendTesterOrder(const int direction, const double modeledPrice, double &act
       return false;
 
    bool ok = direction > 0
-      ? g_trade.Buy(LotSize, g_symbol, 0.0, 0.0, 0.0, "LimniKataraktiEA")
-      : g_trade.Sell(LotSize, g_symbol, 0.0, 0.0, 0.0, "LimniKataraktiEA");
+      ? g_trade.Buy(Lots, g_symbol, 0.0, 0.0, 0.0, "LimniKataraktiEA")
+      : g_trade.Sell(Lots, g_symbol, 0.0, 0.0, 0.0, "LimniKataraktiEA");
 
    if(!ok)
    {
@@ -1590,6 +1991,9 @@ void RecordBasketRow(
 
    long durationSeconds = (long)(exitTime - g_entryTime);
    double exitAccountingPrice = exitPrice;
+   bool accountCloseContext = g_activeAccountCloseGroupId > 0 && AccountExitReason(reason);
+   string accountCloseGroupText = accountCloseContext ? IntegerToString(g_activeAccountCloseGroupId) : "";
+   string accountPositionsText = accountCloseContext ? IntegerToString(g_activeAccountPreClosePositions) : "";
    FileWrite(
       g_basketsFile,
       g_basketId,
@@ -1617,7 +2021,18 @@ void RecordBasketRow(
       DoubleToString(g_basketMaeAdr, 6),
       DoubleToString(g_basketMfeAdr, 6),
       DoubleToString((double)durationSeconds / 60.0, 2),
-      reason
+      reason,
+      ExitScopeName(),
+      ExitUnitName(),
+      accountCloseGroupText,
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseGrossMoney, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseEstimatedCloseFee, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseNetMoney, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseNetPct, 6) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseBalance, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseEquity, 2) : "",
+      accountCloseContext ? DoubleToString(g_activeAccountPreCloseProfitTotal, 2) : "",
+      accountPositionsText
    );
 }
 
@@ -1685,8 +2100,8 @@ bool AddBasketFill(const datetime t, const int direction, const double requested
    g_lastFillActualPrice = actualFillPrice;
    g_lastFillAccountingPrice = accountingFillPrice;
 
-   if(EnableGridAdds && g_fillCount < MathMax(1, MaxBasketEntries))
-      g_nextGridPrice = g_direction > 0 ? accountingFillPrice - g_entryAdr * GridSpacingAdrUnits : accountingFillPrice + g_entryAdr * GridSpacingAdrUnits;
+   if(GridAddsEnabled() && g_fillCount < MathMax(1, GridCap))
+      g_nextGridPrice = g_direction > 0 ? accountingFillPrice - g_entryAdr * GridSpacing : accountingFillPrice + g_entryAdr * GridSpacing;
    else
       g_nextGridPrice = 0.0;
 
@@ -1707,10 +2122,48 @@ bool AddBasketFill(const datetime t, const int direction, const double requested
    return true;
 }
 
-void CloseBasket(const datetime t, const double exitPrice, const string reason)
+double CloseBasket(const datetime t, const double exitPrice, const string reason)
 {
    if(!g_basketOpen)
-      return;
+      return 0.0;
+
+   double actualExitPrice = exitPrice;
+   int actualExitCount = 0;
+   bool hasExitExecutionReceipt = false;
+   int expectedExitCount = g_fillCount;
+   if(PlaceTesterOrders)
+   {
+      hasExitExecutionReceipt = CloseTesterPositions(actualExitPrice, actualExitCount);
+      if(!hasExitExecutionReceipt || actualExitCount < expectedExitCount)
+      {
+         Print(
+            "LimniKataraktiEA basket close execution incomplete. symbol=", g_symbol,
+            " basket_id=", g_basketId,
+            " reason=", reason,
+            " expected_positions=", expectedExitCount,
+            " closed_positions=", actualExitCount,
+            " retcode=", g_trade.ResultRetcode(),
+            " error=", GetLastError()
+         );
+         LogEventDetailed(
+            t,
+            "EXIT_BLOCKED",
+            g_direction,
+            exitPrice,
+            g_entryAdr,
+            EMPTY_VALUE,
+            BasketOpenAdrAtPrice(exitPrice),
+            reason + "_execution_incomplete",
+            hasExitExecutionReceipt,
+            exitPrice,
+            actualExitPrice,
+            exitPrice
+         );
+         return 0.0;
+      }
+   }
+   else
+      hasExitExecutionReceipt = true;
 
    double closedAdr = BasketOpenAdrAtPrice(exitPrice);
    g_netAdr += closedAdr;
@@ -1761,14 +2214,11 @@ void CloseBasket(const datetime t, const double exitPrice, const string reason)
       g_weeklyCutoffCloses++;
       g_weeklyCutoffNetAdr += closedAdr;
    }
-
-   double actualExitPrice = exitPrice;
-   int actualExitCount = 0;
-   bool hasExitExecutionReceipt = false;
-   if(PlaceTesterOrders)
-      hasExitExecutionReceipt = CloseTesterPositions(actualExitPrice, actualExitCount);
-   else
-      hasExitExecutionReceipt = true;
+   if(AccountExitReason(reason))
+   {
+      g_pairAccountExitCloses++;
+      g_pairAccountExitNetAdr += closedAdr;
+   }
 
    RecordBasketRow(t, exitPrice, actualExitPrice, hasExitExecutionReceipt, closedAdr, reason);
    LogEventDetailed(
@@ -1786,6 +2236,7 @@ void CloseBasket(const datetime t, const double exitPrice, const string reason)
       exitPrice
    );
    ResetBasket();
+   return closedAdr;
 }
 
 void UpdateBasketExcursion(const MqlRates &bar)
@@ -1818,25 +2269,26 @@ void ManageBasketOnBar(const MqlRates &bar)
       return;
    }
 
-   bool trailWasArmed = g_trailStopPrice > 0.0;
-   if(EnableTrailingStop && TrailDistanceAdrUnits > 0.0)
+   bool pairExitActive = PairExitScope();
+   bool trailWasArmed = pairExitActive && g_trailStopPrice > 0.0;
+   if(pairExitActive && Trail && TrailDistance > 0.0)
    {
       if(g_direction > 0)
       {
-         if(bar.high >= g_avgEntry + g_entryAdr * TrailStartAdrUnits)
+         if(bar.high >= g_avgEntry + g_entryAdr * TrailStart)
          {
             if(g_trailExtreme <= 0.0 || bar.high > g_trailExtreme)
                g_trailExtreme = bar.high;
-            g_trailStopPrice = g_trailExtreme - g_entryAdr * TrailDistanceAdrUnits;
+            g_trailStopPrice = g_trailExtreme - g_entryAdr * TrailDistance;
          }
       }
       else
       {
-         if(bar.low <= g_avgEntry - g_entryAdr * TrailStartAdrUnits)
+         if(bar.low <= g_avgEntry - g_entryAdr * TrailStart)
          {
             if(g_trailExtreme <= 0.0 || bar.low < g_trailExtreme)
                g_trailExtreme = bar.low;
-            g_trailStopPrice = g_trailExtreme + g_entryAdr * TrailDistanceAdrUnits;
+            g_trailStopPrice = g_trailExtreme + g_entryAdr * TrailDistance;
          }
       }
    }
@@ -1850,9 +2302,9 @@ void ManageBasketOnBar(const MqlRates &bar)
    double exitPrice = 0.0;
    string reason = "";
 
-   if(TpAdrUnits > 0.0)
+   if(pairExitActive && TP > 0.0)
    {
-      tpPrice = g_direction > 0 ? g_avgEntry + g_entryAdr * TpAdrUnits : g_avgEntry - g_entryAdr * TpAdrUnits;
+      tpPrice = g_direction > 0 ? g_avgEntry + g_entryAdr * TP : g_avgEntry - g_entryAdr * TP;
       tpTouched = g_direction > 0 ? bar.high >= tpPrice : bar.low <= tpPrice;
       if(tpTouched)
       {
@@ -1861,9 +2313,9 @@ void ManageBasketOnBar(const MqlRates &bar)
       }
    }
 
-   if(SlAdrUnits > 0.0)
+   if(pairExitActive && SL > 0.0)
    {
-      slPrice = g_direction > 0 ? g_avgEntry - g_entryAdr * SlAdrUnits : g_avgEntry + g_entryAdr * SlAdrUnits;
+      slPrice = g_direction > 0 ? g_avgEntry - g_entryAdr * SL : g_avgEntry + g_entryAdr * SL;
       slTouched = g_direction > 0 ? bar.low <= slPrice : bar.high >= slPrice;
       if(reason == "" && slTouched)
       {
@@ -1872,7 +2324,7 @@ void ManageBasketOnBar(const MqlRates &bar)
       }
    }
 
-   if(g_trailStopPrice > 0.0)
+   if(pairExitActive && g_trailStopPrice > 0.0)
    {
       trailTouched = g_direction > 0 ? bar.low <= g_trailStopPrice : bar.high >= g_trailStopPrice;
       if(reason == "" && trailTouched)
@@ -1882,9 +2334,9 @@ void ManageBasketOnBar(const MqlRates &bar)
       }
    }
 
-   if(reason != "")
+   if(pairExitActive && reason != "")
    {
-      bool adverseGridAlsoHit = EnableGridAdds && g_nextGridPrice > 0.0 && g_fillCount < MathMax(1, MaxBasketEntries)
+      bool adverseGridAlsoHit = GridAddsEnabled() && g_nextGridPrice > 0.0 && g_fillCount < MathMax(1, GridCap)
          && (g_direction > 0 ? bar.low <= g_nextGridPrice : bar.high >= g_nextGridPrice);
       if(tpTouched && slTouched)
          g_sameBarTpSlAmbiguousCount++;
@@ -1904,12 +2356,12 @@ void ManageBasketOnBar(const MqlRates &bar)
       return;
    }
 
-   if(EnableGridAdds && g_nextGridPrice > 0.0 && g_fillCount < MathMax(1, MaxBasketEntries))
+   if(GridAddsEnabled() && g_nextGridPrice > 0.0 && g_fillCount < MathMax(1, GridCap))
    {
-      double step = g_entryAdr * GridSpacingAdrUnits;
+      double step = g_entryAdr * GridSpacing;
       int guard = 0;
       int fillsThisBar = 0;
-      while(g_basketOpen && g_fillCount < MathMax(1, MaxBasketEntries) && g_nextGridPrice > 0.0 && guard < MaxBasketEntries)
+      while(g_basketOpen && g_fillCount < MathMax(1, GridCap) && g_nextGridPrice > 0.0 && guard < GridCap)
       {
          bool hit = g_direction > 0 ? bar.low <= g_nextGridPrice : bar.high >= g_nextGridPrice;
          if(!hit)
@@ -1919,7 +2371,7 @@ void ManageBasketOnBar(const MqlRates &bar)
          if(!AddBasketFill(bar.time, g_direction, gridPrice, g_entryAdr, "grid_add"))
             break;
 
-         if(g_fillCount < MathMax(1, MaxBasketEntries))
+         if(g_fillCount < MathMax(1, GridCap))
             g_nextGridPrice = g_direction > 0 ? gridPrice - step : gridPrice + step;
          else
             g_nextGridPrice = 0.0;
@@ -1931,6 +2383,386 @@ void ManageBasketOnBar(const MqlRates &bar)
    }
 }
 
+double StateBasketOpenAdrAtPrice(KataraktiSymbolState &state, const double price)
+{
+   if(!state.basketOpen || state.entryAdr <= 0.0 || state.fillCount <= 0)
+      return 0.0;
+
+   if(state.direction > 0)
+      return (price * state.fillCount - state.entrySum) / state.entryAdr;
+   return (state.entrySum - price * state.fillCount) / state.entryAdr;
+}
+
+bool LatestMarkPriceForState(KataraktiSymbolState &state, double &price)
+{
+   price = 0.0;
+   if(!state.basketOpen || state.direction == 0)
+      return false;
+
+   MqlTick tick;
+   if(SymbolInfoTick(state.symbol, tick))
+   {
+      if(state.direction > 0 && tick.bid > 0.0)
+      {
+         price = tick.bid;
+         return true;
+      }
+      if(state.direction < 0 && tick.ask > 0.0)
+      {
+         price = tick.ask;
+         return true;
+      }
+      if(tick.last > 0.0)
+      {
+         price = tick.last;
+         return true;
+      }
+      if(tick.bid > 0.0)
+      {
+         price = tick.bid;
+         return true;
+      }
+      if(tick.ask > 0.0)
+      {
+         price = tick.ask;
+         return true;
+      }
+   }
+
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   if(CopyRates(state.symbol, PERIOD_M1, 0, 1, rates) == 1 && rates[0].close > 0.0)
+   {
+      price = rates[0].close;
+      return true;
+   }
+
+   return false;
+}
+
+bool AccountOpenSnapshot(
+   double &grossOpenMoney,
+   double &estimatedCloseFee,
+   double &netOpenMoney,
+   double &netOpenPct,
+   int &positionsCount,
+   double &balance,
+   double &equity,
+   double &profitTotal
+)
+{
+   grossOpenMoney = 0.0;
+   estimatedCloseFee = 0.0;
+   netOpenMoney = 0.0;
+   netOpenPct = 0.0;
+   positionsCount = 0;
+   balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   profitTotal = AccountInfoDouble(ACCOUNT_PROFIT);
+
+   if(balance <= 0.0)
+      return false;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || !PositionSelectByTicket(ticket))
+         continue;
+      if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         continue;
+
+      grossOpenMoney += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      estimatedCloseFee += MathAbs(PositionGetDouble(POSITION_VOLUME)) * AccountExitCloseCommissionPerLot;
+      positionsCount++;
+   }
+
+   netOpenMoney = grossOpenMoney - estimatedCloseFee;
+   netOpenPct = 100.0 * netOpenMoney / balance;
+   return true;
+}
+
+void UpdateAccountOpenPctStats(const double openPct, const int positionsCount)
+{
+   if(positionsCount <= 0)
+      return;
+
+   if(!g_accountOpenPctObserved)
+   {
+      g_accountMaxOpenPct = openPct;
+      g_accountMinOpenPct = openPct;
+      g_accountOpenPctObserved = true;
+      return;
+   }
+
+   if(openPct > g_accountMaxOpenPct)
+      g_accountMaxOpenPct = openPct;
+   if(openPct < g_accountMinOpenPct)
+      g_accountMinOpenPct = openPct;
+}
+
+void ResetAccountTrail()
+{
+   g_accountTrailArmed = false;
+   g_accountTrailPeakPct = 0.0;
+   g_accountTrailStopPct = 0.0;
+}
+
+int CloseAllOpenBaskets(const datetime t, const string reason, double &closedAdrTotal)
+{
+   closedAdrTotal = 0.0;
+   int closedBaskets = 0;
+   int count = ArraySize(g_states);
+
+   for(int i = 0; i < count; i++)
+   {
+      if(!g_states[i].basketOpen)
+         continue;
+
+      LoadState(g_states[i]);
+      double markPrice = 0.0;
+      if(!LatestMarkPriceForState(g_states[i], markPrice))
+         markPrice = g_avgEntry;
+
+      double closedAdr = CloseBasket(t, markPrice, reason);
+      if(g_basketOpen)
+      {
+         SaveState(g_states[i]);
+         continue;
+      }
+
+      closedAdrTotal += closedAdr;
+      closedBaskets++;
+      SaveState(g_states[i]);
+   }
+
+   return closedBaskets;
+}
+
+void WriteAccountExitRow(
+   const datetime t,
+   const string reason,
+   const int groupId,
+   const double preBalance,
+   const double preEquity,
+   const double preProfitTotal,
+   const int prePositions,
+   const double preGrossOpenMoney,
+   const double preEstimatedCloseFee,
+   const double preNetOpenMoney,
+   const double preNetOpenPct,
+   const int closedBaskets,
+   const double closedAdrTotal,
+   const double postBalance,
+   const double postEquity,
+   const double postProfitTotal,
+   const int postPositions,
+   const double postGrossOpenMoney,
+   const double postEstimatedCloseFee,
+   const double postNetOpenMoney,
+   const double postNetOpenPct,
+   const double realizedGroupMoney,
+   const int closedPositions,
+   const int failedPositions
+)
+{
+   if(g_accountExitFile == INVALID_HANDLE)
+      return;
+
+   FileWrite(
+      g_accountExitFile,
+      g_globalRunId,
+      Stamp(t),
+      groupId,
+      reason,
+      ExitScopeName(),
+      ExitUnitName(),
+      DoubleToString(TP, 6),
+      DoubleToString(SL, 6),
+      Trail ? "true" : "false",
+      DoubleToString(TrailStart, 6),
+      DoubleToString(TrailDistance, 6),
+      g_accountTrailArmed ? DoubleToString(g_accountTrailPeakPct, 6) : "",
+      g_accountTrailArmed ? DoubleToString(g_accountTrailStopPct, 6) : "",
+      DoubleToString(preBalance, 2),
+      DoubleToString(preEquity, 2),
+      DoubleToString(preProfitTotal, 2),
+      prePositions,
+      DoubleToString(preGrossOpenMoney, 2),
+      DoubleToString(preEstimatedCloseFee, 2),
+      DoubleToString(preNetOpenMoney, 2),
+      DoubleToString(preNetOpenPct, 6),
+      closedBaskets,
+      DoubleToString(closedAdrTotal, 6),
+      DoubleToString(postBalance, 2),
+      DoubleToString(postEquity, 2),
+      DoubleToString(postProfitTotal, 2),
+      postPositions,
+      DoubleToString(postGrossOpenMoney, 2),
+      DoubleToString(postEstimatedCloseFee, 2),
+      DoubleToString(postNetOpenMoney, 2),
+      DoubleToString(postNetOpenPct, 6),
+      DoubleToString(realizedGroupMoney, 2),
+      DoubleToString(realizedGroupMoney - preNetOpenMoney, 2),
+      closedPositions,
+      failedPositions,
+      DoubleToString(AccountExitCloseCommissionPerLot, 2)
+   );
+   FileFlush(g_accountExitFile);
+}
+
+void ManageAccountExit(const datetime t)
+{
+   if(!AccountExitScope())
+      return;
+
+   double grossOpenMoney = 0.0;
+   double estimatedCloseFee = 0.0;
+   double netOpenMoney = 0.0;
+   double netOpenPct = 0.0;
+   double balance = 0.0;
+   double equity = 0.0;
+   double profitTotal = 0.0;
+   int magicPositions = 0;
+   if(!AccountOpenSnapshot(grossOpenMoney, estimatedCloseFee, netOpenMoney, netOpenPct, magicPositions, balance, equity, profitTotal))
+      return;
+
+   if(magicPositions <= 0)
+   {
+      ResetAccountTrail();
+      return;
+   }
+
+   UpdateAccountOpenPctStats(netOpenPct, magicPositions);
+
+   string reason = "";
+   if(TP > 0.0 && netOpenPct >= TP)
+      reason = "account_tp";
+   if(reason == "" && SL > 0.0 && netOpenPct <= -SL)
+      reason = "account_sl";
+
+   if(Trail && TrailDistance > 0.0)
+   {
+      if(!g_accountTrailArmed && netOpenPct >= TrailStart)
+      {
+         g_accountTrailArmed = true;
+         g_accountTrailPeakPct = netOpenPct;
+         g_accountTrailStopPct = g_accountTrailPeakPct - TrailDistance;
+      }
+      if(g_accountTrailArmed)
+      {
+         if(netOpenPct > g_accountTrailPeakPct)
+         {
+            g_accountTrailPeakPct = netOpenPct;
+            g_accountTrailStopPct = g_accountTrailPeakPct - TrailDistance;
+         }
+         if(reason == "" && netOpenPct <= g_accountTrailStopPct)
+            reason = "account_trail";
+      }
+   }
+
+   if(reason == "")
+      return;
+
+   g_accountCloseGroupId++;
+   g_activeAccountCloseGroupId = g_accountCloseGroupId;
+   g_activeAccountPreCloseGrossMoney = grossOpenMoney;
+   g_activeAccountPreCloseEstimatedCloseFee = estimatedCloseFee;
+   g_activeAccountPreCloseNetMoney = netOpenMoney;
+   g_activeAccountPreCloseNetPct = netOpenPct;
+   g_activeAccountPreCloseBalance = balance;
+   g_activeAccountPreCloseEquity = equity;
+   g_activeAccountPreCloseProfitTotal = profitTotal;
+   g_activeAccountPreClosePositions = magicPositions;
+
+   double closedAdrTotal = 0.0;
+   int closedBaskets = CloseAllOpenBaskets(t, reason, closedAdrTotal);
+   if(closedBaskets <= 0)
+   {
+      Print("LimniKataraktiEA account exit fired but no tracked baskets closed. reason=", reason, " positions=", magicPositions);
+      g_activeAccountCloseGroupId = 0;
+      return;
+   }
+
+   double postGrossOpenMoney = 0.0;
+   double postEstimatedCloseFee = 0.0;
+   double postNetOpenMoney = 0.0;
+   double postNetOpenPct = 0.0;
+   double postBalance = 0.0;
+   double postEquity = 0.0;
+   double postProfitTotal = 0.0;
+   int postPositions = 0;
+   AccountOpenSnapshot(postGrossOpenMoney, postEstimatedCloseFee, postNetOpenMoney, postNetOpenPct, postPositions, postBalance, postEquity, postProfitTotal);
+
+   double realizedGroupMoney = postBalance - balance;
+   int closedPositions = magicPositions - postPositions;
+   if(closedPositions < 0)
+      closedPositions = 0;
+
+   g_accountExitCycles++;
+   g_accountExitBasketsClosed += closedBaskets;
+   g_accountExitNetAdr += closedAdrTotal;
+   g_accountExitMoney += realizedGroupMoney;
+   g_accountExitEstimatedCloseFee += estimatedCloseFee;
+   g_accountLastExitGrossOpenMoney = grossOpenMoney;
+   g_accountLastExitEstimatedCloseFee = estimatedCloseFee;
+   g_accountLastExitNetOpenMoney = netOpenMoney;
+   g_accountLastExitOpenMoney = netOpenMoney;
+   g_accountLastExitOpenPct = netOpenPct;
+   g_accountLastExitBalance = balance;
+   g_accountLastExitEquity = equity;
+   g_accountLastExitProfitTotal = profitTotal;
+   g_accountLastExitRealizedMoney = realizedGroupMoney;
+   g_accountLastExitPositionsRequested = magicPositions;
+   g_accountLastExitPositionsClosed = closedPositions;
+   g_accountLastExitPositionsFailed = postPositions;
+   g_accountLastExitReason = reason;
+
+   WriteAccountExitRow(
+      t,
+      reason,
+      g_accountCloseGroupId,
+      balance,
+      equity,
+      profitTotal,
+      magicPositions,
+      grossOpenMoney,
+      estimatedCloseFee,
+      netOpenMoney,
+      netOpenPct,
+      closedBaskets,
+      closedAdrTotal,
+      postBalance,
+      postEquity,
+      postProfitTotal,
+      postPositions,
+      postGrossOpenMoney,
+      postEstimatedCloseFee,
+      postNetOpenMoney,
+      postNetOpenPct,
+      realizedGroupMoney,
+      closedPositions,
+      postPositions
+   );
+
+   Print(
+      "LimniKataraktiEA account exit. reason=", reason,
+      " gross_open_money=", DoubleToString(grossOpenMoney, 2),
+      " estimated_close_fee=", DoubleToString(estimatedCloseFee, 2),
+      " net_open_money=", DoubleToString(netOpenMoney, 2),
+      " net_open_pct=", DoubleToString(netOpenPct, 6),
+      " closed_baskets=", closedBaskets,
+      " closed_adr=", DoubleToString(closedAdrTotal, 6),
+      " realized_money=", DoubleToString(realizedGroupMoney, 2),
+      " positions_requested=", magicPositions,
+      " positions_failed=", postPositions
+   );
+   if(postPositions > 0)
+      Print("LimniKataraktiEA account exit left open magic positions. count=", postPositions);
+
+   ResetAccountTrail();
+   g_activeAccountCloseGroupId = 0;
+}
+
 void ProcessClosedM1Bar(const MqlRates &bar)
 {
    ManageBasketOnBar(bar);
@@ -1940,6 +2772,11 @@ void ProcessClosedM1Bar(const MqlRates &bar)
    bool ktrShort = false;
    UpdateKatarakti(bar, ktrLong, ktrShort);
 
+   bool useStochFilter = EntryStackUsesStochFilter();
+   bool useLrmgReversalFilter = EntryStackUsesLrmgReversalFilter();
+   bool useDavidFilter = EntryStackUsesDavidFilter();
+   bool hasKataraktiCandidate = ktrLong || ktrShort;
+
    double adr = 0.0;
    double stoch = 0.0;
    int davidDirection = 0;
@@ -1947,21 +2784,31 @@ void ProcessClosedM1Bar(const MqlRates &bar)
    bool davidReady = CurrentDavidDirection(davidDirection);
    bool belowLrmg = g_lrmgReady && bar.close < g_lrmgLine;
    bool aboveLrmg = g_lrmgReady && bar.close > g_lrmgLine;
+   bool adrReady = hasKataraktiCandidate ? CurrentAdr(bar.time, adr) : false;
+   bool canStart = CanStartNewBasket(bar.time);
 
-   bool buyRawSignal = EnableLongs && ktrLong && belowLrmg && stochReady && stoch <= Oversold;
-   bool sellRawSignal = EnableShorts && ktrShort && aboveLrmg && stochReady && stoch >= Overbought;
-   bool buySignal = buyRawSignal && davidReady && DavidAllowsDirection(1, davidDirection);
-   bool sellSignal = sellRawSignal && davidReady && DavidAllowsDirection(-1, davidDirection);
-   bool rawSignal = buyRawSignal || sellRawSignal;
-   bool adrReady = rawSignal ? CurrentAdr(bar.time, adr) : false;
+   bool buyStochPass = !useStochFilter || (stochReady && stoch <= Oversold);
+   bool sellStochPass = !useStochFilter || (stochReady && stoch >= Overbought);
+   bool buyLrmgPass = !useLrmgReversalFilter || belowLrmg;
+   bool sellLrmgPass = !useLrmgReversalFilter || aboveLrmg;
+   bool buyDavidPass = !useDavidFilter || (davidReady && DavidAllowsDirection(1, davidDirection));
+   bool sellDavidPass = !useDavidFilter || (davidReady && DavidAllowsDirection(-1, davidDirection));
 
-   if(buyRawSignal && adrReady)
-      LogEvent(bar.time, buySignal ? "BUY_SIGNAL" : "BUY_BLOCKED_DAVID", 1, bar.close, adr, stoch, 0.0, buySignal ? "signal" : "david_blocked");
-   if(sellRawSignal && adrReady)
-      LogEvent(bar.time, sellSignal ? "SELL_SIGNAL" : "SELL_BLOCKED_DAVID", -1, bar.close, adr, stoch, 0.0, sellSignal ? "signal" : "david_blocked");
+   string buyBlockReason = EntryBlockReason(Longs, buyStochPass, buyLrmgPass, buyDavidPass, adrReady, g_basketOpen, canStart);
+   string sellBlockReason = EntryBlockReason(Shorts, sellStochPass, sellLrmgPass, sellDavidPass, adrReady, g_basketOpen, canStart);
+   bool buySignal = ktrLong && buyBlockReason == "accepted";
+   bool sellSignal = ktrShort && sellBlockReason == "accepted";
 
-   if(g_basketOpen || !adrReady || !CanStartNewBasket(bar.time))
-      return;
+   if(buySignal && sellSignal)
+   {
+      sellSignal = false;
+      sellBlockReason = "blocked_opposite_signal";
+   }
+
+   if(ktrLong)
+      LogEntryCandidate(bar.time, 1, bar.close, adr, adrReady, stoch, ktrLong, ktrShort, stochReady, buyStochPass, buyLrmgPass, davidReady, buyDavidPass, Longs, g_basketOpen, canStart, buyBlockReason);
+   if(ktrShort)
+      LogEntryCandidate(bar.time, -1, bar.close, adr, adrReady, stoch, ktrLong, ktrShort, stochReady, sellStochPass, sellLrmgPass, davidReady, sellDavidPass, Shorts, g_basketOpen, canStart, sellBlockReason);
 
    if(buySignal)
       AddBasketFill(bar.time, 1, bar.close, adr, "entry");
@@ -2027,29 +2874,47 @@ void WriteSummary()
    FileWrite(handle, "multi_grid_same_bar_count", g_multiGridSameBarCount);
    FileWrite(handle, "weekly_cutoff_closes", g_weeklyCutoffCloses);
    FileWrite(handle, "weekly_cutoff_net_adr", DoubleToString(g_weeklyCutoffNetAdr, 6));
+   FileWrite(handle, "account_exit_closes", g_pairAccountExitCloses);
+   FileWrite(handle, "account_exit_net_adr", DoubleToString(g_pairAccountExitNetAdr, 6));
+   FileWrite(handle, "account_exit_money", DoubleToString(g_accountExitMoney, 2));
+   FileWrite(handle, "account_exit_estimated_close_fee", DoubleToString(g_accountExitEstimatedCloseFee, 2));
+   FileWrite(handle, "account_exit_close_commission_per_lot", DoubleToString(AccountExitCloseCommissionPerLot, 2));
+   FileWrite(handle, "account_exit_trigger_money_basis", "gross_profit_plus_swap_minus_estimated_close_fee");
    FileWrite(handle, "lrmg_bootstrap_bars", BootstrapBars);
    FileWrite(handle, "lrmg_median_brick_window", MedianBrickWindow);
    FileWrite(handle, "lrmg_max_bricks_per_bar", MaxBricksPerBar);
-   FileWrite(handle, "stoch_k_period", StochKPeriod);
-   FileWrite(handle, "stoch_slowing", StochSlowing);
-   FileWrite(handle, "stoch_d_period", StochDPeriod);
+   FileWrite(handle, "stoch_k_period", K);
+   FileWrite(handle, "stoch_slowing", Slowing);
+   FileWrite(handle, "stoch_d_period", D);
    FileWrite(handle, "stoch_oversold", DoubleToString(Oversold, 4));
    FileWrite(handle, "stoch_overbought", DoubleToString(Overbought, 4));
-   FileWrite(handle, "stoch_use_d_for_filter", UseDForFilter ? "true" : "false");
+   FileWrite(handle, "stoch_use_d_for_filter", UseD ? "true" : "false");
    FileWrite(handle, "katarakti_mode", (int)KataraktiMode);
+   FileWrite(handle, "entry_stack_preset", EntryStackPresetName());
+   FileWrite(handle, "entry_stack_stoch_filter_enabled", BoolText(EntryStackUsesStochFilter()));
+   FileWrite(handle, "entry_stack_lrmg_reversal_filter_enabled", BoolText(EntryStackUsesLrmgReversalFilter()));
+   FileWrite(handle, "entry_stack_david_filter_enabled", BoolText(EntryStackUsesDavidFilter()));
+   FileWrite(handle, "effective_david_mode", DavidModeName());
+   FileWrite(handle, "configured_david_mode", ConfiguredDavidModeName());
    FileWrite(handle, "chart_time_utc_offset_hours", DoubleToString(ChartTimeUtcOffsetHours, 4));
-   FileWrite(handle, "enable_longs", EnableLongs ? "true" : "false");
-   FileWrite(handle, "enable_shorts", EnableShorts ? "true" : "false");
+   FileWrite(handle, "enable_longs", Longs ? "true" : "false");
+   FileWrite(handle, "enable_shorts", Shorts ? "true" : "false");
    FileWrite(handle, "adr_lookback_days", AdrLookbackDays);
    FileWrite(handle, "adr_min_days", AdrMinDays);
-   FileWrite(handle, "tp_adr_units", DoubleToString(TpAdrUnits, 6));
-   FileWrite(handle, "sl_adr_units", DoubleToString(SlAdrUnits, 6));
-   FileWrite(handle, "enable_grid_adds", EnableGridAdds ? "true" : "false");
-   FileWrite(handle, "max_basket_entries", MaxBasketEntries);
-   FileWrite(handle, "grid_spacing_adr_units", DoubleToString(GridSpacingAdrUnits, 6));
-   FileWrite(handle, "enable_trailing_stop", EnableTrailingStop ? "true" : "false");
-   FileWrite(handle, "trail_start_adr_units", DoubleToString(TrailStartAdrUnits, 6));
-   FileWrite(handle, "trail_distance_adr_units", DoubleToString(TrailDistanceAdrUnits, 6));
+   FileWrite(handle, "exit_scope", ExitScopeName());
+   FileWrite(handle, "exit_unit", ExitUnitName());
+   FileWrite(handle, "tp_value", DoubleToString(TP, 6));
+   FileWrite(handle, "sl_value", DoubleToString(SL, 6));
+   FileWrite(handle, "tp_adr_units", DoubleToString(TP, 6));
+   FileWrite(handle, "sl_adr_units", DoubleToString(SL, 6));
+   FileWrite(handle, "enable_grid_adds", GridAddsEnabled() ? "true" : "false");
+   FileWrite(handle, "max_basket_entries", GridCap);
+   FileWrite(handle, "grid_spacing_adr_units", DoubleToString(GridSpacing, 6));
+   FileWrite(handle, "enable_trailing_stop", Trail ? "true" : "false");
+   FileWrite(handle, "trail_start_value", DoubleToString(TrailStart, 6));
+   FileWrite(handle, "trail_distance_value", DoubleToString(TrailDistance, 6));
+   FileWrite(handle, "trail_start_adr_units", DoubleToString(TrailStart, 6));
+   FileWrite(handle, "trail_distance_adr_units", DoubleToString(TrailDistance, 6));
    FileWrite(handle, "enable_weekly_cutoff", EnableWeeklyCutoff ? "true" : "false");
    FileWrite(handle, "friday_cutoff_hour", FridayCutoffHour);
    FileWrite(handle, "friday_cutoff_minute", FridayCutoffMinute);
@@ -2058,10 +2923,10 @@ void WriteSummary()
    FileWrite(handle, "david_ma_period", DavidMAPeriod);
    FileWrite(handle, "david_ma_type", (int)DavidMAType);
    FileWrite(handle, "david_ma_price", (int)DavidMAPrice);
-   FileWrite(handle, "david_rsi_filter", DavidUseRsiFilter ? "true" : "false");
-   FileWrite(handle, "david_rsi_period", DavidRsiPeriod);
-   FileWrite(handle, "david_rsi_overbought", DavidRsiOverBought);
-   FileWrite(handle, "david_rsi_oversold", DavidRsiOverSold);
+   FileWrite(handle, "david_rsi_filter", RSIFilter ? "true" : "false");
+   FileWrite(handle, "david_rsi_period", RSI);
+   FileWrite(handle, "david_rsi_overbought", RSI_OB);
+   FileWrite(handle, "david_rsi_oversold", RSI_OS);
    FileWrite(handle, "enable_multi_symbol", EnableMultiSymbol ? "true" : "false");
    FileWrite(handle, "symbols_csv", ReceiptText(SymbolsCsv));
    FileWrite(handle, "use_default_fx28_symbols", UseDefaultFx28Symbols ? "true" : "false");
@@ -2186,14 +3051,14 @@ bool InitializeState(KataraktiSymbolState &state, const string symbol)
       return false;
    }
 
-   g_stochHandle = iStochastic(g_symbol, PERIOD_M1, StochKPeriod, StochDPeriod, StochSlowing, MODE_SMA, STO_LOWHIGH);
+   g_stochHandle = iStochastic(g_symbol, PERIOD_M1, K, D, Slowing, MODE_SMA, STO_LOWHIGH);
    if(g_stochHandle == INVALID_HANDLE)
    {
       Print("LimniKataraktiEA failed to create M1 stochastic handle for ", g_symbol, ". error=", GetLastError());
       return false;
    }
 
-   if(DavidMode != DAVID_OFF)
+   if(EffectiveDavidMode() != DAVID_OFF)
    {
       ResetLastError();
       g_davidHandle = iCustom(
@@ -2208,10 +3073,10 @@ bool InitializeState(KataraktiSymbolState &state, const string symbol)
          DavidMAPrice,
          "",
          "RSI Filter Settings",
-         DavidUseRsiFilter,
-         DavidRsiPeriod,
-         DavidRsiOverBought,
-         DavidRsiOverSold,
+         RSIFilter,
+         RSI,
+         RSI_OB,
+         RSI_OS,
          "",
          "MA Dots Settings:",
          3,
@@ -2317,6 +3182,7 @@ void OpenAggregateCsvFiles()
 
    string summaryName = OutputFolder + "\\" + g_globalRunId + "_aggregate_summary.csv";
    string pairName = OutputFolder + "\\" + g_globalRunId + "_aggregate_pair_contribution.csv";
+   string accountExitName = OutputFolder + "\\" + g_globalRunId + "_account_exits.csv";
 
    g_aggregateSummaryFile = FileOpen(summaryName, FILE_WRITE | FILE_CSV | FILE_ANSI | fileScope, ',');
    if(g_aggregateSummaryFile != INVALID_HANDLE)
@@ -2324,12 +3190,21 @@ void OpenAggregateCsvFiles()
       FileWrite(
          g_aggregateSummaryFile,
          "run_id",
-         "symbols_count",
-         "symbols_source",
-         "symbols_csv",
-         "closed_baskets_total",
-         "closed_net_adr_total",
-         "terminal_marked_adr_total",
+          "symbols_count",
+          "symbols_source",
+           "symbols_csv",
+            "entry_stack_preset",
+            "effective_david_mode",
+            "configured_david_mode",
+            "exit_scope",
+            "exit_unit",
+            "katarakti_mode",
+           "stoch_filter_enabled",
+          "lrmg_reversal_filter_enabled",
+          "david_filter_enabled",
+          "closed_baskets_total",
+          "closed_net_adr_total",
+          "terminal_marked_adr_total",
          "closed_plus_marked_net_adr_total",
          "win_rate_pct_total",
          "max_open_drawdown_adr_worst",
@@ -2359,6 +3234,15 @@ void OpenAggregateCsvFiles()
          "multi_grid_same_bar_count",
          "weekly_cutoff_closes_total",
          "weekly_cutoff_net_adr_total",
+         "account_exit_cycles",
+         "account_exit_baskets_closed_total",
+         "account_exit_money_total",
+         "account_last_exit_reason",
+         "account_last_exit_net_open_pct",
+         "account_last_exit_realized_money",
+         "account_last_exit_positions_failed",
+         "account_open_pct_max",
+         "account_open_pct_min",
          "place_tester_orders",
          "execution_price_mode",
          "require_strategy_tester",
@@ -2376,11 +3260,20 @@ void OpenAggregateCsvFiles()
          g_aggregatePairFile,
           "run_id",
           "symbol",
-          "symbol_point",
-          "symbol_digits",
-          "execution_price_mode",
-          "closed_baskets",
-         "closed_net_adr",
+           "symbol_point",
+           "symbol_digits",
+           "execution_price_mode",
+           "entry_stack_preset",
+           "effective_david_mode",
+            "configured_david_mode",
+            "exit_scope",
+            "exit_unit",
+            "katarakti_mode",
+           "stoch_filter_enabled",
+           "lrmg_reversal_filter_enabled",
+           "david_filter_enabled",
+           "closed_baskets",
+          "closed_net_adr",
          "terminal_marked_adr",
          "closed_plus_marked_net_adr",
          "win_rate_pct",
@@ -2404,10 +3297,57 @@ void OpenAggregateCsvFiles()
          "same_bar_trail_arm_exit_count",
          "multi_grid_same_bar_count",
          "weekly_cutoff_closes",
-         "weekly_cutoff_net_adr"
+         "weekly_cutoff_net_adr",
+         "account_exit_closes",
+         "account_exit_net_adr"
        );
        FileFlush(g_aggregatePairFile);
     }
+
+   g_accountExitFile = FileOpen(accountExitName, FILE_WRITE | FILE_CSV | FILE_ANSI | fileScope, ',');
+   if(g_accountExitFile != INVALID_HANDLE)
+   {
+      FileWrite(
+         g_accountExitFile,
+         "run_id",
+         "time",
+         "account_close_group_id",
+         "reason",
+         "exit_scope",
+         "exit_unit",
+         "target_tp",
+         "target_sl",
+         "trail_enabled",
+         "trail_start",
+         "trail_distance",
+         "trail_peak_pct",
+         "trail_stop_pct",
+         "pre_balance",
+         "pre_equity",
+         "pre_account_profit_total",
+         "pre_positions_magic",
+         "pre_gross_open_money_magic",
+         "pre_estimated_close_fee_magic",
+         "pre_net_open_money_magic",
+         "pre_net_open_pct_magic",
+         "closed_baskets",
+         "closed_net_adr",
+         "post_balance",
+         "post_equity",
+         "post_account_profit_total",
+         "post_positions_magic",
+         "post_gross_open_money_magic",
+         "post_estimated_close_fee_magic",
+         "post_net_open_money_magic",
+         "post_net_open_pct_magic",
+         "realized_money",
+         "realized_minus_expected_net_money",
+         "positions_closed",
+         "positions_failed",
+         "close_commission_per_lot"
+      );
+      FileFlush(g_accountExitFile);
+   }
 }
 
 void WriteAggregateCsvRows()
@@ -2501,12 +3441,21 @@ void WriteAggregateCsvRows()
          FileWrite(
             g_aggregatePairFile,
             g_globalRunId,
-            g_states[i].symbol,
-            DoubleToString(g_states[i].point, 12),
-            g_states[i].digits,
-            ExecutionPriceModeName(),
-            g_states[i].closedBaskets,
-            DoubleToString(g_states[i].netAdr, 6),
+             g_states[i].symbol,
+             DoubleToString(g_states[i].point, 12),
+             g_states[i].digits,
+             ExecutionPriceModeName(),
+             EntryStackPresetName(),
+             DavidModeName(),
+             ConfiguredDavidModeName(),
+             ExitScopeName(),
+             ExitUnitName(),
+             (int)KataraktiMode,
+             BoolText(EntryStackUsesStochFilter()),
+             BoolText(EntryStackUsesLrmgReversalFilter()),
+             BoolText(EntryStackUsesDavidFilter()),
+             g_states[i].closedBaskets,
+             DoubleToString(g_states[i].netAdr, 6),
             DoubleToString(g_states[i].terminalMarkedAdr, 6),
             DoubleToString(closedPlus, 6),
             DoubleToString(winRate, 4),
@@ -2530,7 +3479,9 @@ void WriteAggregateCsvRows()
             g_states[i].sameBarTrailArmExitCount,
             g_states[i].multiGridSameBarCount,
             g_states[i].weeklyCutoffCloses,
-            DoubleToString(g_states[i].weeklyCutoffNetAdr, 6)
+            DoubleToString(g_states[i].weeklyCutoffNetAdr, 6),
+            g_states[i].pairAccountExitCloses,
+            DoubleToString(g_states[i].pairAccountExitNetAdr, 6)
          );
       }
    }
@@ -2548,6 +3499,15 @@ void WriteAggregateCsvRows()
          count,
          g_symbolSource,
          ReceiptText(g_effectiveSymbolsCsv),
+         EntryStackPresetName(),
+         DavidModeName(),
+         ConfiguredDavidModeName(),
+         ExitScopeName(),
+         ExitUnitName(),
+         (int)KataraktiMode,
+         BoolText(EntryStackUsesStochFilter()),
+         BoolText(EntryStackUsesLrmgReversalFilter()),
+         BoolText(EntryStackUsesDavidFilter()),
          closedBaskets,
          DoubleToString(closedNet, 6),
          DoubleToString(terminalNet, 6),
@@ -2580,6 +3540,15 @@ void WriteAggregateCsvRows()
          multiGridSameBar,
          weeklyCutoffCloses,
          DoubleToString(weeklyCutoffNet, 6),
+         g_accountExitCycles,
+         g_accountExitBasketsClosed,
+         DoubleToString(g_accountExitMoney, 2),
+         g_accountLastExitReason,
+         g_accountLastExitReason == "" ? "" : DoubleToString(g_accountLastExitOpenPct, 6),
+         g_accountLastExitReason == "" ? "" : DoubleToString(g_accountLastExitRealizedMoney, 2),
+         g_accountLastExitReason == "" ? "" : IntegerToString(g_accountLastExitPositionsFailed),
+         g_accountOpenPctObserved ? DoubleToString(g_accountMaxOpenPct, 6) : "",
+         g_accountOpenPctObserved ? DoubleToString(g_accountMinOpenPct, 6) : "",
          PlaceTesterOrders ? "true" : "false",
          ExecutionPriceModeName(),
          RequireStrategyTester ? "true" : "false",
@@ -2592,6 +3561,13 @@ void WriteAggregateCsvRows()
 
 void CloseAggregateCsvFiles()
 {
+   if(g_accountExitFile != INVALID_HANDLE)
+   {
+      FileFlush(g_accountExitFile);
+      FileClose(g_accountExitFile);
+      g_accountExitFile = INVALID_HANDLE;
+   }
+
    if(g_aggregatePairFile != INVALID_HANDLE)
    {
       FileFlush(g_aggregatePairFile);
@@ -2610,6 +3586,8 @@ void CloseAggregateCsvFiles()
 void ProcessAllSymbols()
 {
    int count = ArraySize(g_states);
+   bool processedAny = false;
+   datetime latestProcessedBar = 0;
    for(int i = 0; i < count; i++)
    {
       LoadState(g_states[i]);
@@ -2630,8 +3608,14 @@ void ProcessAllSymbols()
 
       g_lastM1BarTime = rates[0].time;
       ProcessClosedM1Bar(rates[0]);
+      processedAny = true;
+      if(rates[0].time > latestProcessedBar)
+         latestProcessedBar = rates[0].time;
       SaveState(g_states[i]);
    }
+
+   if(processedAny)
+      ManageAccountExit(latestProcessedBar > 0 ? latestProcessedBar : TimeCurrent());
 }
 
 int OnInit()
@@ -2651,7 +3635,7 @@ int OnInit()
    }
 
    g_trade.SetExpertMagicNumber(MagicNumber);
-   g_trade.SetDeviationInPoints(SlippagePoints);
+   g_trade.SetDeviationInPoints(Slippage);
    g_globalRunId = BuildGlobalRunId();
 
    string symbols[];
@@ -2677,6 +3661,8 @@ int OnInit()
    Print(
       "LimniKataraktiEA initialized. symbols=", count,
       " driver=", _Symbol,
+      " EntryStack=", EntryStackPresetName(),
+      " ExitScope=", ExitScopeName(),
       " DavidMode=", DavidModeName(),
       " multi=", EnableMultiSymbol ? "true" : "false",
       " run_id=", g_globalRunId
@@ -2705,6 +3691,8 @@ void OnDeinit(const int reason)
 
    Print(
       "LimniKataraktiEA finished. symbols=", count,
+      " entry_stack=", EntryStackPresetName(),
+      " exit_scope=", ExitScopeName(),
       " david_mode=", DavidModeName(),
       " run_id=", g_globalRunId
    );
