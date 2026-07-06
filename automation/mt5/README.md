@@ -14,13 +14,15 @@ MetaTrader 5 integration workspace.
 MT5 research receipts and historical notes live under root `docs/` or
 `archive/`.
 
-## Active Hedge EA
+## Active Portfolio EA
 
-- `Experts/LimniBasketHedgeEAAlphaV3.mq5` is the active raw no-boundary harvest
-  EA.
-- `Experts/Include/Strategy/RawHarvestEngine.mqh` is its only project-local
-  strategy include.
-- Previous hedged prototype versions belong under root `archive/automation/mt5/`.
+- `Experts/Limni/LimniPortfolioEA.mq5` is the active institutional portfolio EA path.
+- `Experts/Include/Core/Engine.mqh` owns lifecycle orchestration.
+- Strategy lanes under `Experts/Include/Strategies/` emit intents only.
+- `Experts/Include/Execution/TradeRouter.mqh` is the only layer allowed to own
+  MT5 trade execution.
+- Legacy root-level EAs and root-level legacy indicators are parked under
+  `Experts/Archived/` and `Indicators/Archived/` for reference only.
 
 ## Rules
 
