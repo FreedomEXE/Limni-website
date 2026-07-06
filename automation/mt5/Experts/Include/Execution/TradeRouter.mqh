@@ -7,6 +7,7 @@
 #include <Trade/Trade.mqh>
 #include "..\\Core\\Types.mqh"
 #include "..\\Receipts\\ReceiptWriter.mqh"
+#include "MagicCodec.mqh"
 #include "RetcodeClassifier.mqh"
 
 class LP_TradeRouter
@@ -111,13 +112,17 @@ private:
       LP_ReceiptWriter &receipts,
       const LP_TradePlan &plan,
       const bool ok,
-      const double normalized_lots
+      const double normalized_lots,
+      const string result_symbol
    )
    {
       uint retcode = m_trade.ResultRetcode();
+      int digits = 5;
+      if(StringLen(result_symbol) > 0 && SymbolInfoInteger(result_symbol, SYMBOL_EXIST))
+         digits = (int)SymbolInfoInteger(result_symbol, SYMBOL_DIGITS);
       receipts.Write(
          LP_RECEIPT_ORDER_RESULT,
-         plan.symbol,
+         result_symbol,
          ok ? "sent" : "failed",
          "plan_id=" + (string)plan.plan_id +
             "|ok=" + LP_BoolText(ok) +
@@ -126,7 +131,7 @@ private:
             "|order=" + (string)m_trade.ResultOrder() +
             "|deal=" + (string)m_trade.ResultDeal() +
             "|volume=" + DoubleToString(normalized_lots, 2) +
-            "|price=" + DoubleToString(m_trade.ResultPrice(), (int)SymbolInfoInteger(plan.symbol, SYMBOL_DIGITS)),
+            "|price=" + DoubleToString(m_trade.ResultPrice(), digits),
          plan.lane_id,
          plan.variant_id,
          0,
@@ -134,6 +139,131 @@ private:
          plan.decision_id,
          plan.magic
       );
+   }
+
+   bool CloseTicket(
+      const ulong ticket,
+      const LP_TradePlan &plan,
+      LP_ReceiptWriter &receipts,
+      double &remaining_lots
+   )
+   {
+      if(!PositionSelectByTicket(ticket))
+         return false;
+
+      string symbol = PositionGetString(POSITION_SYMBOL);
+      double position_lots = PositionGetDouble(POSITION_VOLUME);
+      double close_lots = position_lots;
+      bool partial = plan.action == LP_INTENT_REDUCE_GRID;
+      if(partial)
+      {
+         if(remaining_lots <= 0.0)
+            return false;
+         close_lots = MathMin(position_lots, remaining_lots);
+      }
+
+      WriteOrderRequest(
+         receipts,
+         plan,
+         partial ? "reduce_request" : "close_request",
+         "ticket=" + (string)ticket +
+            "|position_lots=" + DoubleToString(position_lots, 2) +
+            "|close_lots=" + DoubleToString(close_lots, 2)
+      );
+
+      bool ok = false;
+      if(partial && close_lots < position_lots)
+         ok = m_trade.PositionClosePartial(ticket, close_lots, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
+      else
+         ok = m_trade.PositionClose(ticket, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
+
+      if(ok && partial)
+         remaining_lots -= close_lots;
+
+      WriteOrderResult(receipts, plan, ok, close_lots, symbol);
+      return ok;
+   }
+
+   bool CloseMatchingPositions(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
+   {
+      if(!m_config.enable_close_execution)
+      {
+         WriteOrderRequest(receipts, plan, "close_execution_disabled", "reason=close_execution_disabled");
+         return false;
+      }
+
+      if(plan.action == LP_INTENT_CLOSE_ALL_EA && !m_config.enable_account_close_execution)
+      {
+         WriteOrderRequest(receipts, plan, "account_close_execution_disabled", "reason=account_close_execution_disabled");
+         return false;
+      }
+
+      if(m_config.max_close_positions_per_step <= 0)
+      {
+         WriteOrderRequest(receipts, plan, "close_limit_invalid", "reason=max_close_positions_per_step_invalid");
+         return false;
+      }
+
+      string barrier_reason = "";
+      bool can_place = CanPlaceOrders(barrier_reason);
+      if(!can_place || m_config.execution_mode == LP_EXECUTION_DRY_RUN)
+      {
+         WriteOrderRequest(receipts, plan, "close_dry_or_blocked", "reason=" + (barrier_reason == "" ? "dry_run" : barrier_reason));
+         return false;
+      }
+
+      m_trade.SetExpertMagicNumber(plan.magic);
+      m_trade.SetDeviationInPoints((ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
+
+      int attempted = 0;
+      int closed = 0;
+      double remaining_lots = plan.lots;
+      bool reduce_done = false;
+
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0)
+            continue;
+         if(!PositionSelectByTicket(ticket))
+            continue;
+
+         long magic = (long)PositionGetInteger(POSITION_MAGIC);
+         if(!LP_IsManagedMagic(magic))
+            continue;
+
+         if(plan.action != LP_INTENT_CLOSE_ALL_EA)
+         {
+            if(magic != plan.magic)
+               continue;
+            if(StringLen(plan.symbol) > 0 && PositionGetString(POSITION_SYMBOL) != plan.symbol)
+               continue;
+         }
+
+         if(attempted >= m_config.max_close_positions_per_step)
+            break;
+
+         attempted++;
+         if(CloseTicket(ticket, plan, receipts, remaining_lots))
+            closed++;
+
+         if(plan.action == LP_INTENT_REDUCE_GRID && remaining_lots <= 0.0)
+         {
+            reduce_done = true;
+            break;
+         }
+      }
+
+      WriteOrderRequest(
+         receipts,
+         plan,
+         "close_scan_complete",
+         "attempted=" + IntegerToString(attempted) +
+            "|closed=" + IntegerToString(closed) +
+            "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
+            "|reduce_done=" + LP_BoolText(reduce_done)
+      );
+      return closed > 0;
    }
 
 public:
@@ -185,10 +315,7 @@ public:
    bool Execute(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
    {
       if(IsCloseAction(plan.action))
-      {
-         WriteOrderRequest(receipts, plan, "close_execution_disabled", "reason=close_execution_disabled_gate99t");
-         return false;
-      }
+         return CloseMatchingPositions(plan, receipts);
 
       if(!IsOpenAction(plan.action))
       {
@@ -231,7 +358,7 @@ public:
          return false;
       }
 
-      WriteOrderResult(receipts, plan, ok, normalized_lots);
+      WriteOrderResult(receipts, plan, ok, normalized_lots, plan.symbol);
       return ok;
    }
 };

@@ -177,6 +177,8 @@ struct LP_Config
    bool enable_trading;
    bool allow_live_trading;
    bool enable_open_order_routing;
+   bool enable_close_execution;
+   bool enable_account_close_execution;
    bool enable_strategy_evaluation;
    bool require_hedging_account;
    bool require_all_symbols;
@@ -204,6 +206,7 @@ struct LP_Config
    int max_same_direction_grids_per_currency;
    int max_managed_positions;
    double max_single_order_lots;
+   int max_close_positions_per_step;
    int news_minimum_impact;
 };
 
