@@ -16,6 +16,28 @@
 #define LIMNI_LRMG_MIN_DAY_BARS 10
 #define LIMNI_LRMG_MAX_BRICKS_PER_BAR 200
 
+#define LIMNI_KTR_SIGNAL_NONE 0
+#define LIMNI_KTR_REVERSAL_BUY 1
+#define LIMNI_KTR_REVERSAL_SELL -1
+#define LIMNI_KTR_CONTINUATION_BUY 2
+#define LIMNI_KTR_CONTINUATION_SELL -2
+
+#define LIMNI_KTR_SWEEP_NONE 0
+#define LIMNI_KTR_SWEEP_UPPER 1
+#define LIMNI_KTR_SWEEP_LOWER -1
+
+#define LIMNI_KTR_RESOLUTION_NONE 0
+#define LIMNI_KTR_RESOLUTION_REVERSAL_RECLAIM 1
+#define LIMNI_KTR_RESOLUTION_CONTINUATION_HOLD 2
+#define LIMNI_KTR_RESOLUTION_FAILED_RECLAIM 3
+
+#define LIMNI_KTR_RELATION_UNKNOWN 0
+#define LIMNI_KTR_RELATION_ABOVE 1
+#define LIMNI_KTR_RELATION_BELOW -1
+#define LIMNI_KTR_RELATION_WITH_TREND 1
+#define LIMNI_KTR_RELATION_AGAINST_TREND -1
+#define LIMNI_KTR_RELATION_NEUTRAL 0
+
 struct LimniLrmgDayRecord
 {
    int      key;
@@ -29,6 +51,96 @@ struct LimniLrmgDayRecord
    double   q_day;
    double   q_effective;
 };
+
+struct LimniKataraktiEvent
+{
+   int signal;
+   int sweep_side;
+   int resolution;
+   int trade_direction;
+   int anchor_relation;
+   int trend_relation;
+   int setup_age;
+   double boundary;
+   double q_distance;
+};
+
+void LimniResetKataraktiEvent(LimniKataraktiEvent &event)
+{
+   event.signal = LIMNI_KTR_SIGNAL_NONE;
+   event.sweep_side = LIMNI_KTR_SWEEP_NONE;
+   event.resolution = LIMNI_KTR_RESOLUTION_NONE;
+   event.trade_direction = 0;
+   event.anchor_relation = LIMNI_KTR_RELATION_UNKNOWN;
+   event.trend_relation = LIMNI_KTR_RELATION_UNKNOWN;
+   event.setup_age = 0;
+   event.boundary = 0.0;
+   event.q_distance = 0.0;
+}
+
+int LimniKtrTradeDirectionFromSignal(const int signal)
+{
+   if(signal > 0)
+      return 1;
+   if(signal < 0)
+      return -1;
+   return 0;
+}
+
+bool LimniKtrIsContinuationSignal(const int signal)
+{
+   return signal == LIMNI_KTR_CONTINUATION_BUY || signal == LIMNI_KTR_CONTINUATION_SELL;
+}
+
+bool LimniKtrIsReversalSignal(const int signal)
+{
+   return signal == LIMNI_KTR_REVERSAL_BUY || signal == LIMNI_KTR_REVERSAL_SELL;
+}
+
+int LimniKtrAnchorRelation(const double price, const double anchor)
+{
+   if(anchor == EMPTY_VALUE || anchor == 0.0)
+      return LIMNI_KTR_RELATION_UNKNOWN;
+   if(price > anchor)
+      return LIMNI_KTR_RELATION_ABOVE;
+   if(price < anchor)
+      return LIMNI_KTR_RELATION_BELOW;
+   return LIMNI_KTR_RELATION_NEUTRAL;
+}
+
+int LimniKtrTrendRelation(const int trade_direction, const int trend_state)
+{
+   if(trade_direction == 0 || trend_state == 0)
+      return LIMNI_KTR_RELATION_NEUTRAL;
+   if((trade_direction > 0 && trend_state > 0) || (trade_direction < 0 && trend_state < 0))
+      return LIMNI_KTR_RELATION_WITH_TREND;
+   return LIMNI_KTR_RELATION_AGAINST_TREND;
+}
+
+int LimniSetKataraktiSignal(
+   LimniKataraktiEvent &event,
+   const int signal,
+   const int sweep_side,
+   const int resolution,
+   const double boundary,
+   const double price,
+   const double q,
+   const int setup_age,
+   const double anchor,
+   const int trend_state
+)
+{
+   event.signal = signal;
+   event.sweep_side = sweep_side;
+   event.resolution = resolution;
+   event.trade_direction = LimniKtrTradeDirectionFromSignal(signal);
+   event.anchor_relation = LimniKtrAnchorRelation(price, anchor);
+   event.trend_relation = LimniKtrTrendRelation(event.trade_direction, trend_state);
+   event.setup_age = setup_age;
+   event.boundary = boundary;
+   event.q_distance = q > 0.0 ? MathAbs(price - boundary) / q : 0.0;
+   return signal;
+}
 
 int LimniLrmgDayKey(const datetime value)
 {
@@ -341,6 +453,200 @@ void LimniAgeKtrStage(int &stage, int &age)
    }
 }
 
+int LimniLrmgKataraktiClassify(
+   const double &events[],
+   const int event_index,
+   const double q,
+   const double anchor,
+   const int trend_state,
+   int &lower_stage,
+   int &lower_age,
+   double &lower_boundary,
+   int &upper_stage,
+   int &upper_age,
+   double &upper_boundary,
+   LimniKataraktiEvent &event
+)
+{
+   LimniResetKataraktiEvent(event);
+
+   if(event_index < 2 || q <= 0.0)
+      return LIMNI_KTR_SIGNAL_NONE;
+
+   LimniAgeKtrStage(lower_stage, lower_age);
+   LimniAgeKtrStage(upper_stage, upper_age);
+
+   double prior_lo = 0.0;
+   double prior_hi = 0.0;
+   LimniRecentEventRange(events, event_index, LIMNI_LRMG_KTR_RANGE_EVENT_WINDOW, prior_lo, prior_hi);
+   if(prior_hi <= prior_lo)
+      return LIMNI_KTR_SIGNAL_NONE;
+
+   double price = events[event_index];
+
+   if(lower_stage == 1)
+   {
+      if(price > lower_boundary)
+      {
+         lower_stage = 2;
+         lower_age = 0;
+      }
+      else if(price <= lower_boundary - q)
+      {
+         int setup_age = lower_age;
+         double boundary = lower_boundary;
+         lower_stage = 0;
+         lower_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_CONTINUATION_SELL,
+            LIMNI_KTR_SWEEP_LOWER,
+            LIMNI_KTR_RESOLUTION_CONTINUATION_HOLD,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+   }
+
+   if(upper_stage == 1)
+   {
+      if(price < upper_boundary)
+      {
+         upper_stage = 2;
+         upper_age = 0;
+      }
+      else if(price >= upper_boundary + q)
+      {
+         int setup_age = upper_age;
+         double boundary = upper_boundary;
+         upper_stage = 0;
+         upper_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_CONTINUATION_BUY,
+            LIMNI_KTR_SWEEP_UPPER,
+            LIMNI_KTR_RESOLUTION_CONTINUATION_HOLD,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+   }
+
+   if(lower_stage == 2)
+   {
+      if(price <= lower_boundary - q)
+      {
+         int setup_age = lower_age;
+         double boundary = lower_boundary;
+         lower_stage = 0;
+         lower_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_CONTINUATION_SELL,
+            LIMNI_KTR_SWEEP_LOWER,
+            LIMNI_KTR_RESOLUTION_FAILED_RECLAIM,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+      else if(price >= lower_boundary + q)
+      {
+         int setup_age = lower_age;
+         double boundary = lower_boundary;
+         lower_stage = 0;
+         lower_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_REVERSAL_BUY,
+            LIMNI_KTR_SWEEP_LOWER,
+            LIMNI_KTR_RESOLUTION_REVERSAL_RECLAIM,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+   }
+
+   if(upper_stage == 2)
+   {
+      if(price >= upper_boundary + q)
+      {
+         int setup_age = upper_age;
+         double boundary = upper_boundary;
+         upper_stage = 0;
+         upper_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_CONTINUATION_BUY,
+            LIMNI_KTR_SWEEP_UPPER,
+            LIMNI_KTR_RESOLUTION_FAILED_RECLAIM,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+      else if(price <= upper_boundary - q)
+      {
+         int setup_age = upper_age;
+         double boundary = upper_boundary;
+         upper_stage = 0;
+         upper_age = 0;
+         return LimniSetKataraktiSignal(
+            event,
+            LIMNI_KTR_REVERSAL_SELL,
+            LIMNI_KTR_SWEEP_UPPER,
+            LIMNI_KTR_RESOLUTION_REVERSAL_RECLAIM,
+            boundary,
+            price,
+            q,
+            setup_age,
+            anchor,
+            trend_state
+         );
+      }
+   }
+
+   if(price < prior_lo)
+   {
+      lower_stage = 1;
+      lower_age = 0;
+      lower_boundary = prior_lo;
+      upper_stage = 0;
+      upper_age = 0;
+      return LIMNI_KTR_SIGNAL_NONE;
+   }
+
+   if(price > prior_hi)
+   {
+      upper_stage = 1;
+      upper_age = 0;
+      upper_boundary = prior_hi;
+      lower_stage = 0;
+      lower_age = 0;
+      return LIMNI_KTR_SIGNAL_NONE;
+   }
+
+   return LIMNI_KTR_SIGNAL_NONE;
+}
+
 int LimniLrmgKataraktiSignal(
    const double &events[],
    const int event_index,
@@ -353,83 +659,21 @@ int LimniLrmgKataraktiSignal(
    double &upper_boundary
 )
 {
-   if(event_index < 2 || q <= 0.0)
-      return 0;
-
-   LimniAgeKtrStage(lower_stage, lower_age);
-   LimniAgeKtrStage(upper_stage, upper_age);
-
-   double prior_lo = 0.0;
-   double prior_hi = 0.0;
-   LimniRecentEventRange(events, event_index, LIMNI_LRMG_KTR_RANGE_EVENT_WINDOW, prior_lo, prior_hi);
-   if(prior_hi <= prior_lo)
-      return 0;
-
-   double price = events[event_index];
-
-   if(price < prior_lo)
-   {
-      lower_stage = 1;
-      lower_age = 0;
-      lower_boundary = prior_lo;
-      upper_stage = 0;
-      upper_age = 0;
-      return 0;
-   }
-
-   if(price > prior_hi)
-   {
-      upper_stage = 1;
-      upper_age = 0;
-      upper_boundary = prior_hi;
-      lower_stage = 0;
-      lower_age = 0;
-      return 0;
-   }
-
-   if(lower_stage == 1 && price > lower_boundary)
-   {
-      lower_stage = 2;
-      lower_age = 0;
-   }
-
-   if(upper_stage == 1 && price < upper_boundary)
-   {
-      upper_stage = 2;
-      upper_age = 0;
-   }
-
-   if(lower_stage == 2)
-   {
-      if(price <= lower_boundary - q)
-      {
-         lower_stage = 1;
-         lower_age = 0;
-      }
-      else if(price >= lower_boundary + q)
-      {
-         lower_stage = 0;
-         lower_age = 0;
-         return 1;
-      }
-   }
-
-   if(upper_stage == 2)
-   {
-      if(price >= upper_boundary + q)
-      {
-         upper_stage = 1;
-         upper_age = 0;
-      }
-      else if(price <= upper_boundary - q)
-      {
-         upper_stage = 0;
-         upper_age = 0;
-         return -1;
-      }
-   }
-
-   return 0;
+   LimniKataraktiEvent event;
+   return LimniLrmgKataraktiClassify(
+      events,
+      event_index,
+      q,
+      EMPTY_VALUE,
+      0,
+      lower_stage,
+      lower_age,
+      lower_boundary,
+      upper_stage,
+      upper_age,
+      upper_boundary,
+      event
+   );
 }
 
 void LimniCopyDatetimeArray(const datetime &source[], datetime &target[])
@@ -487,6 +731,12 @@ bool LimniBuildStackSeries(
    double &out_ma[],
    int &out_ma_state[],
    int &out_trigger[],
+   int &out_trigger_sweep_side[],
+   int &out_trigger_resolution[],
+   int &out_trigger_anchor_relation[],
+   int &out_trigger_trend_relation[],
+   int &out_trigger_setup_age[],
+   double &out_trigger_q_distance[],
    int &day_count,
    int &valid_q_day_count
 )
@@ -499,6 +749,12 @@ bool LimniBuildStackSeries(
    ArrayResize(out_ma, 0);
    ArrayResize(out_ma_state, 0);
    ArrayResize(out_trigger, 0);
+   ArrayResize(out_trigger_sweep_side, 0);
+   ArrayResize(out_trigger_resolution, 0);
+   ArrayResize(out_trigger_anchor_relation, 0);
+   ArrayResize(out_trigger_trend_relation, 0);
+   ArrayResize(out_trigger_setup_age, 0);
+   ArrayResize(out_trigger_q_distance, 0);
    day_count = 0;
    valid_q_day_count = 0;
 
@@ -530,6 +786,12 @@ bool LimniBuildStackSeries(
    ArrayResize(out_ma, source_count);
    ArrayResize(out_ma_state, source_count);
    ArrayResize(out_trigger, source_count);
+   ArrayResize(out_trigger_sweep_side, source_count);
+   ArrayResize(out_trigger_resolution, source_count);
+   ArrayResize(out_trigger_anchor_relation, source_count);
+   ArrayResize(out_trigger_trend_relation, source_count);
+   ArrayResize(out_trigger_setup_age, source_count);
+   ArrayResize(out_trigger_q_distance, source_count);
 
    for(int i = 0; i < source_count; i++)
    {
@@ -541,6 +803,12 @@ bool LimniBuildStackSeries(
       out_ma[i] = EMPTY_VALUE;
       out_ma_state[i] = 0;
       out_trigger[i] = 0;
+      out_trigger_sweep_side[i] = LIMNI_KTR_SWEEP_NONE;
+      out_trigger_resolution[i] = LIMNI_KTR_RESOLUTION_NONE;
+      out_trigger_anchor_relation[i] = LIMNI_KTR_RELATION_UNKNOWN;
+      out_trigger_trend_relation[i] = LIMNI_KTR_RELATION_UNKNOWN;
+      out_trigger_setup_age[i] = 0;
+      out_trigger_q_distance[i] = 0.0;
    }
 
    bool has_confirmed_event = false;
@@ -604,30 +872,54 @@ bool LimniBuildStackSeries(
             {
                int first_new_event = cached_metric_event_count < 0 ? 0 : cached_metric_event_count;
                int event_trigger = 0;
+               int event_sweep_side = LIMNI_KTR_SWEEP_NONE;
+               int event_resolution = LIMNI_KTR_RESOLUTION_NONE;
+               int event_anchor_relation = LIMNI_KTR_RELATION_UNKNOWN;
+               int event_trend_relation = LIMNI_KTR_RELATION_UNKNOWN;
+               int event_setup_age = 0;
+               double event_q_distance = 0.0;
                for(int event_index = first_new_event; event_index < closed_event_count; event_index++)
                {
                   double event_line = LimniMedianRecentEvents(closed_events, event_index + 1, LIMNI_LRMG_LINE_EVENT_WINDOW);
                   last_david_state = LimniLrmgDavidState(closed_events[event_index], event_line, q, last_david_state);
 
-                  int ktr_signal = LimniLrmgKataraktiSignal(
+                  LimniKataraktiEvent ktr_event;
+                  int ktr_signal = LimniLrmgKataraktiClassify(
                      closed_events,
                      event_index,
                      q,
+                     event_line,
+                     last_david_state,
                      lower_ktr_stage,
                      lower_ktr_age,
                      lower_ktr_boundary,
                      upper_ktr_stage,
                      upper_ktr_age,
-                     upper_ktr_boundary
+                     upper_ktr_boundary,
+                     ktr_event
                   );
                   if(ktr_signal != 0)
+                  {
                      event_trigger = ktr_signal;
+                     event_sweep_side = ktr_event.sweep_side;
+                     event_resolution = ktr_event.resolution;
+                     event_anchor_relation = ktr_event.anchor_relation;
+                     event_trend_relation = ktr_event.trend_relation;
+                     event_setup_age = ktr_event.setup_age;
+                     event_q_distance = ktr_event.q_distance;
+                  }
                }
 
                cached_line = LimniMedianRecentEvents(closed_events, closed_event_count, LIMNI_LRMG_LINE_EVENT_WINDOW);
                cached_state_value = (double)last_david_state;
                LimniRecentEventRange(closed_events, closed_event_count, LIMNI_LRMG_STOCH_EVENT_WINDOW, cached_lo, cached_hi);
                out_trigger[i] = event_trigger;
+               out_trigger_sweep_side[i] = event_sweep_side;
+               out_trigger_resolution[i] = event_resolution;
+               out_trigger_anchor_relation[i] = event_anchor_relation;
+               out_trigger_trend_relation[i] = event_trend_relation;
+               out_trigger_setup_age[i] = event_setup_age;
+               out_trigger_q_distance[i] = event_q_distance;
                cached_metric_event_count = closed_event_count;
             }
 
@@ -663,6 +955,12 @@ double g_limni_stack_cache_stoch[];
 double g_limni_stack_cache_ma[];
 int g_limni_stack_cache_ma_state[];
 int g_limni_stack_cache_trigger[];
+int g_limni_stack_cache_trigger_sweep_side[];
+int g_limni_stack_cache_trigger_resolution[];
+int g_limni_stack_cache_trigger_anchor_relation[];
+int g_limni_stack_cache_trigger_trend_relation[];
+int g_limni_stack_cache_trigger_setup_age[];
+double g_limni_stack_cache_trigger_q_distance[];
 
 void LimniExportCachedStack(
    datetime &source_times[],
@@ -691,7 +989,48 @@ void LimniExportCachedStack(
    valid_q_day_count = g_limni_stack_cache_valid_q_day_count;
 }
 
-bool LimniLoadCachedStackSeries(
+void LimniExportCachedStackDetailed(
+   datetime &source_times[],
+   double &source_closes[],
+   double &source_q[],
+   double &source_line[],
+   double &source_stoch[],
+   double &source_ma[],
+   int &source_ma_state[],
+   int &source_trigger[],
+   int &source_trigger_sweep_side[],
+   int &source_trigger_resolution[],
+   int &source_trigger_anchor_relation[],
+   int &source_trigger_trend_relation[],
+   int &source_trigger_setup_age[],
+   double &source_trigger_q_distance[],
+   int &copied,
+   int &day_count,
+   int &valid_q_day_count
+)
+{
+   LimniExportCachedStack(
+      source_times,
+      source_closes,
+      source_q,
+      source_line,
+      source_stoch,
+      source_ma,
+      source_ma_state,
+      source_trigger,
+      copied,
+      day_count,
+      valid_q_day_count
+   );
+   LimniCopyIntArray(g_limni_stack_cache_trigger_sweep_side, source_trigger_sweep_side);
+   LimniCopyIntArray(g_limni_stack_cache_trigger_resolution, source_trigger_resolution);
+   LimniCopyIntArray(g_limni_stack_cache_trigger_anchor_relation, source_trigger_anchor_relation);
+   LimniCopyIntArray(g_limni_stack_cache_trigger_trend_relation, source_trigger_trend_relation);
+   LimniCopyIntArray(g_limni_stack_cache_trigger_setup_age, source_trigger_setup_age);
+   LimniCopyDoubleArray(g_limni_stack_cache_trigger_q_distance, source_trigger_q_distance);
+}
+
+bool LimniLoadCachedStackSeriesDetailed(
    const datetime chart_oldest,
    const datetime chart_newest,
    const int scale_lookback_days,
@@ -704,6 +1043,12 @@ bool LimniLoadCachedStackSeries(
    double &source_ma[],
    int &source_ma_state[],
    int &source_trigger[],
+   int &source_trigger_sweep_side[],
+   int &source_trigger_resolution[],
+   int &source_trigger_anchor_relation[],
+   int &source_trigger_trend_relation[],
+   int &source_trigger_setup_age[],
+   double &source_trigger_q_distance[],
    int &copied,
    int &day_count,
    int &valid_q_day_count
@@ -721,7 +1066,7 @@ bool LimniLoadCachedStackSeries(
       g_limni_stack_cache_latest_closed_m1 == latest_closed_m1 &&
       source_from >= g_limni_stack_cache_source_from)
    {
-      LimniExportCachedStack(
+      LimniExportCachedStackDetailed(
          source_times,
          source_closes,
          source_q,
@@ -730,6 +1075,12 @@ bool LimniLoadCachedStackSeries(
          source_ma,
          source_ma_state,
          source_trigger,
+         source_trigger_sweep_side,
+         source_trigger_resolution,
+         source_trigger_anchor_relation,
+         source_trigger_trend_relation,
+         source_trigger_setup_age,
+         source_trigger_q_distance,
          copied,
          day_count,
          valid_q_day_count
@@ -779,6 +1130,12 @@ bool LimniLoadCachedStackSeries(
       source_ma,
       source_ma_state,
       source_trigger,
+      source_trigger_sweep_side,
+      source_trigger_resolution,
+      source_trigger_anchor_relation,
+      source_trigger_trend_relation,
+      source_trigger_setup_age,
+      source_trigger_q_distance,
       day_count,
       valid_q_day_count
    );
@@ -802,8 +1159,64 @@ bool LimniLoadCachedStackSeries(
    LimniCopyDoubleArray(source_ma, g_limni_stack_cache_ma);
    LimniCopyIntArray(source_ma_state, g_limni_stack_cache_ma_state);
    LimniCopyIntArray(source_trigger, g_limni_stack_cache_trigger);
+   LimniCopyIntArray(source_trigger_sweep_side, g_limni_stack_cache_trigger_sweep_side);
+   LimniCopyIntArray(source_trigger_resolution, g_limni_stack_cache_trigger_resolution);
+   LimniCopyIntArray(source_trigger_anchor_relation, g_limni_stack_cache_trigger_anchor_relation);
+   LimniCopyIntArray(source_trigger_trend_relation, g_limni_stack_cache_trigger_trend_relation);
+   LimniCopyIntArray(source_trigger_setup_age, g_limni_stack_cache_trigger_setup_age);
+   LimniCopyDoubleArray(source_trigger_q_distance, g_limni_stack_cache_trigger_q_distance);
 
    return true;
+}
+
+bool LimniLoadCachedStackSeries(
+   const datetime chart_oldest,
+   const datetime chart_newest,
+   const int scale_lookback_days,
+   const double point,
+   datetime &source_times[],
+   double &source_closes[],
+   double &source_q[],
+   double &source_line[],
+   double &source_stoch[],
+   double &source_ma[],
+   int &source_ma_state[],
+   int &source_trigger[],
+   int &copied,
+   int &day_count,
+   int &valid_q_day_count
+)
+{
+   int source_trigger_sweep_side[];
+   int source_trigger_resolution[];
+   int source_trigger_anchor_relation[];
+   int source_trigger_trend_relation[];
+   int source_trigger_setup_age[];
+   double source_trigger_q_distance[];
+
+   return LimniLoadCachedStackSeriesDetailed(
+      chart_oldest,
+      chart_newest,
+      scale_lookback_days,
+      point,
+      source_times,
+      source_closes,
+      source_q,
+      source_line,
+      source_stoch,
+      source_ma,
+      source_ma_state,
+      source_trigger,
+      source_trigger_sweep_side,
+      source_trigger_resolution,
+      source_trigger_anchor_relation,
+      source_trigger_trend_relation,
+      source_trigger_setup_age,
+      source_trigger_q_distance,
+      copied,
+      day_count,
+      valid_q_day_count
+   );
 }
 
 void LimniProjectDoubleToChart(
