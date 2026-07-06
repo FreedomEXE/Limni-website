@@ -24,6 +24,7 @@ void LP_WriteRunManifest(
          "|execution_mode=" + LP_ExecutionModeName(config.execution_mode) +
          "|enable_trading=" + LP_BoolText(config.enable_trading) +
          "|allow_live_trading=" + LP_BoolText(config.allow_live_trading) +
+         "|open_order_routing=" + LP_BoolText(config.enable_open_order_routing) +
          "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
          "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
          "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
@@ -46,6 +47,7 @@ void LP_WriteRunManifest(
    receipts.Summary("execution_mode", LP_ExecutionModeName(config.execution_mode));
    receipts.Summary("enable_trading", LP_BoolText(config.enable_trading));
    receipts.Summary("allow_live_trading", LP_BoolText(config.allow_live_trading));
+   receipts.Summary("open_order_routing_enabled", LP_BoolText(config.enable_open_order_routing));
    receipts.Summary("strategy_evaluation_enabled", LP_BoolText(config.enable_strategy_evaluation));
    receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
    receipts.Summary("news_calendar_file", config.news_calendar_file);
@@ -61,6 +63,7 @@ void LP_WriteRunManifest(
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));
    receipts.Summary("max_same_direction_grids_per_currency", IntegerToString(config.max_same_direction_grids_per_currency));
    receipts.Summary("max_managed_positions", IntegerToString(config.max_managed_positions));
+   receipts.Summary("max_single_order_lots", DoubleToString(config.max_single_order_lots, 2));
    receipts.Summary("news_minimum_impact", IntegerToString(config.news_minimum_impact));
 }
 

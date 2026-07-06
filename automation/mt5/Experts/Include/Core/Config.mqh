@@ -11,6 +11,7 @@ input string LP_INPUT_1 = "----- Execution Barrier -----";
 input LP_ExecutionMode ExecutionMode = LP_EXECUTION_DISABLED;
 input bool EnableTrading = false;
 input bool AllowLiveTrading = false;
+input bool EnableOpenOrderRouting = false;
 input bool EnableStrategyEvaluation = false;
 input bool RequireHedgingAccount = true;
 input bool RequireAllSymbols = true;
@@ -36,6 +37,7 @@ input double MaxCurrencySignedLots = 5.0;
 input double MaxCurrencyGrossLots = 10.0;
 input int MaxSameDirectionGridsPerCurrency = 4;
 input int MaxManagedPositions = 200;
+input double MaxSingleOrderLots = 1.0;
 input int NewsMinimumImpact = 3;
 input string LP_INPUT_6 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
@@ -48,6 +50,7 @@ void LP_LoadConfig(LP_Config &config)
    config.news_guard_mode = NewsGuardMode;
    config.enable_trading = EnableTrading;
    config.allow_live_trading = AllowLiveTrading;
+   config.enable_open_order_routing = EnableOpenOrderRouting;
    config.enable_strategy_evaluation = EnableStrategyEvaluation;
    config.require_hedging_account = RequireHedgingAccount;
    config.require_all_symbols = RequireAllSymbols;
@@ -74,6 +77,7 @@ void LP_LoadConfig(LP_Config &config)
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
    config.max_managed_positions = MaxManagedPositions;
+   config.max_single_order_lots = MaxSingleOrderLots;
    config.news_minimum_impact = NewsMinimumImpact;
 }
 
@@ -83,6 +87,7 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_NewsGuardModeName(config.news_guard_mode) + "|" +
       LP_BoolText(config.enable_trading) + "|" +
       LP_BoolText(config.allow_live_trading) + "|" +
+      LP_BoolText(config.enable_open_order_routing) + "|" +
       LP_BoolText(config.enable_strategy_evaluation) + "|" +
       LP_BoolText(config.require_hedging_account) + "|" +
       LP_BoolText(config.require_all_symbols) + "|" +
@@ -100,6 +105,7 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +
       IntegerToString(config.max_managed_positions) + "|" +
+      DoubleToString(config.max_single_order_lots, 2) + "|" +
       IntegerToString(config.news_minimum_impact);
    return LP_HashString(payload);
 }

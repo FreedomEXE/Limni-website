@@ -1,0 +1,3 @@
+repo-LimniPortfolioEA: Result: 0 errors, 0 warnings, 10263 msec elapsed, cpu='X64 Regular'
+active-LimniPortfolioEA: Result: 0 errors, 0 warnings, 12267 ms elapsed, cpu='X64 Regular'
+MetaEditor process exit code: 1 for both compiles; logs are authoritative in this repo lane.

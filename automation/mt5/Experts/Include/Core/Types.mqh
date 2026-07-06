@@ -176,6 +176,7 @@ struct LP_Config
    LP_NewsGuardMode news_guard_mode;
    bool enable_trading;
    bool allow_live_trading;
+   bool enable_open_order_routing;
    bool enable_strategy_evaluation;
    bool require_hedging_account;
    bool require_all_symbols;
@@ -202,6 +203,7 @@ struct LP_Config
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
    int max_managed_positions;
+   double max_single_order_lots;
    int news_minimum_impact;
 };
 
