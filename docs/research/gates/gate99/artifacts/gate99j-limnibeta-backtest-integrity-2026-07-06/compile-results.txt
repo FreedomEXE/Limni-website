@@ -1,0 +1,2 @@
+Result: 0 errors, 0 warnings, 2484 msec elapsed, cpu='X64 Regular'
+Result: 0 errors, 0 warnings, 2504 msec elapsed, cpu='X64 Regular'

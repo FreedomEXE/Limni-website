@@ -456,6 +456,24 @@ void LimniCopyIntArray(const int &source[], int &target[])
       target[i] = source[i];
 }
 
+void LimniClearDoubleBuffer(double &buffer[], const int rates_total)
+{
+   for(int i = 0; i < rates_total; i++)
+      buffer[i] = EMPTY_VALUE;
+}
+
+void LimniFillDoubleBuffer(double &buffer[], const int rates_total, const double value)
+{
+   for(int i = 0; i < rates_total; i++)
+      buffer[i] = value;
+}
+
+void LimniCopyDoubleBuffer(const double &source[], double &target[], const int rates_total)
+{
+   for(int i = 0; i < rates_total; i++)
+      target[i] = source[i];
+}
+
 bool LimniBuildStackSeries(
    const MqlRates &source_rates[],
    const int source_count,

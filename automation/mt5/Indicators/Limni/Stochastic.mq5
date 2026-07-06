@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                             LimniLRMGStoch.mq5   |
+//|                                             Stochastic.mq5       |
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
@@ -12,15 +12,15 @@
 #property indicator_level1 20
 #property indicator_level2 80
 
-#property indicator_label1 "LRMG Stoch"
+#property indicator_label1 "Stochastic"
 #property indicator_type1 DRAW_LINE
 #property indicator_color1 clrDeepSkyBlue
 #property indicator_style1 STYLE_SOLID
 #property indicator_width1 2
 
-#include "Include\\LimniLRMGStackCore.mqh"
+#include "..\\Include\\LimniLRMGStackCore.mqh"
 
-input int ScaleLookbackDays = 20; // 0 = all prior completed days
+input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
 double StochBuffer[];
@@ -64,7 +64,7 @@ int OnInit()
 {
    SetIndexBuffer(0, StochBuffer, INDICATOR_DATA);
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG Stoch");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Stochastic");
    IndicatorSetInteger(INDICATOR_DIGITS, 2);
    return INIT_SUCCEEDED;
 }
@@ -82,8 +82,8 @@ int OnCalculate(
    const int &spread[]
 )
 {
-   for(int i = 0; i < rates_total; i++)
-      StochBuffer[i] = EMPTY_VALUE;
+   if(prev_calculated <= 0)
+      LimniClearDoubleBuffer(StochBuffer, rates_total);
 
    datetime chart_oldest = 0;
    datetime chart_newest = 0;
@@ -122,12 +122,16 @@ int OnCalculate(
       return rates_total;
    }
 
-   LimniProjectDoubleToChart(time, rates_total, ArrayGetAsSeries(time), source_times, source_stoch, StochBuffer);
+   double next_buffer[];
+   ArrayResize(next_buffer, rates_total);
+   LimniClearDoubleBuffer(next_buffer, rates_total);
+   LimniProjectDoubleToChart(time, rates_total, ArrayGetAsSeries(time), source_times, source_stoch, next_buffer);
+   LimniCopyDoubleBuffer(next_buffer, StochBuffer, rates_total);
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG Stoch\n",
+         "Stochastic\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source bars: ", IntegerToString(copied), "\n",
          "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)

@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                           LimniLRMGTrigger.mq5   |
+//|                                             Katarakti.mq5        |
 //|             LRMG Katarakti-style sweep/reclaim markers           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
@@ -8,19 +8,19 @@
 #property indicator_buffers 2
 #property indicator_plots 2
 
-#property indicator_label1 "LRMG KTR Up"
+#property indicator_label1 "Katarakti Up"
 #property indicator_type1 DRAW_ARROW
 #property indicator_color1 clrLimeGreen
 #property indicator_width1 2
 
-#property indicator_label2 "LRMG KTR Down"
+#property indicator_label2 "Katarakti Down"
 #property indicator_type2 DRAW_ARROW
 #property indicator_color2 clrTomato
 #property indicator_width2 2
 
-#include "Include\\LimniLRMGStackCore.mqh"
+#include "..\\Include\\LimniLRMGStackCore.mqh"
 
-input int ScaleLookbackDays = 20; // 0 = all prior completed days
+input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
 double KtrUpBuffer[];
@@ -117,7 +117,7 @@ int OnInit()
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, EMPTY_VALUE);
    PlotIndexSetInteger(0, PLOT_ARROW, 233);
    PlotIndexSetInteger(1, PLOT_ARROW, 234);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG Katarakti Events");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Katarakti");
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
    return INIT_SUCCEEDED;
 }
@@ -135,10 +135,10 @@ int OnCalculate(
    const int &spread[]
 )
 {
-   for(int i = 0; i < rates_total; i++)
+   if(prev_calculated <= 0)
    {
-      KtrUpBuffer[i] = EMPTY_VALUE;
-      KtrDownBuffer[i] = EMPTY_VALUE;
+      LimniClearDoubleBuffer(KtrUpBuffer, rates_total);
+      LimniClearDoubleBuffer(KtrDownBuffer, rates_total);
    }
 
    datetime chart_oldest = 0;
@@ -178,6 +178,13 @@ int OnCalculate(
       return rates_total;
    }
 
+   double next_up_buffer[];
+   double next_down_buffer[];
+   ArrayResize(next_up_buffer, rates_total);
+   ArrayResize(next_down_buffer, rates_total);
+   LimniClearDoubleBuffer(next_up_buffer, rates_total);
+   LimniClearDoubleBuffer(next_down_buffer, rates_total);
+
    ProjectTriggersToChart(
       time,
       rates_total,
@@ -186,14 +193,16 @@ int OnCalculate(
       source_closes,
       source_q,
       source_trigger,
-      KtrUpBuffer,
-      KtrDownBuffer
+      next_up_buffer,
+      next_down_buffer
    );
+   LimniCopyDoubleBuffer(next_up_buffer, KtrUpBuffer, rates_total);
+   LimniCopyDoubleBuffer(next_down_buffer, KtrDownBuffer, rates_total);
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG Katarakti Events\n",
+         "Katarakti\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source bars: ", IntegerToString(copied), "\n",
          "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)

@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                          LimniLRMGPriceLine.mq5  |
+//|                                             PriceAnchor.mq5      |
 //|            LRMG lagged completed-day q institutional price line  |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
@@ -8,20 +8,20 @@
 #property indicator_buffers 1
 #property indicator_plots 1
 
-#property indicator_label1 "LRMG Price Line"
+#property indicator_label1 "Price Anchor"
 #property indicator_type1 DRAW_LINE
 #property indicator_color1 clrLimeGreen
 #property indicator_style1 STYLE_SOLID
 #property indicator_width1 2
 
-#include "Include\\LimniRadialMovementGrid.mqh"
+#include "..\\Include\\LimniRadialMovementGrid.mqh"
 
 #define LRMG_V2_SOURCE_TIMEFRAME PERIOD_M1
 #define LRMG_V2_LINE_EVENT_WINDOW 55
 #define LRMG_V2_MIN_DAY_BARS 10
 #define LRMG_V2_MAX_BRICKS_PER_BAR 200
 
-input int ScaleLookbackDays = 20; // 0 = all prior completed days
+input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
 struct LrmgDayRecord
@@ -451,7 +451,8 @@ void ProjectAnchorsToChart(
    const int rates_total,
    const bool chart_series,
    const datetime &anchor_times[],
-   const double &anchor_values[]
+   const double &anchor_values[],
+   double &target_buffer[]
 )
 {
    int anchor_count = ArraySize(anchor_times);
@@ -468,15 +469,27 @@ void ProjectAnchorsToChart(
          anchor_index++;
 
       if(anchor_times[anchor_index] <= bar_time && anchor_values[anchor_index] != EMPTY_VALUE)
-         V2Buffer[idx] = anchor_values[anchor_index];
+         target_buffer[idx] = anchor_values[anchor_index];
    }
+}
+
+void ClearLineBuffer(double &buffer[], const int rates_total)
+{
+   for(int i = 0; i < rates_total; i++)
+      buffer[i] = EMPTY_VALUE;
+}
+
+void CopyLineBuffer(const double &source[], double &target[], const int rates_total)
+{
+   for(int i = 0; i < rates_total; i++)
+      target[i] = source[i];
 }
 
 int OnInit()
 {
    SetIndexBuffer(0, V2Buffer, INDICATOR_DATA);
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG Price Line");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Price Anchor");
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
    return INIT_SUCCEEDED;
 }
@@ -494,8 +507,8 @@ int OnCalculate(
    const int &spread[]
 )
 {
-   for(int i = 0; i < rates_total; i++)
-      V2Buffer[i] = EMPTY_VALUE;
+   if(prev_calculated <= 0)
+      ClearLineBuffer(V2Buffer, rates_total);
 
    if(rates_total < 50)
       return rates_total;
@@ -518,12 +531,16 @@ int OnCalculate(
    bool used_cache = CacheMatches(source_from, source_to_key);
    if(used_cache)
    {
-      ProjectAnchorsToChart(time, rates_total, ArrayGetAsSeries(time), g_cachedAnchorTimes, g_cachedAnchorValues);
+      double next_buffer[];
+      ArrayResize(next_buffer, rates_total);
+      ClearLineBuffer(next_buffer, rates_total);
+      ProjectAnchorsToChart(time, rates_total, ArrayGetAsSeries(time), g_cachedAnchorTimes, g_cachedAnchorValues, next_buffer);
+      CopyLineBuffer(next_buffer, V2Buffer, rates_total);
 
       if(ShowDebugComment)
       {
          Comment(
-            "LRMG Price Line\n",
+            "Price Anchor\n",
             "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
             "source: PERIOD_M1, completed broker/server days\n",
             "available start: ", TimeToString(g_cachedResolvedStart, TIME_DATE | TIME_MINUTES), "\n",
@@ -548,7 +565,7 @@ int OnCalculate(
       if(ShowDebugComment)
       {
          Comment(
-            "LRMG Price Line\n",
+            "Price Anchor\n",
             "M1 data unavailable or too short\n",
             "copied: ", IntegerToString(copied), "\n",
             "error: ", IntegerToString(copy_error)
@@ -594,12 +611,16 @@ int OnCalculate(
       anchor_values
    );
 
-   ProjectAnchorsToChart(time, rates_total, ArrayGetAsSeries(time), anchor_times, anchor_values);
+   double next_buffer[];
+   ArrayResize(next_buffer, rates_total);
+   ClearLineBuffer(next_buffer, rates_total);
+   ProjectAnchorsToChart(time, rates_total, ArrayGetAsSeries(time), anchor_times, anchor_values, next_buffer);
+   CopyLineBuffer(next_buffer, V2Buffer, rates_total);
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG Price Line\n",
+         "Price Anchor\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source: PERIOD_M1, completed broker/server days\n",
          "available start: ", TimeToString(source_rates[0].time, TIME_DATE | TIME_MINUTES), "\n",

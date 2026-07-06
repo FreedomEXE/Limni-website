@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
-//|                                                LimniLRMGMA.mq5   |
-//|               LRMG event-based David state ribbon                |
+//|                                                TrendState.mq5    |
+//|               LRMG event-based trend-state ribbon                |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
 #property version   "1.10"
@@ -10,15 +10,15 @@
 #property indicator_minimum -1.2
 #property indicator_maximum 1.2
 
-#property indicator_label1 "LRMG David State"
+#property indicator_label1 "Trend State"
 #property indicator_type1 DRAW_COLOR_HISTOGRAM
 #property indicator_color1 clrLimeGreen,clrTomato,clrSilver
 #property indicator_style1 STYLE_SOLID
 #property indicator_width1 4
 
-#include "Include\\LimniLRMGStackCore.mqh"
+#include "..\\Include\\LimniLRMGStackCore.mqh"
 
-input int ScaleLookbackDays = 20; // 0 = all prior completed days
+input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
 double StateBuffer[];
@@ -98,7 +98,7 @@ int OnInit()
    SetIndexBuffer(0, StateBuffer, INDICATOR_DATA);
    SetIndexBuffer(1, StateColorBuffer, INDICATOR_COLOR_INDEX);
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG David State");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Trend State");
    IndicatorSetInteger(INDICATOR_DIGITS, 0);
    IndicatorSetInteger(INDICATOR_LEVELS, 3);
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 1.0);
@@ -120,10 +120,10 @@ int OnCalculate(
    const int &spread[]
 )
 {
-   for(int i = 0; i < rates_total; i++)
+   if(prev_calculated <= 0)
    {
-      StateBuffer[i] = EMPTY_VALUE;
-      StateColorBuffer[i] = 2.0;
+      LimniClearDoubleBuffer(StateBuffer, rates_total);
+      LimniFillDoubleBuffer(StateColorBuffer, rates_total, 2.0);
    }
 
    datetime chart_oldest = 0;
@@ -164,13 +164,21 @@ int OnCalculate(
    }
 
    bool chart_series = ArrayGetAsSeries(time);
-   LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_ma, StateBuffer);
-   ProjectStateColorToChart(time, rates_total, chart_series, source_times, source_ma_state, StateColorBuffer);
+   double next_state_buffer[];
+   double next_color_buffer[];
+   ArrayResize(next_state_buffer, rates_total);
+   ArrayResize(next_color_buffer, rates_total);
+   LimniClearDoubleBuffer(next_state_buffer, rates_total);
+   LimniFillDoubleBuffer(next_color_buffer, rates_total, 2.0);
+   LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_ma, next_state_buffer);
+   ProjectStateColorToChart(time, rates_total, chart_series, source_times, source_ma_state, next_color_buffer);
+   LimniCopyDoubleBuffer(next_state_buffer, StateBuffer, rates_total);
+   LimniCopyDoubleBuffer(next_color_buffer, StateColorBuffer, rates_total);
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG David State\n",
+         "Trend State\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source bars: ", IntegerToString(copied), "\n",
          "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)
