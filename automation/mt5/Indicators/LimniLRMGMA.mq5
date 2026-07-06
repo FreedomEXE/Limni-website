@@ -1,26 +1,28 @@
 //+------------------------------------------------------------------+
 //|                                                LimniLRMGMA.mq5   |
-//|               LRMG event-price moving state line                 |
+//|               LRMG event-based David state ribbon                |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.00"
-#property indicator_chart_window
+#property version   "1.10"
+#property indicator_separate_window
 #property indicator_buffers 2
 #property indicator_plots 1
+#property indicator_minimum -1.2
+#property indicator_maximum 1.2
 
-#property indicator_label1 "LRMG MA"
-#property indicator_type1 DRAW_COLOR_LINE
+#property indicator_label1 "LRMG David State"
+#property indicator_type1 DRAW_COLOR_HISTOGRAM
 #property indicator_color1 clrLimeGreen,clrTomato,clrSilver
 #property indicator_style1 STYLE_SOLID
-#property indicator_width1 2
+#property indicator_width1 4
 
 #include "Include\\LimniLRMGStackCore.mqh"
 
 input int ScaleLookbackDays = 20; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
-double MaBuffer[];
-double MaColorBuffer[];
+double StateBuffer[];
+double StateColorBuffer[];
 
 bool LoadStackSeries(
    const datetime chart_oldest,
@@ -57,7 +59,7 @@ bool LoadStackSeries(
    );
 }
 
-void ProjectMaColorToChart(
+void ProjectStateColorToChart(
    const datetime &time[],
    const int rates_total,
    const bool chart_series,
@@ -93,11 +95,15 @@ void ProjectMaColorToChart(
 
 int OnInit()
 {
-   SetIndexBuffer(0, MaBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, MaColorBuffer, INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(0, StateBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, StateColorBuffer, INDICATOR_COLOR_INDEX);
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG MA");
-   IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
+   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG David State");
+   IndicatorSetInteger(INDICATOR_DIGITS, 0);
+   IndicatorSetInteger(INDICATOR_LEVELS, 3);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 1.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, 0.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 2, -1.0);
    return INIT_SUCCEEDED;
 }
 
@@ -116,8 +122,8 @@ int OnCalculate(
 {
    for(int i = 0; i < rates_total; i++)
    {
-      MaBuffer[i] = EMPTY_VALUE;
-      MaColorBuffer[i] = 2.0;
+      StateBuffer[i] = EMPTY_VALUE;
+      StateColorBuffer[i] = 2.0;
    }
 
    datetime chart_oldest = 0;
@@ -158,13 +164,13 @@ int OnCalculate(
    }
 
    bool chart_series = ArrayGetAsSeries(time);
-   LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_ma, MaBuffer);
-   ProjectMaColorToChart(time, rates_total, chart_series, source_times, source_ma_state, MaColorBuffer);
+   LimniProjectDoubleToChart(time, rates_total, chart_series, source_times, source_ma, StateBuffer);
+   ProjectStateColorToChart(time, rates_total, chart_series, source_times, source_ma_state, StateColorBuffer);
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG MA\n",
+         "LRMG David State\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source bars: ", IntegerToString(copied), "\n",
          "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)

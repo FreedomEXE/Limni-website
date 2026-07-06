@@ -10,7 +10,9 @@
 #define LIMNI_LRMG_SOURCE_TIMEFRAME PERIOD_M1
 #define LIMNI_LRMG_LINE_EVENT_WINDOW 55
 #define LIMNI_LRMG_STOCH_EVENT_WINDOW 55
-#define LIMNI_LRMG_MA_EVENT_WINDOW 21
+#define LIMNI_LRMG_KTR_RANGE_EVENT_WINDOW 55
+#define LIMNI_LRMG_KTR_MAX_SETUP_AGE_EVENTS 8
+#define LIMNI_LRMG_DAVID_CONFIRM_Q 1.0
 #define LIMNI_LRMG_MIN_DAY_BARS 10
 #define LIMNI_LRMG_MAX_BRICKS_PER_BAR 200
 
@@ -268,24 +270,6 @@ double LimniMedianRecentEvents(const double &events[], const int count, const in
    return LimniMedianValues(samples, sample_count);
 }
 
-double LimniMeanRecentEvents(const double &events[], const int count, const int window)
-{
-   if(count <= 0)
-      return 0.0;
-
-   int start_index = MathMax(0, count - MathMax(1, window));
-   double sum = 0.0;
-   int sample_count = 0;
-
-   for(int i = start_index; i < count; i++)
-   {
-      sum += events[i];
-      sample_count++;
-   }
-
-   return sample_count > 0 ? sum / (double)sample_count : 0.0;
-}
-
 void LimniRecentEventRange(
    const double &events[],
    const int count,
@@ -326,14 +310,126 @@ double LimniBoundedStoch(const double price, const double lo, const double hi)
    return raw;
 }
 
-int LimniMaState(const double current_ma, const double previous_ma, const int previous_state, const double point)
+int LimniLrmgDavidState(
+   const double event_price,
+   const double reference_line,
+   const double q,
+   const int previous_state
+)
 {
-   double epsilon = MathMax(point * 0.1, 0.0);
-   if(current_ma > previous_ma + epsilon)
+   if(reference_line == EMPTY_VALUE || q <= 0.0)
+      return previous_state;
+
+   double z = (event_price - reference_line) / q;
+   if(z >= LIMNI_LRMG_DAVID_CONFIRM_Q)
       return 1;
-   if(current_ma < previous_ma - epsilon)
+   if(z <= -LIMNI_LRMG_DAVID_CONFIRM_Q)
       return -1;
    return previous_state;
+}
+
+void LimniAgeKtrStage(int &stage, int &age)
+{
+   if(stage <= 0)
+      return;
+
+   age++;
+   if(age > LIMNI_LRMG_KTR_MAX_SETUP_AGE_EVENTS)
+   {
+      stage = 0;
+      age = 0;
+   }
+}
+
+int LimniLrmgKataraktiSignal(
+   const double &events[],
+   const int event_index,
+   const double q,
+   int &lower_stage,
+   int &lower_age,
+   double &lower_boundary,
+   int &upper_stage,
+   int &upper_age,
+   double &upper_boundary
+)
+{
+   if(event_index < 2 || q <= 0.0)
+      return 0;
+
+   LimniAgeKtrStage(lower_stage, lower_age);
+   LimniAgeKtrStage(upper_stage, upper_age);
+
+   double prior_lo = 0.0;
+   double prior_hi = 0.0;
+   LimniRecentEventRange(events, event_index, LIMNI_LRMG_KTR_RANGE_EVENT_WINDOW, prior_lo, prior_hi);
+   if(prior_hi <= prior_lo)
+      return 0;
+
+   double price = events[event_index];
+
+   if(price < prior_lo)
+   {
+      lower_stage = 1;
+      lower_age = 0;
+      lower_boundary = prior_lo;
+      upper_stage = 0;
+      upper_age = 0;
+      return 0;
+   }
+
+   if(price > prior_hi)
+   {
+      upper_stage = 1;
+      upper_age = 0;
+      upper_boundary = prior_hi;
+      lower_stage = 0;
+      lower_age = 0;
+      return 0;
+   }
+
+   if(lower_stage == 1 && price > lower_boundary)
+   {
+      lower_stage = 2;
+      lower_age = 0;
+   }
+
+   if(upper_stage == 1 && price < upper_boundary)
+   {
+      upper_stage = 2;
+      upper_age = 0;
+   }
+
+   if(lower_stage == 2)
+   {
+      if(price <= lower_boundary - q)
+      {
+         lower_stage = 1;
+         lower_age = 0;
+      }
+      else if(price >= lower_boundary + q)
+      {
+         lower_stage = 0;
+         lower_age = 0;
+         return 1;
+      }
+   }
+
+   if(upper_stage == 2)
+   {
+      if(price >= upper_boundary + q)
+      {
+         upper_stage = 1;
+         upper_age = 0;
+      }
+      else if(price <= upper_boundary - q)
+      {
+         upper_stage = 0;
+         upper_age = 0;
+         return -1;
+      }
+   }
+
+   return 0;
 }
 
 void LimniCopyDatetimeArray(const datetime &source[], datetime &target[])
@@ -436,12 +532,16 @@ bool LimniBuildStackSeries(
    double closed_events[];
    int closed_event_count = 0;
    int closed_event_capacity = 0;
-   int last_ma_state = 0;
-   double previous_ma = 0.0;
-   double previous_stoch = EMPTY_VALUE;
+   int last_david_state = 0;
+   int lower_ktr_stage = 0;
+   int lower_ktr_age = 0;
+   double lower_ktr_boundary = 0.0;
+   int upper_ktr_stage = 0;
+   int upper_ktr_age = 0;
+   double upper_ktr_boundary = 0.0;
    int cached_metric_event_count = -1;
    double cached_line = EMPTY_VALUE;
-   double cached_ma = EMPTY_VALUE;
+   double cached_state_value = EMPTY_VALUE;
    double cached_lo = 0.0;
    double cached_hi = 0.0;
 
@@ -484,31 +584,39 @@ bool LimniBuildStackSeries(
          {
             if(cached_metric_event_count != closed_event_count)
             {
-               cached_line = LimniMedianRecentEvents(closed_events, closed_event_count, LIMNI_LRMG_LINE_EVENT_WINDOW);
-               cached_ma = LimniMeanRecentEvents(closed_events, closed_event_count, LIMNI_LRMG_MA_EVENT_WINDOW);
-               LimniRecentEventRange(closed_events, closed_event_count, LIMNI_LRMG_STOCH_EVENT_WINDOW, cached_lo, cached_hi);
+               int first_new_event = cached_metric_event_count < 0 ? 0 : cached_metric_event_count;
+               int event_trigger = 0;
+               for(int event_index = first_new_event; event_index < closed_event_count; event_index++)
+               {
+                  double event_line = LimniMedianRecentEvents(closed_events, event_index + 1, LIMNI_LRMG_LINE_EVENT_WINDOW);
+                  last_david_state = LimniLrmgDavidState(closed_events[event_index], event_line, q, last_david_state);
 
-               if(previous_ma != 0.0)
-                  last_ma_state = LimniMaState(cached_ma, previous_ma, last_ma_state, point);
-               previous_ma = cached_ma;
+                  int ktr_signal = LimniLrmgKataraktiSignal(
+                     closed_events,
+                     event_index,
+                     q,
+                     lower_ktr_stage,
+                     lower_ktr_age,
+                     lower_ktr_boundary,
+                     upper_ktr_stage,
+                     upper_ktr_age,
+                     upper_ktr_boundary
+                  );
+                  if(ktr_signal != 0)
+                     event_trigger = ktr_signal;
+               }
+
+               cached_line = LimniMedianRecentEvents(closed_events, closed_event_count, LIMNI_LRMG_LINE_EVENT_WINDOW);
+               cached_state_value = (double)last_david_state;
+               LimniRecentEventRange(closed_events, closed_event_count, LIMNI_LRMG_STOCH_EVENT_WINDOW, cached_lo, cached_hi);
+               out_trigger[i] = event_trigger;
                cached_metric_event_count = closed_event_count;
             }
 
             out_line[i] = cached_line;
-            out_ma[i] = cached_ma;
-            out_ma_state[i] = last_ma_state;
+            out_ma[i] = cached_state_value;
+            out_ma_state[i] = last_david_state;
             out_stoch[i] = LimniBoundedStoch(source_rates[i].close, cached_lo, cached_hi);
-
-            if(previous_stoch != EMPTY_VALUE && out_stoch[i] != EMPTY_VALUE)
-            {
-               if(previous_stoch <= 20.0 && out_stoch[i] > 20.0 && last_ma_state >= 0)
-                  out_trigger[i] = 1;
-               else if(previous_stoch >= 80.0 && out_stoch[i] < 80.0 && last_ma_state <= 0)
-                  out_trigger[i] = -1;
-            }
-
-            if(out_stoch[i] != EMPTY_VALUE)
-               previous_stoch = out_stoch[i];
          }
          else
          {

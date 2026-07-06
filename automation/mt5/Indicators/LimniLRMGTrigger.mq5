@@ -1,19 +1,19 @@
 //+------------------------------------------------------------------+
 //|                                           LimniLRMGTrigger.mq5   |
-//|             LRMG Stoch re-entry + LRMG MA state arrows           |
+//|             LRMG Katarakti-style sweep/reclaim markers           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.00"
+#property version   "1.10"
 #property indicator_chart_window
 #property indicator_buffers 2
 #property indicator_plots 2
 
-#property indicator_label1 "LRMG Buy"
+#property indicator_label1 "LRMG KTR Up"
 #property indicator_type1 DRAW_ARROW
 #property indicator_color1 clrLimeGreen
 #property indicator_width1 2
 
-#property indicator_label2 "LRMG Sell"
+#property indicator_label2 "LRMG KTR Down"
 #property indicator_type2 DRAW_ARROW
 #property indicator_color2 clrTomato
 #property indicator_width2 2
@@ -23,8 +23,8 @@
 input int ScaleLookbackDays = 20; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
-double BuyBuffer[];
-double SellBuffer[];
+double KtrUpBuffer[];
+double KtrDownBuffer[];
 
 bool LoadStackSeries(
    const datetime chart_oldest,
@@ -69,8 +69,8 @@ void ProjectTriggersToChart(
    const double &source_closes[],
    const double &source_q[],
    const int &source_trigger[],
-   double &buy_buffer[],
-   double &sell_buffer[]
+   double &up_buffer[],
+   double &down_buffer[]
 )
 {
    int source_count = ArraySize(source_times);
@@ -103,21 +103,21 @@ void ProjectTriggersToChart(
       double offset = MathMax(q * 0.35, _Point * 5.0);
 
       if(source_trigger[i] > 0)
-         buy_buffer[chart_idx] = source_closes[i] - offset;
+         up_buffer[chart_idx] = source_closes[i] - offset;
       else if(source_trigger[i] < 0)
-         sell_buffer[chart_idx] = source_closes[i] + offset;
+         down_buffer[chart_idx] = source_closes[i] + offset;
    }
 }
 
 int OnInit()
 {
-   SetIndexBuffer(0, BuyBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, SellBuffer, INDICATOR_DATA);
+   SetIndexBuffer(0, KtrUpBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, KtrDownBuffer, INDICATOR_DATA);
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, EMPTY_VALUE);
    PlotIndexSetInteger(0, PLOT_ARROW, 233);
    PlotIndexSetInteger(1, PLOT_ARROW, 234);
-   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG Trigger");
+   IndicatorSetString(INDICATOR_SHORTNAME, "LRMG Katarakti Events");
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
    return INIT_SUCCEEDED;
 }
@@ -137,8 +137,8 @@ int OnCalculate(
 {
    for(int i = 0; i < rates_total; i++)
    {
-      BuyBuffer[i] = EMPTY_VALUE;
-      SellBuffer[i] = EMPTY_VALUE;
+      KtrUpBuffer[i] = EMPTY_VALUE;
+      KtrDownBuffer[i] = EMPTY_VALUE;
    }
 
    datetime chart_oldest = 0;
@@ -186,14 +186,14 @@ int OnCalculate(
       source_closes,
       source_q,
       source_trigger,
-      BuyBuffer,
-      SellBuffer
+      KtrUpBuffer,
+      KtrDownBuffer
    );
 
    if(ShowDebugComment)
    {
       Comment(
-         "LRMG Trigger\n",
+         "LRMG Katarakti Events\n",
          "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
          "source bars: ", IntegerToString(copied), "\n",
          "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)
