@@ -3,7 +3,7 @@
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.15"
+#property version   "1.16"
 #property indicator_separate_window
 #property indicator_buffers 1
 #property indicator_plots 1
@@ -18,9 +18,10 @@
 #property indicator_style1 STYLE_SOLID
 #property indicator_width1 2
 
-#include "..\\Include\\LimniVisualRuntimeSnapshot.mqh"
+#include "..\\Include\\LimniLRMGStackCore.mqh"
 
 input int ScaleLookbackDays = 0; // 0 = all prior completed days
+input int VisualMaxM1Bars = 0; // 0 = all available closed M1 bars
 input bool ShowDebugComment = false;
 
 const int STOCHASTIC_MAX_INCREMENTAL_PROJECT_BARS = 50000;
@@ -31,6 +32,7 @@ datetime g_stack_cache_from = 0;
 datetime g_stack_latest_closed_m1 = 0;
 bool g_stack_ready = false;
 int g_stack_scale_lookback_days = -999;
+int g_stack_visual_max_m1_bars = -999;
 double g_stack_point = 0.0;
 datetime g_projected_chart_oldest = 0;
 datetime g_projected_chart_newest = 0;
@@ -67,6 +69,7 @@ bool EnsureStackCache(
    datetime latest_closed_m1 = LatestClosedM1();
    if(g_stack_ready &&
       g_stack_scale_lookback_days == ScaleLookbackDays &&
+      g_stack_visual_max_m1_bars == MathMax(0, VisualMaxM1Bars) &&
       g_stack_point == _Point &&
       g_stack_latest_closed_m1 == latest_closed_m1 &&
       LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
@@ -74,20 +77,17 @@ bool EnsureStackCache(
       return true;
    }
 
-   datetime snapshot_latest = 0;
-   ulong snapshot_hash = 0;
-   string direct_reason = "";
-   string build_reason = "";
-   string snapshot_reason = "";
-
+   int visual_max_m1_bars = MathMax(0, VisualMaxM1Bars);
    double direct_point = _Point;
    if(direct_point <= 0.0)
       direct_point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
-   bool stack_ok = LimniLoadCachedStackSeries(
+   string reason = "";
+   bool stack_ok = LimniLoadVisualStackSeries(
       chart_oldest,
       chart_newest,
       ScaleLookbackDays,
+      visual_max_m1_bars,
       direct_point,
       g_source_times,
       g_source_closes,
@@ -99,116 +99,30 @@ bool EnsureStackCache(
       g_source_trigger,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count
-   );
-   if(stack_ok && ArraySize(g_source_times) > 0)
-   {
-      snapshot_latest = g_source_times[ArraySize(g_source_times) - 1];
-      g_stack_point = direct_point;
-      direct_reason = "direct_cached_stack_ready";
-   }
-   else
-   {
-      direct_reason = "direct_cached_stack_failed";
-      stack_ok = LimniVisualBuildStackSnapshot(
-         _Symbol,
-         ScaleLookbackDays,
-         g_source_times,
-         g_source_closes,
-         g_source_q,
-         g_source_line,
-         g_source_stoch,
-         g_source_ma,
-         g_source_ma_state,
-         g_source_trigger,
-         g_stack_copied,
-         g_stack_day_count,
-         g_stack_valid_q_day_count,
-         g_stack_point,
-         build_reason
-      );
-      if(stack_ok)
-      {
-         int fallback_count = ArraySize(g_source_times);
-         if(fallback_count <= 0)
-         {
-            stack_ok = false;
-            build_reason = "local_fallback_empty";
-         }
-         else
-            snapshot_latest = g_source_times[fallback_count - 1];
-      }
-   }
-
-   if(stack_ok)
-   {
-      ulong write_hash = 0;
-      string write_reason = "";
-      LimniVisualWriteStackSnapshot(
-         _Symbol,
-         ScaleLookbackDays,
-         g_stack_point,
-         g_source_times,
-         g_source_closes,
-         g_source_q,
-         g_source_line,
-         g_source_stoch,
-         g_source_ma,
-         g_source_ma_state,
-         g_source_trigger,
-         g_stack_copied,
-         g_stack_day_count,
-         g_stack_valid_q_day_count,
-         write_hash,
-         write_reason
-      );
-   }
-   else
-   {
-      bool snapshot_ok = LimniVisualReadStackSnapshot(
-      _Symbol,
-      ScaleLookbackDays,
-      g_source_times,
-      g_source_closes,
-      g_source_q,
-      g_source_line,
-      g_source_stoch,
-      g_source_ma,
-      g_source_ma_state,
-      g_source_trigger,
-      g_stack_copied,
-      g_stack_day_count,
       g_stack_valid_q_day_count,
-      g_stack_point,
-      snapshot_latest,
-      snapshot_hash,
-         snapshot_reason
-      );
-
-      stack_ok =
-         snapshot_ok &&
-         snapshot_latest >= latest_closed_m1 &&
-         LimniSourceSeriesCoversChart(g_source_times, chart_oldest);
-      if(!stack_ok)
+      reason
+   );
+   if(!stack_ok || ArraySize(g_source_times) <= 0)
+   {
+      g_stack_failure_reason = reason == "" ? "visual_stack_empty" : reason;
+      if(g_stack_failure_reason != g_last_logged_stack_failure_reason)
       {
-         g_stack_failure_reason =
-            "direct=" + direct_reason +
-            "; build=" + (build_reason == "" ? "not_attempted" : build_reason) +
-            "; snapshot=" + (snapshot_reason == "" ? "not_available" : snapshot_reason);
-         if(g_stack_failure_reason != g_last_logged_stack_failure_reason)
-         {
-            Print("Limni Stochastic stack unavailable: ", g_stack_failure_reason);
-            g_last_logged_stack_failure_reason = g_stack_failure_reason;
-         }
-         if(ShowDebugComment)
-            Comment("Stochastic\n", g_stack_failure_reason);
-         return false;
+         Print("Limni Stochastic visual stack unavailable: ", g_stack_failure_reason);
+         g_last_logged_stack_failure_reason = g_stack_failure_reason;
       }
+      if(ShowDebugComment)
+         Comment("Stochastic\n", g_stack_failure_reason);
+      if(g_stack_ready && ArraySize(g_source_times) > 0)
+         return true;
+      return false;
    }
 
+   datetime snapshot_latest = g_source_times[ArraySize(g_source_times) - 1];
    g_stack_cache_from = chart_oldest;
    g_stack_latest_closed_m1 = snapshot_latest;
    g_stack_scale_lookback_days = ScaleLookbackDays;
+   g_stack_visual_max_m1_bars = visual_max_m1_bars;
+   g_stack_point = direct_point;
    g_stack_ready = true;
    g_stack_failure_reason = "";
    refreshed = true;
@@ -290,6 +204,7 @@ int OnCalculate(
          Comment(
             "Stochastic\n",
             "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
+            "visual max M1 bars: ", IntegerToString(MathMax(0, VisualMaxM1Bars)), "\n",
             "source bars: ", IntegerToString(g_stack_copied), "\n",
             "days: ", IntegerToString(g_stack_day_count),
             " valid q days: ", IntegerToString(g_stack_valid_q_day_count)

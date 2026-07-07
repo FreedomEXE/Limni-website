@@ -1,9 +1,9 @@
 //+------------------------------------------------------------------+
 //|                                             StateMap.mq5         |
-//|                   Limni State Map shared LRMG/q viewer           |
+//|                   Limni pair-state visual viewer                 |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.58"
+#property version   "1.59"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -20,9 +20,10 @@
 #property indicator_style2 STYLE_SOLID
 #property indicator_width2 3
 
-#include "..\\Include\\LimniVisualRuntimeSnapshot.mqh"
+#include "..\\Include\\LimniLRMGStackCore.mqh"
 
 input bool ShowCenterLine = true;
+input int VisualMaxM1Bars = 0; // 0 = all available closed M1 bars
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS = 50000;
@@ -61,6 +62,7 @@ double StateColorBuffer[];
 datetime g_stack_cache_from = 0;
 datetime g_stack_latest_closed_m1 = 0;
 bool g_stack_ready = false;
+int g_stack_visual_max_m1_bars = -999;
 double g_stack_point = 0.0;
 datetime g_projected_chart_oldest = 0;
 datetime g_projected_chart_newest = 0;
@@ -75,51 +77,23 @@ int g_source_trigger[];
 int g_stack_copied = 0;
 int g_stack_day_count = 0;
 int g_stack_valid_q_day_count = 0;
-string g_stack_failure_reason = "";
+string g_stack_status_reason = "waiting_for_m1";
 string g_last_logged_stack_failure_reason = "";
 
-datetime g_last_qstate_refresh_bar = 0;
-string g_qstate_label = "NO TRADE";
-string g_qstate_reason = "not_refreshed";
-string g_qstate_details = "";
-datetime g_qstate_asof = 0;
-double g_qstate_score = 0.0;
-double g_qstate_confidence = 0.0;
-color g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
+string g_pair_signal_label = "VISUAL ONLY";
+string g_pair_status_detail = "chart-symbol M1 stack";
+color g_pair_signal_color = STATE_MAP_NEUTRAL_COLOR;
 
 bool g_panel_ready = false;
 string g_panel_signature = "";
 bool g_panel_minimized = false;
-bool g_panel_user_moved = false;
-int g_panel_x = -1;
-int g_panel_y = -1;
 double g_panel_latest_anchor = EMPTY_VALUE;
 int g_panel_latest_trend_state = 0;
 double g_panel_latest_stoch = EMPTY_VALUE;
+double g_panel_latest_q = EMPTY_VALUE;
 int g_panel_latest_copied = 0;
+int g_panel_latest_day_count = 0;
 int g_panel_latest_valid_q_day_count = 0;
-
-void StateMapSetQStateFailure(const string reason, const string details)
-{
-   g_qstate_label = "FAIL CLOSED";
-   g_qstate_color = STATE_MAP_STRESS_COLOR;
-   g_qstate_reason = reason == "" ? "qstate_unavailable" : reason;
-   g_qstate_asof = 0;
-   g_qstate_score = 0.0;
-   g_qstate_confidence = 0.0;
-   g_qstate_details = details;
-}
-
-void StateMapSetQStateSnapshotUnavailable(const string reason, const string details)
-{
-   g_qstate_label = "NO TRADE";
-   g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
-   g_qstate_reason = reason == "" ? "qstate_snapshot_missing" : reason;
-   g_qstate_asof = 0;
-   g_qstate_score = 0.0;
-   g_qstate_confidence = 0.0;
-   g_qstate_details = details;
-}
 
 void StateMapDeleteObjects()
 {
@@ -151,6 +125,21 @@ int StateMapPanelLeft()
    return MathMax(12, chart_width - STATE_MAP_PANEL_WIDTH - STATE_MAP_PANEL_RIGHT);
 }
 
+int StateMapPanelHeight()
+{
+   return g_panel_minimized ? STATE_MAP_PANEL_MINIMIZED_HEIGHT : STATE_MAP_PANEL_HEIGHT;
+}
+
+int StateMapPanelX(const int local_x)
+{
+   return StateMapPanelLeft() + local_x;
+}
+
+int StateMapPanelY(const int local_y)
+{
+   return STATE_MAP_PANEL_TOP + local_y;
+}
+
 string StateMapClip(const string value, const int max_len)
 {
    if(max_len <= 0 || StringLen(value) <= max_len)
@@ -176,11 +165,13 @@ string StateMapReasonLabel(const string reason)
    return StateMapClip(output, 34);
 }
 
-string StateMapSignedScoreLabel(const double value)
+string StateMapSignedValueLabel(const double value, const int digits = 2)
 {
+   if(value == EMPTY_VALUE || !MathIsValidNumber(value))
+      return "n/a";
    if(value > 0.0)
-      return "+" + DoubleToString(value, 2);
-   return DoubleToString(value, 2);
+      return "+" + DoubleToString(value, digits);
+   return DoubleToString(value, digits);
 }
 
 string StateMapTrendLabel(const int state)
@@ -190,32 +181,6 @@ string StateMapTrendLabel(const int state)
    if(state < 0)
       return "DOWN";
    return "NEUTRAL";
-}
-
-bool StateMapHasQStateSnapshot()
-{
-   return g_qstate_asof > 0;
-}
-
-string StateMapPanelStateLabel()
-{
-   if(g_qstate_label == "FAIL CLOSED")
-      return "DATA CHECK";
-   return g_qstate_label;
-}
-
-string StateMapPanelScoreLabel()
-{
-   if(!StateMapHasQStateSnapshot())
-      return "n/a";
-   return StateMapSignedScoreLabel(g_qstate_score);
-}
-
-string StateMapPanelConfidenceLabel()
-{
-   if(!StateMapHasQStateSnapshot())
-      return "n/a";
-   return DoubleToString(g_qstate_confidence, 2);
 }
 
 string StateMapStochZoneLabel(const double value)
@@ -229,14 +194,6 @@ string StateMapStochZoneLabel(const double value)
    return "mid zone";
 }
 
-string StateMapPanelStatusLabel()
-{
-   if(g_qstate_label == "FAIL CLOSED")
-      return StateMapReasonLabel(g_qstate_reason);
-   string reason = StateMapReasonLabel(g_qstate_reason);
-   return reason == "unknown" || reason == "not refreshed" ? "ready" : reason;
-}
-
 color StateMapTrendColor(const int state)
 {
    if(state > 0)
@@ -246,24 +203,20 @@ color StateMapTrendColor(const int state)
    return STATE_MAP_MUTED_COLOR;
 }
 
-color StateMapQStateColor(const int state, const int trade_direction)
+void StateMapSetVisualReady()
 {
-   if(state == LIMNI_QSTATE_PAIR_STATE_STRESS)
-      return STATE_MAP_STRESS_COLOR;
-   if(trade_direction == LIMNI_QSTATE_SIDE_LONG)
-      return STATE_MAP_LONG_COLOR;
-   if(trade_direction == LIMNI_QSTATE_SIDE_SHORT)
-      return STATE_MAP_SHORT_COLOR;
-   return STATE_MAP_NEUTRAL_COLOR;
+   g_pair_signal_label = "VISUAL ONLY";
+   g_pair_signal_color = STATE_MAP_NEUTRAL_COLOR;
+   g_stack_status_reason = "pair_stack_ready";
+   g_pair_status_detail = "portfolio separate";
 }
 
-color StateMapSignedValueColor(const double value)
+void StateMapSetVisualFailure(const string reason)
 {
-   if(value > 0.0)
-      return STATE_MAP_LONG_COLOR;
-   if(value < 0.0)
-      return STATE_MAP_SHORT_COLOR;
-   return STATE_MAP_TEXT_COLOR;
+   g_pair_signal_label = "DATA CHECK";
+   g_pair_signal_color = STATE_MAP_STRESS_COLOR;
+   g_stack_status_reason = reason == "" ? "visual_stack_unavailable" : reason;
+   g_pair_status_detail = "check M1 source";
 }
 
 datetime StateMapLatestClosedM1()
@@ -282,29 +235,28 @@ bool StateMapEnsureStackCache(
 {
    refreshed = false;
    datetime latest_closed_m1 = StateMapLatestClosedM1();
+   int visual_max_m1_bars = MathMax(0, VisualMaxM1Bars);
 
    if(g_stack_ready &&
+      g_stack_visual_max_m1_bars == visual_max_m1_bars &&
       g_stack_point == _Point &&
       g_stack_latest_closed_m1 == latest_closed_m1 &&
       LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
    {
+      StateMapSetVisualReady();
       return true;
    }
-
-   datetime snapshot_latest = 0;
-   ulong snapshot_hash = 0;
-   string direct_reason = "";
-   string build_reason = "";
-   string snapshot_reason = "";
 
    double direct_point = _Point;
    if(direct_point <= 0.0)
       direct_point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
-   bool stack_ok = LimniLoadCachedStackSeries(
+   string reason = "";
+   bool stack_ok = LimniLoadVisualStackSeries(
       chart_oldest,
       chart_newest,
       STATE_MAP_SCALE_LOOKBACK_DAYS,
+      visual_max_m1_bars,
       direct_point,
       g_source_times,
       g_source_closes,
@@ -316,168 +268,31 @@ bool StateMapEnsureStackCache(
       g_source_trigger,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count
+      g_stack_valid_q_day_count,
+      reason
    );
-   if(stack_ok && ArraySize(g_source_times) > 0)
-   {
-      snapshot_latest = g_source_times[ArraySize(g_source_times) - 1];
-      g_stack_point = direct_point;
-      direct_reason = "direct_cached_stack_ready";
-   }
-   else
-   {
-      direct_reason = "direct_cached_stack_failed";
-      stack_ok = LimniVisualBuildStackSnapshot(
-         _Symbol,
-         STATE_MAP_SCALE_LOOKBACK_DAYS,
-         g_source_times,
-         g_source_closes,
-         g_source_q,
-         g_source_line,
-         g_source_stoch,
-         g_source_ma,
-         g_source_ma_state,
-         g_source_trigger,
-         g_stack_copied,
-         g_stack_day_count,
-         g_stack_valid_q_day_count,
-         g_stack_point,
-         build_reason
-      );
-      if(stack_ok)
-      {
-         int fallback_count = ArraySize(g_source_times);
-         if(fallback_count <= 0)
-         {
-            stack_ok = false;
-            build_reason = "local_fallback_empty";
-         }
-         else
-            snapshot_latest = g_source_times[fallback_count - 1];
-      }
-   }
 
-   if(stack_ok)
+   if(!stack_ok || ArraySize(g_source_times) <= 0)
    {
-      ulong write_hash = 0;
-      string write_reason = "";
-      LimniVisualWriteStackSnapshot(
-         _Symbol,
-         STATE_MAP_SCALE_LOOKBACK_DAYS,
-         g_stack_point,
-         g_source_times,
-         g_source_closes,
-         g_source_q,
-         g_source_line,
-         g_source_stoch,
-         g_source_ma,
-         g_source_ma_state,
-         g_source_trigger,
-         g_stack_copied,
-         g_stack_day_count,
-         g_stack_valid_q_day_count,
-         write_hash,
-         write_reason
-      );
-   }
-   else
-   {
-      bool snapshot_ok = LimniVisualReadStackSnapshot(
-         _Symbol,
-         STATE_MAP_SCALE_LOOKBACK_DAYS,
-         g_source_times,
-         g_source_closes,
-         g_source_q,
-         g_source_line,
-         g_source_stoch,
-         g_source_ma,
-         g_source_ma_state,
-         g_source_trigger,
-         g_stack_copied,
-         g_stack_day_count,
-         g_stack_valid_q_day_count,
-         g_stack_point,
-         snapshot_latest,
-         snapshot_hash,
-         snapshot_reason
-      );
-
-      stack_ok =
-         snapshot_ok &&
-         snapshot_latest >= latest_closed_m1 &&
-         LimniSourceSeriesCoversChart(g_source_times, chart_oldest);
-      if(!stack_ok)
+      StateMapSetVisualFailure(reason == "" ? "visual_stack_empty" : reason);
+      if(g_stack_status_reason != g_last_logged_stack_failure_reason)
       {
-         g_stack_failure_reason =
-            "direct=" + direct_reason +
-            "; build=" + (build_reason == "" ? "not_attempted" : build_reason) +
-            "; snapshot=" + (snapshot_reason == "" ? "not_available" : snapshot_reason);
-         if(g_stack_failure_reason != g_last_logged_stack_failure_reason)
-         {
-            Print("Limni StateMap stack unavailable: ", g_stack_failure_reason);
-            g_last_logged_stack_failure_reason = g_stack_failure_reason;
-         }
-         StateMapSetQStateFailure(g_stack_failure_reason, "Visual stack unavailable.");
-         return false;
+         Print("Limni StateMap visual stack unavailable: ", g_stack_status_reason);
+         g_last_logged_stack_failure_reason = g_stack_status_reason;
       }
+      if(g_stack_ready && ArraySize(g_source_times) > 0)
+         return true;
+      return false;
    }
 
    g_stack_cache_from = chart_oldest;
-   g_stack_latest_closed_m1 = snapshot_latest;
+   g_stack_latest_closed_m1 = g_source_times[ArraySize(g_source_times) - 1];
+   g_stack_visual_max_m1_bars = visual_max_m1_bars;
+   g_stack_point = direct_point;
    g_stack_ready = true;
-   g_stack_failure_reason = "";
+   StateMapSetVisualReady();
    refreshed = true;
    return true;
-}
-
-int StateMapPanelHeight()
-{
-   return g_panel_minimized ? STATE_MAP_PANEL_MINIMIZED_HEIGHT : STATE_MAP_PANEL_HEIGHT;
-}
-
-int StateMapDefaultPanelX()
-{
-   return StateMapPanelLeft();
-}
-
-int StateMapDefaultPanelY()
-{
-   return STATE_MAP_PANEL_TOP;
-}
-
-void StateMapClampPanelPosition()
-{
-   int chart_width = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS, 0);
-   int chart_height = (int)ChartGetInteger(0, CHART_HEIGHT_IN_PIXELS, 0);
-   if(chart_width <= 0)
-      chart_width = STATE_MAP_PANEL_WIDTH + STATE_MAP_PANEL_RIGHT + 24;
-   if(chart_height <= 0)
-      chart_height = STATE_MAP_PANEL_HEIGHT + STATE_MAP_PANEL_TOP + 24;
-
-   int max_x = MathMax(8, chart_width - STATE_MAP_PANEL_WIDTH - 8);
-   int max_y = MathMax(8, chart_height - StateMapPanelHeight() - 8);
-   g_panel_x = MathMax(8, MathMin(max_x, g_panel_x));
-   g_panel_y = MathMax(8, MathMin(max_y, g_panel_y));
-}
-
-void StateMapEnsurePanelPosition()
-{
-   g_panel_x = StateMapDefaultPanelX();
-   g_panel_y = StateMapDefaultPanelY();
-   g_panel_user_moved = false;
-   StateMapClampPanelPosition();
-}
-
-int StateMapPanelX(const int local_x)
-{
-   StateMapEnsurePanelPosition();
-   return g_panel_x + local_x;
-}
-
-int StateMapPanelY(const int local_y)
-{
-   StateMapEnsurePanelPosition();
-   return g_panel_y + local_y;
 }
 
 void StateMapDrawRect(
@@ -488,8 +303,7 @@ void StateMapDrawRect(
    const int height,
    const color fill,
    const color border,
-   const int z_order,
-   const bool selectable = false
+   const int z_order
 )
 {
    if(ObjectFind(0, name) < 0)
@@ -503,7 +317,7 @@ void StateMapDrawRect(
    ObjectSetInteger(0, name, OBJPROP_BGCOLOR, fill);
    ObjectSetInteger(0, name, OBJPROP_COLOR, border);
    ObjectSetInteger(0, name, OBJPROP_BACK, false);
-   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, selectable);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
    ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
    ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
@@ -517,8 +331,7 @@ void StateMapDrawText(
    const color text_color,
    const int font_size,
    const int z_order,
-   const string font_name = "Segoe UI",
-   const bool selectable = false
+   const string font_name = "Segoe UI"
 )
 {
    if(ObjectFind(0, name) < 0)
@@ -531,7 +344,7 @@ void StateMapDrawText(
    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, font_size);
    ObjectSetString(0, name, OBJPROP_FONT, font_name);
    ObjectSetString(0, name, OBJPROP_TEXT, text);
-   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, selectable);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
    ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
    ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
@@ -606,70 +419,69 @@ void StateMapUpdatePanel(
    const double latest_anchor,
    const int latest_trend_state,
    const double latest_stoch,
+   const double latest_q,
    const int copied,
+   const int day_count,
    const int valid_q_day_count
 )
 {
    if(!StateMapCreateDialog())
       return;
 
-   StateMapEnsurePanelPosition();
    g_panel_latest_anchor = latest_anchor;
    g_panel_latest_trend_state = latest_trend_state;
    g_panel_latest_stoch = latest_stoch;
+   g_panel_latest_q = latest_q;
    g_panel_latest_copied = copied;
+   g_panel_latest_day_count = day_count;
    g_panel_latest_valid_q_day_count = valid_q_day_count;
 
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
+   string q_value = StateMapSignedValueLabel(latest_q, 4);
    string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
    string bars_value = IntegerToString(copied);
    string q_days_value = IntegerToString(valid_q_day_count);
-   string reason_value = StateMapReasonLabel(g_qstate_reason);
-   string m1_label = g_qstate_asof > 0 ? StateMapTimeLabel(g_qstate_asof) : StateMapTimeLabel(g_stack_latest_closed_m1);
-   string score_value = StateMapPanelScoreLabel();
-   string confidence_value = StateMapPanelConfidenceLabel();
+   string day_count_value = IntegerToString(day_count);
+   string reason_value = StateMapReasonLabel(g_stack_status_reason);
+   string m1_label = StateMapTimeLabel(g_stack_latest_closed_m1);
    string trend_value = StateMapTrendLabel(latest_trend_state);
-   string state_value = StateMapPanelStateLabel();
-   string status_value = StateMapPanelStatusLabel();
    string center_detail = ShowCenterLine ? "center line on" : "center line off";
    string stoch_detail = StateMapStochZoneLabel(latest_stoch);
+   string source_detail = "max M1 " + IntegerToString(MathMax(0, VisualMaxM1Bars));
 
    string signature =
-      IntegerToString(g_panel_x) + "|" +
-      IntegerToString(g_panel_y) + "|" +
+      IntegerToString(StateMapPanelLeft()) + "|" +
       (g_panel_minimized ? "min" : "full") + "|" +
-      state_value + "|" +
-      status_value + "|" +
+      g_pair_signal_label + "|" +
       reason_value + "|" +
-      IntegerToString((int)g_qstate_asof) + "|" +
-      DoubleToString(g_qstate_score, 4) + "|" +
-      DoubleToString(g_qstate_confidence, 4) + "|" +
+      g_pair_status_detail + "|" +
+      m1_label + "|" +
       IntegerToString(latest_trend_state) + "|" +
       stoch_value + "|" +
+      q_value + "|" +
       anchor_value + "|" +
       bars_value + "|" +
       q_days_value + "|" +
-      center_detail + "|" +
-      stoch_detail;
+      day_count_value + "|" +
+      source_detail;
 
    if(signature == g_panel_signature)
       return;
 
-   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
-   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_qstate_color, g_qstate_color, 42, false);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 18, g_panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", false);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", state_value, g_panel_x + 18, g_panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(state_value) > 11 ? 15 : 18, 44, "Segoe UI Semibold", false);
-   StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", g_panel_x + STATE_MAP_PANEL_WIDTH - 42, g_panel_y + 18, 26, 26, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
+   int panel_x = StateMapPanelLeft();
+   int panel_y = STATE_MAP_PANEL_TOP;
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", panel_x, panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", panel_x, panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_pair_signal_color, g_pair_signal_color, 42);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", panel_x + 18, panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold");
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", g_pair_signal_label, panel_x + 18, panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(g_pair_signal_label) > 11 ? 15 : 18, 44, "Segoe UI Semibold");
+   StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", panel_x + STATE_MAP_PANEL_WIDTH - 42, panel_y + 18, 26, 26, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
 
    if(g_panel_minimized)
    {
-      ObjectSetString(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_TEXT, "+");
       StateMapDeletePanelData();
       g_panel_signature = signature;
       return;
    }
-
-   ObjectSetString(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_TEXT, "-");
 
    int left_x = STATE_MAP_PANEL_PAD;
    int right_x = STATE_MAP_PANEL_PAD + STATE_MAP_BLOCK_WIDTH + STATE_MAP_BLOCK_GAP;
@@ -678,133 +490,29 @@ void StateMapUpdatePanel(
    int row_3 = row_2 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
    int row_4 = row_3 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
 
-   StateMapDrawPanelBlock(
-      "Signal",
-      "SIGNAL",
-      state_value,
-      status_value,
-      left_x,
-      row_1,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      g_qstate_color
-   );
-   StateMapDrawPanelBlock(
-      "AsOf",
-      "AS-OF",
-      m1_label,
-      "closed M1",
-      right_x,
-      row_1,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_NEUTRAL_COLOR
-   );
-   StateMapDrawPanelBlock(
-      "Score",
-      "SCORE",
-      score_value,
-      "direction",
-      left_x,
-      row_2,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      StateMapHasQStateSnapshot() ? StateMapSignedValueColor(g_qstate_score) : STATE_MAP_NEUTRAL_COLOR
-   );
-   StateMapDrawPanelBlock(
-      "Confidence",
-      "CONFIDENCE",
-      confidence_value,
-      "q-state",
-      right_x,
-      row_2,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_NEUTRAL_COLOR
-   );
-   StateMapDrawPanelBlock(
-      "Trend",
-      "TREND",
-      trend_value,
-      center_detail,
-      left_x,
-      row_3,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      StateMapTrendColor(latest_trend_state)
-   );
-   StateMapDrawPanelBlock(
-      "Stochastic",
-      "STOCHASTIC",
-      stoch_value,
-      stoch_detail,
-      right_x,
-      row_3,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_STOCH_LINE
-   );
-   StateMapDrawPanelBlock(
-      "Anchor",
-      "ANCHOR",
-      anchor_value,
-      "center price",
-      left_x,
-      row_4,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_STOCH_LINE
-   );
-   StateMapDrawPanelBlock(
-      "Bars",
-      "BARS",
-      bars_value,
-      "q-days " + q_days_value,
-      right_x,
-      row_4,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_STRESS_COLOR
-   );
+   StateMapDrawPanelBlock("Signal", "PAIR SIGNAL", g_pair_signal_label, "chart symbol only", left_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, g_pair_signal_color);
+   StateMapDrawPanelBlock("AsOf", "AS-OF", m1_label, "closed M1", right_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
+   StateMapDrawPanelBlock("Status", "STATUS", reason_value, g_pair_status_detail, left_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, g_pair_signal_color);
+   StateMapDrawPanelBlock("Q", "Q", q_value, "q-days " + q_days_value, right_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
+   StateMapDrawPanelBlock("Trend", "TREND", trend_value, center_detail, left_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, StateMapTrendColor(latest_trend_state));
+   StateMapDrawPanelBlock("Stochastic", "STOCHASTIC", stoch_value, stoch_detail, right_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
+   StateMapDrawPanelBlock("Anchor", "ANCHOR", anchor_value, "center price", left_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
+   StateMapDrawPanelBlock("Bars", "BARS", bars_value, "days " + day_count_value, right_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STRESS_COLOR);
 
    g_panel_signature = signature;
-}
-
-bool StateMapRefreshQState()
-{
-   datetime latest_closed_m1 = StateMapLatestClosedM1();
-   LimniVisualQStateSnapshot snapshot;
-   string reason = "";
-   bool snapshot_ok = LimniVisualReadQStateSnapshot(_Symbol, snapshot, reason);
-   if(snapshot_ok && snapshot.valid && snapshot.portfolio_asof_m1_time >= latest_closed_m1)
-   {
-      g_qstate_label = LimniQStateDirectionLabel(snapshot.trade_direction);
-      g_qstate_color = StateMapQStateColor(snapshot.state, snapshot.trade_direction);
-      g_qstate_reason = snapshot.reason_code;
-      g_qstate_asof = snapshot.portfolio_asof_m1_time;
-      g_qstate_score = snapshot.pair_direction_score;
-      g_qstate_confidence = snapshot.confidence;
-      g_qstate_details = snapshot.detail;
-      return true;
-   }
-
-   string qstate_reason = reason == "" ? "qstate_snapshot_missing" : reason;
-   if(snapshot_ok && snapshot.portfolio_asof_m1_time > 0 && snapshot.portfolio_asof_m1_time < latest_closed_m1)
-      qstate_reason = "qstate_snapshot_stale";
-
-   StateMapSetQStateSnapshotUnavailable(qstate_reason, "Q-state snapshot unavailable; visual stack remains active.");
-   return false;
 }
 
 void StateMapRenderPanel(
    const double latest_anchor,
    const int latest_trend_state,
    const double latest_stoch,
+   const double latest_q,
    const int copied,
+   const int day_count,
    const int valid_q_day_count
 )
 {
-   StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, copied, valid_q_day_count);
+   StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, latest_q, copied, day_count, valid_q_day_count);
 }
 
 int OnInit()
@@ -818,7 +526,7 @@ int OnInit()
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
    StateMapDeleteObjects();
    StateMapCreateDialog();
-   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
+   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0);
    return INIT_SUCCEEDED;
 }
 
@@ -829,27 +537,6 @@ void OnDeinit(const int reason)
    g_panel_signature = "";
 }
 
-bool StateMapPanelDragOffset(const string name, int &local_x, int &local_y)
-{
-   local_x = 0;
-   local_y = 0;
-   if(name == STATE_MAP_PANEL_PREFIX + "Header")
-      return true;
-   if(name == STATE_MAP_PANEL_PREFIX + "Title")
-   {
-      local_x = 18;
-      local_y = 10;
-      return true;
-   }
-   if(name == STATE_MAP_PANEL_PREFIX + "State")
-   {
-      local_x = 18;
-      local_y = 32;
-      return true;
-   }
-   return false;
-}
-
 void StateMapRefreshPanelFromStored()
 {
    g_panel_signature = "";
@@ -857,7 +544,9 @@ void StateMapRefreshPanelFromStored()
       g_panel_latest_anchor,
       g_panel_latest_trend_state,
       g_panel_latest_stoch,
+      g_panel_latest_q,
       g_panel_latest_copied,
+      g_panel_latest_day_count,
       g_panel_latest_valid_q_day_count
    );
 }
@@ -873,24 +562,12 @@ void OnChartEvent(
    {
       g_panel_minimized = !g_panel_minimized;
       ObjectSetInteger(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_STATE, false);
-      StateMapClampPanelPosition();
-      StateMapRefreshPanelFromStored();
-      return;
-   }
-
-   if(id == CHARTEVENT_OBJECT_DRAG)
-   {
       StateMapRefreshPanelFromStored();
       return;
    }
 
    if(id == CHARTEVENT_CHART_CHANGE)
-   {
-      g_panel_x = -1;
-      g_panel_y = -1;
-      g_panel_user_moved = false;
       StateMapRefreshPanelFromStored();
-   }
 }
 
 int OnCalculate(
@@ -920,19 +597,13 @@ int OnCalculate(
       return rates_total;
 
    bool stack_refreshed = false;
-   if(!StateMapEnsureStackCache(
-      chart_oldest,
-      chart_newest,
-      stack_refreshed
-   ))
+   if(!StateMapEnsureStackCache(chart_oldest, chart_newest, stack_refreshed))
    {
-      StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
+      StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0);
       return 0;
    }
    if(stack_refreshed)
-   {
       g_panel_signature = "";
-   }
 
    bool chart_series = ArrayGetAsSeries(time);
    int limit = stack_refreshed ?
@@ -955,15 +626,7 @@ int OnCalculate(
 
    if(ShowCenterLine)
    {
-      LimniProjectDoubleToChartLimit(
-         time,
-         rates_total,
-         chart_series,
-         g_source_times,
-         g_source_line,
-         PriceAnchorBuffer,
-         limit
-      );
+      LimniProjectDoubleToChartLimit(time, rates_total, chart_series, g_source_times, g_source_line, PriceAnchorBuffer, limit);
 
       for(int recent = limit - 1; recent >= 0; recent--)
       {
@@ -1000,24 +663,19 @@ int OnCalculate(
    g_projected_chart_oldest = chart_oldest;
    g_projected_chart_newest = chart_newest;
 
-   datetime latest_closed_m1 = StateMapLatestClosedM1();
-   if(prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar)
-   {
-      StateMapRefreshQState();
-      g_last_qstate_refresh_bar = latest_closed_m1;
-      g_panel_signature = "";
-   }
-
    int latest_source_index = ArraySize(g_source_times) - 1;
    double latest_anchor = latest_source_index >= 0 ? g_source_line[latest_source_index] : EMPTY_VALUE;
    int latest_trend_state = latest_source_index >= 0 ? g_source_ma_state[latest_source_index] : 0;
    double latest_stoch = latest_source_index >= 0 ? g_source_stoch[latest_source_index] : EMPTY_VALUE;
+   double latest_q = latest_source_index >= 0 ? g_source_q[latest_source_index] : EMPTY_VALUE;
 
    StateMapRenderPanel(
       latest_anchor,
       latest_trend_state,
       latest_stoch,
+      latest_q,
       g_stack_copied,
+      g_stack_day_count,
       g_stack_valid_q_day_count
    );
 

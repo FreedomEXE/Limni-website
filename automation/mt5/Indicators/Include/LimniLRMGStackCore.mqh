@@ -1071,6 +1071,7 @@ bool LimniBuildStackSeries(
 bool g_limni_stack_cache_valid = false;
 string g_limni_stack_cache_symbol = "";
 int g_limni_stack_cache_scale_lookback_days = -999;
+int g_limni_stack_cache_visual_max_m1_bars = 0;
 double g_limni_stack_cache_point = 0.0;
 datetime g_limni_stack_cache_source_from = 0;
 datetime g_limni_stack_cache_latest_closed_m1 = 0;
@@ -1192,6 +1193,7 @@ bool LimniLoadCachedStackSeriesDetailed(
    if(g_limni_stack_cache_valid &&
       g_limni_stack_cache_symbol == _Symbol &&
       g_limni_stack_cache_scale_lookback_days == scale_lookback_days &&
+      g_limni_stack_cache_visual_max_m1_bars == 0 &&
       g_limni_stack_cache_point == point &&
       g_limni_stack_cache_latest_closed_m1 == latest_closed_m1 &&
       source_from >= g_limni_stack_cache_source_from)
@@ -1275,6 +1277,7 @@ bool LimniLoadCachedStackSeriesDetailed(
    g_limni_stack_cache_valid = true;
    g_limni_stack_cache_symbol = _Symbol;
    g_limni_stack_cache_scale_lookback_days = scale_lookback_days;
+   g_limni_stack_cache_visual_max_m1_bars = 0;
    g_limni_stack_cache_point = point;
    g_limni_stack_cache_source_from = source_from;
    g_limni_stack_cache_latest_closed_m1 = latest_closed_m1;
@@ -1296,6 +1299,189 @@ bool LimniLoadCachedStackSeriesDetailed(
    LimniCopyIntArray(source_trigger_setup_age, g_limni_stack_cache_trigger_setup_age);
    LimniCopyDoubleArray(source_trigger_q_distance, g_limni_stack_cache_trigger_q_distance);
 
+   return true;
+}
+
+bool LimniLoadVisualStackSeries(
+   const datetime chart_oldest,
+   const datetime chart_newest,
+   const int scale_lookback_days,
+   const int visual_max_m1_bars,
+   const double point,
+   datetime &source_times[],
+   double &source_closes[],
+   double &source_q[],
+   double &source_line[],
+   double &source_stoch[],
+   double &source_ma[],
+   int &source_ma_state[],
+   int &source_trigger[],
+   int &copied,
+   int &day_count,
+   int &valid_q_day_count,
+   string &reason_code
+)
+{
+   reason_code = "";
+   int max_m1_bars = MathMax(0, visual_max_m1_bars);
+   datetime source_from = max_m1_bars > 0 ? (datetime)0 : LimniLrmgSourceStartForChart(chart_oldest, scale_lookback_days);
+   datetime latest_closed_m1 = iTime(_Symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, 1);
+   if(latest_closed_m1 <= 0)
+   {
+      reason_code = "latest_closed_m1_missing";
+      return false;
+   }
+
+   if(g_limni_stack_cache_valid &&
+      g_limni_stack_cache_symbol == _Symbol &&
+      g_limni_stack_cache_scale_lookback_days == scale_lookback_days &&
+      g_limni_stack_cache_visual_max_m1_bars == max_m1_bars &&
+      g_limni_stack_cache_point == point &&
+      g_limni_stack_cache_latest_closed_m1 == latest_closed_m1 &&
+      (max_m1_bars > 0 || source_from >= g_limni_stack_cache_source_from))
+   {
+      LimniExportCachedStack(
+         source_times,
+         source_closes,
+         source_q,
+         source_line,
+         source_stoch,
+         source_ma,
+         source_ma_state,
+         source_trigger,
+         copied,
+         day_count,
+         valid_q_day_count
+      );
+      reason_code = "cache_ready";
+      return true;
+   }
+
+   MqlRates source_rates[];
+   ArraySetAsSeries(source_rates, false);
+   ResetLastError();
+   if(max_m1_bars > 0)
+      copied = CopyRates(_Symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, 1, max_m1_bars, source_rates);
+   else
+   {
+      datetime source_to = TimeCurrent();
+      if(source_to < chart_newest)
+         source_to = chart_newest;
+      copied = CopyRates(_Symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, source_from, source_to, source_rates);
+   }
+
+   if(copied <= 0)
+   {
+      reason_code = "copyrates_failed_" + IntegerToString(GetLastError());
+      return false;
+   }
+   if(copied < 100)
+   {
+      reason_code = "insufficient_m1_history";
+      return false;
+   }
+
+   if(source_rates[0].time > source_rates[copied - 1].time)
+   {
+      MqlRates ordered[];
+      ArrayResize(ordered, copied);
+      for(int i = 0; i < copied; i++)
+         ordered[i] = source_rates[copied - 1 - i];
+
+      ArrayResize(source_rates, copied);
+      for(int i = 0; i < copied; i++)
+         source_rates[i] = ordered[i];
+   }
+
+   while(copied > 0 && source_rates[copied - 1].time > latest_closed_m1)
+   {
+      copied--;
+      ArrayResize(source_rates, copied);
+   }
+   if(copied < 100)
+   {
+      reason_code = "insufficient_closed_m1_history";
+      return false;
+   }
+
+   int source_trigger_sweep_side[];
+   int source_trigger_resolution[];
+   int source_trigger_anchor_relation[];
+   int source_trigger_trend_relation[];
+   int source_trigger_setup_age[];
+   double source_trigger_q_distance[];
+   datetime built_times[];
+   double built_closes[];
+   double built_q[];
+   double built_line[];
+   double built_stoch[];
+   double built_ma[];
+   int built_ma_state[];
+   int built_trigger[];
+
+   bool built = LimniBuildStackSeries(
+      source_rates,
+      copied,
+      scale_lookback_days,
+      point,
+      built_times,
+      built_closes,
+      built_q,
+      built_line,
+      built_stoch,
+      built_ma,
+      built_ma_state,
+      built_trigger,
+      source_trigger_sweep_side,
+      source_trigger_resolution,
+      source_trigger_anchor_relation,
+      source_trigger_trend_relation,
+      source_trigger_setup_age,
+      source_trigger_q_distance,
+      day_count,
+      valid_q_day_count
+   );
+   if(!built)
+   {
+      reason_code = "stack_build_failed";
+      return false;
+   }
+
+   LimniCopyDatetimeArray(built_times, source_times);
+   LimniCopyDoubleArray(built_closes, source_closes);
+   LimniCopyDoubleArray(built_q, source_q);
+   LimniCopyDoubleArray(built_line, source_line);
+   LimniCopyDoubleArray(built_stoch, source_stoch);
+   LimniCopyDoubleArray(built_ma, source_ma);
+   LimniCopyIntArray(built_ma_state, source_ma_state);
+   LimniCopyIntArray(built_trigger, source_trigger);
+
+   g_limni_stack_cache_valid = true;
+   g_limni_stack_cache_symbol = _Symbol;
+   g_limni_stack_cache_scale_lookback_days = scale_lookback_days;
+   g_limni_stack_cache_visual_max_m1_bars = max_m1_bars;
+   g_limni_stack_cache_point = point;
+   g_limni_stack_cache_source_from = ArraySize(source_times) > 0 ? source_times[0] : source_from;
+   g_limni_stack_cache_latest_closed_m1 = latest_closed_m1;
+   g_limni_stack_cache_copied = copied;
+   g_limni_stack_cache_day_count = day_count;
+   g_limni_stack_cache_valid_q_day_count = valid_q_day_count;
+   LimniCopyDatetimeArray(source_times, g_limni_stack_cache_times);
+   LimniCopyDoubleArray(source_closes, g_limni_stack_cache_closes);
+   LimniCopyDoubleArray(source_q, g_limni_stack_cache_q);
+   LimniCopyDoubleArray(source_line, g_limni_stack_cache_line);
+   LimniCopyDoubleArray(source_stoch, g_limni_stack_cache_stoch);
+   LimniCopyDoubleArray(source_ma, g_limni_stack_cache_ma);
+   LimniCopyIntArray(source_ma_state, g_limni_stack_cache_ma_state);
+   LimniCopyIntArray(source_trigger, g_limni_stack_cache_trigger);
+   LimniCopyIntArray(source_trigger_sweep_side, g_limni_stack_cache_trigger_sweep_side);
+   LimniCopyIntArray(source_trigger_resolution, g_limni_stack_cache_trigger_resolution);
+   LimniCopyIntArray(source_trigger_anchor_relation, g_limni_stack_cache_trigger_anchor_relation);
+   LimniCopyIntArray(source_trigger_trend_relation, g_limni_stack_cache_trigger_trend_relation);
+   LimniCopyIntArray(source_trigger_setup_age, g_limni_stack_cache_trigger_setup_age);
+   LimniCopyDoubleArray(source_trigger_q_distance, g_limni_stack_cache_trigger_q_distance);
+
+   reason_code = "stack_ready";
    return true;
 }
 
