@@ -212,7 +212,8 @@ enum LP_ReceiptKind
    LP_RECEIPT_PORTFOLIO_Q_STATE = 21,
    LP_RECEIPT_REVMA_SIGNAL = 22,
    LP_RECEIPT_REVMA_GRID_BIRTH = 23,
-   LP_RECEIPT_REVMA_GRID_ADD = 24
+   LP_RECEIPT_REVMA_GRID_ADD = 24,
+   LP_RECEIPT_REVMA_GRID_ADD_SKIP = 25
 };
 
 struct LP_Config
@@ -256,6 +257,9 @@ struct LP_Config
    double revma_fixed_lots;
    double revma_grid_spacing_q;
    int revma_intent_expiry_minutes;
+   bool revma_show_visual_dashboard;
+   int revma_dashboard_refresh_seconds;
+   bool revma_dashboard_screenshot_on_divergent_add;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;

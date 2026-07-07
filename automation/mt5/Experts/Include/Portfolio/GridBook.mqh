@@ -23,6 +23,7 @@ struct LP_GridInventoryRow
    double avg_entry_price;
    double min_entry_price;
    double max_entry_price;
+   string tickets;
 };
 
 class LP_GridBook
@@ -49,6 +50,7 @@ private:
       row.avg_entry_price = 0.0;
       row.min_entry_price = 0.0;
       row.max_entry_price = 0.0;
+      row.tickets = "";
    }
 
    int FindRow(const ulong grid_key)
@@ -125,6 +127,10 @@ public:
          if(open_price > m_rows[row_index].max_entry_price)
             m_rows[row_index].max_entry_price = open_price;
          m_rows[row_index].floating_pnl += pnl;
+         if(m_rows[row_index].tickets == "")
+            m_rows[row_index].tickets = (string)ticket;
+         else if(StringLen(m_rows[row_index].tickets) < 180)
+            m_rows[row_index].tickets += ";" + (string)ticket;
          m_grid_position_count++;
          m_grid_lots += lots;
          m_grid_floating_pnl += pnl;
@@ -170,6 +176,7 @@ public:
             ":avg_entry=" + DoubleToString(m_rows[i].avg_entry_price, 5) +
             ":min_entry=" + DoubleToString(m_rows[i].min_entry_price, 5) +
             ":max_entry=" + DoubleToString(m_rows[i].max_entry_price, 5) +
+            ":tickets=" + m_rows[i].tickets +
             ":pnl=" + DoubleToString(m_rows[i].floating_pnl, 2);
       }
       return message;
@@ -206,6 +213,25 @@ public:
             m_rows[i].lane_id == lane_id &&
             m_rows[i].variant_id == variant_id)
             return true;
+      }
+      return false;
+   }
+
+   bool FindSymbolLaneGrid(
+      const int symbol_id,
+      const int lane_id,
+      LP_GridInventoryRow &row
+   )
+   {
+      ResetRow(row);
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].symbol_id == symbol_id &&
+            m_rows[i].lane_id == lane_id)
+         {
+            row = m_rows[i];
+            return true;
+         }
       }
       return false;
    }

@@ -1,0 +1,30 @@
+LIMNI REVMA DASHBOARD
+CURRENT SIGNAL
+ symbol: AUDCHF.i
+ direction: SHORT  sleeve: CONTINUATION
+ implied add: continuation_add_lower
+ q profile: MEDIUM_50000  q: 0.00095596
+ anchor: 0.56416  price: 0.55840
+ stoch: 0.00  trend: -1
+ variant/formula: V10 / 10675320455930833764
+
+ACTIVE GRID
+ grid_id: 1031113005  tickets: 2;3;4;5;6;7;8;9;10;11;12;13;14;15;16;17...
+ birth direction: LONG  order side: LONG
+ frozen sleeve: REVERSION
+ frozen add: reversion_add_lower
+ birth q profile: MEDIUM_50000
+ birth anchor/price: 0.56512 / 0.56020
+ birth variant/formula: V11 / 10675320455930833764
+ current variant: V10  matches birth: false
+ next add level: 0.55883
+ open positions: 75  lots: 0.75
+ last action: add intent emitted
+
+LAST DIVERGENT ADD
+ time: 2025.03.03 21:53:00
+ frozen: LONG / REVERSION / V11
+ current: SHORT / CONTINUATION / V10
+ add policy: reversion_add_lower
+ next level: 0.55883
+ receipt: current_matches_birth_identity=false

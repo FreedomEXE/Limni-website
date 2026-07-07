@@ -1,0 +1,7 @@
+"event_seq","server_time","status","action","direction","locked_setup_type","locked_add_policy","comment"
+"45","2025.03.03 00:01:00","plan_executable","1","LONG","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"
+"53","2025.03.03 00:02:30","plan_executable","1","LONG","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"
+"61","2025.03.03 00:03:00","plan_executable","1","LONG","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"
+"69","2025.03.03 00:04:00","plan_executable","1","LONG","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"
+"83","2025.03.03 00:05:00","plan_executable","2","1","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"
+"97","2025.03.03 00:06:30","plan_executable","2","1","REVERSION","reversion_add_lower","RevmaMeanRev BUY AUDCHF C1461"

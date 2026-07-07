@@ -51,6 +51,16 @@ public:
       return m_revma.Evaluate(signal, config, grid_book, receipts, bus);
    }
 
+   string RevmaVisualDashboardText()
+   {
+      return m_revma.VisualDashboardText();
+   }
+
+   bool ConsumeRevmaDashboardScreenshotRequest()
+   {
+      return m_revma.ConsumeDashboardScreenshotRequest();
+   }
+
    int EvaluateAll(
       const LP_SignalSnapshot &snapshot,
       const LP_Config &config,

@@ -107,13 +107,51 @@ ulong LP_BuildGridKeyFromParts(const LP_MagicParts &parts)
    return LP_BuildGridKey(parts.symbol_id, parts.lane_id, parts.variant_id, parts.direction, parts.grid_family);
 }
 
+string LP_StrategyCommentName(const int lane_id, const int variant_id)
+{
+   if(lane_id == LP_LANE_REVMA)
+   {
+      if(variant_id == LP_VARIANT_REVMA_CONTINUATION)
+         return "RevmaTrend";
+      if(variant_id == LP_VARIANT_REVMA_REVERSION)
+         return "RevmaMeanRev";
+      return "Revma";
+   }
+   if(lane_id == LP_LANE_TREND_FOLLOW)
+      return "TrendFollow";
+   if(lane_id == LP_LANE_REVERSAL)
+      return "Reversal";
+   return "Limni";
+}
+
+string LP_TradeSideCommentName(const int direction)
+{
+   if(direction > 0)
+      return "BUY";
+   if(direction < 0)
+      return "SELL";
+   return "NONE";
+}
+
 string LP_BuildComment(const string canonical_symbol, const int lane_id, const int variant_id, const int direction, const ulong config_hash)
 {
-   string side = direction > 0 ? "B" : (direction < 0 ? "S" : "N");
-   return "LMN1|" + canonical_symbol + "|L" + IntegerToString(lane_id) +
-      "|V" + IntegerToString(variant_id) +
-      "|" + side +
-      "|C" + StringSubstr((string)config_hash, 0, 6);
+   string readable = LP_StrategyCommentName(lane_id, variant_id) + " " +
+      LP_TradeSideCommentName(direction) + " " +
+      canonical_symbol;
+   string suffix = " C" + StringSubstr((string)config_hash, 0, 4);
+   string comment = readable + suffix;
+
+   if(StringLen(comment) <= 31)
+      return comment;
+
+   string compact_symbol = StringLen(canonical_symbol) > 6 ? StringSubstr(canonical_symbol, 0, 6) : canonical_symbol;
+   comment = LP_StrategyCommentName(lane_id, variant_id) + " " +
+      (direction > 0 ? "B" : (direction < 0 ? "S" : "N")) + " " +
+      compact_symbol + suffix;
+   if(StringLen(comment) <= 31)
+      return comment;
+
+   return StringSubstr(comment, 0, 31);
 }
 
 #endif // __LIMNI_PORTFOLIO_MAGIC_CODEC_MQH__
