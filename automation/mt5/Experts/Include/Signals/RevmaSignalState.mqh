@@ -253,6 +253,7 @@ private:
    void BuildSignalFromResult(
       const LP_SymbolMeta &meta,
       const LP_RevmaSymbolState &state,
+      const LP_Config &config,
       const LimniPairDirectionResult &direction,
       LP_RevmaSignal &signal
    )
@@ -264,6 +265,9 @@ private:
       signal.source_m1_time = direction.asof_m1_time;
       signal.closed_m1_bars = state.closed_m1_bars;
       signal.q_days = state.q_day_count;
+      signal.q_profile = config.revma_q_profile;
+      signal.max_m1_bars = LP_RevmaResolvedMaxM1Bars(config);
+      signal.q_profile_id = LP_RevmaConfigQProfileId(config);
       signal.price = 0.0;
       signal.q = direction.q;
       signal.q_pips = direction.q_pips;
@@ -305,6 +309,7 @@ private:
    bool ProcessClosedBar(
       LP_RevmaSymbolState &state,
       const LP_SymbolMeta &meta,
+      const LP_Config &config,
       const MqlRates &bar,
       LP_RevmaSignal &signal
    )
@@ -442,7 +447,7 @@ private:
       direction.pending_direction = state.pending_direction;
       direction.pending_count = state.pending_count;
       state.latest_pair_direction = direction;
-      BuildSignalFromResult(meta, state, direction, signal);
+      BuildSignalFromResult(meta, state, config, direction, signal);
       return signal.valid;
    }
 
@@ -468,7 +473,10 @@ private:
       string &detail
    )
    {
-      int bars = MathMax(500, config.revma_bootstrap_m1_bars);
+      int requested_bars = LP_RevmaResolvedMaxM1Bars(config);
+      int bars = requested_bars <= 0 ? MathMax(0, Bars(meta.broker_symbol, PERIOD_M1) - 1) : requested_bars;
+      if(bars <= 0)
+         bars = 500;
       MqlRates rates[];
       int copied = CopyRates(meta.broker_symbol, PERIOD_M1, 1, bars, rates);
       if(copied <= 0)
@@ -478,7 +486,7 @@ private:
       }
       NormalizeRatesOrder(rates, copied);
       for(int i = 0; i < copied; i++)
-         ProcessClosedBar(state, meta, rates[i], signal);
+         ProcessClosedBar(state, meta, config, rates[i], signal);
       state.bootstrapped = true;
       detail = "bootstrap_copied=" + IntegerToString(copied);
       return true;
@@ -526,7 +534,7 @@ public:
       datetime latest_closed = latest_times[0];
       if(latest_closed <= m_state[symbol_id].last_processed_m1)
       {
-         BuildSignalFromResult(meta, m_state[symbol_id], m_state[symbol_id].latest_pair_direction, signal);
+         BuildSignalFromResult(meta, m_state[symbol_id], config, m_state[symbol_id].latest_pair_direction, signal);
          detail = detail == "" ? "duplicate_closed_m1" : detail + "|duplicate_closed_m1";
          return signal.valid;
       }
@@ -541,7 +549,7 @@ public:
       }
       NormalizeRatesOrder(rates, copied);
       for(int i = 0; i < copied; i++)
-         ProcessClosedBar(m_state[symbol_id], meta, rates[i], signal);
+         ProcessClosedBar(m_state[symbol_id], meta, config, rates[i], signal);
 
       detail = detail == "" ? "incremental_copied=" + IntegerToString(copied) : detail + "|incremental_copied=" + IntegerToString(copied);
       return signal.valid;

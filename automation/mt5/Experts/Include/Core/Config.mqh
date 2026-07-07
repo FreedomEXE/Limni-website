@@ -49,10 +49,11 @@ input bool EnableRevmaSystem = true;
 input LP_UniverseMode RevmaUniverseMode = LP_UNIVERSE_CURRENT_CHART;
 input bool RevmaEnableContinuationSleeve = true;
 input bool RevmaEnableReversionSleeve = true;
+input LP_RevmaQProfile RevmaQProfile = LP_REVMA_Q_PROFILE_MEDIUM;
+input int RevmaMaxM1Bars = 50000;
 input double RevmaFixedLots = 0.01;
 input double RevmaGridSpacingQ = 1.0;
 input int RevmaIntentExpiryMinutes = 10;
-input int RevmaBootstrapM1Bars = 4320;
 input string LP_INPUT_7 = "----- Future System: Q-State Legacy Disabled -----";
 input bool EnableQStateTrendVariant = false;
 input double QStateFixedLots = 0.01;
@@ -101,7 +102,8 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_universe_mode = RevmaUniverseMode;
    config.revma_enable_continuation_sleeve = RevmaEnableContinuationSleeve;
    config.revma_enable_reversion_sleeve = RevmaEnableReversionSleeve;
-   config.revma_bootstrap_m1_bars = RevmaBootstrapM1Bars;
+   config.revma_q_profile = RevmaQProfile;
+   config.revma_max_m1_bars = RevmaMaxM1Bars;
    config.revma_fixed_lots = RevmaFixedLots;
    config.revma_grid_spacing_q = RevmaGridSpacingQ;
    config.revma_intent_expiry_minutes = RevmaIntentExpiryMinutes;
@@ -150,7 +152,9 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_UniverseModeName(config.revma_universe_mode) + "|" +
       LP_BoolText(config.revma_enable_continuation_sleeve) + "|" +
       LP_BoolText(config.revma_enable_reversion_sleeve) + "|" +
-      IntegerToString(config.revma_bootstrap_m1_bars) + "|" +
+      LP_RevmaQProfileName(config.revma_q_profile) + "|" +
+      IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) + "|" +
+      LP_RevmaConfigQProfileId(config) + "|" +
       DoubleToString(config.revma_fixed_lots, 4) + "|" +
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +

@@ -194,6 +194,9 @@ private:
             "|pair_direction_formula_id=" + LimniPairDirectionFormulaId() +
             "|pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash() +
             "|source_m1_time=" + LP_Stamp(signal.source_m1_time) +
+            "|q_profile=" + LP_RevmaQProfileName(signal.q_profile) +
+            "|max_m1_bars=" + IntegerToString(signal.max_m1_bars) +
+            "|q_profile_id=" + signal.q_profile_id +
             "|direction=" + LP_RevmaDirectionName(signal.direction) +
             "|sleeve=" + LP_RevmaSleeveName(signal.sleeve) +
             "|anchor_relation=" + LP_RevmaAnchorRelationName(signal.anchor_relation) +

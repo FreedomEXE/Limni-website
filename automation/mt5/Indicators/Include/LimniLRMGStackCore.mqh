@@ -437,6 +437,67 @@ double LimniBoundedStoch(const double price, const double lo, const double hi)
    return raw;
 }
 
+void LimniBuildLrmgMovementTriggerSeries(
+   const datetime &source_times[],
+   const double &source_closes[],
+   const double &source_q[],
+   int &out_trigger[]
+)
+{
+   int count = ArraySize(source_times);
+   ArrayResize(out_trigger, count);
+   if(count <= 0 || ArraySize(source_closes) < count || ArraySize(source_q) < count)
+      return;
+
+   bool has_confirmed_event = false;
+   double base_price = 0.0;
+   double last_event_price = 0.0;
+   int current_level = 0;
+   int day_key = 0;
+
+   for(int i = 0; i < count; i++)
+   {
+      out_trigger[i] = 0;
+      if(source_times[i] <= 0 || !MathIsValidNumber(source_closes[i]))
+         continue;
+
+      int current_day_key = LimniLrmgDayKey(source_times[i]);
+      if(day_key == 0 || current_day_key != day_key)
+      {
+         day_key = current_day_key;
+         base_price = has_confirmed_event ? last_event_price : source_closes[i];
+         current_level = 0;
+      }
+
+      double q = source_q[i];
+      if(q <= 0.0 || !MathIsValidNumber(q))
+         continue;
+
+      int trigger = 0;
+      int guard = 0;
+      while(source_closes[i] >= base_price + ((double)current_level + 1.0) * q && guard < LIMNI_LRMG_MAX_BRICKS_PER_BAR)
+      {
+         current_level++;
+         last_event_price = base_price + (double)current_level * q;
+         has_confirmed_event = true;
+         trigger = 1;
+         guard++;
+      }
+
+      guard = 0;
+      while(source_closes[i] <= base_price + ((double)current_level - 1.0) * q && guard < LIMNI_LRMG_MAX_BRICKS_PER_BAR)
+      {
+         current_level--;
+         last_event_price = base_price + (double)current_level * q;
+         has_confirmed_event = true;
+         trigger = -1;
+         guard++;
+      }
+
+      out_trigger[i] = trigger;
+   }
+}
+
 int LimniLrmgDavidState(
    const double event_price,
    const double reference_line,

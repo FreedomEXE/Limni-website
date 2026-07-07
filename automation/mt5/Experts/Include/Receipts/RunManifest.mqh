@@ -40,6 +40,9 @@ void LP_WriteRunManifest(
          "|revma_formula_hash=" + (string)LP_RevmaFormulaHash() +
          "|revma_pair_direction_formula_id=" + LimniPairDirectionFormulaId() +
          "|revma_pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash() +
+         "|revma_q_profile=" + LP_RevmaQProfileName(config.revma_q_profile) +
+         "|revma_max_m1_bars=" + IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) +
+         "|revma_q_profile_id=" + LP_RevmaConfigQProfileId(config) +
          "|legacy_qstate_enabled=" + LP_BoolText(config.enable_qstate_trend_variant) +
          (config.enable_qstate_trend_variant ?
             "|qstate_formula_id=" + LimniQStateFormulaId() +
@@ -89,7 +92,9 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_fixed_lots", DoubleToString(config.revma_fixed_lots, 4));
    receipts.Summary("revma_grid_spacing_q", DoubleToString(config.revma_grid_spacing_q, 2));
    receipts.Summary("revma_intent_expiry_minutes", IntegerToString(config.revma_intent_expiry_minutes));
-   receipts.Summary("revma_bootstrap_m1_bars", IntegerToString(config.revma_bootstrap_m1_bars));
+   receipts.Summary("revma_q_profile", LP_RevmaQProfileName(config.revma_q_profile));
+   receipts.Summary("revma_max_m1_bars", IntegerToString(LP_RevmaResolvedMaxM1Bars(config)));
+   receipts.Summary("revma_q_profile_id", LP_RevmaConfigQProfileId(config));
    receipts.Summary("qstate_trend_variant_enabled", LP_BoolText(config.enable_qstate_trend_variant));
    receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));

@@ -1,0 +1,55 @@
+Static scan: StateMap direction replay trigger path
+27:input int VisualMaxM1Bars = 50000; // Aligns default visual q window with Revma MEDIUM
+77:int g_source_trigger[];
+78:int g_source_revma_trigger[];
+379:   int visual_max_m1_bars = MathMax(0, VisualMaxM1Bars);
+409:      g_source_trigger,
+825:   LimniBuildLrmgMovementTriggerSeries(g_source_times, g_source_closes, g_source_q, g_source_revma_trigger);
+826:   LimniPairDirectionReplay(
+833:      g_source_revma_trigger,
+
+Static scan: old RevmaBootstrapM1Bars removed
+no matches
+
+Static scan: q profile receipt fields
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\RunManifest.mqh:43:         "|revma_q_profile=" + LP_RevmaQProfileName(config.revma_q_profile) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\RunManifest.mqh:45:         "|revma_q_profile_id=" + LP_RevmaConfigQProfileId(config) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\RunManifest.mqh:95:   receipts.Summary("revma_q_profile", LP_RevmaQProfileName(config.revma_q_profile));
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\RunManifest.mqh:97:   receipts.Summary("revma_q_profile_id", LP_RevmaConfigQProfileId(config));
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Signals\RevmaSignalState.mqh:268:      signal.q_profile = config.revma_q_profile;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Signals\RevmaSignalState.mqh:270:      signal.q_profile_id = LP_RevmaConfigQProfileId(config);
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:37:   string q_profile_id;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:64:   birth.q_profile_id = "";
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:154:      m_births[index].q_profile_id = signal.q_profile_id;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:190:         "|birth_q_profile=" + LP_RevmaQProfileName(birth.q_profile) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:192:         "|birth_q_profile_id=" + birth.q_profile_id +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:204:         "|q_profile=" + LP_RevmaQProfileName(signal.q_profile) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:206:         "|q_profile_id=" + signal.q_profile_id +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:269:         "|current_q_profile=" + LP_RevmaQProfileName(signal.q_profile) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh:271:         "|current_q_profile_id=" + signal.q_profile_id +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:31:string LP_RevmaQProfileName(const int profile)
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:61:   if(config.revma_q_profile == LP_REVMA_Q_PROFILE_CUSTOM)
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:63:   return LP_RevmaDefaultMaxM1BarsForProfile(config.revma_q_profile);
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:66:string LP_RevmaQProfileId(const int profile, const int max_m1_bars)
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:68:   string name = LP_RevmaQProfileName(profile);
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:76:   return LP_RevmaQProfileId(config.revma_q_profile, LP_RevmaResolvedMaxM1Bars(config));
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:155:   string q_profile_id;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh:198:   signal.q_profile_id = "";
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Types.mqh:76:enum LP_RevmaQProfile
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Types.mqh:254:   LP_RevmaQProfile revma_q_profile;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Engine.mqh:197:            "|q_profile=" + LP_RevmaQProfileName(signal.q_profile) +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Engine.mqh:199:            "|q_profile_id=" + signal.q_profile_id +
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Config.mqh:52:input LP_RevmaQProfile RevmaQProfile = LP_REVMA_Q_PROFILE_MEDIUM;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Config.mqh:105:   config.revma_q_profile = RevmaQProfile;
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Config.mqh:155:      LP_RevmaQProfileName(config.revma_q_profile) + "|" +
+
+Static scan: add receipts no longer call BirthMetadata
+170:         return "|birth_snapshot=missing_in_memory";
+172:      return "|birth_snapshot=in_memory" +
+179:         "|birth_q=" + DoubleToString(birth.q, 8) +
+225:   string AddMetadata(
+258:         "|current_q=" + DoubleToString(signal.q, 8) +
+384:         LP_RevmaGridBirthSnapshot birth_snapshot;
+385:         FindBirth(same_grid.grid_key, birth_snapshot);
+386:         string metadata = AddMetadata(signal, same_grid, add_policy, birth_snapshot);
+422:      string birth = BirthMetadata(signal) +

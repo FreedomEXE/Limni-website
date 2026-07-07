@@ -24,7 +24,7 @@
 #include "..\\Include\\LimniPairDirectionCore.mqh"
 
 input bool ShowCenterLine = true;
-input int VisualMaxM1Bars = 0; // 0 = all available closed M1 bars
+input int VisualMaxM1Bars = 50000; // Aligns default visual q window with Revma MEDIUM
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS = 50000;
@@ -75,6 +75,7 @@ double g_source_stoch[];
 double g_source_ma[];
 int g_source_ma_state[];
 int g_source_trigger[];
+int g_source_revma_trigger[];
 int g_stack_copied = 0;
 int g_stack_day_count = 0;
 int g_stack_valid_q_day_count = 0;
@@ -821,6 +822,7 @@ int OnCalculate(
    double latest_stoch = latest_source_index >= 0 ? g_source_stoch[latest_source_index] : EMPTY_VALUE;
    double latest_q = latest_source_index >= 0 ? g_source_q[latest_source_index] : EMPTY_VALUE;
    LimniPairDirectionResult pair_direction;
+   LimniBuildLrmgMovementTriggerSeries(g_source_times, g_source_closes, g_source_q, g_source_revma_trigger);
    LimniPairDirectionReplay(
       g_source_times,
       g_source_closes,
@@ -828,7 +830,7 @@ int OnCalculate(
       g_source_line,
       g_source_stoch,
       g_source_ma_state,
-      g_source_trigger,
+      g_source_revma_trigger,
       StateMapPipSize(),
       pair_direction
    );

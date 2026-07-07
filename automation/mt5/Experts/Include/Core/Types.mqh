@@ -73,6 +73,15 @@ enum LP_UniverseMode
    LP_UNIVERSE_FX28 = 1
 };
 
+enum LP_RevmaQProfile
+{
+   LP_REVMA_Q_PROFILE_FAST = 0,
+   LP_REVMA_Q_PROFILE_MEDIUM = 1,
+   LP_REVMA_Q_PROFILE_SLOW = 2,
+   LP_REVMA_Q_PROFILE_FULL = 3,
+   LP_REVMA_Q_PROFILE_CUSTOM = 4
+};
+
 enum LP_MarketMode
 {
    LP_MARKET_UNKNOWN = 0,
@@ -242,7 +251,8 @@ struct LP_Config
    LP_UniverseMode revma_universe_mode;
    bool revma_enable_continuation_sleeve;
    bool revma_enable_reversion_sleeve;
-   int revma_bootstrap_m1_bars;
+   LP_RevmaQProfile revma_q_profile;
+   int revma_max_m1_bars;
    double revma_fixed_lots;
    double revma_grid_spacing_q;
    int revma_intent_expiry_minutes;

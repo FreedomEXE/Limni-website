@@ -28,6 +28,54 @@ string LP_UniverseModeName(const int mode)
    return "UNKNOWN";
 }
 
+string LP_RevmaQProfileName(const int profile)
+{
+   if(profile == LP_REVMA_Q_PROFILE_FAST)
+      return "FAST";
+   if(profile == LP_REVMA_Q_PROFILE_MEDIUM)
+      return "MEDIUM";
+   if(profile == LP_REVMA_Q_PROFILE_SLOW)
+      return "SLOW";
+   if(profile == LP_REVMA_Q_PROFILE_FULL)
+      return "FULL";
+   if(profile == LP_REVMA_Q_PROFILE_CUSTOM)
+      return "CUSTOM";
+   return "UNKNOWN";
+}
+
+int LP_RevmaDefaultMaxM1BarsForProfile(const int profile)
+{
+   if(profile == LP_REVMA_Q_PROFILE_FAST)
+      return 5000;
+   if(profile == LP_REVMA_Q_PROFILE_MEDIUM)
+      return 50000;
+   if(profile == LP_REVMA_Q_PROFILE_SLOW)
+      return 250000;
+   if(profile == LP_REVMA_Q_PROFILE_FULL)
+      return 0;
+   return 50000;
+}
+
+int LP_RevmaResolvedMaxM1Bars(const LP_Config &config)
+{
+   if(config.revma_q_profile == LP_REVMA_Q_PROFILE_CUSTOM)
+      return MathMax(0, config.revma_max_m1_bars);
+   return LP_RevmaDefaultMaxM1BarsForProfile(config.revma_q_profile);
+}
+
+string LP_RevmaQProfileId(const int profile, const int max_m1_bars)
+{
+   string name = LP_RevmaQProfileName(profile);
+   if(profile == LP_REVMA_Q_PROFILE_FULL || max_m1_bars <= 0)
+      return name + "_ALL";
+   return name + "_" + IntegerToString(max_m1_bars);
+}
+
+string LP_RevmaConfigQProfileId(const LP_Config &config)
+{
+   return LP_RevmaQProfileId(config.revma_q_profile, LP_RevmaResolvedMaxM1Bars(config));
+}
+
 string LP_RevmaSleeveName(const int sleeve)
 {
    if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
@@ -102,6 +150,9 @@ struct LP_RevmaSignal
    datetime source_m1_time;
    int closed_m1_bars;
    int q_days;
+   int q_profile;
+   int max_m1_bars;
+   string q_profile_id;
    double price;
    double q;
    double q_pips;
@@ -142,6 +193,9 @@ void LP_ResetRevmaSignal(LP_RevmaSignal &signal)
    signal.source_m1_time = 0;
    signal.closed_m1_bars = 0;
    signal.q_days = 0;
+   signal.q_profile = LP_REVMA_Q_PROFILE_MEDIUM;
+   signal.max_m1_bars = 50000;
+   signal.q_profile_id = "";
    signal.price = 0.0;
    signal.q = 0.0;
    signal.q_pips = 0.0;
