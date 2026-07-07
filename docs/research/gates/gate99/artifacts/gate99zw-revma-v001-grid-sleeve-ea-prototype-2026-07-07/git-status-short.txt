@@ -1,0 +1,17 @@
+ M automation/mt5/Experts/Include/Core/BuildInfo.mqh
+ M automation/mt5/Experts/Include/Core/Config.mqh
+ M automation/mt5/Experts/Include/Core/Engine.mqh
+ M automation/mt5/Experts/Include/Core/Types.mqh
+ M automation/mt5/Experts/Include/Portfolio/GridBook.mqh
+ M automation/mt5/Experts/Include/Receipts/ReceiptTypes.mqh
+ M automation/mt5/Experts/Include/Receipts/RunManifest.mqh
+ M automation/mt5/Experts/Include/Strategies/ReversalLane.mqh
+ M automation/mt5/Experts/Include/Strategies/StrategyRegistry.mqh
+ M automation/mt5/Experts/Limni/LimniPortfolioEA.ex5
+ M automation/mt5/Indicators/Include/LimniPairDirectionCore.mqh
+ M automation/mt5/Indicators/Limni/StateMap.ex5
+?? automation/mt5/Experts/Include/Signals/RevmaSignalState.mqh
+?? automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh
+?? automation/mt5/Experts/Include/Strategies/RevmaTypes.mqh
+?? docs/research/gates/gate99/GATE99ZW_REVMA_V001_GRID_SLEEVE_EA_PROTOTYPE_2026-07-07.md
+?? docs/research/gates/gate99/artifacts/gate99zw-revma-v001-grid-sleeve-ea-prototype-2026-07-07/

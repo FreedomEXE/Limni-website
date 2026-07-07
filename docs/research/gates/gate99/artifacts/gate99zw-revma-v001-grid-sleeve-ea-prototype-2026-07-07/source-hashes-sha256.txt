@@ -1,0 +1,16 @@
+2B91A8ADB3194FF2033EF2770A95F6A5D1B71B08B9D3959F5A7FE0DD89F5252C  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Limni\LimniPortfolioEA.mq5
+25E383E03167396C9840767CEDFE0CFA083BF2C73E5A7BFB76BD0770311E2B7F  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\BuildInfo.mqh
+2443CD620B580F46264F8EAEB5DB8DD743E084586F8019A86C1FF12520990C66  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Config.mqh
+5E8B57E517B36121DEC2884AEC93AA424C9C9D822A24C964EB610D29EADAE2B8  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Engine.mqh
+65A6D281A8F3FC74E13FDB0B8F313D22C9F283DBA2CC7FFDB6787E036A115E73  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Core\Types.mqh
+2382B233607FDCC9A1892FE92F0D6E82D2F9B8FFDA54BF8749806BA242F45E5C  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Portfolio\GridBook.mqh
+9F2DC676E89DFEEB2B10225185BD3B42528D4E5BD6868F285E23595AC230DBDC  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\ReceiptTypes.mqh
+56D9DDD4F3BF39C1216C58C0E402D3F908CFE1EDD3FBC2867EEF8C1D035BEA22  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Receipts\RunManifest.mqh
+4C2033109F5CE3FA2C6513CA2C34C18353A9260C5B7523506ECD1941C39398B6  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\ReversalLane.mqh
+0D033FC7021FB01F769F085B3A52ED227578A2496F3416829F24D449C423E36A  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\StrategyRegistry.mqh
+C72A0E8835F9107F5D6D50EF8BFDCCEE78E585DD26F8FF61EABCF98959BD6525  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh
+2666EB34B5C01BA3D51C27DC10CC152B1F3EE65644A25C21B41F6B7B09DF0C0D  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh
+F469BECB1BD423EF798B901B86DE9935731FC108190F1716002A4B149DC90431  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Include\Signals\RevmaSignalState.mqh
+B3E74577814A43BA44BF2C39C637B41A73575E34F8D873F3B5F3039CB0E35014  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\Include\LimniPairDirectionCore.mqh
+F729F9B14969965A467702F5C07F624FC649012D36E2F1628B2E93BA6CD8C816  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Limni\LimniPortfolioEA.ex5
+322FB645548FA609729ADFD1FF37D51E89ED2FFEAE00304ABA69FA74AF591907  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\Limni\StateMap.ex5

@@ -14,6 +14,7 @@
 #include "..\\Market\\TickBarCache.mqh"
 #include "..\\Market\\M1Clock.mqh"
 #include "..\\Signals\\LrmgState.mqh"
+#include "..\\Signals\\RevmaSignalState.mqh"
 #include "..\\Strategies\\StrategyRegistry.mqh"
 #include "..\\Strategies\\PortfolioIntentSelector.mqh"
 #include "..\\Strategies\\IntentBus.mqh"
@@ -54,6 +55,7 @@ private:
    LP_TickBarCache m_tick_cache;
    LP_M1Clock m_clock;
    LP_LrmgState m_lrmg_state;
+   LP_RevmaSignalState m_revma_state;
    LP_StrategyRegistry m_strategy_registry;
    LP_PortfolioIntentSelector m_intent_selector;
    LP_IntentBus m_intent_bus;
@@ -159,6 +161,54 @@ private:
          signal.lane_id,
          signal.variant_id,
          0,
+         0,
+         0,
+         0
+      );
+   }
+
+   bool RevmaSymbolActive(const LP_SymbolMeta &meta)
+   {
+      if(!m_config.enable_revma_system)
+         return false;
+      if(m_config.revma_universe_mode == LP_UNIVERSE_FX28)
+         return true;
+      return meta.symbol_id == LP_SymbolIdFromBrokerSymbol(_Symbol);
+   }
+
+   void WriteRevmaSignalReceipt(
+      const LP_RevmaSignal &signal,
+      const string status,
+      const string detail,
+      const int emitted
+   )
+   {
+      m_receipts.Write(
+         LP_RECEIPT_REVMA_SIGNAL,
+         signal.symbol,
+         status,
+         "system_id=" + LP_REVMA_SYSTEM_ID +
+            "|system_name=" + LP_REVMA_SYSTEM_NAME +
+            "|formula_id=" + LP_REVMA_FORMULA_ID +
+            "|formula_hash=" + (string)signal.formula_hash +
+            "|pair_direction_formula_id=" + LimniPairDirectionFormulaId() +
+            "|pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash() +
+            "|source_m1_time=" + LP_Stamp(signal.source_m1_time) +
+            "|direction=" + LP_RevmaDirectionName(signal.direction) +
+            "|sleeve=" + LP_RevmaSleeveName(signal.sleeve) +
+            "|anchor_relation=" + LP_RevmaAnchorRelationName(signal.anchor_relation) +
+            "|q=" + DoubleToString(signal.q, 8) +
+            "|q_pips=" + DoubleToString(signal.q_pips, 2) +
+            "|anchor=" + DoubleToString(signal.anchor, 5) +
+            "|stochastic=" + DoubleToString(signal.stoch, 2) +
+            "|raw_score=" + DoubleToString(signal.raw_score, 6) +
+            "|q_days=" + IntegerToString(signal.q_days) +
+            "|closed_m1_bars=" + IntegerToString(signal.closed_m1_bars) +
+            "|emitted=" + IntegerToString(emitted) +
+            "|detail=" + detail,
+         LP_LANE_REVMA,
+         signal.variant_id,
+         signal.formula_hash,
          0,
          0,
          0
@@ -293,6 +343,35 @@ private:
       bus.Add(intent);
    }
 
+   int EvaluateRevmaSymbol(const LP_SymbolMeta &meta, const LP_HarvestDecision &harvest)
+   {
+      LP_RevmaSignal signal;
+      string detail = "";
+      if(!m_revma_state.BuildSignal(meta, m_config, signal, detail))
+         return 0;
+      if(!signal.valid)
+         return 0;
+
+      LP_CalendarDecision calendar;
+      LP_EvaluateCalendar(signal.source_m1_time, m_config, calendar);
+      m_news_calendar.Apply(signal.source_m1_time, meta, m_config, calendar);
+      if(calendar.week_boundary_blocked || calendar.news_blocked)
+         return 0;
+
+      int emitted = 0;
+      if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+         emitted = m_strategy_registry.EvaluateRevma(signal, m_config, m_grid_book, m_receipts, m_intent_bus);
+
+      if(emitted > 0)
+      {
+         m_total_intents += emitted;
+         string receipt_detail = detail == "" ? "ready" : detail;
+         receipt_detail += "|calendar_reason=" + calendar.reason;
+         WriteRevmaSignalReceipt(signal, "intents_emitted", receipt_detail, emitted);
+      }
+      return emitted;
+   }
+
 public:
    void Reset()
    {
@@ -318,6 +397,7 @@ public:
       m_news_calendar.Reset();
       m_clock.Reset();
       m_lrmg_state.Reset();
+      m_revma_state.Reset();
       m_strategy_registry.Reset();
       m_intent_selector.Reset();
       m_intent_bus.Reset();
@@ -521,10 +601,16 @@ public:
          AddHarvestCloseIntent(harvest, m_intent_bus);
 
       int cycle_new_bars = 0;
+      int new_symbol_ids[LP_SYMBOL_COUNT];
+      int new_symbol_count = 0;
       for(int i = 0; i < m_symbol_cache.Count(); i++)
       {
          LP_SymbolMeta meta;
          if(!m_symbol_cache.Get(i, meta))
+            continue;
+         if(m_config.enable_revma_system && !RevmaSymbolActive(meta))
+            continue;
+         if(!m_config.enable_revma_system && !m_config.enable_qstate_trend_variant)
             continue;
 
          LP_TickSnapshot tick;
@@ -538,79 +624,99 @@ public:
             continue;
 
          cycle_new_bars++;
+         if(new_symbol_count < LP_SYMBOL_COUNT)
+         {
+            new_symbol_ids[new_symbol_count] = meta.symbol_id;
+            new_symbol_count++;
+         }
       }
 
       if(cycle_new_bars > 0)
       {
-         LP_SignalSnapshot portfolio_signals[LP_SYMBOL_COUNT];
-         bool portfolio_available[LP_SYMBOL_COUNT];
-         LP_PortfolioQStateSnapshot qstate_snapshot;
-         bool portfolio_qstate_ready = BuildPortfolioQStateSnapshot(qstate_snapshot, portfolio_signals, portfolio_available);
-
-         if(!portfolio_qstate_ready)
+         if(m_config.enable_revma_system)
          {
-            ClearSignalAvailability();
-            WritePortfolioQStateReceipt(qstate_snapshot, "fail_closed");
+            for(int i = 0; i < new_symbol_count; i++)
+            {
+               LP_SymbolMeta meta;
+               if(!m_symbol_cache.Get(new_symbol_ids[i], meta))
+                  continue;
+               if(!RevmaSymbolActive(meta))
+                  continue;
+               EvaluateRevmaSymbol(meta, harvest);
+            }
          }
-         else if(qstate_snapshot.asof_m1_time != m_last_portfolio_qstate_asof ||
-            qstate_snapshot.snapshot_hash != m_last_portfolio_qstate_hash)
+         else if(m_config.enable_qstate_trend_variant)
          {
-            for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+            LP_SignalSnapshot portfolio_signals[LP_SYMBOL_COUNT];
+            bool portfolio_available[LP_SYMBOL_COUNT];
+            LP_PortfolioQStateSnapshot qstate_snapshot;
+            bool portfolio_qstate_ready = BuildPortfolioQStateSnapshot(qstate_snapshot, portfolio_signals, portfolio_available);
+
+            if(!portfolio_qstate_ready)
             {
-               m_latest_signals[symbol_id] = portfolio_signals[symbol_id];
-               m_signal_available[symbol_id] = portfolio_available[symbol_id];
+               ClearSignalAvailability();
+               WritePortfolioQStateReceipt(qstate_snapshot, "fail_closed");
             }
-            m_last_portfolio_qstate_asof = qstate_snapshot.asof_m1_time;
-            m_last_portfolio_qstate_hash = qstate_snapshot.snapshot_hash;
-            WritePortfolioQStateReceipt(qstate_snapshot, "ready");
-
-            for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+            else if(qstate_snapshot.asof_m1_time != m_last_portfolio_qstate_asof ||
+               qstate_snapshot.snapshot_hash != m_last_portfolio_qstate_hash)
             {
-               LP_SignalSnapshot signal = m_latest_signals[symbol_id];
-               if(signal.valid)
-                  WriteQStateReceipt(signal);
-            }
-
-            if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
-            {
-               m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
-               m_intent_selector.WriteReceipt(m_receipts);
-
-               for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
+               for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
                {
-                  int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
-                  if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
-                     continue;
+                  m_latest_signals[symbol_id] = portfolio_signals[symbol_id];
+                  m_signal_available[symbol_id] = portfolio_available[symbol_id];
+               }
+               m_last_portfolio_qstate_asof = qstate_snapshot.asof_m1_time;
+               m_last_portfolio_qstate_hash = qstate_snapshot.snapshot_hash;
+               WritePortfolioQStateReceipt(qstate_snapshot, "ready");
 
-                  LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
-                  int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
-                  m_total_intents += emitted;
-                  if(emitted > 0)
+               for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+               {
+                  LP_SignalSnapshot signal = m_latest_signals[symbol_id];
+                  if(signal.valid)
+                     WriteQStateReceipt(signal);
+               }
+
+               if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+               {
+                  m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
+                  m_intent_selector.WriteReceipt(m_receipts);
+
+                  for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
                   {
-                     m_receipts.Write(
-                        LP_RECEIPT_SIGNAL,
-                        signal.symbol,
-                        "intents_emitted_after_selector",
-                        "emitted=" + IntegerToString(emitted) +
-                           "|selector_rank=" + IntegerToString(selected_index + 1) +
-                           "|portfolio_asof_m1_time=" + LP_Stamp(signal.portfolio_asof_m1_time) +
-                           "|portfolio_snapshot_hash=" + (string)signal.portfolio_snapshot_hash +
-                           "|pair_state=" + LP_PairStateName(signal.pair_state) +
-                           "|market_mode=" + LP_MarketModeName(signal.market_mode),
-                        signal.lane_id,
-                        signal.variant_id,
-                        signal.portfolio_snapshot_hash,
-                        0,
-                        0,
-                        0
-                     );
+                     int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
+                     if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
+                        continue;
+
+                     LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
+                     int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
+                     m_total_intents += emitted;
+                     if(emitted > 0)
+                     {
+                        m_receipts.Write(
+                           LP_RECEIPT_SIGNAL,
+                           signal.symbol,
+                           "intents_emitted_after_selector",
+                           "emitted=" + IntegerToString(emitted) +
+                              "|selector_rank=" + IntegerToString(selected_index + 1) +
+                              "|portfolio_asof_m1_time=" + LP_Stamp(signal.portfolio_asof_m1_time) +
+                              "|portfolio_snapshot_hash=" + (string)signal.portfolio_snapshot_hash +
+                              "|pair_state=" + LP_PairStateName(signal.pair_state) +
+                              "|market_mode=" + LP_MarketModeName(signal.market_mode),
+                           signal.lane_id,
+                           signal.variant_id,
+                           signal.portfolio_snapshot_hash,
+                           0,
+                           0,
+                           0
+                        );
+                     }
                   }
                }
             }
-         }
-         else
-         {
-            WritePortfolioQStateReceipt(qstate_snapshot, "duplicate_asof");
+            else
+            {
+               WritePortfolioQStateReceipt(qstate_snapshot, "duplicate_asof");
+            }
          }
       }
 

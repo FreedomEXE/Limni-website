@@ -75,6 +75,17 @@ struct LimniPairDirectionExtremeTracker
    bool event_momentum_decay;
 };
 
+struct LimniPairDirectionPoint
+{
+   datetime time;
+   double price;
+   double q;
+   double anchor;
+   double stoch;
+   int trend_state;
+   int trigger;
+};
+
 ulong LimniPairDirectionHashString(const string value)
 {
    ulong hash = 1469598103934665603;
@@ -170,6 +181,17 @@ void LimniPairDirectionResetExtremeTracker(LimniPairDirectionExtremeTracker &tra
    tracker.failed_extension = false;
    tracker.stoch_reclaim = false;
    tracker.event_momentum_decay = false;
+}
+
+void LimniPairDirectionResetPoint(LimniPairDirectionPoint &point)
+{
+   point.time = 0;
+   point.price = 0.0;
+   point.q = 0.0;
+   point.anchor = EMPTY_VALUE;
+   point.stoch = EMPTY_VALUE;
+   point.trend_state = 0;
+   point.trigger = 0;
 }
 
 void LimniPairDirectionStartExtreme(
@@ -300,6 +322,21 @@ bool LimniPairDirectionValidNumber(const double value)
    return value != EMPTY_VALUE && MathIsValidNumber(value);
 }
 
+bool LimniPairDirectionValidPoint(const LimniPairDirectionPoint &point)
+{
+   if(point.time <= 0)
+      return false;
+   if(!LimniPairDirectionValidNumber(point.price))
+      return false;
+   if(point.q <= 0.0 || !MathIsValidNumber(point.q))
+      return false;
+   if(!LimniPairDirectionValidNumber(point.anchor))
+      return false;
+   if(!LimniPairDirectionValidNumber(point.stoch))
+      return false;
+   return true;
+}
+
 bool LimniPairDirectionValidSample(
    const int index,
    const datetime &source_times[],
@@ -380,46 +417,54 @@ bool LimniPairDirectionDecisionSample(
    return false;
 }
 
-bool LimniPairDirectionEvaluateSample(
-   const int index,
-   const int momentum_reference_index,
+bool LimniPairDirectionDecisionPoint(
+   const LimniPairDirectionPoint &point,
+   const bool latest_sample,
+   const bool has_last_decision,
+   const LimniPairDirectionPoint &last_decision
+)
+{
+   if(!has_last_decision || latest_sample)
+      return true;
+   if(point.trend_state != last_decision.trend_state)
+      return true;
+   if(point.trigger != 0)
+      return true;
+   double q = point.q > 0.0 ? point.q : last_decision.q;
+   if(q > 0.0 && MathAbs(point.anchor - last_decision.anchor) >= q * 0.05)
+      return true;
+   if(q > 0.0 && MathAbs(point.price - last_decision.price) >= q)
+      return true;
+   return false;
+}
+
+bool LimniPairDirectionEvaluatePoint(
+   const LimniPairDirectionPoint &point,
+   const LimniPairDirectionPoint &momentum_reference,
    const int previous_raw_direction,
    const bool update_extreme_tracker,
-   const datetime &source_times[],
-   const double &source_closes[],
-   const double &source_q[],
-   const double &source_line[],
-   const double &source_stoch[],
-   const int &source_ma_state[],
    const double pip_size,
    LimniPairDirectionExtremeTracker &extreme_tracker,
    LimniPairDirectionResult &result
 )
 {
-   if(!LimniPairDirectionValidSample(index, source_times, source_closes, source_q, source_line, source_stoch))
+   if(!LimniPairDirectionValidPoint(point))
    {
       LimniPairDirectionResetResult(result);
-      result.reason_code = "invalid_sample";
+      result.reason_code = "invalid_point";
       return false;
    }
 
-   int trend_state = 0;
-   if(ArraySize(source_ma_state) > index)
-      trend_state = source_ma_state[index];
-
-   double q = source_q[index];
-   double price = source_closes[index];
-   double anchor = source_line[index];
-   double stoch = source_stoch[index];
+   int trend_state = point.trend_state;
+   double q = point.q;
+   double price = point.price;
+   double anchor = point.anchor;
+   double stoch = point.stoch;
    double anchor_distance_q = (price - anchor) / q;
 
-   int ref_index = momentum_reference_index;
-   if(ref_index < 0 || ref_index >= index || !LimniPairDirectionValidSample(ref_index, source_times, source_closes, source_q, source_line, source_stoch))
-      ref_index = index > 0 ? index - 1 : index;
-
    double momentum_q = 0.0;
-   if(ref_index >= 0 && ref_index < index && LimniPairDirectionValidNumber(source_closes[ref_index]))
-      momentum_q = (price - source_closes[ref_index]) / q;
+   if(LimniPairDirectionValidPoint(momentum_reference) && momentum_reference.time < point.time)
+      momentum_q = (price - momentum_reference.price) / q;
 
    double trend_state_score = 0.0;
    if(trend_state > 0)
@@ -457,7 +502,7 @@ bool LimniPairDirectionEvaluateSample(
    result.valid = true;
    result.formula_id = LimniPairDirectionFormulaId();
    result.formula_hash = LimniPairDirectionFormulaHash();
-   result.asof_m1_time = source_times[index];
+   result.asof_m1_time = point.time;
    result.raw_direction = raw_direction;
    result.raw_score = raw_score;
    result.trend_score = trend_score;
@@ -479,6 +524,72 @@ bool LimniPairDirectionEvaluateSample(
    result.setup_type = setup_type;
    result.reason_code = "ok";
    return true;
+}
+
+bool LimniPairDirectionEvaluateSample(
+   const int index,
+   const int momentum_reference_index,
+   const int previous_raw_direction,
+   const bool update_extreme_tracker,
+   const datetime &source_times[],
+   const double &source_closes[],
+   const double &source_q[],
+   const double &source_line[],
+   const double &source_stoch[],
+   const int &source_ma_state[],
+   const int &source_trigger[],
+   const double pip_size,
+   LimniPairDirectionExtremeTracker &extreme_tracker,
+   LimniPairDirectionResult &result
+)
+{
+   if(!LimniPairDirectionValidSample(index, source_times, source_closes, source_q, source_line, source_stoch))
+   {
+      LimniPairDirectionResetResult(result);
+      result.reason_code = "invalid_sample";
+      return false;
+   }
+
+   LimniPairDirectionPoint point;
+   LimniPairDirectionResetPoint(point);
+   point.time = source_times[index];
+   point.price = source_closes[index];
+   point.q = source_q[index];
+   point.anchor = source_line[index];
+   point.stoch = source_stoch[index];
+   if(ArraySize(source_ma_state) > index)
+      point.trend_state = source_ma_state[index];
+   if(ArraySize(source_trigger) > index)
+      point.trigger = source_trigger[index];
+
+   int ref_index = momentum_reference_index;
+   if(ref_index < 0 || ref_index >= index || !LimniPairDirectionValidSample(ref_index, source_times, source_closes, source_q, source_line, source_stoch))
+      ref_index = index > 0 ? index - 1 : index;
+
+   LimniPairDirectionPoint reference;
+   LimniPairDirectionResetPoint(reference);
+   if(ref_index >= 0 && ref_index < index)
+   {
+      reference.time = source_times[ref_index];
+      reference.price = source_closes[ref_index];
+      reference.q = source_q[ref_index];
+      reference.anchor = source_line[ref_index];
+      reference.stoch = source_stoch[ref_index];
+      if(ArraySize(source_ma_state) > ref_index)
+         reference.trend_state = source_ma_state[ref_index];
+      if(ArraySize(source_trigger) > ref_index)
+         reference.trigger = source_trigger[ref_index];
+   }
+
+   return LimniPairDirectionEvaluatePoint(
+      point,
+      reference,
+      previous_raw_direction,
+      update_extreme_tracker,
+      pip_size,
+      extreme_tracker,
+      result
+   );
 }
 
 bool LimniPairDirectionReplay(
@@ -556,6 +667,7 @@ bool LimniPairDirectionReplay(
          source_line,
          source_stoch,
          source_ma_state,
+         source_trigger,
          pip_size,
          extreme_tracker,
          latest_result

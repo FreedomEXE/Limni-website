@@ -210,6 +210,17 @@ public:
       return false;
    }
 
+   bool HasSymbolAnyLaneGrid(const int symbol_id, const int lane_id)
+   {
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].symbol_id == symbol_id &&
+            m_rows[i].lane_id == lane_id)
+            return true;
+      }
+      return false;
+   }
+
    void WriteReceipt(LP_ReceiptWriter &receipts)
    {
       receipts.Write(

@@ -6,6 +6,7 @@
 
 #include "Types.mqh"
 #include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
+#include "..\\Strategies\\RevmaTypes.mqh"
 
 input string LP_INPUT_0 = "********** LimniPortfolioEA **********";
 input string LP_INPUT_1 = "----- Execution Barrier -----";
@@ -17,7 +18,7 @@ input bool EnableCloseExecution = false;
 input bool EnableAccountCloseExecution = false;
 input bool EnableStrategyEvaluation = false;
 input bool RequireHedgingAccount = true;
-input bool RequireAllSymbols = true;
+input bool RequireAllSymbols = false;
 input string LP_INPUT_2 = "----- Symbol Universe -----";
 input string BrokerSymbolSuffix = "";
 input string LP_INPUT_3 = "----- Calendar Guards -----";
@@ -35,8 +36,7 @@ input bool HarvestSoftLockOnBreach = true;
 input bool HarvestGridWinddownOnBreach = true;
 input bool HarvestArmEmergencyLiquidation = false;
 input string LP_INPUT_5 = "----- Portfolio Risk Guards -----";
-input bool EnableCurrencyExposureGuard = true;
-input bool EnableQStateTrendVariant = true;
+input bool EnableCurrencyExposureGuard = false;
 input double MaxCurrencySignedLots = 5.0;
 input double MaxCurrencyGrossLots = 10.0;
 input int MaxSameDirectionGridsPerCurrency = 4;
@@ -44,13 +44,23 @@ input int MaxManagedPositions = 200;
 input double MaxSingleOrderLots = 1.0;
 input int MaxClosePositionsPerStep = 10;
 input int NewsMinimumImpact = 3;
-input string LP_INPUT_6 = "----- Q-State Execution Controls v001 -----";
+input string LP_INPUT_6 = "----- System: Revma v001 -----";
+input bool EnableRevmaSystem = true;
+input LP_UniverseMode RevmaUniverseMode = LP_UNIVERSE_CURRENT_CHART;
+input bool RevmaEnableContinuationSleeve = true;
+input bool RevmaEnableReversionSleeve = true;
+input double RevmaFixedLots = 0.01;
+input double RevmaGridSpacingQ = 1.0;
+input int RevmaIntentExpiryMinutes = 10;
+input int RevmaBootstrapM1Bars = 4320;
+input string LP_INPUT_7 = "----- Future System: Q-State Legacy Disabled -----";
+input bool EnableQStateTrendVariant = false;
 input double QStateFixedLots = 0.01;
 input double QStateGridSpacingQ = 1.0;
 input int QStateGridCap = 50;
 input int QStateIntentExpiryMinutes = 10;
 input bool QStateReentryNextDayAfterHarvest = true;
-input string LP_INPUT_7 = "----- Diagnostics -----";
+input string LP_INPUT_8 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -87,6 +97,14 @@ void LP_LoadConfig(LP_Config &config)
    config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
    config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
    config.enable_qstate_trend_variant = EnableQStateTrendVariant;
+   config.enable_revma_system = EnableRevmaSystem;
+   config.revma_universe_mode = RevmaUniverseMode;
+   config.revma_enable_continuation_sleeve = RevmaEnableContinuationSleeve;
+   config.revma_enable_reversion_sleeve = RevmaEnableReversionSleeve;
+   config.revma_bootstrap_m1_bars = RevmaBootstrapM1Bars;
+   config.revma_fixed_lots = RevmaFixedLots;
+   config.revma_grid_spacing_q = RevmaGridSpacingQ;
+   config.revma_intent_expiry_minutes = RevmaIntentExpiryMinutes;
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
@@ -128,6 +146,14 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.harvest_arm_emergency_liquidation) + "|" +
       LP_BoolText(config.enable_currency_exposure_guard) + "|" +
       LP_BoolText(config.enable_qstate_trend_variant) + "|" +
+      LP_BoolText(config.enable_revma_system) + "|" +
+      LP_UniverseModeName(config.revma_universe_mode) + "|" +
+      LP_BoolText(config.revma_enable_continuation_sleeve) + "|" +
+      LP_BoolText(config.revma_enable_reversion_sleeve) + "|" +
+      IntegerToString(config.revma_bootstrap_m1_bars) + "|" +
+      DoubleToString(config.revma_fixed_lots, 4) + "|" +
+      DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
+      IntegerToString(config.revma_intent_expiry_minutes) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +

@@ -31,6 +31,9 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_Q_STATE: return "q_state";
       case LP_RECEIPT_PORTFOLIO_SELECTOR: return "portfolio_selector";
       case LP_RECEIPT_PORTFOLIO_Q_STATE: return "portfolio_q_state";
+      case LP_RECEIPT_REVMA_SIGNAL: return "revma_signal";
+      case LP_RECEIPT_REVMA_GRID_BIRTH: return "revma_grid_birth";
+      case LP_RECEIPT_REVMA_GRID_ADD: return "revma_grid_add";
    }
    return "unknown";
 }

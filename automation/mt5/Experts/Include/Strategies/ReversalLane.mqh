@@ -10,6 +10,10 @@
 class LP_ReversalLane
 {
 public:
+   void Reset()
+   {
+   }
+
    int Evaluate(const LP_SignalSnapshot &snapshot, LP_IntentBus &bus)
    {
       if(!snapshot.valid)

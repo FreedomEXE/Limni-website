@@ -8,12 +8,14 @@
 #include "IntentBus.mqh"
 #include "TrendFollowLane.mqh"
 #include "ReversalLane.mqh"
+#include "RevmaGridSleeve.mqh"
 
 class LP_StrategyRegistry
 {
 private:
    LP_TrendFollowLane m_trend_follow;
    LP_ReversalLane m_reversal;
+   LP_RevmaGridSleeve m_revma;
    bool m_enabled;
 
 public:
@@ -21,6 +23,8 @@ public:
    {
       m_enabled = false;
       m_trend_follow.Reset();
+      m_reversal.Reset();
+      m_revma.Reset();
    }
 
    void SetEnabled(const bool enabled)
@@ -31,6 +35,20 @@ public:
    void Configure(const ulong config_hash)
    {
       m_trend_follow.Configure(config_hash);
+      m_revma.Configure(config_hash);
+   }
+
+   int EvaluateRevma(
+      const LP_RevmaSignal &signal,
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus
+   )
+   {
+      if(!m_enabled)
+         return 0;
+      return m_revma.Evaluate(signal, config, grid_book, receipts, bus);
    }
 
    int EvaluateAll(
@@ -41,6 +59,9 @@ public:
    )
    {
       if(!m_enabled)
+         return 0;
+
+      if(!config.enable_qstate_trend_variant)
          return 0;
 
       int emitted = 0;

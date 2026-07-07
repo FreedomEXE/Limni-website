@@ -1,0 +1,1 @@
+PASS: no Katarakti/Q-State/Common snapshot references in Revma-only files.

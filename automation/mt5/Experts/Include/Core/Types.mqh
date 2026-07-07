@@ -54,14 +54,23 @@ enum LP_LaneId
 {
    LP_LANE_NONE = 0,
    LP_LANE_TREND_FOLLOW = 1,
-   LP_LANE_REVERSAL = 2
+   LP_LANE_REVERSAL = 2,
+   LP_LANE_REVMA = 3
 };
 
 enum LP_VariantId
 {
    LP_VARIANT_NONE = 0,
    LP_VARIANT_STRICT = 1,
-   LP_VARIANT_LOOSE = 2
+   LP_VARIANT_LOOSE = 2,
+   LP_VARIANT_REVMA_CONTINUATION = 10,
+   LP_VARIANT_REVMA_REVERSION = 11
+};
+
+enum LP_UniverseMode
+{
+   LP_UNIVERSE_CURRENT_CHART = 0,
+   LP_UNIVERSE_FX28 = 1
 };
 
 enum LP_MarketMode
@@ -191,7 +200,10 @@ enum LP_ReceiptKind
    LP_RECEIPT_NEWS_GUARD = 18,
    LP_RECEIPT_Q_STATE = 19,
    LP_RECEIPT_PORTFOLIO_SELECTOR = 20,
-   LP_RECEIPT_PORTFOLIO_Q_STATE = 21
+   LP_RECEIPT_PORTFOLIO_Q_STATE = 21,
+   LP_RECEIPT_REVMA_SIGNAL = 22,
+   LP_RECEIPT_REVMA_GRID_BIRTH = 23,
+   LP_RECEIPT_REVMA_GRID_ADD = 24
 };
 
 struct LP_Config
@@ -226,6 +238,14 @@ struct LP_Config
    bool harvest_arm_emergency_liquidation;
    bool enable_currency_exposure_guard;
    bool enable_qstate_trend_variant;
+   bool enable_revma_system;
+   LP_UniverseMode revma_universe_mode;
+   bool revma_enable_continuation_sleeve;
+   bool revma_enable_reversion_sleeve;
+   int revma_bootstrap_m1_bars;
+   double revma_fixed_lots;
+   double revma_grid_spacing_q;
+   int revma_intent_expiry_minutes;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
