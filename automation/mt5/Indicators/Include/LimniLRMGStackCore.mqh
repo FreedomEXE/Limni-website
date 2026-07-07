@@ -187,6 +187,21 @@ void LimniChartTimeRange(const datetime &time[], const int rates_total, datetime
    }
 }
 
+void LimniChartTimeRangeFast(const datetime &time[], const int rates_total, datetime &oldest, datetime &newest)
+{
+   oldest = 0;
+   newest = 0;
+   if(rates_total <= 0)
+      return;
+
+   bool chart_series = ArrayGetAsSeries(time);
+   newest = chart_series ? time[0] : time[rates_total - 1];
+   oldest = chart_series ? time[rates_total - 1] : time[0];
+
+   if(oldest <= 0 || newest <= 0)
+      LimniChartTimeRange(time, rates_total, oldest, newest);
+}
+
 double LimniMedianValues(double &values[], const int count)
 {
    if(count <= 0)
@@ -716,6 +731,80 @@ void LimniCopyDoubleBuffer(const double &source[], double &target[], const int r
 {
    for(int i = 0; i < rates_total; i++)
       target[i] = source[i];
+}
+
+int LimniChangedBarLimit(const int rates_total, const int prev_calculated, const int max_initial_bars = 20000)
+{
+   if(rates_total <= 0)
+      return 0;
+
+   int limit = rates_total - prev_calculated;
+   if(prev_calculated > 0)
+      limit++;
+   else if(max_initial_bars > 0)
+      limit = MathMin(rates_total, max_initial_bars);
+
+   if(limit < 1)
+      limit = 1;
+   if(limit > rates_total)
+      limit = rates_total;
+
+   return limit;
+}
+
+int LimniRecentChartIndex(const int rates_total, const bool chart_series, const int recent_offset)
+{
+   return chart_series ? recent_offset : rates_total - 1 - recent_offset;
+}
+
+int LimniSourceIndexAtOrBefore(const datetime &source_times[], const datetime value)
+{
+   int source_count = ArraySize(source_times);
+   if(source_count <= 0 || value <= 0)
+      return -1;
+   if(value < source_times[0])
+      return -1;
+   if(value >= source_times[source_count - 1])
+      return source_count - 1;
+
+   int lo = 0;
+   int hi = source_count - 1;
+   while(lo <= hi)
+   {
+      int mid = (lo + hi) / 2;
+      if(source_times[mid] <= value)
+         lo = mid + 1;
+      else
+         hi = mid - 1;
+   }
+
+   return hi;
+}
+
+void LimniProjectDoubleToChartLimit(
+   const datetime &time[],
+   const int rates_total,
+   const bool chart_series,
+   const datetime &source_times[],
+   const double &source_values[],
+   double &target_buffer[],
+   const int limit
+)
+{
+   int source_count = ArraySize(source_times);
+   if(source_count <= 0 || rates_total <= 0)
+      return;
+
+   int safe_limit = MathMin(MathMax(0, limit), rates_total);
+   for(int recent = safe_limit - 1; recent >= 0; recent--)
+   {
+      int idx = LimniRecentChartIndex(rates_total, chart_series, recent);
+      int source_index = LimniSourceIndexAtOrBefore(source_times, time[idx]);
+      if(source_index >= 0 && source_values[source_index] != EMPTY_VALUE)
+         target_buffer[idx] = source_values[source_index];
+      else
+         target_buffer[idx] = EMPTY_VALUE;
+   }
 }
 
 bool LimniBuildStackSeries(

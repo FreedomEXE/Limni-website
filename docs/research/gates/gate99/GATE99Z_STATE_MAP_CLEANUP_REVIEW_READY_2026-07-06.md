@@ -164,6 +164,13 @@ Final status-card artifact folder:
 docs/research/gates/gate99/artifacts/gate99z-state-map-status-card-2026-07-06/
 ```
 
+Runtime performance follow-up:
+
+```text
+docs/research/gates/gate99/GATE99Z_VISUAL_RUNTIME_PERFORMANCE_AND_DIALOG_PANEL_2026-07-06.md
+docs/research/gates/gate99/artifacts/gate99z-visual-runtime-performance-2026-07-06/
+```
+
 ## Verdict
 
 ```text

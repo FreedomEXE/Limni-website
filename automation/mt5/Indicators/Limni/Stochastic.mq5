@@ -23,41 +23,83 @@
 input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
+const int STOCHASTIC_MAX_INITIAL_PROJECT_BARS = 50000;
+
 double StochBuffer[];
 
-bool LoadStackSeries(
+datetime g_stack_cache_from = 0;
+datetime g_stack_latest_closed_m1 = 0;
+bool g_stack_ready = false;
+int g_stack_scale_lookback_days = -999;
+double g_stack_point = 0.0;
+datetime g_source_times[];
+double g_source_closes[];
+double g_source_q[];
+double g_source_line[];
+double g_source_stoch[];
+double g_source_ma[];
+int g_source_ma_state[];
+int g_source_trigger[];
+int g_stack_copied = 0;
+int g_stack_day_count = 0;
+int g_stack_valid_q_day_count = 0;
+uint g_last_debug_update_ms = 0;
+
+datetime LatestClosedM1()
+{
+   datetime latest_closed_m1 = iTime(_Symbol, PERIOD_M1, 1);
+   if(latest_closed_m1 <= 0)
+      latest_closed_m1 = TimeCurrent();
+   return latest_closed_m1;
+}
+
+bool EnsureStackCache(
    const datetime chart_oldest,
    const datetime chart_newest,
-   datetime &source_times[],
-   double &source_closes[],
-   double &source_q[],
-   double &source_line[],
-   double &source_stoch[],
-   double &source_ma[],
-   int &source_ma_state[],
-   int &source_trigger[],
-   int &copied,
-   int &day_count,
-   int &valid_q_day_count
+   bool &refreshed
 )
 {
-   return LimniLoadCachedStackSeries(
+   refreshed = false;
+   datetime latest_closed_m1 = LatestClosedM1();
+   datetime source_from = LimniLrmgSourceStartForChart(chart_oldest, ScaleLookbackDays);
+
+   if(g_stack_ready &&
+      g_stack_scale_lookback_days == ScaleLookbackDays &&
+      g_stack_point == _Point &&
+      g_stack_latest_closed_m1 == latest_closed_m1 &&
+      source_from >= g_stack_cache_from)
+   {
+      return true;
+   }
+
+   if(!LimniLoadCachedStackSeries(
       chart_oldest,
       chart_newest,
       ScaleLookbackDays,
       _Point,
-      source_times,
-      source_closes,
-      source_q,
-      source_line,
-      source_stoch,
-      source_ma,
-      source_ma_state,
-      source_trigger,
-      copied,
-      day_count,
-      valid_q_day_count
-   );
+      g_source_times,
+      g_source_closes,
+      g_source_q,
+      g_source_line,
+      g_source_stoch,
+      g_source_ma,
+      g_source_ma_state,
+      g_source_trigger,
+      g_stack_copied,
+      g_stack_day_count,
+      g_stack_valid_q_day_count
+   ))
+   {
+      return false;
+   }
+
+   g_stack_cache_from = source_from;
+   g_stack_latest_closed_m1 = latest_closed_m1;
+   g_stack_scale_lookback_days = ScaleLookbackDays;
+   g_stack_point = _Point;
+   g_stack_ready = true;
+   refreshed = true;
+   return true;
 }
 
 int OnInit()
@@ -87,55 +129,45 @@ int OnCalculate(
 
    datetime chart_oldest = 0;
    datetime chart_newest = 0;
-   LimniChartTimeRange(time, rates_total, chart_oldest, chart_newest);
+   LimniChartTimeRangeFast(time, rates_total, chart_oldest, chart_newest);
    if(chart_oldest <= 0 || chart_newest <= 0)
       return rates_total;
 
-   datetime source_times[];
-   double source_closes[];
-   double source_q[];
-   double source_line[];
-   double source_stoch[];
-   double source_ma[];
-   int source_ma_state[];
-   int source_trigger[];
-   int copied = 0;
-   int day_count = 0;
-   int valid_q_day_count = 0;
-
-   if(!LoadStackSeries(
+   bool refreshed = false;
+   if(!EnsureStackCache(
       chart_oldest,
       chart_newest,
-      source_times,
-      source_closes,
-      source_q,
-      source_line,
-      source_stoch,
-      source_ma,
-      source_ma_state,
-      source_trigger,
-      copied,
-      day_count,
-      valid_q_day_count
+      refreshed
    ))
    {
       return rates_total;
    }
 
-   double next_buffer[];
-   ArrayResize(next_buffer, rates_total);
-   LimniClearDoubleBuffer(next_buffer, rates_total);
-   LimniProjectDoubleToChart(time, rates_total, ArrayGetAsSeries(time), source_times, source_stoch, next_buffer);
-   LimniCopyDoubleBuffer(next_buffer, StochBuffer, rates_total);
+   int limit = LimniChangedBarLimit(rates_total, prev_calculated, STOCHASTIC_MAX_INITIAL_PROJECT_BARS);
+   LimniProjectDoubleToChartLimit(
+      time,
+      rates_total,
+      ArrayGetAsSeries(time),
+      g_source_times,
+      g_source_stoch,
+      StochBuffer,
+      limit
+   );
 
    if(ShowDebugComment)
    {
-      Comment(
-         "Stochastic\n",
-         "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
-         "source bars: ", IntegerToString(copied), "\n",
-         "days: ", IntegerToString(day_count), " valid q days: ", IntegerToString(valid_q_day_count)
-      );
+      uint now = GetTickCount();
+      if(refreshed || g_last_debug_update_ms == 0 || now - g_last_debug_update_ms >= 1000)
+      {
+         Comment(
+            "Stochastic\n",
+            "q horizon days: ", IntegerToString(MathMax(0, ScaleLookbackDays)), "\n",
+            "source bars: ", IntegerToString(g_stack_copied), "\n",
+            "days: ", IntegerToString(g_stack_day_count),
+            " valid q days: ", IntegerToString(g_stack_valid_q_day_count)
+         );
+         g_last_debug_update_ms = now;
+      }
    }
 
    return rates_total;
