@@ -1,0 +1,3 @@
+pdf/*.pdf
+pdf/*.tmp
+!pdf/.gitkeep

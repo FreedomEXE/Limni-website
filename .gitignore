@@ -40,6 +40,7 @@ engine/tmp/
 !package.json
 !package-lock.json
 !tsconfig.json
+!docs/research/papers/papers_manifest.json
 !app/tsconfig.json
 !database/contracts/*.json
 !app/src/lib/performance/embedded/data-integrity-audit.json

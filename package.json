@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "performance:coverage:check": "tsx automation/scripts/check-performance-coverage.ts",
     "automation:contracts": "tsx automation/scripts/generate-contracts.ts",
+    "research:papers:ingest": "tsx automation/scripts/ingest-papers.ts",
     "bot:bitget": "tsx automation/bots/bitget-perp-bot.ts",
     "bot:oanda": "tsx automation/bots/oanda-universal-bot.ts",
     "engine:research-manifest:evaluate": "tsx engine/scripts/verification/evaluate-research-decision-manifest.ts",
