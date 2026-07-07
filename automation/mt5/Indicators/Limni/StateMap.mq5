@@ -3,7 +3,7 @@
 //|                   Limni pair-state visual viewer                 |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.61"
+#property version   "1.62"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -21,6 +21,7 @@
 #property indicator_width2 3
 
 #include "..\\Include\\LimniLRMGStackCore.mqh"
+#include "..\\Include\\LimniPairDirectionCore.mqh"
 
 input bool ShowCenterLine = true;
 input int VisualMaxM1Bars = 0; // 0 = all available closed M1 bars
@@ -92,6 +93,7 @@ double g_panel_latest_q = EMPTY_VALUE;
 int g_panel_latest_copied = 0;
 int g_panel_latest_day_count = 0;
 int g_panel_latest_valid_q_day_count = 0;
+LimniPairDirectionResult g_panel_latest_pair_direction;
 
 void StateMapDeleteObjects()
 {
@@ -279,6 +281,28 @@ string StateMapPipsLabel(const double value)
    return DoubleToString(pips, digits) + " pips";
 }
 
+string StateMapDirectionLabel(const LimniPairDirectionResult &direction)
+{
+   if(!direction.valid)
+      return "WAITING";
+   if(direction.confirmed_direction > 0)
+      return "LONG";
+   if(direction.confirmed_direction < 0)
+      return "SHORT";
+   return "WAITING";
+}
+
+color StateMapDirectionColor(const LimniPairDirectionResult &direction)
+{
+   if(!direction.valid)
+      return STATE_MAP_STRESS_COLOR;
+   if(direction.confirmed_direction > 0)
+      return STATE_MAP_LONG_COLOR;
+   if(direction.confirmed_direction < 0)
+      return STATE_MAP_SHORT_COLOR;
+   return STATE_MAP_STRESS_COLOR;
+}
+
 bool StateMapHasVisualData(
    const double latest_anchor,
    const double latest_stoch,
@@ -292,28 +316,6 @@ bool StateMapHasVisualData(
    if(latest_stoch == EMPTY_VALUE || !MathIsValidNumber(latest_stoch))
       return false;
    return true;
-}
-
-string StateMapDirectionLabel(const int state, const bool data_ready)
-{
-   if(!data_ready)
-      return "WAITING";
-   if(state > 0)
-      return "LONG";
-   if(state < 0)
-      return "SHORT";
-   return "NEUTRAL";
-}
-
-color StateMapDirectionColor(const int state, const bool data_ready)
-{
-   if(!data_ready)
-      return STATE_MAP_STRESS_COLOR;
-   if(state > 0)
-      return STATE_MAP_LONG_COLOR;
-   if(state < 0)
-      return STATE_MAP_SHORT_COLOR;
-   return STATE_MAP_NEUTRAL_COLOR;
 }
 
 string StateMapTrendLabel(const int state)
@@ -560,7 +562,8 @@ void StateMapUpdatePanel(
    const double latest_q,
    const int copied,
    const int day_count,
-   const int valid_q_day_count
+   const int valid_q_day_count,
+   LimniPairDirectionResult &pair_direction
 )
 {
    if(!StateMapCreateDialog())
@@ -573,10 +576,11 @@ void StateMapUpdatePanel(
    g_panel_latest_copied = copied;
    g_panel_latest_day_count = day_count;
    g_panel_latest_valid_q_day_count = valid_q_day_count;
+   g_panel_latest_pair_direction = pair_direction;
 
    bool data_ready = StateMapHasVisualData(latest_anchor, latest_stoch, copied);
-   string direction_value = StateMapDirectionLabel(latest_trend_state, data_ready);
-   color direction_color = StateMapDirectionColor(latest_trend_state, data_ready);
+   string direction_value = StateMapDirectionLabel(pair_direction);
+   color direction_color = StateMapDirectionColor(pair_direction);
    string header_direction = "DIRECTION: " + direction_value;
 
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
@@ -600,6 +604,9 @@ void StateMapUpdatePanel(
       m1_label + "|" +
       IntegerToString(latest_trend_state) + "|" +
       direction_value + "|" +
+      DoubleToString(pair_direction.raw_score, 4) + "|" +
+      IntegerToString(pair_direction.pending_direction) + "|" +
+      IntegerToString(pair_direction.pending_count) + "|" +
       stoch_value + "|" +
       q_value + "|" +
       anchor_value + "|" +
@@ -631,7 +638,7 @@ void StateMapUpdatePanel(
    int row_3 = row_2 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
    int row_4 = row_3 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
 
-   StateMapDrawPanelBlock("Direction", "DIRECTION", direction_value, "chart symbol only", left_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, direction_color);
+   StateMapDrawPanelBlock("Direction", "DIRECTION", direction_value, pair_direction.valid ? "confirmed core" : pair_direction.reason_code, left_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, direction_color);
    StateMapDrawPanelBlock("Q", "Q SIZE", q_value, "q-days " + q_days_value, right_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
    StateMapDrawPanelBlock("Trend", "TREND", trend_value, center_detail, left_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, StateMapTrendColor(latest_trend_state));
    StateMapDrawPanelBlock("Stochastic", "STOCHASTIC", stoch_value, stoch_detail, right_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
@@ -650,10 +657,11 @@ void StateMapRenderPanel(
    const double latest_q,
    const int copied,
    const int day_count,
-   const int valid_q_day_count
+   const int valid_q_day_count,
+   LimniPairDirectionResult &pair_direction
 )
 {
-   StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, latest_q, copied, day_count, valid_q_day_count);
+   StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, latest_q, copied, day_count, valid_q_day_count, pair_direction);
 }
 
 int OnInit()
@@ -667,7 +675,8 @@ int OnInit()
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
    StateMapDeleteObjects();
    StateMapCreateDialog();
-   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0);
+   LimniPairDirectionResetResult(g_panel_latest_pair_direction);
+   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0, g_panel_latest_pair_direction);
    return INIT_SUCCEEDED;
 }
 
@@ -688,7 +697,8 @@ void StateMapRefreshPanelFromStored()
       g_panel_latest_q,
       g_panel_latest_copied,
       g_panel_latest_day_count,
-      g_panel_latest_valid_q_day_count
+      g_panel_latest_valid_q_day_count,
+      g_panel_latest_pair_direction
    );
 }
 
@@ -740,7 +750,8 @@ int OnCalculate(
    bool stack_refreshed = false;
    if(!StateMapEnsureStackCache(chart_oldest, chart_newest, stack_refreshed))
    {
-      StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0);
+      LimniPairDirectionResetResult(g_panel_latest_pair_direction);
+      StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, EMPTY_VALUE, 0, 0, 0, g_panel_latest_pair_direction);
       return 0;
    }
    if(stack_refreshed)
@@ -809,6 +820,18 @@ int OnCalculate(
    int latest_trend_state = latest_source_index >= 0 ? g_source_ma_state[latest_source_index] : 0;
    double latest_stoch = latest_source_index >= 0 ? g_source_stoch[latest_source_index] : EMPTY_VALUE;
    double latest_q = latest_source_index >= 0 ? g_source_q[latest_source_index] : EMPTY_VALUE;
+   LimniPairDirectionResult pair_direction;
+   LimniPairDirectionReplay(
+      g_source_times,
+      g_source_closes,
+      g_source_q,
+      g_source_line,
+      g_source_stoch,
+      g_source_ma_state,
+      g_source_trigger,
+      StateMapPipSize(),
+      pair_direction
+   );
 
    StateMapRenderPanel(
       latest_anchor,
@@ -817,7 +840,8 @@ int OnCalculate(
       latest_q,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count
+      g_stack_valid_q_day_count,
+      pair_direction
    );
 
    return rates_total;

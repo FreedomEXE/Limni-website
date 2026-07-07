@@ -1,0 +1,6 @@
+Gate 99ZU compile results
+formula_id: g99zu-pair-direction-v001
+formula_hash: 2125347990034264618
+repo StateMap: Result: 0 errors, 0 warnings, 5713 msec elapsed, cpu='X64 Regular'
+active StateMap: Result: 0 errors, 0 warnings, 5616 msec elapsed, cpu='X64 Regular'
+Stochastic: source not touched in Gate 99ZU; not recompiled.
