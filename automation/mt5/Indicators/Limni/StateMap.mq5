@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.55"
+#property version   "1.56"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -1169,7 +1169,7 @@ int OnCalculate(
    ))
    {
       StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
-      return rates_total;
+      return 0;
    }
    if(stack_refreshed)
    {
@@ -1177,15 +1177,24 @@ int OnCalculate(
    }
 
    bool chart_series = ArrayGetAsSeries(time);
-   int limit = LimniStableProjectionLimit(
-      rates_total,
-      prev_calculated,
-      chart_oldest,
-      chart_newest,
-      g_projected_chart_oldest,
-      g_projected_chart_newest,
-      STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS
-   );
+   int limit = stack_refreshed ?
+      rates_total :
+      LimniStableProjectionLimit(
+         rates_total,
+         prev_calculated,
+         chart_oldest,
+         chart_newest,
+         g_projected_chart_oldest,
+         g_projected_chart_newest,
+         STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS
+      );
+   if(limit == rates_total)
+   {
+      LimniClearDoubleBuffer(PriceAnchorBuffer, rates_total);
+      LimniClearDoubleBuffer(StateAnchorBuffer, rates_total);
+      LimniFillDoubleBuffer(StateColorBuffer, rates_total, 2.0);
+   }
+
    if(ShowCenterLine)
    {
       LimniProjectDoubleToChartLimit(
