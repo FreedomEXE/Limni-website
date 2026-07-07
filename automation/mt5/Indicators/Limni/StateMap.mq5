@@ -3,7 +3,7 @@
 //|                   Limni pair-state visual viewer                 |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.60"
+#property version   "1.61"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -147,13 +147,86 @@ string StateMapClip(const string value, const int max_len)
    return StringSubstr(value, 0, max_len - 3) + "...";
 }
 
+int StateMapNthSundayDay(const int year, const int month, const int nth)
+{
+   MqlDateTime first;
+   ZeroMemory(first);
+   first.year = year;
+   first.mon = month;
+   first.day = 1;
+   datetime first_time = StructToTime(first);
+
+   MqlDateTime first_parts;
+   TimeToStruct(first_time, first_parts);
+   int days_until_sunday = (7 - first_parts.day_of_week) % 7;
+   int safe_nth = nth < 1 ? 1 : nth;
+   return 1 + days_until_sunday + ((safe_nth - 1) * 7);
+}
+
+bool StateMapTorontoDstActive(const datetime utc_value)
+{
+   if(utc_value <= 0)
+      return false;
+
+   MqlDateTime parts;
+   TimeToStruct(utc_value, parts);
+
+   MqlDateTime dst_start;
+   ZeroMemory(dst_start);
+   dst_start.year = parts.year;
+   dst_start.mon = 3;
+   dst_start.day = StateMapNthSundayDay(parts.year, 3, 2);
+   dst_start.hour = 7; // Toronto DST starts at 02:00 EST, which is 07:00 UTC.
+
+   MqlDateTime dst_end;
+   ZeroMemory(dst_end);
+   dst_end.year = parts.year;
+   dst_end.mon = 11;
+   dst_end.day = StateMapNthSundayDay(parts.year, 11, 1);
+   dst_end.hour = 6; // Toronto DST ends at 02:00 EDT, which is 06:00 UTC.
+
+   datetime start_utc = StructToTime(dst_start);
+   datetime end_utc = StructToTime(dst_end);
+   return utc_value >= start_utc && utc_value < end_utc;
+}
+
+datetime StateMapBrokerTimeToUtc(const datetime broker_value)
+{
+   datetime broker_now = TimeTradeServer();
+   if(broker_now <= 0)
+      broker_now = TimeCurrent();
+
+   datetime utc_now = TimeGMT();
+   if(broker_now <= 0 || utc_now <= 0)
+      return broker_value;
+
+   int broker_offset_seconds = (int)(broker_now - utc_now);
+   if(MathAbs((double)broker_offset_seconds) > 18.0 * 60.0 * 60.0)
+      return broker_value;
+
+   return broker_value - broker_offset_seconds;
+}
+
+datetime StateMapUtcToToronto(const datetime utc_value)
+{
+   int offset_seconds = StateMapTorontoDstActive(utc_value) ? -4 * 60 * 60 : -5 * 60 * 60;
+   return utc_value + offset_seconds;
+}
+
 string StateMapTimeLabel(const datetime value)
 {
    if(value <= 0)
       return "syncing";
+
+   datetime toronto_value = StateMapUtcToToronto(StateMapBrokerTimeToUtc(value));
    MqlDateTime parts;
-   TimeToStruct(value, parts);
-   return StringFormat("%02d-%02d %02d:%02d", parts.mon, parts.day, parts.hour, parts.min);
+   TimeToStruct(toronto_value, parts);
+
+   int hour_12 = parts.hour % 12;
+   if(hour_12 == 0)
+      hour_12 = 12;
+   string suffix = parts.hour >= 12 ? "pm" : "am";
+   return StringFormat("%d:%02d %s", hour_12, parts.min, suffix);
 }
 
 string StateMapReasonLabel(const string reason)
@@ -565,7 +638,7 @@ void StateMapUpdatePanel(
    StateMapDrawPanelBlock("Anchor", "ANCHOR", anchor_value, "center price", left_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
    StateMapDrawPanelBlock("Status", "DATA", reason_value, data_detail, right_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, data_ready ? STATE_MAP_LONG_COLOR : STATE_MAP_STRESS_COLOR);
    StateMapDrawPanelBlock("Bars", "BARS", bars_value, "q-days " + q_days_value, left_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
-   StateMapDrawPanelBlock("AsOf", "AS-OF", m1_label, "closed M1", right_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
+   StateMapDrawPanelBlock("AsOf", "AS-OF", m1_label, "Toronto", right_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
 
    g_panel_signature = signature;
 }
