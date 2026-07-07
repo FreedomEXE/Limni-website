@@ -24,6 +24,7 @@
 #include "..\\Portfolio\\CurrencyExposureGuard.mqh"
 #include "..\\Portfolio\\AccountHarvestGuard.mqh"
 #include "..\\Portfolio\\RiskArbiter.mqh"
+#include "..\\Execution\\MagicCodec.mqh"
 #include "..\\Execution\\TradeRouter.mqh"
 #include "..\\Receipts\\ReceiptWriter.mqh"
 #include "..\\Receipts\\RunManifest.mqh"
@@ -172,8 +173,6 @@ private:
 
    bool RevmaSymbolActive(const LP_SymbolMeta &meta)
    {
-      if(!m_config.enable_revma_system)
-         return false;
       if(m_config.revma_universe_mode == LP_UNIVERSE_FX28)
          return true;
       return meta.symbol_id == LP_SymbolIdFromBrokerSymbol(_Symbol);
@@ -432,9 +431,9 @@ private:
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
       intent.max_slippage_points = 10.0;
-      intent.basic_take_profit_distance_price = 0.0;
-      intent.basic_stop_loss_distance_price = 0.0;
-      intent.basic_stop_take_profit_basis = "";
+      intent.take_profit_distance_price = 0.0;
+      intent.stop_loss_distance_price = 0.0;
+      intent.stop_take_profit_basis = "";
       intent.priority = 100;
       intent.score = harvest.managed_floating_pnl;
       intent.grid_key = 0;
@@ -448,47 +447,88 @@ private:
       bus.Add(intent);
    }
 
-   bool EvaluateBasicStopTakeProfitGuard(
+   double EstimatedManagedCloseFee()
+   {
+      double estimated_fee = 0.0;
+      if(m_config.stop_take_profit_close_commission_per_lot <= 0.0)
+         return 0.0;
+
+      for(int i = 0; i < PositionsTotal(); i++)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0)
+            continue;
+         if(!PositionSelectByTicket(ticket))
+            continue;
+
+         long magic = (long)PositionGetInteger(POSITION_MAGIC);
+         if(!LP_IsManagedMagic(magic))
+            continue;
+
+         double lots = MathAbs(PositionGetDouble(POSITION_VOLUME));
+         estimated_fee += lots * m_config.stop_take_profit_close_commission_per_lot;
+      }
+      return estimated_fee;
+   }
+
+   bool EvaluateStopTakeProfitGuard(
       const LP_PortfolioState &portfolio,
       string &reason,
-      double &open_pnl_pct
+      double &net_open_pct,
+      double &gross_open_money,
+      double &estimated_close_fee,
+      double &net_open_money
    )
    {
       reason = "";
-      open_pnl_pct = 0.0;
+      net_open_pct = 0.0;
+      gross_open_money = 0.0;
+      estimated_close_fee = 0.0;
+      net_open_money = 0.0;
 
-      if(!m_config.enable_basic_stop_take_profit)
+      if(m_config.stop_take_profit_mode != LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
          return false;
       if(m_config.revma_universe_mode != LP_UNIVERSE_FX28)
          return false;
       if(portfolio.managed_position_count <= 0 || portfolio.balance <= 0.0)
          return false;
 
-      open_pnl_pct = 100.0 * portfolio.ea_floating_pnl / portfolio.balance;
-      if(m_config.basic_take_profit_pct > 0.0 && open_pnl_pct >= m_config.basic_take_profit_pct)
-         reason = "basic_account_tp_pct";
-      if(reason == "" && m_config.basic_stop_loss_pct > 0.0 && open_pnl_pct <= -m_config.basic_stop_loss_pct)
-         reason = "basic_account_sl_pct";
+      gross_open_money = portfolio.ea_floating_pnl;
+      estimated_close_fee = EstimatedManagedCloseFee();
+      net_open_money = gross_open_money - estimated_close_fee;
+      net_open_pct = 100.0 * net_open_money / portfolio.balance;
+
+      if(m_config.take_profit_value > 0.0 && net_open_pct >= m_config.take_profit_value)
+         reason = "take_profit_percent_after_fees";
+      if(reason == "" && m_config.stop_loss_value > 0.0 && net_open_pct <= -m_config.stop_loss_value)
+         reason = "stop_loss_percent_after_fees";
 
       return reason != "";
    }
 
-   void WriteBasicStopTakeProfitGuardReceipt(
+   void WriteStopTakeProfitGuardReceipt(
       const LP_PortfolioState &portfolio,
       const string status,
       const string reason,
-      const double open_pnl_pct
+      const double net_open_pct,
+      const double gross_open_money,
+      const double estimated_close_fee,
+      const double net_open_money
    )
    {
       m_receipts.Write(
-         LP_RECEIPT_BASIC_SLTP_GUARD,
+         LP_RECEIPT_STOP_TAKE_PROFIT_GUARD,
          "",
          status,
-         "scope=all28_account_pct" +
+         "scope=multi_currency_percent_after_fees" +
             "|reason=" + reason +
-            "|open_pnl_pct=" + DoubleToString(open_pnl_pct, 6) +
-            "|take_profit_pct=" + DoubleToString(m_config.basic_take_profit_pct, 4) +
-            "|stop_loss_pct=" + DoubleToString(m_config.basic_stop_loss_pct, 4) +
+            "|net_open_pct_after_fees=" + DoubleToString(net_open_pct, 6) +
+            "|gross_open_money=" + DoubleToString(gross_open_money, 2) +
+            "|estimated_close_fee=" + DoubleToString(estimated_close_fee, 2) +
+            "|net_open_money_after_fees=" + DoubleToString(net_open_money, 2) +
+            "|take_profit_value_pct=" + DoubleToString(m_config.take_profit_value, 4) +
+            "|stop_loss_value_pct=" + DoubleToString(m_config.stop_loss_value, 4) +
+            "|close_commission_per_lot=" + DoubleToString(m_config.stop_take_profit_close_commission_per_lot, 2) +
             "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
             "|managed_floating_pnl=" + DoubleToString(portfolio.ea_floating_pnl, 2) +
             "|balance=" + DoubleToString(portfolio.balance, 2),
@@ -501,10 +541,13 @@ private:
       );
    }
 
-   void AddBasicStopTakeProfitCloseIntent(
+   void AddStopTakeProfitCloseIntent(
       const LP_PortfolioState &portfolio,
       const string reason,
-      const double open_pnl_pct,
+      const double net_open_pct,
+      const double gross_open_money,
+      const double estimated_close_fee,
+      const double net_open_money,
       LP_IntentBus &bus
    )
    {
@@ -521,28 +564,39 @@ private:
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
       intent.max_slippage_points = 10.0;
-      intent.basic_take_profit_distance_price = 0.0;
-      intent.basic_stop_loss_distance_price = 0.0;
-      intent.basic_stop_take_profit_basis = "";
+      intent.take_profit_distance_price = 0.0;
+      intent.stop_loss_distance_price = 0.0;
+      intent.stop_take_profit_basis = "";
       intent.priority = 100;
-      intent.score = open_pnl_pct;
+      intent.score = net_open_pct;
       intent.grid_key = 0;
       intent.config_hash = m_config_hash;
-      intent.strategy_version_hash = LP_HashString("gate99zzb_basic_sltp_close_all_pct");
-      intent.human_reason = "basic_sltp_scope=all28_account_pct" +
+      intent.strategy_version_hash = LP_HashString("gate99zzc_stop_take_profit_close_all_pct_after_fees");
+      intent.human_reason = "stop_take_profit_scope=multi_currency_percent_after_fees" +
          "|reason=" + reason +
-         "|open_pnl_pct=" + DoubleToString(open_pnl_pct, 6) +
-         "|take_profit_pct=" + DoubleToString(m_config.basic_take_profit_pct, 4) +
-         "|stop_loss_pct=" + DoubleToString(m_config.basic_stop_loss_pct, 4) +
+         "|net_open_pct_after_fees=" + DoubleToString(net_open_pct, 6) +
+         "|gross_open_money=" + DoubleToString(gross_open_money, 2) +
+         "|estimated_close_fee=" + DoubleToString(estimated_close_fee, 2) +
+         "|net_open_money_after_fees=" + DoubleToString(net_open_money, 2) +
+         "|take_profit_value_pct=" + DoubleToString(m_config.take_profit_value, 4) +
+         "|stop_loss_value_pct=" + DoubleToString(m_config.stop_loss_value, 4) +
          "|managed_positions=" + IntegerToString(portfolio.managed_position_count);
       bus.Add(intent);
-      WriteBasicStopTakeProfitGuardReceipt(portfolio, "account_exit_intent", reason, open_pnl_pct);
+      WriteStopTakeProfitGuardReceipt(
+         portfolio,
+         "account_exit_intent",
+         reason,
+         net_open_pct,
+         gross_open_money,
+         estimated_close_fee,
+         net_open_money
+      );
    }
 
    int EvaluateRevmaSymbol(
       const LP_SymbolMeta &meta,
       const LP_HarvestDecision &harvest,
-      const bool basic_sltp_block_new_entries
+      const bool stop_take_profit_block_new_entries
    )
    {
       LP_RevmaSignal signal;
@@ -559,7 +613,7 @@ private:
          return 0;
 
       int emitted = 0;
-      if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
+      if(!harvest.block_new_entries && !stop_take_profit_block_new_entries && m_config.enable_strategy_evaluation)
          emitted = m_strategy_registry.EvaluateRevma(signal, m_config, m_grid_book, m_receipts, m_intent_bus);
 
       UpdateRevmaDashboard(emitted > 0);
@@ -806,27 +860,39 @@ public:
       if(harvest_close_required)
          AddHarvestCloseIntent(harvest, m_intent_bus);
 
-      string basic_sltp_reason = "";
-      double basic_sltp_open_pnl_pct = 0.0;
-      bool basic_sltp_block_new_entries = EvaluateBasicStopTakeProfitGuard(
+      string stop_take_profit_reason = "";
+      double stop_take_profit_net_open_pct = 0.0;
+      double stop_take_profit_gross_open_money = 0.0;
+      double stop_take_profit_estimated_close_fee = 0.0;
+      double stop_take_profit_net_open_money = 0.0;
+      bool stop_take_profit_block_new_entries = EvaluateStopTakeProfitGuard(
          portfolio,
-         basic_sltp_reason,
-         basic_sltp_open_pnl_pct
+         stop_take_profit_reason,
+         stop_take_profit_net_open_pct,
+         stop_take_profit_gross_open_money,
+         stop_take_profit_estimated_close_fee,
+         stop_take_profit_net_open_money
       );
-      if(basic_sltp_block_new_entries)
+      if(stop_take_profit_block_new_entries)
       {
          if(harvest_close_required)
-            WriteBasicStopTakeProfitGuardReceipt(
+            WriteStopTakeProfitGuardReceipt(
                portfolio,
                "triggered_harvest_close_already_queued",
-               basic_sltp_reason,
-               basic_sltp_open_pnl_pct
+               stop_take_profit_reason,
+               stop_take_profit_net_open_pct,
+               stop_take_profit_gross_open_money,
+               stop_take_profit_estimated_close_fee,
+               stop_take_profit_net_open_money
             );
          else
-            AddBasicStopTakeProfitCloseIntent(
+            AddStopTakeProfitCloseIntent(
                portfolio,
-               basic_sltp_reason,
-               basic_sltp_open_pnl_pct,
+               stop_take_profit_reason,
+               stop_take_profit_net_open_pct,
+               stop_take_profit_gross_open_money,
+               stop_take_profit_estimated_close_fee,
+               stop_take_profit_net_open_money,
                m_intent_bus
             );
       }
@@ -839,9 +905,7 @@ public:
          LP_SymbolMeta meta;
          if(!m_symbol_cache.Get(i, meta))
             continue;
-         if(m_config.enable_revma_system && !RevmaSymbolActive(meta))
-            continue;
-         if(!m_config.enable_revma_system && !m_config.enable_qstate_trend_variant)
+         if(!RevmaSymbolActive(meta))
             continue;
 
          LP_TickSnapshot tick;
@@ -864,90 +928,14 @@ public:
 
       if(cycle_new_bars > 0)
       {
-         if(m_config.enable_revma_system)
+         for(int i = 0; i < new_symbol_count; i++)
          {
-            for(int i = 0; i < new_symbol_count; i++)
-            {
-               LP_SymbolMeta meta;
-               if(!m_symbol_cache.Get(new_symbol_ids[i], meta))
-                  continue;
-               if(!RevmaSymbolActive(meta))
-                  continue;
-               EvaluateRevmaSymbol(meta, harvest, basic_sltp_block_new_entries);
-            }
-         }
-         else if(m_config.enable_qstate_trend_variant)
-         {
-            LP_SignalSnapshot portfolio_signals[LP_SYMBOL_COUNT];
-            bool portfolio_available[LP_SYMBOL_COUNT];
-            LP_PortfolioQStateSnapshot qstate_snapshot;
-            bool portfolio_qstate_ready = BuildPortfolioQStateSnapshot(qstate_snapshot, portfolio_signals, portfolio_available);
-
-            if(!portfolio_qstate_ready)
-            {
-               ClearSignalAvailability();
-               WritePortfolioQStateReceipt(qstate_snapshot, "fail_closed");
-            }
-            else if(qstate_snapshot.asof_m1_time != m_last_portfolio_qstate_asof ||
-               qstate_snapshot.snapshot_hash != m_last_portfolio_qstate_hash)
-            {
-               for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-               {
-                  m_latest_signals[symbol_id] = portfolio_signals[symbol_id];
-                  m_signal_available[symbol_id] = portfolio_available[symbol_id];
-               }
-               m_last_portfolio_qstate_asof = qstate_snapshot.asof_m1_time;
-               m_last_portfolio_qstate_hash = qstate_snapshot.snapshot_hash;
-               WritePortfolioQStateReceipt(qstate_snapshot, "ready");
-
-               for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-               {
-                  LP_SignalSnapshot signal = m_latest_signals[symbol_id];
-                  if(signal.valid)
-                     WriteQStateReceipt(signal);
-               }
-
-               if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
-               {
-                  m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
-                  m_intent_selector.WriteReceipt(m_receipts);
-
-                  for(int selected_index = 0; selected_index < m_intent_selector.Count(); selected_index++)
-                  {
-                     int selected_symbol_id = m_intent_selector.SymbolIdAt(selected_index);
-                     if(selected_symbol_id < 0 || selected_symbol_id >= LP_SYMBOL_COUNT)
-                        continue;
-
-                     LP_SignalSnapshot signal = m_latest_signals[selected_symbol_id];
-                     int emitted = m_strategy_registry.EvaluateAll(signal, m_config, m_grid_book, m_intent_bus);
-                     m_total_intents += emitted;
-                     if(emitted > 0)
-                     {
-                        m_receipts.Write(
-                           LP_RECEIPT_SIGNAL,
-                           signal.symbol,
-                           "intents_emitted_after_selector",
-                           "emitted=" + IntegerToString(emitted) +
-                              "|selector_rank=" + IntegerToString(selected_index + 1) +
-                              "|portfolio_asof_m1_time=" + LP_Stamp(signal.portfolio_asof_m1_time) +
-                              "|portfolio_snapshot_hash=" + (string)signal.portfolio_snapshot_hash +
-                              "|pair_state=" + LP_PairStateName(signal.pair_state) +
-                              "|market_mode=" + LP_MarketModeName(signal.market_mode),
-                           signal.lane_id,
-                           signal.variant_id,
-                           signal.portfolio_snapshot_hash,
-                           0,
-                           0,
-                           0
-                        );
-                     }
-                  }
-               }
-            }
-            else
-            {
-               WritePortfolioQStateReceipt(qstate_snapshot, "duplicate_asof");
-            }
+            LP_SymbolMeta meta;
+            if(!m_symbol_cache.Get(new_symbol_ids[i], meta))
+               continue;
+            if(!RevmaSymbolActive(meta))
+               continue;
+            EvaluateRevmaSymbol(meta, harvest, stop_take_profit_block_new_entries);
          }
       }
 
@@ -980,15 +968,15 @@ public:
             "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
                "|intents=" + IntegerToString(m_intent_bus.Count()) +
-               "|portfolio_qstate_asof=" + LP_Stamp(m_last_portfolio_qstate_asof) +
-               "|portfolio_qstate_hash=" + (string)m_last_portfolio_qstate_hash +
+               "|active_system=" + LP_REVMA_SYSTEM_ID +
                "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
                "|open_grids=" + IntegerToString(portfolio.open_grid_count) +
                "|harvest_state=" + LP_HarvestStateName(harvest.state) +
                "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries) +
-               "|basic_sltp_block_new_entries=" + LP_BoolText(basic_sltp_block_new_entries) +
-               "|basic_sltp_reason=" + basic_sltp_reason +
-               "|basic_sltp_open_pnl_pct=" + DoubleToString(basic_sltp_open_pnl_pct, 6),
+               "|stop_take_profit_block_new_entries=" + LP_BoolText(stop_take_profit_block_new_entries) +
+               "|stop_take_profit_reason=" + stop_take_profit_reason +
+               "|stop_take_profit_net_open_pct_after_fees=" + DoubleToString(stop_take_profit_net_open_pct, 6) +
+               "|stop_take_profit_estimated_close_fee=" + DoubleToString(stop_take_profit_estimated_close_fee, 2),
             0,
             0,
             0,

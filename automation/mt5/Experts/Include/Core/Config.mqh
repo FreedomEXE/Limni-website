@@ -44,11 +44,9 @@ input int MaxManagedPositions = 200;
 input double MaxSingleOrderLots = 1.0;
 input int MaxClosePositionsPerStep = 10;
 input int NewsMinimumImpact = 3;
-input string LP_INPUT_6 = "----- System: Revma v001 -----";
-input bool EnableRevmaSystem = true;
+input string LP_INPUT_6 = "----- Revma -----";
 input LP_UniverseMode RevmaUniverseMode = LP_UNIVERSE_CURRENT_CHART;
-input bool RevmaEnableContinuationSleeve = true;
-input bool RevmaEnableReversionSleeve = true;
+input LP_RevmaSleeveMode RevmaSleeveMode = LP_REVMA_SLEEVES_BOTH;
 input LP_RevmaQProfile RevmaQProfile = LP_REVMA_Q_PROFILE_MEDIUM;
 input int RevmaMaxM1Bars = 50000;
 input double RevmaFixedLots = 0.01;
@@ -57,20 +55,12 @@ input int RevmaIntentExpiryMinutes = 10;
 input bool RevmaShowVisualDashboard = true;
 input int RevmaDashboardRefreshSeconds = 1;
 input bool RevmaDashboardScreenshotOnDivergentAdd = false;
-input string LP_INPUT_7 = "----- Temporary Basic SL/TP -----";
-input bool EnableBasicStopTakeProfit = false;
-input double BasicTakeProfitQ = 2.0;
-input double BasicStopLossQ = 2.0;
-input double BasicTakeProfitPct = 1.0;
-input double BasicStopLossPct = 1.0;
-input string LP_INPUT_8 = "----- Future System: Q-State Legacy Disabled -----";
-input bool EnableQStateTrendVariant = false;
-input double QStateFixedLots = 0.01;
-input double QStateGridSpacingQ = 1.0;
-input int QStateGridCap = 50;
-input int QStateIntentExpiryMinutes = 10;
-input bool QStateReentryNextDayAfterHarvest = true;
-input string LP_INPUT_9 = "----- Diagnostics -----";
+input string LP_INPUT_7 = "----- Stop / Take Profit -----";
+input LP_StopTakeProfitMode StopTakeProfitMode = LP_SLTP_DISABLED;
+input double TakeProfit = 0.0;
+input double StopLoss = 0.0;
+input double StopTakeProfitCloseCommissionPerLot = 7.00;
+input string LP_INPUT_8 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -106,11 +96,16 @@ void LP_LoadConfig(LP_Config &config)
    config.harvest_grid_winddown_on_breach = HarvestGridWinddownOnBreach;
    config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
    config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
-   config.enable_qstate_trend_variant = EnableQStateTrendVariant;
-   config.enable_revma_system = EnableRevmaSystem;
+   config.enable_qstate_trend_variant = false;
+   config.enable_revma_system = true;
    config.revma_universe_mode = RevmaUniverseMode;
-   config.revma_enable_continuation_sleeve = RevmaEnableContinuationSleeve;
-   config.revma_enable_reversion_sleeve = RevmaEnableReversionSleeve;
+   config.revma_sleeve_mode = RevmaSleeveMode;
+   config.revma_enable_continuation_sleeve =
+      RevmaSleeveMode == LP_REVMA_SLEEVES_BOTH ||
+      RevmaSleeveMode == LP_REVMA_SLEEVES_TREND_ONLY;
+   config.revma_enable_reversion_sleeve =
+      RevmaSleeveMode == LP_REVMA_SLEEVES_BOTH ||
+      RevmaSleeveMode == LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY;
    config.revma_q_profile = RevmaQProfile;
    config.revma_max_m1_bars = RevmaMaxM1Bars;
    config.revma_fixed_lots = RevmaFixedLots;
@@ -119,11 +114,10 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_show_visual_dashboard = RevmaShowVisualDashboard;
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
    config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
-   config.enable_basic_stop_take_profit = EnableBasicStopTakeProfit;
-   config.basic_take_profit_q = MathMax(0.0, BasicTakeProfitQ);
-   config.basic_stop_loss_q = MathMax(0.0, BasicStopLossQ);
-   config.basic_take_profit_pct = MathMax(0.0, BasicTakeProfitPct);
-   config.basic_stop_loss_pct = MathMax(0.0, BasicStopLossPct);
+   config.stop_take_profit_mode = StopTakeProfitMode;
+   config.take_profit_value = MathMax(0.0, TakeProfit);
+   config.stop_loss_value = MathMax(0.0, StopLoss);
+   config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
@@ -132,14 +126,14 @@ void LP_LoadConfig(LP_Config &config)
    config.max_close_positions_per_step = MaxClosePositionsPerStep;
    config.news_minimum_impact = NewsMinimumImpact;
    config.qstate_scale_lookback_days = LIMNI_QSTATE_V001_SCALE_LOOKBACK_DAYS;
-   config.qstate_fixed_lots = QStateFixedLots;
-   config.qstate_grid_spacing_q = QStateGridSpacingQ;
-   config.qstate_grid_cap = QStateGridCap;
+   config.qstate_fixed_lots = 0.01;
+   config.qstate_grid_spacing_q = 1.0;
+   config.qstate_grid_cap = 50;
    config.qstate_weak_threshold = LIMNI_QSTATE_V001_WEAK_THRESHOLD;
    config.qstate_strong_threshold = LIMNI_QSTATE_V001_STRONG_THRESHOLD;
    config.qstate_max_spread_cost_q = LIMNI_QSTATE_V001_MAX_SPREAD_COST_Q;
-   config.qstate_intent_expiry_minutes = QStateIntentExpiryMinutes;
-   config.qstate_reentry_next_day_after_harvest = QStateReentryNextDayAfterHarvest;
+   config.qstate_intent_expiry_minutes = 10;
+   config.qstate_reentry_next_day_after_harvest = true;
 }
 
 ulong LP_ConfigHash(const LP_Config &config)
@@ -164,38 +158,25 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.harvest_grid_winddown_on_breach) + "|" +
       LP_BoolText(config.harvest_arm_emergency_liquidation) + "|" +
       LP_BoolText(config.enable_currency_exposure_guard) + "|" +
-      LP_BoolText(config.enable_qstate_trend_variant) + "|" +
-      LP_BoolText(config.enable_revma_system) + "|" +
       LP_UniverseModeName(config.revma_universe_mode) + "|" +
-      LP_BoolText(config.revma_enable_continuation_sleeve) + "|" +
-      LP_BoolText(config.revma_enable_reversion_sleeve) + "|" +
+      LP_RevmaSleeveModeName(config.revma_sleeve_mode) + "|" +
       LP_RevmaQProfileName(config.revma_q_profile) + "|" +
       IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) + "|" +
       LP_RevmaConfigQProfileId(config) + "|" +
       DoubleToString(config.revma_fixed_lots, 4) + "|" +
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
-      LP_BoolText(config.enable_basic_stop_take_profit) + "|" +
-      DoubleToString(config.basic_take_profit_q, 4) + "|" +
-      DoubleToString(config.basic_stop_loss_q, 4) + "|" +
-      DoubleToString(config.basic_take_profit_pct, 4) + "|" +
-      DoubleToString(config.basic_stop_loss_pct, 4) + "|" +
+      LP_StopTakeProfitModeName(config.stop_take_profit_mode) + "|" +
+      DoubleToString(config.take_profit_value, 4) + "|" +
+      DoubleToString(config.stop_loss_value, 4) + "|" +
+      DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +
       IntegerToString(config.max_managed_positions) + "|" +
       DoubleToString(config.max_single_order_lots, 2) + "|" +
       IntegerToString(config.max_close_positions_per_step) + "|" +
-      IntegerToString(config.news_minimum_impact) + "|" +
-      IntegerToString(config.qstate_scale_lookback_days) + "|" +
-      DoubleToString(config.qstate_fixed_lots, 4) + "|" +
-      DoubleToString(config.qstate_grid_spacing_q, 2) + "|" +
-      IntegerToString(config.qstate_grid_cap) + "|" +
-      DoubleToString(config.qstate_weak_threshold, 2) + "|" +
-      DoubleToString(config.qstate_strong_threshold, 2) + "|" +
-      DoubleToString(config.qstate_max_spread_cost_q, 2) + "|" +
-      IntegerToString(config.qstate_intent_expiry_minutes) + "|" +
-      LP_BoolText(config.qstate_reentry_next_day_after_harvest);
+      IntegerToString(config.news_minimum_impact);
    return LP_HashString(payload);
 }
 

@@ -1,0 +1,1 @@
+old-input-check=PASS no old user-facing future/basic SLTP symbols in active EA source

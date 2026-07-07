@@ -7,7 +7,7 @@
 #include "..\\Core\\Types.mqh"
 #include "ReceiptWriter.mqh"
 
-string LP_BasicStopTakeProfitReceiptFields(
+string LP_StopTakeProfitReceiptFields(
    const string basis,
    const double take_profit_distance,
    const double stop_loss_distance
@@ -15,9 +15,9 @@ string LP_BasicStopTakeProfitReceiptFields(
 {
    if(basis == "" && take_profit_distance <= 0.0 && stop_loss_distance <= 0.0)
       return "";
-   return "|basic_sltp_basis=" + (basis == "" ? "none" : basis) +
-      "|basic_tp_distance_price=" + DoubleToString(MathMax(0.0, take_profit_distance), 8) +
-      "|basic_sl_distance_price=" + DoubleToString(MathMax(0.0, stop_loss_distance), 8);
+   return "|sltp_basis=" + (basis == "" ? "none" : basis) +
+      "|take_profit_distance_price=" + DoubleToString(MathMax(0.0, take_profit_distance), 8) +
+      "|stop_loss_distance_price=" + DoubleToString(MathMax(0.0, stop_loss_distance), 8);
 }
 
 void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
@@ -33,10 +33,10 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
           "|grid_key=" + (string)intent.grid_key +
           "|source_bar_time=" + LP_Stamp(intent.source_bar_time) +
           "|expires_at=" + LP_Stamp(intent.expires_at) +
-          LP_BasicStopTakeProfitReceiptFields(
-             intent.basic_stop_take_profit_basis,
-             intent.basic_take_profit_distance_price,
-             intent.basic_stop_loss_distance_price
+          LP_StopTakeProfitReceiptFields(
+             intent.stop_take_profit_basis,
+             intent.take_profit_distance_price,
+             intent.stop_loss_distance_price
           ) +
           "|reason=" + intent.human_reason,
       intent.lane_id,
@@ -77,10 +77,10 @@ void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
          "|action=" + IntegerToString(plan.action) +
          "|direction=" + IntegerToString(plan.direction) +
          "|lots=" + DoubleToString(plan.lots, 4) +
-         LP_BasicStopTakeProfitReceiptFields(
-            plan.basic_stop_take_profit_basis,
-            plan.basic_take_profit_distance_price,
-            plan.basic_stop_loss_distance_price
+         LP_StopTakeProfitReceiptFields(
+            plan.stop_take_profit_basis,
+            plan.take_profit_distance_price,
+            plan.stop_loss_distance_price
          ) +
          "|reason=" + plan.reason +
          "|comment=" + plan.comment,

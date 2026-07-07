@@ -137,9 +137,9 @@ private:
       plan.direction = intent.direction;
       plan.lots = intent.requested_lots;
       plan.max_slippage_points = intent.max_slippage_points;
-      plan.basic_take_profit_distance_price = intent.basic_take_profit_distance_price;
-      plan.basic_stop_loss_distance_price = intent.basic_stop_loss_distance_price;
-      plan.basic_stop_take_profit_basis = intent.basic_stop_take_profit_basis;
+      plan.take_profit_distance_price = intent.take_profit_distance_price;
+      plan.stop_loss_distance_price = intent.stop_loss_distance_price;
+      plan.stop_take_profit_basis = intent.stop_take_profit_basis;
       plan.reason = intent.human_reason;
       plan.executable = true;
 
@@ -147,7 +147,7 @@ private:
       if(intent.action == LP_INTENT_CLOSE_ALL_EA)
       {
          plan.magic = 0;
-         plan.comment = "LMN1|ACCOUNT|CLOSE_ALL|C" + StringSubstr((string)intent.config_hash, 0, 6);
+         plan.comment = "Limni Close All C" + StringSubstr((string)intent.config_hash, 0, 6);
       }
       else
       {

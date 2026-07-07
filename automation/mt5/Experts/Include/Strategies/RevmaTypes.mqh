@@ -43,6 +43,15 @@ string LP_RevmaQProfileName(const int profile)
    return "UNKNOWN";
 }
 
+string LP_RevmaSleeveModeName(const int mode)
+{
+   if(mode == LP_REVMA_SLEEVES_TREND_ONLY)
+      return "REVMA_TREND_ONLY";
+   if(mode == LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY)
+      return "REVMA_MEAN_REVERSION_ONLY";
+   return "REVMA_TREND_AND_MEAN_REVERSION";
+}
+
 int LP_RevmaDefaultMaxM1BarsForProfile(const int profile)
 {
    if(profile == LP_REVMA_Q_PROFILE_FAST)

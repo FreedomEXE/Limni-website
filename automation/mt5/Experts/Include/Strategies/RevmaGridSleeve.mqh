@@ -444,9 +444,9 @@ private:
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
       intent.max_slippage_points = 10.0;
-      intent.basic_take_profit_distance_price = 0.0;
-      intent.basic_stop_loss_distance_price = 0.0;
-      intent.basic_stop_take_profit_basis = "";
+      intent.take_profit_distance_price = 0.0;
+      intent.stop_loss_distance_price = 0.0;
+      intent.stop_take_profit_basis = "";
       intent.priority = action == LP_INTENT_OPEN_GRID ? 60 : 55;
       intent.score = signal.raw_score;
       intent.grid_key = grid_key;
@@ -455,30 +455,108 @@ private:
       intent.human_reason = reason;
    }
 
-   void ApplyBasicStopTakeProfit(
+   double EstimatedCloseFeePriceDistance(
+      const string symbol,
+      const double lots,
+      const LP_Config &config,
+      double &fee_money,
+      double &money_per_price,
+      string &note
+   )
+   {
+      fee_money = 0.0;
+      money_per_price = 0.0;
+      note = "";
+
+      double abs_lots = MathAbs(lots);
+      if(abs_lots <= 0.0 || config.stop_take_profit_close_commission_per_lot <= 0.0)
+         return 0.0;
+
+      fee_money = abs_lots * config.stop_take_profit_close_commission_per_lot;
+      double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+      double tick_value = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+      if(tick_size <= 0.0 || tick_value <= 0.0)
+      {
+         note = "fee_adjustment_unavailable_symbol_tick_value";
+         return 0.0;
+      }
+
+      money_per_price = (tick_value / tick_size) * abs_lots;
+      if(money_per_price <= 0.0 || !MathIsValidNumber(money_per_price))
+      {
+         note = "fee_adjustment_unavailable_money_per_price";
+         return 0.0;
+      }
+
+      double distance = fee_money / money_per_price;
+      if(distance <= 0.0 || !MathIsValidNumber(distance))
+      {
+         note = "fee_adjustment_unavailable_distance";
+         return 0.0;
+      }
+      return distance;
+   }
+
+   void ApplyStopTakeProfit(
       const double q_distance_basis,
       const LP_Config &config,
       LP_TradeIntent &intent
    )
    {
-      intent.basic_take_profit_distance_price = 0.0;
-      intent.basic_stop_loss_distance_price = 0.0;
-      intent.basic_stop_take_profit_basis = "";
+      intent.take_profit_distance_price = 0.0;
+      intent.stop_loss_distance_price = 0.0;
+      intent.stop_take_profit_basis = "";
 
-      if(!config.enable_basic_stop_take_profit)
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
          return;
       if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
          return;
       if(q_distance_basis <= 0.0 || !MathIsValidNumber(q_distance_basis))
          return;
 
-      if(config.basic_take_profit_q > 0.0)
-         intent.basic_take_profit_distance_price = q_distance_basis * config.basic_take_profit_q;
-      if(config.basic_stop_loss_q > 0.0)
-         intent.basic_stop_loss_distance_price = q_distance_basis * config.basic_stop_loss_q;
+      double fee_money = 0.0;
+      double money_per_price = 0.0;
+      string fee_note = "";
+      double fee_price_distance = EstimatedCloseFeePriceDistance(
+         intent.symbol,
+         intent.requested_lots,
+         config,
+         fee_money,
+         money_per_price,
+         fee_note
+      );
 
-      if(intent.basic_take_profit_distance_price > 0.0 || intent.basic_stop_loss_distance_price > 0.0)
-         intent.basic_stop_take_profit_basis = "single_q";
+      double raw_take_profit_distance = config.take_profit_value > 0.0 ?
+         q_distance_basis * config.take_profit_value : 0.0;
+      double raw_stop_loss_distance = config.stop_loss_value > 0.0 ?
+         q_distance_basis * config.stop_loss_value : 0.0;
+
+      if(raw_take_profit_distance > 0.0)
+         intent.take_profit_distance_price = raw_take_profit_distance + fee_price_distance;
+      if(raw_stop_loss_distance > 0.0)
+      {
+         double adjusted_stop_distance = raw_stop_loss_distance - fee_price_distance;
+         if(adjusted_stop_distance > 0.0)
+            intent.stop_loss_distance_price = adjusted_stop_distance;
+         else
+            fee_note = fee_note == "" ? "stop_loss_disabled_fee_exceeds_distance" :
+               fee_note + ",stop_loss_disabled_fee_exceeds_distance";
+      }
+
+      if(raw_take_profit_distance > 0.0 || raw_stop_loss_distance > 0.0)
+      {
+         intent.stop_take_profit_basis = "single_pair_q_after_fees" +
+            "|take_profit_value_q=" + DoubleToString(config.take_profit_value, 4) +
+            "|stop_loss_value_q=" + DoubleToString(config.stop_loss_value, 4) +
+            "|raw_take_profit_distance_price=" + DoubleToString(raw_take_profit_distance, 8) +
+            "|raw_stop_loss_distance_price=" + DoubleToString(raw_stop_loss_distance, 8) +
+            "|fee_price_adjustment=" + DoubleToString(fee_price_distance, 8) +
+            "|estimated_close_fee_money=" + DoubleToString(fee_money, 2) +
+            "|money_per_price=" + DoubleToString(money_per_price, 2) +
+            "|close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2);
+         if(fee_note != "")
+            intent.stop_take_profit_basis += "|fee_note=" + fee_note;
+      }
    }
 
    bool FrozenAddHit(
@@ -646,7 +724,7 @@ public:
       LP_IntentBus &bus
    )
    {
-      if(!config.enable_revma_system || !signal.valid)
+      if(!signal.valid)
          return 0;
       if(signal.q <= 0.0 || config.revma_fixed_lots <= 0.0 || config.revma_grid_spacing_q <= 0.0)
          return 0;
@@ -815,7 +893,7 @@ public:
          add_intent.requested_lots = config.revma_fixed_lots;
          add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
             (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-         ApplyBasicStopTakeProfit(spacing_q, config, add_intent);
+         ApplyStopTakeProfit(spacing_q, config, add_intent);
          bus.Add(add_intent);
          if(!CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction))
          {
@@ -886,7 +964,7 @@ public:
       open_intent.requested_lots = config.revma_fixed_lots;
       open_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
          (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-      ApplyBasicStopTakeProfit(signal.q, config, open_intent);
+      ApplyStopTakeProfit(signal.q, config, open_intent);
       bus.Add(open_intent);
       UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted");
       receipts.Write(

@@ -82,6 +82,20 @@ enum LP_RevmaQProfile
    LP_REVMA_Q_PROFILE_CUSTOM = 4
 };
 
+enum LP_RevmaSleeveMode
+{
+   LP_REVMA_SLEEVES_BOTH = 0,
+   LP_REVMA_SLEEVES_TREND_ONLY = 1,
+   LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY = 2
+};
+
+enum LP_StopTakeProfitMode
+{
+   LP_SLTP_DISABLED = 0,
+   LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES = 1,
+   LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES = 2
+};
+
 enum LP_MarketMode
 {
    LP_MARKET_UNKNOWN = 0,
@@ -214,7 +228,7 @@ enum LP_ReceiptKind
    LP_RECEIPT_REVMA_GRID_BIRTH = 23,
    LP_RECEIPT_REVMA_GRID_ADD = 24,
    LP_RECEIPT_REVMA_GRID_ADD_SKIP = 25,
-   LP_RECEIPT_BASIC_SLTP_GUARD = 26
+   LP_RECEIPT_STOP_TAKE_PROFIT_GUARD = 26
 };
 
 struct LP_Config
@@ -251,6 +265,7 @@ struct LP_Config
    bool enable_qstate_trend_variant;
    bool enable_revma_system;
    LP_UniverseMode revma_universe_mode;
+   LP_RevmaSleeveMode revma_sleeve_mode;
    bool revma_enable_continuation_sleeve;
    bool revma_enable_reversion_sleeve;
    LP_RevmaQProfile revma_q_profile;
@@ -261,11 +276,10 @@ struct LP_Config
    bool revma_show_visual_dashboard;
    int revma_dashboard_refresh_seconds;
    bool revma_dashboard_screenshot_on_divergent_add;
-   bool enable_basic_stop_take_profit;
-   double basic_take_profit_q;
-   double basic_stop_loss_q;
-   double basic_take_profit_pct;
-   double basic_stop_loss_pct;
+   LP_StopTakeProfitMode stop_take_profit_mode;
+   double take_profit_value;
+   double stop_loss_value;
+   double stop_take_profit_close_commission_per_lot;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
@@ -391,9 +405,9 @@ struct LP_TradeIntent
    datetime expires_at;
    double requested_lots;
    double max_slippage_points;
-   double basic_take_profit_distance_price;
-   double basic_stop_loss_distance_price;
-   string basic_stop_take_profit_basis;
+   double take_profit_distance_price;
+   double stop_loss_distance_price;
+   string stop_take_profit_basis;
    int priority;
    double score;
    ulong grid_key;
@@ -432,9 +446,9 @@ struct LP_TradePlan
    int direction;
    double lots;
    double max_slippage_points;
-   double basic_take_profit_distance_price;
-   double basic_stop_loss_distance_price;
-   string basic_stop_take_profit_basis;
+   double take_profit_distance_price;
+   double stop_loss_distance_price;
+   string stop_take_profit_basis;
    long magic;
    string comment;
    string reason;
@@ -557,6 +571,15 @@ string LP_NewsGuardModeName(const LP_NewsGuardMode mode)
    if(mode == LP_NEWS_GUARD_REQUIRED_FOR_LIVE)
       return "NEWS_GUARD_REQUIRED_FOR_LIVE";
    return "NEWS_GUARD_DISABLED";
+}
+
+string LP_StopTakeProfitModeName(const LP_StopTakeProfitMode mode)
+{
+   if(mode == LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+      return "SINGLE_PAIR_Q_AFTER_FEES";
+   if(mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
+      return "MULTI_CURRENCY_PERCENT_AFTER_FEES";
+   return "DISABLED";
 }
 
 string LP_PositionGroupName(const int group)

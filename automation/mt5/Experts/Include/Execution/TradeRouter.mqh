@@ -90,7 +90,7 @@ private:
       return DoubleToString(value, digits);
    }
 
-   void BuildBasicStopTakeProfitPrices(
+   void BuildStopTakeProfitPrices(
       const LP_TradePlan &plan,
       double &stop_loss,
       double &take_profit,
@@ -106,22 +106,22 @@ private:
       if(StringLen(plan.symbol) > 0 && SymbolInfoInteger(plan.symbol, SYMBOL_EXIST))
          digits = (int)SymbolInfoInteger(plan.symbol, SYMBOL_DIGITS);
 
-      string basis = plan.basic_stop_take_profit_basis == "" ? "none" : plan.basic_stop_take_profit_basis;
-      detail = "basic_sltp_basis=" + basis +
-         "|basic_tp_distance_price=" + DoubleToString(MathMax(0.0, plan.basic_take_profit_distance_price), 8) +
-         "|basic_sl_distance_price=" + DoubleToString(MathMax(0.0, plan.basic_stop_loss_distance_price), 8);
+      string basis = plan.stop_take_profit_basis == "" ? "none" : plan.stop_take_profit_basis;
+      detail = "sltp_basis=" + basis +
+         "|take_profit_distance_price=" + DoubleToString(MathMax(0.0, plan.take_profit_distance_price), 8) +
+         "|stop_loss_distance_price=" + DoubleToString(MathMax(0.0, plan.stop_loss_distance_price), 8);
 
-      if(plan.basic_stop_take_profit_basis == "" ||
-         (plan.basic_take_profit_distance_price <= 0.0 && plan.basic_stop_loss_distance_price <= 0.0))
+      if(plan.stop_take_profit_basis == "" ||
+         (plan.take_profit_distance_price <= 0.0 && plan.stop_loss_distance_price <= 0.0))
       {
-         detail += "|basic_sltp_active=false";
+         detail += "|sltp_active=false";
          return;
       }
 
       MqlTick tick;
       if(!SymbolInfoTick(plan.symbol, tick) || tick.ask <= 0.0 || tick.bid <= 0.0)
       {
-         detail += "|basic_sltp_active=false|basic_sltp_note=tick_unavailable";
+         detail += "|sltp_active=false|sltp_note=tick_unavailable";
          return;
       }
 
@@ -131,7 +131,7 @@ private:
          entry_reference = tick.bid;
       else
       {
-         detail += "|basic_sltp_active=false|basic_sltp_note=invalid_direction";
+         detail += "|sltp_active=false|sltp_note=invalid_direction";
          return;
       }
 
@@ -140,38 +140,38 @@ private:
       double min_stop_distance = point > 0.0 && stop_level_points > 0 ? (double)stop_level_points * point : 0.0;
       string notes = "";
 
-      if(plan.basic_stop_loss_distance_price > 0.0)
+      if(plan.stop_loss_distance_price > 0.0)
       {
-         if(min_stop_distance > 0.0 && plan.basic_stop_loss_distance_price < min_stop_distance)
+         if(min_stop_distance > 0.0 && plan.stop_loss_distance_price < min_stop_distance)
             notes = "sl_below_min_stop_distance";
          else if(plan.direction > 0)
-            stop_loss = NormalizeDouble(entry_reference - plan.basic_stop_loss_distance_price, digits);
+            stop_loss = NormalizeDouble(entry_reference - plan.stop_loss_distance_price, digits);
          else
-            stop_loss = NormalizeDouble(entry_reference + plan.basic_stop_loss_distance_price, digits);
+            stop_loss = NormalizeDouble(entry_reference + plan.stop_loss_distance_price, digits);
       }
 
-      if(plan.basic_take_profit_distance_price > 0.0)
+      if(plan.take_profit_distance_price > 0.0)
       {
-         if(min_stop_distance > 0.0 && plan.basic_take_profit_distance_price < min_stop_distance)
+         if(min_stop_distance > 0.0 && plan.take_profit_distance_price < min_stop_distance)
          {
             if(notes != "")
                notes += ",";
             notes += "tp_below_min_stop_distance";
          }
          else if(plan.direction > 0)
-            take_profit = NormalizeDouble(entry_reference + plan.basic_take_profit_distance_price, digits);
+            take_profit = NormalizeDouble(entry_reference + plan.take_profit_distance_price, digits);
          else
-            take_profit = NormalizeDouble(entry_reference - plan.basic_take_profit_distance_price, digits);
+            take_profit = NormalizeDouble(entry_reference - plan.take_profit_distance_price, digits);
       }
 
-      detail += "|basic_sltp_active=true" +
+      detail += "|sltp_active=true" +
          "|entry_reference=" + PriceText(entry_reference, digits) +
          "|stop_loss=" + PriceText(stop_loss, digits) +
          "|take_profit=" + PriceText(take_profit, digits) +
          "|min_stop_distance=" + DoubleToString(min_stop_distance, digits);
 
       if(notes != "")
-         detail += "|basic_sltp_note=" + notes;
+         detail += "|sltp_note=" + notes;
    }
 
    void WriteOrderRequest(
@@ -442,7 +442,7 @@ public:
       double take_profit = 0.0;
       double entry_reference = 0.0;
       string sltp_detail = "";
-      BuildBasicStopTakeProfitPrices(plan, stop_loss, take_profit, entry_reference, sltp_detail);
+      BuildStopTakeProfitPrices(plan, stop_loss, take_profit, entry_reference, sltp_detail);
       WriteOrderRequest(
          receipts,
          plan,

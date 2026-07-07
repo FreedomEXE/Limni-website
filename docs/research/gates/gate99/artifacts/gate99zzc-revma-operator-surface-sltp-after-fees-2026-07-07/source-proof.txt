@@ -1,0 +1,6 @@
+Gate99ZZC source proof
+Repo source and active-terminal source hashes match for copied EA and include files.
+Active terminal MQL5 root: C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5
+Copied file list: active-terminal-copied-files.txt
+Hash file: repo-active-source-hashes.txt
+source_hash_mismatches=0
