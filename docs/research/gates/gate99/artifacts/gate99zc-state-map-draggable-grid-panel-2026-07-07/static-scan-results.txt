@@ -1,0 +1,10 @@
+automation\mt5\Indicators\Limni\StateMap.mq5
+CAppDialog=False
+CPanel=False
+CLabel=False
+OBJ_BUTTON=True
+CHARTEVENT_OBJECT_DRAG=True
+CHARTEVENT_OBJECT_CLICK=True
+ChartRedraw=False
+LimniVisualBuildStackSnapshot=True
+LimniVisualReadStackSnapshot=True

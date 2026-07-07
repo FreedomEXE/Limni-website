@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.51"
+#property version   "1.52"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -20,8 +20,6 @@
 #property indicator_style2 STYLE_SOLID
 #property indicator_width2 3
 
-#include <Controls\Label.mqh>
-#include <Controls\Panel.mqh>
 #include "..\\Include\\LimniVisualRuntimeSnapshot.mqh"
 
 input bool ShowCenterLine = true;
@@ -30,16 +28,16 @@ input int StochasticVisualBars = 120;
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INITIAL_PROJECT_BARS = 50000;
-const int STATE_MAP_PANEL_WIDTH = 370;
-const int STATE_MAP_PANEL_HEIGHT = 176;
+const int STATE_MAP_PANEL_WIDTH = 404;
+const int STATE_MAP_PANEL_HEIGHT = 252;
+const int STATE_MAP_PANEL_MINIMIZED_HEIGHT = 48;
 const int STATE_MAP_PANEL_RIGHT = 18;
 const int STATE_MAP_PANEL_TOP = 22;
-const int STATE_MAP_HEADER_TOP = 0;
-const int STATE_MAP_HEADER_BOTTOM = 54;
-const int STATE_MAP_ROW_LEFT = 16;
-const int STATE_MAP_ROW_RIGHT = 354;
-const int STATE_MAP_ROW_TOP = 65;
-const int STATE_MAP_ROW_GAP = 21;
+const int STATE_MAP_PANEL_PAD = 12;
+const int STATE_MAP_HEADER_HEIGHT = 48;
+const int STATE_MAP_BLOCK_GAP = 8;
+const int STATE_MAP_BLOCK_WIDTH = 184;
+const int STATE_MAP_BLOCK_HEIGHT = 54;
 const int STATE_MAP_STOCH_MAX_SEGMENTS = 120;
 const int STATE_MAP_STOCH_LEFT = 14;
 const int STATE_MAP_STOCH_BOTTOM = 28;
@@ -57,9 +55,13 @@ const color STATE_MAP_VISUAL_ONLY_COLOR = C'67,116,164';
 const color STATE_MAP_STOCH_BG = C'16,20,28';
 const color STATE_MAP_STOCH_LEVEL = C'70,82,98';
 const color STATE_MAP_STOCH_LINE = C'33,190,238';
+const color STATE_MAP_BLOCK_BG = C'31,37,49';
+const color STATE_MAP_BLOCK_BORDER = C'61,74,94';
 const color STATE_MAP_BADGE_TEXT_COLOR = clrWhite;
 
 const string STATE_MAP_OBJECT_PREFIX = "Limni_StateMap_";
+const string STATE_MAP_PANEL_PREFIX = "Limni_StateMap_Panel_";
+const string STATE_MAP_PANEL_DATA_PREFIX = "Limni_StateMap_Panel_Data_";
 
 double PriceAnchorBuffer[];
 double StateAnchorBuffer[];
@@ -91,28 +93,17 @@ double g_qstate_score = 0.0;
 double g_qstate_confidence = 0.0;
 color g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
 
-CPanel g_panel_body;
-CPanel g_panel_header;
-CLabel g_panel_title;
-CLabel g_panel_state;
-CLabel g_label_m1;
-CLabel g_value_m1;
-CLabel g_label_score;
-CLabel g_value_score;
-CLabel g_label_conf;
-CLabel g_value_conf;
-CLabel g_label_trend;
-CLabel g_value_trend;
-CLabel g_label_reason;
-CLabel g_value_reason;
-CLabel g_label_stoch;
-CLabel g_value_stoch;
-CLabel g_label_anchor;
-CLabel g_value_anchor;
-CLabel g_label_bars;
-CLabel g_value_bars;
 bool g_panel_ready = false;
 string g_panel_signature = "";
+bool g_panel_minimized = false;
+bool g_panel_user_moved = false;
+int g_panel_x = -1;
+int g_panel_y = -1;
+double g_panel_latest_anchor = EMPTY_VALUE;
+int g_panel_latest_trend_state = 0;
+double g_panel_latest_stoch = EMPTY_VALUE;
+int g_panel_latest_copied = 0;
+int g_panel_latest_valid_q_day_count = 0;
 string g_stoch_signature = "";
 int g_stoch_segments_drawn = 0;
 
@@ -332,98 +323,181 @@ bool StateMapEnsureStackCache(
    return true;
 }
 
-int StateMapPanelAbsX(const int local_x)
+int StateMapPanelHeight()
 {
-   return StateMapPanelLeft() + local_x;
+   return g_panel_minimized ? STATE_MAP_PANEL_MINIMIZED_HEIGHT : STATE_MAP_PANEL_HEIGHT;
 }
 
-int StateMapPanelAbsY(const int local_y)
+int StateMapDefaultPanelX()
 {
-   return STATE_MAP_PANEL_TOP + local_y;
+   return StateMapPanelLeft();
 }
 
-bool StateMapCreatePanel(CPanel &panel, const string suffix, const int x1, const int y1, const int x2, const int y2, const color bg, const color border)
+int StateMapDefaultPanelY()
 {
-   if(!panel.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, StateMapPanelAbsX(x1), StateMapPanelAbsY(y1), StateMapPanelAbsX(x2), StateMapPanelAbsY(y2)))
-      return false;
-   panel.ColorBackground(bg);
-   panel.ColorBorder(border);
-   panel.BorderType(BORDER_FLAT);
-   return true;
+   return STATE_MAP_PANEL_TOP;
 }
 
-bool StateMapCreateLabel(CLabel &label, const string suffix, const string text, const int x1, const int y1, const int x2, const int y2, const color text_color, const int font_size, const string font_name)
+void StateMapClampPanelPosition()
 {
-   if(!label.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, StateMapPanelAbsX(x1), StateMapPanelAbsY(y1), StateMapPanelAbsX(x2), StateMapPanelAbsY(y2)))
-      return false;
-   label.Text(text);
-   label.Color(text_color);
-   label.Font(font_name);
-   label.FontSize(font_size);
-   return true;
+   int chart_width = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS, 0);
+   int chart_height = (int)ChartGetInteger(0, CHART_HEIGHT_IN_PIXELS, 0);
+   if(chart_width <= 0)
+      chart_width = STATE_MAP_PANEL_WIDTH + STATE_MAP_PANEL_RIGHT + 24;
+   if(chart_height <= 0)
+      chart_height = STATE_MAP_PANEL_HEIGHT + STATE_MAP_PANEL_TOP + 24;
+
+   int max_x = MathMax(8, chart_width - STATE_MAP_PANEL_WIDTH - 8);
+   int max_y = MathMax(8, chart_height - StateMapPanelHeight() - 8);
+   g_panel_x = MathMax(8, MathMin(max_x, g_panel_x));
+   g_panel_y = MathMax(8, MathMin(max_y, g_panel_y));
 }
 
-bool StateMapCreateStatLabels(CLabel &tag, CLabel &value, const string suffix, const string caption, const int label_x, const int value_x, const int y)
+void StateMapEnsurePanelPosition()
 {
-   if(!StateMapCreateLabel(tag, suffix + "_Tag", caption, label_x, y, label_x + 62, y + 17, STATE_MAP_MUTED_COLOR, 8, "Segoe UI"))
-      return false;
-   return StateMapCreateLabel(value, suffix + "_Value", "", value_x, y, value_x + 66, y + 18, STATE_MAP_TEXT_COLOR, 9, "Segoe UI Semibold");
+   if(g_panel_x < 0 || g_panel_y < 0 || !g_panel_user_moved)
+   {
+      g_panel_x = StateMapDefaultPanelX();
+      g_panel_y = StateMapDefaultPanelY();
+   }
+   StateMapClampPanelPosition();
 }
 
-bool StateMapCreateWideRow(CLabel &label, const string suffix, const int y, const int font_size = 9)
+int StateMapPanelX(const int local_x)
 {
-   return StateMapCreateLabel(
-      label,
-      suffix,
-      "",
-      STATE_MAP_ROW_LEFT,
-      y,
-      STATE_MAP_ROW_RIGHT,
-      y + 18,
-      STATE_MAP_TEXT_COLOR,
-      font_size,
-      "Segoe UI"
-   );
+   StateMapEnsurePanelPosition();
+   return g_panel_x + local_x;
+}
+
+int StateMapPanelY(const int local_y)
+{
+   StateMapEnsurePanelPosition();
+   return g_panel_y + local_y;
+}
+
+void StateMapDrawRect(
+   const string name,
+   const int x,
+   const int y,
+   const int width,
+   const int height,
+   const color fill,
+   const color border,
+   const int z_order,
+   const bool selectable = false
+)
+{
+   if(ObjectFind(0, name) < 0)
+      ObjectCreate(0, name, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, MathMax(1, width));
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, MathMax(1, height));
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, fill);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, border);
+   ObjectSetInteger(0, name, OBJPROP_BACK, false);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, selectable);
+   ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+   ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
+}
+
+void StateMapDrawText(
+   const string name,
+   const string text,
+   const int x,
+   const int y,
+   const color text_color,
+   const int font_size,
+   const int z_order,
+   const string font_name = "Segoe UI",
+   const bool selectable = false
+)
+{
+   if(ObjectFind(0, name) < 0)
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, text_color);
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, font_size);
+   ObjectSetString(0, name, OBJPROP_FONT, font_name);
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, selectable);
+   ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+   ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
+}
+
+void StateMapDrawButton(
+   const string name,
+   const string text,
+   const int x,
+   const int y,
+   const int width,
+   const int height,
+   const color bg,
+   const color text_color,
+   const int z_order
+)
+{
+   if(ObjectFind(0, name) < 0)
+      ObjectCreate(0, name, OBJ_BUTTON, 0, 0, 0);
+
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, MathMax(1, width));
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, MathMax(1, height));
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, bg);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, text_color);
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 10);
+   ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI Semibold");
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+   ObjectSetInteger(0, name, OBJPROP_STATE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+   ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
+}
+
+void StateMapDeletePanelData()
+{
+   StateMapDeleteObjectGroup(STATE_MAP_PANEL_DATA_PREFIX);
+}
+
+void StateMapDrawPanelBlock(
+   const string suffix,
+   const string title,
+   const string value,
+   const string detail,
+   const int local_x,
+   const int local_y,
+   const int width,
+   const int height,
+   const color accent
+)
+{
+   string prefix = STATE_MAP_PANEL_DATA_PREFIX + suffix;
+   int x = StateMapPanelX(local_x);
+   int y = StateMapPanelY(local_y);
+   StateMapDrawRect(prefix + "_Bg", x, y, width, height, STATE_MAP_BLOCK_BG, STATE_MAP_BLOCK_BORDER, 36);
+   StateMapDrawRect(prefix + "_Accent", x, y, width, 3, accent, accent, 37);
+   StateMapDrawText(prefix + "_Title", title, x + 10, y + 8, STATE_MAP_MUTED_COLOR, 8, 38, "Segoe UI Semibold");
+   StateMapDrawText(prefix + "_Value", value, x + 10, y + 23, STATE_MAP_TEXT_COLOR, 11, 39, "Segoe UI Semibold");
+   StateMapDrawText(prefix + "_Detail", detail, x + 10, y + 41, STATE_MAP_MUTED_COLOR, 8, 39, "Segoe UI");
 }
 
 bool StateMapCreateDialog()
 {
-   if(g_panel_ready)
-      return true;
-
-   if(!StateMapCreatePanel(g_panel_body, "Body", 0, 0, STATE_MAP_PANEL_WIDTH, STATE_MAP_PANEL_HEIGHT, STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER))
-      return false;
-   if(!StateMapCreatePanel(g_panel_header, "Header", 0, STATE_MAP_HEADER_TOP, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_BOTTOM, STATE_MAP_NEUTRAL_COLOR, STATE_MAP_NEUTRAL_COLOR))
-      return false;
-
-   if(!StateMapCreateLabel(g_panel_title, "Title", "LIMNI STATE MAP", 16, 7, 210, 22, STATE_MAP_TITLE_COLOR, 8, "Segoe UI Semibold"))
-      return false;
-   if(!StateMapCreateLabel(g_panel_state, "State", "NO TRADE", 16, 23, 350, 49, STATE_MAP_BADGE_TEXT_COLOR, 17, "Segoe UI Semibold"))
-      return false;
-
-   if(!StateMapCreateWideRow(g_value_m1, "Line1", STATE_MAP_ROW_TOP, 9))
-      return false;
-   if(!StateMapCreateWideRow(g_value_score, "Line2", STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP, 9))
-      return false;
-   if(!StateMapCreateWideRow(g_value_trend, "Line3", STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 2, 9))
-      return false;
-   if(!StateMapCreateWideRow(g_value_reason, "Line4", STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 3, 9))
-      return false;
-   if(!StateMapCreateWideRow(g_value_bars, "Line5", STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 4, 8))
-      return false;
-
    g_panel_ready = true;
    return true;
 }
 
-void StateMapPanelSetValue(CLabel &label, const string value, const color text_color, const int font_size = 10)
-{
-   label.Text(value);
-   label.Color(text_color);
-   label.FontSize(font_size);
-}
-
-void StateMapUpdateDialog(
+void StateMapUpdatePanel(
    const double latest_anchor,
    const int latest_trend_state,
    const double latest_stoch,
@@ -434,55 +508,131 @@ void StateMapUpdateDialog(
    if(!StateMapCreateDialog())
       return;
 
+   StateMapEnsurePanelPosition();
+   g_panel_latest_anchor = latest_anchor;
+   g_panel_latest_trend_state = latest_trend_state;
+   g_panel_latest_stoch = latest_stoch;
+   g_panel_latest_copied = copied;
+   g_panel_latest_valid_q_day_count = valid_q_day_count;
+
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
    string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
    string bars_value = IntegerToString(copied) + " / " + IntegerToString(valid_q_day_count);
    string reason_value = StateMapReasonLabel(g_qstate_reason);
    string m1_label = g_qstate_asof > 0 ? StateMapTimeLabel(g_qstate_asof) : StateMapTimeLabel(g_stack_latest_closed_m1);
-   string visual_flags = StringFormat(
-      "CENTER %s   STOCH %s",
-      ShowCenterLine ? "ON" : "OFF",
-      ShowStochasticVisual ? "ON" : "OFF"
-   );
-   string line1 = StateMapClip("M1 " + m1_label + "   STACK " + g_stack_source, 48);
-   string line2 = StateMapClip(
-      "SCORE " + StateMapSignedScoreLabel(g_qstate_score) +
-      "   CONF " + DoubleToString(g_qstate_confidence, 2) +
-      "   TREND " + StateMapTrendLabel(latest_trend_state),
-      48
-   );
-   string line3 = StateMapClip("STOCH " + stoch_value + "   ANCHOR " + anchor_value, 48);
-   string line4 = StateMapClip("REASON " + reason_value, 48);
-   string line5 = StateMapClip("BARS " + bars_value + "   " + visual_flags, 48);
-   string signature = g_qstate_label +
-      "|" + line1 +
-      "|" + line2 +
-      "|" + line3 +
-      "|" + line4 +
-      "|" + line5 +
-      "|" + reason_value +
-      "|" + IntegerToString((int)g_qstate_asof) +
-      "|" + DoubleToString(g_qstate_score, 4) +
-      "|" + DoubleToString(g_qstate_confidence, 4) +
-      "|" + IntegerToString(latest_trend_state) +
-      "|" + stoch_value +
-      "|" + anchor_value +
-      "|" + bars_value;
+   string center_flag = ShowCenterLine ? "CENTER ON" : "CENTER OFF";
+   string stoch_flag = ShowStochasticVisual ? "STOCH ON" : "STOCH OFF";
+   string score_value = StateMapSignedScoreLabel(g_qstate_score) + " / " + DoubleToString(g_qstate_confidence, 2);
+   string trend_value = StateMapTrendLabel(latest_trend_state);
+
+   string signature =
+      IntegerToString(g_panel_x) + "|" +
+      IntegerToString(g_panel_y) + "|" +
+      (g_panel_minimized ? "min" : "full") + "|" +
+      g_qstate_label + "|" +
+      reason_value + "|" +
+      IntegerToString((int)g_qstate_asof) + "|" +
+      DoubleToString(g_qstate_score, 4) + "|" +
+      DoubleToString(g_qstate_confidence, 4) + "|" +
+      IntegerToString(latest_trend_state) + "|" +
+      stoch_value + "|" +
+      anchor_value + "|" +
+      bars_value + "|" +
+      g_stack_source + "|" +
+      center_flag + "|" +
+      stoch_flag;
 
    if(signature == g_panel_signature)
       return;
 
-   g_panel_header.ColorBackground(g_qstate_color);
-   g_panel_header.ColorBorder(g_qstate_color);
-   g_panel_state.Text(g_qstate_label);
-   g_panel_state.Color(STATE_MAP_BADGE_TEXT_COLOR);
-   g_panel_state.FontSize(StringLen(g_qstate_label) > 11 ? 15 : 17);
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_qstate_color, g_qstate_color, 42, true);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 16, g_panel_y + 7, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", true);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", g_qstate_label, g_panel_x + 16, g_panel_y + 23, STATE_MAP_BADGE_TEXT_COLOR, StringLen(g_qstate_label) > 11 ? 14 : 16, 44, "Segoe UI Semibold", true);
+   StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", g_panel_x + STATE_MAP_PANEL_WIDTH - 38, g_panel_y + 10, 24, 24, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
 
-   StateMapPanelSetValue(g_value_m1, line1, STATE_MAP_TEXT_COLOR, 9);
-   StateMapPanelSetValue(g_value_score, line2, STATE_MAP_TEXT_COLOR, 9);
-   StateMapPanelSetValue(g_value_trend, line3, STATE_MAP_TEXT_COLOR, 9);
-   StateMapPanelSetValue(g_value_reason, line4, STATE_MAP_TEXT_COLOR, 9);
-   StateMapPanelSetValue(g_value_bars, line5, STATE_MAP_MUTED_COLOR, 8);
+   if(g_panel_minimized)
+   {
+      ObjectSetString(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_TEXT, "+");
+      StateMapDeletePanelData();
+      g_panel_signature = signature;
+      return;
+   }
+
+   ObjectSetString(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_TEXT, "-");
+
+   int left_x = STATE_MAP_PANEL_PAD;
+   int right_x = STATE_MAP_PANEL_PAD + STATE_MAP_BLOCK_WIDTH + STATE_MAP_BLOCK_GAP;
+   int row_1 = STATE_MAP_HEADER_HEIGHT + STATE_MAP_PANEL_PAD;
+   int row_2 = row_1 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
+   int row_3 = row_2 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
+
+   StateMapDrawPanelBlock(
+      "QState",
+      "Q-STATE",
+      g_qstate_label,
+      "M1 " + m1_label,
+      left_x,
+      row_1,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      g_qstate_color
+   );
+   StateMapDrawPanelBlock(
+      "Score",
+      "SCORE / CONF",
+      score_value,
+      "formula snapshot",
+      right_x,
+      row_1,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      StateMapSignedValueColor(g_qstate_score)
+   );
+   StateMapDrawPanelBlock(
+      "Momentum",
+      "MOMENTUM",
+      "STOCH " + stoch_value,
+      "TREND " + trend_value,
+      left_x,
+      row_2,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      StateMapTrendColor(latest_trend_state)
+   );
+   StateMapDrawPanelBlock(
+      "Anchor",
+      "ANCHOR",
+      anchor_value,
+      center_flag + " / " + stoch_flag,
+      right_x,
+      row_2,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_STOCH_LINE
+   );
+   StateMapDrawPanelBlock(
+      "Stack",
+      "STACK",
+      StateMapClip(g_stack_source, 18),
+      "BARS " + bars_value,
+      left_x,
+      row_3,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_NEUTRAL_COLOR
+   );
+   StateMapDrawPanelBlock(
+      "Reason",
+      "REASON",
+      StateMapClip(reason_value, 19),
+      g_qstate_details == "" ? "snapshot detail" : StateMapClip(g_qstate_details, 24),
+      right_x,
+      row_3,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_STRESS_COLOR
+   );
 
    g_panel_signature = signature;
 }
@@ -518,59 +668,7 @@ void StateMapRenderPanel(
    const int valid_q_day_count
 )
 {
-   StateMapUpdateDialog(latest_anchor, latest_trend_state, latest_stoch, copied, valid_q_day_count);
-}
-
-void StateMapDrawRect(
-   const string name,
-   const int x,
-   const int y,
-   const int width,
-   const int height,
-   const color fill,
-   const color border,
-   const int z_order
-)
-{
-   if(ObjectFind(0, name) < 0)
-      ObjectCreate(0, name, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-
-   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
-   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
-   ObjectSetInteger(0, name, OBJPROP_XSIZE, MathMax(1, width));
-   ObjectSetInteger(0, name, OBJPROP_YSIZE, MathMax(1, height));
-   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, fill);
-   ObjectSetInteger(0, name, OBJPROP_COLOR, border);
-   ObjectSetInteger(0, name, OBJPROP_BACK, false);
-   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
-   ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
-}
-
-void StateMapDrawText(
-   const string name,
-   const string text,
-   const int x,
-   const int y,
-   const color text_color,
-   const int font_size,
-   const int z_order
-)
-{
-   if(ObjectFind(0, name) < 0)
-      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
-
-   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
-   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
-   ObjectSetInteger(0, name, OBJPROP_COLOR, text_color);
-   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, font_size);
-   ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI Semibold");
-   ObjectSetString(0, name, OBJPROP_TEXT, text);
-   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
-   ObjectSetInteger(0, name, OBJPROP_ZORDER, z_order);
+   StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, copied, valid_q_day_count);
 }
 
 int StateMapStochY(const double value, const int plot_top, const int plot_height)
@@ -682,6 +780,85 @@ void OnDeinit(const int reason)
    StateMapDeleteObjects();
    g_panel_ready = false;
    g_panel_signature = "";
+}
+
+bool StateMapPanelDragOffset(const string name, int &local_x, int &local_y)
+{
+   local_x = 0;
+   local_y = 0;
+   if(name == STATE_MAP_PANEL_PREFIX + "Header")
+      return true;
+   if(name == STATE_MAP_PANEL_PREFIX + "Title")
+   {
+      local_x = 16;
+      local_y = 7;
+      return true;
+   }
+   if(name == STATE_MAP_PANEL_PREFIX + "State")
+   {
+      local_x = 16;
+      local_y = 23;
+      return true;
+   }
+   return false;
+}
+
+void StateMapRefreshPanelFromStored()
+{
+   g_panel_signature = "";
+   StateMapUpdatePanel(
+      g_panel_latest_anchor,
+      g_panel_latest_trend_state,
+      g_panel_latest_stoch,
+      g_panel_latest_copied,
+      g_panel_latest_valid_q_day_count
+   );
+}
+
+void OnChartEvent(
+   const int id,
+   const long &lparam,
+   const double &dparam,
+   const string &sparam
+)
+{
+   if(id == CHARTEVENT_OBJECT_CLICK && sparam == STATE_MAP_PANEL_PREFIX + "Minimize")
+   {
+      g_panel_minimized = !g_panel_minimized;
+      ObjectSetInteger(0, STATE_MAP_PANEL_PREFIX + "Minimize", OBJPROP_STATE, false);
+      StateMapClampPanelPosition();
+      StateMapRefreshPanelFromStored();
+      return;
+   }
+
+   if(id == CHARTEVENT_OBJECT_DRAG)
+   {
+      int local_x = 0;
+      int local_y = 0;
+      if(!StateMapPanelDragOffset(sparam, local_x, local_y))
+         return;
+
+      g_panel_x = (int)ObjectGetInteger(0, sparam, OBJPROP_XDISTANCE) - local_x;
+      g_panel_y = (int)ObjectGetInteger(0, sparam, OBJPROP_YDISTANCE) - local_y;
+      g_panel_user_moved = true;
+      StateMapClampPanelPosition();
+      StateMapRefreshPanelFromStored();
+      return;
+   }
+
+   if(id == CHARTEVENT_CHART_CHANGE)
+   {
+      if(!g_panel_user_moved)
+      {
+         g_panel_x = -1;
+         g_panel_y = -1;
+      }
+      else
+         StateMapClampPanelPosition();
+      StateMapRefreshPanelFromStored();
+      g_stoch_signature = "";
+      StateMapDrawStochasticVisual();
+   }
 }
 
 int OnCalculate(
