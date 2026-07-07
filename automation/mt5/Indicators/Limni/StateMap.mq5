@@ -3,7 +3,7 @@
 //|                   Limni pair-state visual viewer                 |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.62"
+#property version   "1.63"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
