@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.57"
+#property version   "1.58"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -104,6 +104,17 @@ void StateMapSetQStateFailure(const string reason, const string details)
    g_qstate_label = "FAIL CLOSED";
    g_qstate_color = STATE_MAP_STRESS_COLOR;
    g_qstate_reason = reason == "" ? "qstate_unavailable" : reason;
+   g_qstate_asof = 0;
+   g_qstate_score = 0.0;
+   g_qstate_confidence = 0.0;
+   g_qstate_details = details;
+}
+
+void StateMapSetQStateSnapshotUnavailable(const string reason, const string details)
+{
+   g_qstate_label = "NO TRADE";
+   g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
+   g_qstate_reason = reason == "" ? "qstate_snapshot_missing" : reason;
    g_qstate_asof = 0;
    g_qstate_score = 0.0;
    g_qstate_confidence = 0.0;
@@ -416,280 +427,6 @@ bool StateMapEnsureStackCache(
    g_stack_ready = true;
    g_stack_failure_reason = "";
    refreshed = true;
-   return true;
-}
-
-ulong StateMapPortfolioQStateHash(
-   const LimniQStatePairFeatures &pair_features[],
-   const double &ccy_scores[]
-)
-{
-   string payload = LimniQStateFormulaId() + "|" + (string)LimniQStateFormulaHash();
-   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
-   {
-      string canonical = LimniQStateCanonicalSymbol(symbol_id);
-      int base_ccy = -1;
-      int quote_ccy = -1;
-      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
-      double base_score = base_ccy >= 0 ? ccy_scores[base_ccy] : 0.0;
-      double quote_score = quote_ccy >= 0 ? ccy_scores[quote_ccy] : 0.0;
-      payload += "|" + IntegerToString(symbol_id) +
-         ":" + LimniVisualStamp(pair_features[symbol_id].source_m1_time) +
-         ":" + DoubleToString(pair_features[symbol_id].pair_q_score, 6) +
-         ":" + DoubleToString(base_score, 6) +
-         ":" + DoubleToString(quote_score, 6);
-   }
-   return LimniQStateHashString(payload);
-}
-
-bool StateMapBuildLocalQStateSnapshot(
-   LimniVisualQStateSnapshot &snapshot,
-   string &reason_code
-)
-{
-   LimniVisualResetQStateSnapshot(snapshot);
-   reason_code = "";
-
-   int chart_symbol_id = LimniQStateSymbolIdFromBrokerSymbol(_Symbol);
-   if(chart_symbol_id < 0)
-   {
-      reason_code = "chart_symbol_not_in_forced28";
-      return false;
-   }
-
-   LimniQStatePairFeatures pair_features[LIMNI_QSTATE_SYMBOL_COUNT];
-   double ccy_sums[LIMNI_QSTATE_CCY_COUNT];
-   int ccy_counts[LIMNI_QSTATE_CCY_COUNT];
-   double ccy_scores[LIMNI_QSTATE_CCY_COUNT];
-   datetime portfolio_asof = 0;
-
-   for(int i = 0; i < LIMNI_QSTATE_SYMBOL_COUNT; i++)
-      LimniQStateResetPairFeatures(pair_features[i]);
-   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
-   {
-      ccy_sums[c] = 0.0;
-      ccy_counts[c] = 0;
-      ccy_scores[c] = 0.0;
-   }
-
-   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
-   {
-      string canonical = LimniQStateCanonicalSymbol(symbol_id);
-      string symbol = LimniQStateResolveBrokerSymbol(canonical);
-      datetime source_times[];
-      double source_closes[];
-      double source_q[];
-      double source_line[];
-      double source_stoch[];
-      double source_ma[];
-      int source_ma_state[];
-      int source_trigger[];
-      int copied = 0;
-      int day_count = 0;
-      int valid_q_day_count = 0;
-      double point = 0.0;
-      datetime snapshot_latest = 0;
-      ulong stack_snapshot_hash = 0;
-      string stack_reason = "";
-      bool stack_ok = LimniVisualReadStackSnapshot(
-         symbol,
-         STATE_MAP_SCALE_LOOKBACK_DAYS,
-         source_times,
-         source_closes,
-         source_q,
-         source_line,
-         source_stoch,
-         source_ma,
-         source_ma_state,
-         source_trigger,
-         copied,
-         day_count,
-         valid_q_day_count,
-         point,
-         snapshot_latest,
-         stack_snapshot_hash,
-         stack_reason
-      );
-
-      datetime symbol_latest = iTime(symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, 1);
-      if(!stack_ok || (symbol_latest > 0 && snapshot_latest < symbol_latest))
-      {
-         if(!LimniVisualBuildStackSnapshot(
-            symbol,
-            STATE_MAP_SCALE_LOOKBACK_DAYS,
-            source_times,
-            source_closes,
-            source_q,
-            source_line,
-            source_stoch,
-            source_ma,
-            source_ma_state,
-            source_trigger,
-            copied,
-            day_count,
-            valid_q_day_count,
-            point,
-            stack_reason
-         ))
-         {
-            reason_code = "qstate_stack_failed_" + canonical + "_" + stack_reason;
-            return false;
-         }
-
-         string write_reason = "";
-         LimniVisualWriteStackSnapshot(
-            symbol,
-            STATE_MAP_SCALE_LOOKBACK_DAYS,
-            point,
-            source_times,
-            source_closes,
-            source_q,
-            source_line,
-            source_stoch,
-            source_ma,
-            source_ma_state,
-            source_trigger,
-            copied,
-            day_count,
-            valid_q_day_count,
-            stack_snapshot_hash,
-            write_reason
-         );
-      }
-
-      if(!LimniVisualQStateFeaturesFromStack(
-         symbol,
-         source_times,
-         source_closes,
-         source_q,
-         source_line,
-         source_stoch,
-         source_ma_state,
-         source_trigger,
-         copied,
-         day_count,
-         valid_q_day_count,
-         point,
-         pair_features[symbol_id]
-      ))
-      {
-         reason_code = "qstate_features_failed_" + canonical + "_" + pair_features[symbol_id].reason_code;
-         return false;
-      }
-
-      if(portfolio_asof <= 0)
-         portfolio_asof = pair_features[symbol_id].source_m1_time;
-      else if(pair_features[symbol_id].source_m1_time != portfolio_asof)
-      {
-         reason_code = "local_qstate_mixed_source_m1";
-         return false;
-      }
-
-      int base_ccy = -1;
-      int quote_ccy = -1;
-      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
-      if(base_ccy < 0 || quote_ccy < 0)
-      {
-         reason_code = "local_qstate_base_quote_failed_" + canonical;
-         return false;
-      }
-
-      ccy_sums[base_ccy] += pair_features[symbol_id].pair_q_score;
-      ccy_counts[base_ccy]++;
-      ccy_sums[quote_ccy] -= pair_features[symbol_id].pair_q_score;
-      ccy_counts[quote_ccy]++;
-   }
-
-   if(portfolio_asof <= 0)
-   {
-      reason_code = "local_qstate_asof_missing";
-      return false;
-   }
-
-   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
-   {
-      if(ccy_counts[c] > 0)
-         ccy_scores[c] = ccy_sums[c] / (double)ccy_counts[c];
-   }
-
-   ulong portfolio_hash = StateMapPortfolioQStateHash(pair_features, ccy_scores);
-   bool chart_snapshot_found = false;
-   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
-   {
-      string canonical = LimniQStateCanonicalSymbol(symbol_id);
-      string broker_symbol = LimniQStateResolveBrokerSymbol(canonical);
-      int base_ccy = -1;
-      int quote_ccy = -1;
-      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
-      if(base_ccy < 0 || quote_ccy < 0)
-      {
-         reason_code = "qstate_base_quote_failed_" + canonical;
-         return false;
-      }
-
-      LimniQStateDirection decision;
-      LimniQStateFinalizeDirection(
-         pair_features[symbol_id],
-         ccy_scores[base_ccy],
-         ccy_scores[quote_ccy],
-         decision
-      );
-
-      LimniVisualQStateSnapshot out_snapshot;
-      LimniVisualResetQStateSnapshot(out_snapshot);
-      out_snapshot.valid = decision.valid;
-      out_snapshot.symbol = broker_symbol;
-      out_snapshot.canonical = canonical;
-      out_snapshot.formula_id = decision.formula_id;
-      out_snapshot.formula_hash = decision.formula_hash;
-      out_snapshot.portfolio_asof_m1_time = portfolio_asof;
-      out_snapshot.portfolio_valid_pair_count = LIMNI_QSTATE_SYMBOL_COUNT;
-      out_snapshot.portfolio_snapshot_hash = portfolio_hash;
-      out_snapshot.source_m1_time = decision.source_m1_time;
-      out_snapshot.state = decision.state;
-      out_snapshot.trade_direction = decision.trade_direction;
-      out_snapshot.market_mode = decision.market_mode;
-      out_snapshot.pair_q_score = decision.pair_q_score;
-      out_snapshot.base_currency_score = decision.base_currency_score;
-      out_snapshot.quote_currency_score = decision.quote_currency_score;
-      out_snapshot.pair_direction_score = decision.pair_direction_score;
-      out_snapshot.confidence = decision.confidence;
-      out_snapshot.reason_code = decision.reason_code;
-      out_snapshot.detail = "formula_id=" + decision.formula_id +
-         "|formula_hash=" + (string)decision.formula_hash +
-         "|portfolio_asof_m1_time=" + LimniVisualStamp(portfolio_asof) +
-         "|portfolio_valid_pair_count=" + IntegerToString(LIMNI_QSTATE_SYMBOL_COUNT) +
-         "|portfolio_snapshot_hash=" + (string)portfolio_hash +
-         "|source_m1_time=" + LimniVisualStamp(decision.source_m1_time) +
-         "|state=" + IntegerToString(decision.state) +
-         "|reason_code=" + decision.reason_code +
-         "|pair_q_score=" + DoubleToString(decision.pair_q_score, 6) +
-         "|base_currency_score=" + DoubleToString(decision.base_currency_score, 6) +
-         "|quote_currency_score=" + DoubleToString(decision.quote_currency_score, 6) +
-         "|pair_direction_score=" + DoubleToString(decision.pair_direction_score, 6) +
-         "|confidence=" + DoubleToString(decision.confidence, 6);
-
-      string qstate_write_reason = "";
-      if(!LimniVisualWriteQStateSnapshot(out_snapshot, qstate_write_reason))
-      {
-         reason_code = "qstate_write_failed_" + canonical + "_" + qstate_write_reason;
-         return false;
-      }
-
-      if(symbol_id == chart_symbol_id)
-      {
-         snapshot = out_snapshot;
-         chart_snapshot_found = true;
-      }
-   }
-
-   if(!chart_snapshot_found || !snapshot.valid)
-   {
-      reason_code = !chart_snapshot_found ? "chart_qstate_snapshot_missing" : "chart_qstate_snapshot_invalid";
-      return false;
-   }
-
-   reason_code = "qstate_snapshot_ready";
    return true;
 }
 
@@ -1051,27 +788,12 @@ bool StateMapRefreshQState()
       return true;
    }
 
-   string local_reason = "";
-   if(!StateMapBuildLocalQStateSnapshot(snapshot, local_reason))
-   {
-      StateMapSetQStateFailure(
-         local_reason == "" ? (reason == "" ? "qstate_unavailable" : reason) : local_reason,
-         "service snapshot unavailable and local all-28 q-state fallback failed"
-      );
-      return false;
-   }
+   string qstate_reason = reason == "" ? "qstate_snapshot_missing" : reason;
+   if(snapshot_ok && snapshot.portfolio_asof_m1_time > 0 && snapshot.portfolio_asof_m1_time < latest_closed_m1)
+      qstate_reason = "qstate_snapshot_stale";
 
-   string write_reason = "";
-   LimniVisualWriteQStateSnapshot(snapshot, write_reason);
-
-   g_qstate_label = LimniQStateDirectionLabel(snapshot.trade_direction);
-   g_qstate_color = StateMapQStateColor(snapshot.state, snapshot.trade_direction);
-   g_qstate_reason = snapshot.reason_code;
-   g_qstate_asof = snapshot.portfolio_asof_m1_time;
-   g_qstate_score = snapshot.pair_direction_score;
-   g_qstate_confidence = snapshot.confidence;
-   g_qstate_details = snapshot.detail;
-   return true;
+   StateMapSetQStateSnapshotUnavailable(qstate_reason, "Q-state snapshot unavailable; visual stack remains active.");
+   return false;
 }
 
 void StateMapRenderPanel(
@@ -1281,10 +1003,9 @@ int OnCalculate(
    datetime latest_closed_m1 = StateMapLatestClosedM1();
    if(prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar)
    {
-      if(StateMapRefreshQState())
-         g_last_qstate_refresh_bar = latest_closed_m1;
-      else
-         g_panel_signature = "";
+      StateMapRefreshQState();
+      g_last_qstate_refresh_bar = latest_closed_m1;
+      g_panel_signature = "";
    }
 
    int latest_source_index = ArraySize(g_source_times) - 1;
