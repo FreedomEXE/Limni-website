@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.20"
+#property version   "1.30"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -23,31 +23,37 @@
 #include "..\\Include\\LimniQStateCore.mqh"
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
-const int STATE_MAP_PANEL_WIDTH = 360;
-const int STATE_MAP_PANEL_HEIGHT = 132;
+const int STATE_MAP_PANEL_WIDTH = 300;
+const int STATE_MAP_PANEL_HEIGHT = 260;
 const int STATE_MAP_PANEL_RIGHT = 18;
 const int STATE_MAP_PANEL_TOP = 22;
-const int STATE_MAP_PANEL_PADDING = 16;
-const int STATE_MAP_BADGE_TOP = 34;
-const int STATE_MAP_BADGE_HEIGHT = 46;
-const color STATE_MAP_PANEL_BG = C'12,16,20';
-const color STATE_MAP_PANEL_BORDER = C'68,78,88';
-const color STATE_MAP_TITLE_COLOR = C'160,174,184';
-const color STATE_MAP_TEXT_COLOR = C'224,230,234';
-const color STATE_MAP_MUTED_COLOR = C'145,156,166';
-const color STATE_MAP_LONG_COLOR = C'31,142,82';
-const color STATE_MAP_SHORT_COLOR = C'194,68,54';
-const color STATE_MAP_NEUTRAL_COLOR = C'82,92,104';
-const color STATE_MAP_STRESS_COLOR = C'198,128,44';
+const int STATE_MAP_PANEL_PADDING = 14;
+const int STATE_MAP_HEADER_HEIGHT = 68;
+const int STATE_MAP_BADGE_TOP = 30;
+const int STATE_MAP_BADGE_HEIGHT = 34;
+const int STATE_MAP_TILE_WIDTH = 132;
+const int STATE_MAP_TILE_HEIGHT = 38;
+const int STATE_MAP_TILE_GAP = 8;
+const color STATE_MAP_PANEL_BG = C'13,17,24';
+const color STATE_MAP_HEADER_BG = C'22,29,40';
+const color STATE_MAP_TILE_BG = C'19,25,35';
+const color STATE_MAP_PANEL_BORDER = C'55,67,82';
+const color STATE_MAP_TILE_BORDER = C'33,43,56';
+const color STATE_MAP_TITLE_COLOR = C'151,162,176';
+const color STATE_MAP_TEXT_COLOR = C'231,236,243';
+const color STATE_MAP_MUTED_COLOR = C'137,148,162';
+const color STATE_MAP_LONG_COLOR = C'0,185,108';
+const color STATE_MAP_SHORT_COLOR = C'238,72,94';
+const color STATE_MAP_NEUTRAL_COLOR = C'97,108,124';
+const color STATE_MAP_STRESS_COLOR = C'212,139,52';
 const color STATE_MAP_BADGE_TEXT_COLOR = clrWhite;
 
+const string STATE_MAP_OBJECT_PREFIX = "Limni_StateMap_";
 const string STATE_MAP_BACKGROUND_NAME = "Limni_StateMap_Background";
+const string STATE_MAP_HEADER_NAME = "Limni_StateMap_Header";
 const string STATE_MAP_BADGE_NAME = "Limni_StateMap_Badge";
 const string STATE_MAP_TITLE_NAME = "Limni_StateMap_Title";
 const string STATE_MAP_STATE_NAME = "Limni_StateMap_State";
-const string STATE_MAP_META_NAME = "Limni_StateMap_Meta";
-const string STATE_MAP_CONTEXT_NAME = "Limni_StateMap_Context";
-const string STATE_MAP_SYNC_NAME = "Limni_StateMap_Sync";
 
 double PriceAnchorBuffer[];
 double StateAnchorBuffer[];
@@ -75,13 +81,13 @@ void StateMapSetQStateFailure(const string reason, const string details)
 
 void StateMapDeleteObjects()
 {
-   ObjectDelete(0, STATE_MAP_BACKGROUND_NAME);
-   ObjectDelete(0, STATE_MAP_BADGE_NAME);
-   ObjectDelete(0, STATE_MAP_TITLE_NAME);
-   ObjectDelete(0, STATE_MAP_STATE_NAME);
-   ObjectDelete(0, STATE_MAP_META_NAME);
-   ObjectDelete(0, STATE_MAP_CONTEXT_NAME);
-   ObjectDelete(0, STATE_MAP_SYNC_NAME);
+   int total = ObjectsTotal(0, 0, -1);
+   for(int index = total - 1; index >= 0; index--)
+   {
+      string name = ObjectName(0, index, 0, -1);
+      if(StringFind(name, STATE_MAP_OBJECT_PREFIX) == 0)
+         ObjectDelete(0, name);
+   }
 }
 
 int StateMapPanelLeft()
@@ -99,6 +105,20 @@ string StateMapClip(const string value, const int max_len)
    if(max_len <= 3)
       return StringSubstr(value, 0, max_len);
    return StringSubstr(value, 0, max_len - 3) + "...";
+}
+
+string StateMapObjectName(const string suffix)
+{
+   return STATE_MAP_OBJECT_PREFIX + suffix;
+}
+
+string StateMapTimeLabel(const datetime value)
+{
+   if(value <= 0)
+      return "syncing";
+   MqlDateTime parts;
+   TimeToStruct(value, parts);
+   return StringFormat("%02d-%02d %02d:%02d", parts.mon, parts.day, parts.hour, parts.min);
 }
 
 void StateMapSetRectangle(
@@ -173,6 +193,16 @@ void StateMapEnsurePanelBackground()
       80
    );
    StateMapSetRectangle(
+      STATE_MAP_HEADER_NAME,
+      panel_left,
+      STATE_MAP_PANEL_TOP,
+      STATE_MAP_PANEL_WIDTH,
+      STATE_MAP_HEADER_HEIGHT,
+      STATE_MAP_HEADER_BG,
+      STATE_MAP_HEADER_BG,
+      85
+   );
+   StateMapSetRectangle(
       STATE_MAP_BADGE_NAME,
       panel_left + STATE_MAP_PANEL_PADDING,
       STATE_MAP_PANEL_TOP + STATE_MAP_BADGE_TOP,
@@ -187,10 +217,19 @@ void StateMapEnsurePanelBackground()
 string StateMapTrendLabel(const int state)
 {
    if(state > 0)
-      return "Trend up";
+      return "UP";
    if(state < 0)
-      return "Trend down";
-   return "Trend neutral";
+      return "DOWN";
+   return "NEUTRAL";
+}
+
+color StateMapTrendColor(const int state)
+{
+   if(state > 0)
+      return STATE_MAP_LONG_COLOR;
+   if(state < 0)
+      return STATE_MAP_SHORT_COLOR;
+   return STATE_MAP_MUTED_COLOR;
 }
 
 color StateMapQStateColor(const LimniQStateDirection &decision)
@@ -202,6 +241,64 @@ color StateMapQStateColor(const LimniQStateDirection &decision)
    if(decision.trade_direction == LIMNI_QSTATE_SIDE_SHORT)
       return STATE_MAP_SHORT_COLOR;
    return STATE_MAP_NEUTRAL_COLOR;
+}
+
+color StateMapSignedValueColor(const double value)
+{
+   if(value > 0.0)
+      return STATE_MAP_LONG_COLOR;
+   if(value < 0.0)
+      return STATE_MAP_SHORT_COLOR;
+   return STATE_MAP_TEXT_COLOR;
+}
+
+void StateMapSetStat(
+   const string key,
+   const string label,
+   const string value,
+   const color value_color,
+   const int column,
+   const int row
+)
+{
+   const int panel_left = StateMapPanelLeft();
+   const int grid_top = STATE_MAP_PANEL_TOP + STATE_MAP_HEADER_HEIGHT + 12;
+   const int tile_x = panel_left + STATE_MAP_PANEL_PADDING +
+      column * (STATE_MAP_TILE_WIDTH + STATE_MAP_TILE_GAP);
+   const int tile_y = grid_top + row * (STATE_MAP_TILE_HEIGHT + STATE_MAP_TILE_GAP);
+
+   StateMapSetRectangle(
+      StateMapObjectName("Tile_" + key),
+      tile_x,
+      tile_y,
+      STATE_MAP_TILE_WIDTH,
+      STATE_MAP_TILE_HEIGHT,
+      STATE_MAP_TILE_BG,
+      STATE_MAP_TILE_BORDER,
+      88
+   );
+   StateMapSetLabel(
+      StateMapObjectName("Tag_" + key),
+      label,
+      STATE_MAP_MUTED_COLOR,
+      7,
+      tile_x + 10,
+      tile_y + 5,
+      "Segoe UI Semibold",
+      ANCHOR_LEFT_UPPER,
+      110
+   );
+   StateMapSetLabel(
+      StateMapObjectName("Value_" + key),
+      value,
+      value_color,
+      10,
+      tile_x + 10,
+      tile_y + 19,
+      "Segoe UI Semibold",
+      ANCHOR_LEFT_UPPER,
+      110
+   );
 }
 
 ulong StateMapPortfolioQStateHash(const LimniQStatePairFeatures &features[], const double &ccy_scores[])
@@ -341,8 +438,11 @@ bool StateMapRefreshQState()
 }
 
 void StateMapRenderPanel(
+   const double latest_anchor,
    const int latest_trend_state,
-   const double latest_stoch
+   const double latest_stoch,
+   const int copied,
+   const int valid_q_day_count
 )
 {
    StateMapEnsurePanelBackground();
@@ -350,30 +450,45 @@ void StateMapRenderPanel(
    const int panel_left = StateMapPanelLeft();
    const int content_left = panel_left + STATE_MAP_PANEL_PADDING;
    const int content_center = panel_left + (STATE_MAP_PANEL_WIDTH / 2);
-   const int title_y = STATE_MAP_PANEL_TOP + 12;
+   const int title_y = STATE_MAP_PANEL_TOP + 9;
    const int badge_center_y = STATE_MAP_PANEL_TOP + STATE_MAP_BADGE_TOP + (STATE_MAP_BADGE_HEIGHT / 2);
-   const int meta_y = STATE_MAP_PANEL_TOP + 90;
-   const int context_y = STATE_MAP_PANEL_TOP + 110;
 
-   string meta = "M1 ";
-   if(g_qstate_asof > 0)
-      meta += TimeToString(g_qstate_asof, TIME_MINUTES);
-   else
-      meta += "syncing";
-   meta += "   Score " + DoubleToString(g_qstate_score, 2) +
-      "   Conf " + DoubleToString(g_qstate_confidence, 2);
+   int state_font_size = StringLen(g_qstate_label) > 9 ? 17 : 20;
+   string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
+   string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
+   string bars_value = IntegerToString(copied) + " / " + IntegerToString(valid_q_day_count);
 
-   string context = StateMapTrendLabel(latest_trend_state) +
-      "   Stoch " + (latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1)) +
-      "   " + StateMapClip(g_qstate_reason, 24);
+   StateMapSetLabel(
+      STATE_MAP_TITLE_NAME,
+      "LIMNI STATE MAP",
+      STATE_MAP_TITLE_COLOR,
+      9,
+      content_left,
+      title_y,
+      "Segoe UI Semibold",
+      ANCHOR_LEFT_UPPER,
+      110
+   );
+   StateMapSetLabel(
+      STATE_MAP_STATE_NAME,
+      g_qstate_label,
+      STATE_MAP_BADGE_TEXT_COLOR,
+      state_font_size,
+      content_center,
+      badge_center_y + 1,
+      "Segoe UI Semibold",
+      ANCHOR_CENTER,
+      115
+   );
 
-   int state_font_size = StringLen(g_qstate_label) > 8 ? 21 : 25;
-
-   StateMapSetLabel(STATE_MAP_TITLE_NAME, "LIMNI STATE MAP", STATE_MAP_TITLE_COLOR, 10, content_left, title_y, "Arial", ANCHOR_LEFT_UPPER, 100);
-   StateMapSetLabel(STATE_MAP_STATE_NAME, g_qstate_label, STATE_MAP_BADGE_TEXT_COLOR, state_font_size, content_center, badge_center_y + 1, "Arial Black", ANCHOR_CENTER, 110);
-   StateMapSetLabel(STATE_MAP_META_NAME, meta, STATE_MAP_TEXT_COLOR, 9, content_left, meta_y, "Consolas", ANCHOR_LEFT_UPPER, 100);
-   StateMapSetLabel(STATE_MAP_CONTEXT_NAME, context, STATE_MAP_MUTED_COLOR, 9, content_left, context_y, "Consolas", ANCHOR_LEFT_UPPER, 100);
-   ObjectDelete(0, STATE_MAP_SYNC_NAME);
+   StateMapSetStat("M1", "M1 AS-OF", StateMapTimeLabel(g_qstate_asof), STATE_MAP_TEXT_COLOR, 0, 0);
+   StateMapSetStat("Reason", "REASON", StateMapClip(g_qstate_reason, 18), STATE_MAP_TEXT_COLOR, 1, 0);
+   StateMapSetStat("Score", "SCORE", DoubleToString(g_qstate_score, 2), StateMapSignedValueColor(g_qstate_score), 0, 1);
+   StateMapSetStat("Conf", "CONF", DoubleToString(g_qstate_confidence, 2), STATE_MAP_TEXT_COLOR, 1, 1);
+   StateMapSetStat("Trend", "TREND", StateMapTrendLabel(latest_trend_state), StateMapTrendColor(latest_trend_state), 0, 2);
+   StateMapSetStat("Stoch", "STOCH", stoch_value, STATE_MAP_TEXT_COLOR, 1, 2);
+   StateMapSetStat("Anchor", "ANCHOR", anchor_value, STATE_MAP_TEXT_COLOR, 0, 3);
+   StateMapSetStat("Bars", "BARS / QDAYS", bars_value, STATE_MAP_TEXT_COLOR, 1, 3);
 }
 
 int OnInit()
@@ -385,7 +500,7 @@ int OnInit()
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, EMPTY_VALUE);
    IndicatorSetString(INDICATOR_SHORTNAME, "Limni State Map");
    IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
-   StateMapRenderPanel(0, EMPTY_VALUE);
+   StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
    return INIT_SUCCEEDED;
 }
 
@@ -501,12 +616,16 @@ int OnCalculate(
    }
 
    int latest_source_index = ArraySize(source_times) - 1;
+   double latest_anchor = latest_source_index >= 0 ? source_line[latest_source_index] : EMPTY_VALUE;
    int latest_trend_state = latest_source_index >= 0 ? source_ma_state[latest_source_index] : 0;
    double latest_stoch = latest_source_index >= 0 ? source_stoch[latest_source_index] : EMPTY_VALUE;
 
    StateMapRenderPanel(
+      latest_anchor,
       latest_trend_state,
-      latest_stoch
+      latest_stoch,
+      copied,
+      valid_q_day_count
    );
 
    return rates_total;
