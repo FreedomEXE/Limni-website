@@ -3,7 +3,7 @@
 //|                   Limni pair-state visual viewer                 |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.59"
+#property version   "1.60"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -80,9 +80,7 @@ int g_stack_valid_q_day_count = 0;
 string g_stack_status_reason = "waiting_for_m1";
 string g_last_logged_stack_failure_reason = "";
 
-string g_pair_signal_label = "VISUAL ONLY";
 string g_pair_status_detail = "chart-symbol M1 stack";
-color g_pair_signal_color = STATE_MAP_NEUTRAL_COLOR;
 
 bool g_panel_ready = false;
 string g_panel_signature = "";
@@ -174,6 +172,77 @@ string StateMapSignedValueLabel(const double value, const int digits = 2)
    return DoubleToString(value, digits);
 }
 
+double StateMapPipSize()
+{
+   double point = _Point;
+   if(point <= 0.0)
+      point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(point <= 0.0)
+      return 0.0;
+
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   if(digits == 5 || digits == 3)
+      return point * 10.0;
+   if(digits == 4 || digits == 2)
+      return point;
+
+   double pip = point * 10.0;
+   if(pip > point && pip < 1.0)
+      return pip;
+   return point;
+}
+
+string StateMapPipsLabel(const double value)
+{
+   if(value == EMPTY_VALUE || !MathIsValidNumber(value))
+      return "n/a";
+
+   double pip_size = StateMapPipSize();
+   if(pip_size <= 0.0)
+      return StateMapSignedValueLabel(value, 4);
+
+   double pips = value / pip_size;
+   int digits = MathAbs(pips) < 1.0 ? 2 : 1;
+   return DoubleToString(pips, digits) + " pips";
+}
+
+bool StateMapHasVisualData(
+   const double latest_anchor,
+   const double latest_stoch,
+   const int copied
+)
+{
+   if(copied <= 0)
+      return false;
+   if(latest_anchor == EMPTY_VALUE || !MathIsValidNumber(latest_anchor))
+      return false;
+   if(latest_stoch == EMPTY_VALUE || !MathIsValidNumber(latest_stoch))
+      return false;
+   return true;
+}
+
+string StateMapDirectionLabel(const int state, const bool data_ready)
+{
+   if(!data_ready)
+      return "WAITING";
+   if(state > 0)
+      return "LONG";
+   if(state < 0)
+      return "SHORT";
+   return "NEUTRAL";
+}
+
+color StateMapDirectionColor(const int state, const bool data_ready)
+{
+   if(!data_ready)
+      return STATE_MAP_STRESS_COLOR;
+   if(state > 0)
+      return STATE_MAP_LONG_COLOR;
+   if(state < 0)
+      return STATE_MAP_SHORT_COLOR;
+   return STATE_MAP_NEUTRAL_COLOR;
+}
+
 string StateMapTrendLabel(const int state)
 {
    if(state > 0)
@@ -205,16 +274,12 @@ color StateMapTrendColor(const int state)
 
 void StateMapSetVisualReady()
 {
-   g_pair_signal_label = "VISUAL ONLY";
-   g_pair_signal_color = STATE_MAP_NEUTRAL_COLOR;
    g_stack_status_reason = "pair_stack_ready";
-   g_pair_status_detail = "portfolio separate";
+   g_pair_status_detail = "chart-symbol M1";
 }
 
 void StateMapSetVisualFailure(const string reason)
 {
-   g_pair_signal_label = "DATA CHECK";
-   g_pair_signal_color = STATE_MAP_STRESS_COLOR;
    g_stack_status_reason = reason == "" ? "visual_stack_unavailable" : reason;
    g_pair_status_detail = "check M1 source";
 }
@@ -436,34 +501,37 @@ void StateMapUpdatePanel(
    g_panel_latest_day_count = day_count;
    g_panel_latest_valid_q_day_count = valid_q_day_count;
 
+   bool data_ready = StateMapHasVisualData(latest_anchor, latest_stoch, copied);
+   string direction_value = StateMapDirectionLabel(latest_trend_state, data_ready);
+   color direction_color = StateMapDirectionColor(latest_trend_state, data_ready);
+   string header_direction = "DIRECTION: " + direction_value;
+
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
-   string q_value = StateMapSignedValueLabel(latest_q, 4);
+   string q_value = StateMapPipsLabel(latest_q);
    string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
    string bars_value = IntegerToString(copied);
    string q_days_value = IntegerToString(valid_q_day_count);
-   string day_count_value = IntegerToString(day_count);
    string reason_value = StateMapReasonLabel(g_stack_status_reason);
    string m1_label = StateMapTimeLabel(g_stack_latest_closed_m1);
    string trend_value = StateMapTrendLabel(latest_trend_state);
    string center_detail = ShowCenterLine ? "center line on" : "center line off";
    string stoch_detail = StateMapStochZoneLabel(latest_stoch);
-   string source_detail = "max M1 " + IntegerToString(MathMax(0, VisualMaxM1Bars));
+   string data_detail = g_pair_status_detail;
 
    string signature =
       IntegerToString(StateMapPanelLeft()) + "|" +
       (g_panel_minimized ? "min" : "full") + "|" +
-      g_pair_signal_label + "|" +
+      header_direction + "|" +
       reason_value + "|" +
-      g_pair_status_detail + "|" +
+      data_detail + "|" +
       m1_label + "|" +
       IntegerToString(latest_trend_state) + "|" +
+      direction_value + "|" +
       stoch_value + "|" +
       q_value + "|" +
       anchor_value + "|" +
       bars_value + "|" +
-      q_days_value + "|" +
-      day_count_value + "|" +
-      source_detail;
+      q_days_value;
 
    if(signature == g_panel_signature)
       return;
@@ -471,9 +539,9 @@ void StateMapUpdatePanel(
    int panel_x = StateMapPanelLeft();
    int panel_y = STATE_MAP_PANEL_TOP;
    StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", panel_x, panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
-   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", panel_x, panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_pair_signal_color, g_pair_signal_color, 42);
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", panel_x, panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, direction_color, direction_color, 42);
    StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", panel_x + 18, panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold");
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", g_pair_signal_label, panel_x + 18, panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(g_pair_signal_label) > 11 ? 15 : 18, 44, "Segoe UI Semibold");
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", header_direction, panel_x + 18, panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(header_direction) > 16 ? 14 : 16, 44, "Segoe UI Semibold");
    StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", panel_x + STATE_MAP_PANEL_WIDTH - 42, panel_y + 18, 26, 26, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
 
    if(g_panel_minimized)
@@ -490,14 +558,14 @@ void StateMapUpdatePanel(
    int row_3 = row_2 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
    int row_4 = row_3 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
 
-   StateMapDrawPanelBlock("Signal", "PAIR SIGNAL", g_pair_signal_label, "chart symbol only", left_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, g_pair_signal_color);
-   StateMapDrawPanelBlock("AsOf", "AS-OF", m1_label, "closed M1", right_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
-   StateMapDrawPanelBlock("Status", "STATUS", reason_value, g_pair_status_detail, left_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, g_pair_signal_color);
-   StateMapDrawPanelBlock("Q", "Q", q_value, "q-days " + q_days_value, right_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
-   StateMapDrawPanelBlock("Trend", "TREND", trend_value, center_detail, left_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, StateMapTrendColor(latest_trend_state));
-   StateMapDrawPanelBlock("Stochastic", "STOCHASTIC", stoch_value, stoch_detail, right_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
-   StateMapDrawPanelBlock("Anchor", "ANCHOR", anchor_value, "center price", left_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
-   StateMapDrawPanelBlock("Bars", "BARS", bars_value, "days " + day_count_value, right_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STRESS_COLOR);
+   StateMapDrawPanelBlock("Direction", "DIRECTION", direction_value, "chart symbol only", left_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, direction_color);
+   StateMapDrawPanelBlock("Q", "Q SIZE", q_value, "q-days " + q_days_value, right_x, row_1, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
+   StateMapDrawPanelBlock("Trend", "TREND", trend_value, center_detail, left_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, StateMapTrendColor(latest_trend_state));
+   StateMapDrawPanelBlock("Stochastic", "STOCHASTIC", stoch_value, stoch_detail, right_x, row_2, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
+   StateMapDrawPanelBlock("Anchor", "ANCHOR", anchor_value, "center price", left_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_STOCH_LINE);
+   StateMapDrawPanelBlock("Status", "DATA", reason_value, data_detail, right_x, row_3, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, data_ready ? STATE_MAP_LONG_COLOR : STATE_MAP_STRESS_COLOR);
+   StateMapDrawPanelBlock("Bars", "BARS", bars_value, "q-days " + q_days_value, left_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
+   StateMapDrawPanelBlock("AsOf", "AS-OF", m1_label, "closed M1", right_x, row_4, STATE_MAP_BLOCK_WIDTH, STATE_MAP_BLOCK_HEIGHT, STATE_MAP_NEUTRAL_COLOR);
 
    g_panel_signature = signature;
 }

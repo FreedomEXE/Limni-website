@@ -1,0 +1,12 @@
+StateMap no_VISUAL_ONLY=True
+StateMap no_PAIR_SIGNAL=True
+StateMap no_LimniVisual=True
+StateMap no_Common_Files_text=True
+StateMap no_StateMapBuildLocalQState=True
+StateMap no_q_state_text=True
+StateMap has_DIRECTION_label=True
+StateMap has_Q_SIZE_label=True
+StateMap has_pip_helper=True
+Stochastic source_untouched_by_gate99zs=True
+Stochastic no_LimniVisual=True
+Shared_stack_no_gate99zs_change=True
