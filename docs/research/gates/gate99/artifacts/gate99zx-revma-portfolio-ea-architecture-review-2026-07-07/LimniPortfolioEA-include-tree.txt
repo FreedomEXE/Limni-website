@@ -1,0 +1,191 @@
+.\automation\mt5\Experts\Limni\LimniPortfolioEA.mq5
+  .\automation\mt5\Experts\Include\Core\Engine.mqh
+    .\automation\mt5\Experts\Include\Core\BuildInfo.mqh
+    .\automation\mt5\Experts\Include\Core\Types.mqh
+    .\automation\mt5\Experts\Include\Core\Config.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Indicators\Include\LimniQStateCore.mqh
+        .\automation\mt5\Indicators\Include\LimniLRMGStackCore.mqh
+          .\automation\mt5\Indicators\Include\LimniRadialMovementGrid.mqh
+      .\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+          .\automation\mt5\Experts\Include\Core\Types.mqh
+            (already listed above)
+        .\automation\mt5\Indicators\Include\LimniPairDirectionCore.mqh
+    .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+      (already listed above)
+    .\automation\mt5\Experts\Include\Market\SessionCalendar.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Market\NewsCalendar.mqh
+      .\automation\mt5\Experts\Include\Market\SessionCalendar.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        .\automation\mt5\Experts\Include\Core\BuildInfo.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Receipts\ReceiptTypes.mqh
+          .\automation\mt5\Experts\Include\Core\Types.mqh
+            (already listed above)
+    .\automation\mt5\Experts\Include\Market\SymbolSpecCache.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Market\TickBarCache.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Market\M1Clock.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Market\SymbolSpecCache.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Signals\LrmgState.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Signals\SignalSnapshot.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+      .\automation\mt5\Indicators\Include\LimniQStateCore.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Signals\RevmaSignalState.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Market\SymbolSpecCache.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh
+        (already listed above)
+      .\automation\mt5\Indicators\Include\LimniRadialMovementGrid.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Strategies\StrategyRegistry.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\IntentBus.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\TrendFollowLane.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Portfolio\GridBook.mqh
+          .\automation\mt5\Experts\Include\Core\Types.mqh
+            (already listed above)
+          .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+            (already listed above)
+          .\automation\mt5\Experts\Include\Execution\MagicCodec.mqh
+            .\automation\mt5\Experts\Include\Core\BuildInfo.mqh
+              (already listed above)
+            .\automation\mt5\Experts\Include\Core\Types.mqh
+              (already listed above)
+          .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+            (already listed above)
+        .\automation\mt5\Experts\Include\Strategies\IntentBus.mqh
+          (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\ReversalLane.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Strategies\IntentBus.mqh
+          (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\RevmaGridSleeve.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Portfolio\GridBook.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Strategies\IntentBus.mqh
+          (already listed above)
+        .\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh
+          (already listed above)
+    .\automation\mt5\Experts\Include\Strategies\PortfolioIntentSelector.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Portfolio\GridBook.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Strategies\IntentBus.mqh
+      (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\PositionIndex.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\MagicCodec.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\GridBook.mqh
+      (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\PortfolioState.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\CurrencyExposureGuard.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\MagicCodec.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\AccountHarvestGuard.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Portfolio\RiskArbiter.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\SymbolUniverse.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\MagicCodec.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\TradePlan.mqh
+        .\automation\mt5\Experts\Include\Core\Types.mqh
+          (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Portfolio\CurrencyExposureGuard.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Execution\TradeRouter.mqh
+      <external-or-unresolved> Trade/Trade.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\MagicCodec.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Execution\RetcodeClassifier.mqh
+    .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+      (already listed above)
+    .\automation\mt5\Experts\Include\Receipts\RunManifest.mqh
+      .\automation\mt5\Experts\Include\Core\BuildInfo.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Market\SessionCalendar.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh
+        (already listed above)
+      .\automation\mt5\Indicators\Include\LimniQStateCore.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Receipts\DecisionLog.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
+    .\automation\mt5\Experts\Include\Receipts\StateSnapshot.mqh
+      .\automation\mt5\Experts\Include\Core\Types.mqh
+        (already listed above)
+      .\automation\mt5\Experts\Include\Receipts\ReceiptWriter.mqh
+        (already listed above)
