@@ -3,7 +3,7 @@
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.10"
+#property version   "1.11"
 #property indicator_separate_window
 #property indicator_buffers 1
 #property indicator_plots 1
@@ -72,7 +72,7 @@ bool EnsureStackCache(
    datetime snapshot_latest = 0;
    ulong snapshot_hash = 0;
    string reason = "";
-   if(!LimniVisualReadStackSnapshot(
+   bool snapshot_ok = LimniVisualReadStackSnapshot(
       _Symbol,
       ScaleLookbackDays,
       g_source_times,
@@ -90,11 +90,42 @@ bool EnsureStackCache(
       snapshot_latest,
       snapshot_hash,
       reason
-   ))
+   );
+
+   if(!snapshot_ok || snapshot_latest < latest_closed_m1)
    {
-      if(ShowDebugComment)
-         Comment("Stochastic\nsnapshot unavailable: ", reason, "\nStart LimniVisualRuntimeService.");
-      return false;
+      string fallback_reason = "";
+      if(!LimniVisualBuildStackSnapshot(
+         _Symbol,
+         ScaleLookbackDays,
+         g_source_times,
+         g_source_closes,
+         g_source_q,
+         g_source_line,
+         g_source_stoch,
+         g_source_ma,
+         g_source_ma_state,
+         g_source_trigger,
+         g_stack_copied,
+         g_stack_day_count,
+         g_stack_valid_q_day_count,
+         g_stack_point,
+         fallback_reason
+      ))
+      {
+         if(ShowDebugComment)
+            Comment("Stochastic\nsnapshot and local fallback unavailable: ", fallback_reason == "" ? reason : fallback_reason);
+         return false;
+      }
+
+      int fallback_count = ArraySize(g_source_times);
+      if(fallback_count <= 0)
+      {
+         if(ShowDebugComment)
+            Comment("Stochastic\nlocal fallback returned no closed-M1 bars.");
+         return false;
+      }
+      snapshot_latest = g_source_times[fallback_count - 1];
    }
 
    g_stack_cache_from = chart_oldest;

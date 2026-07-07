@@ -1,0 +1,17 @@
+automation\mt5\Indicators\Limni\StateMap.mq5
+CAppDialog=False
+ChartRedraw=False
+LimniLoadCachedStackSeries=False
+LimniQStateBuildPairFeatures=False
+CopyRates=False
+LimniVisualBuildStackSnapshot=True
+LimniVisualReadStackSnapshot=True
+
+automation\mt5\Indicators\Limni\Stochastic.mq5
+CAppDialog=False
+ChartRedraw=False
+LimniLoadCachedStackSeries=False
+LimniQStateBuildPairFeatures=False
+CopyRates=False
+LimniVisualBuildStackSnapshot=True
+LimniVisualReadStackSnapshot=True
