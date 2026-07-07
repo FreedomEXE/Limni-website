@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.56"
+#property version   "1.57"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -75,6 +75,8 @@ int g_source_trigger[];
 int g_stack_copied = 0;
 int g_stack_day_count = 0;
 int g_stack_valid_q_day_count = 0;
+string g_stack_failure_reason = "";
+string g_last_logged_stack_failure_reason = "";
 
 datetime g_last_qstate_refresh_bar = 0;
 string g_qstate_label = "NO TRADE";
@@ -219,7 +221,7 @@ string StateMapStochZoneLabel(const double value)
 string StateMapPanelStatusLabel()
 {
    if(g_qstate_label == "FAIL CLOSED")
-      return "data unavailable";
+      return StateMapReasonLabel(g_qstate_reason);
    string reason = StateMapReasonLabel(g_qstate_reason);
    return reason == "unknown" || reason == "not refreshed" ? "ready" : reason;
 }
@@ -280,10 +282,19 @@ bool StateMapEnsureStackCache(
 
    datetime snapshot_latest = 0;
    ulong snapshot_hash = 0;
-   string reason = "";
-   bool snapshot_ok = LimniVisualReadStackSnapshot(
-      _Symbol,
+   string direct_reason = "";
+   string build_reason = "";
+   string snapshot_reason = "";
+
+   double direct_point = _Point;
+   if(direct_point <= 0.0)
+      direct_point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+
+   bool stack_ok = LimniLoadCachedStackSeries(
+      chart_oldest,
+      chart_newest,
       STATE_MAP_SCALE_LOOKBACK_DAYS,
+      direct_point,
       g_source_times,
       g_source_closes,
       g_source_q,
@@ -294,19 +305,18 @@ bool StateMapEnsureStackCache(
       g_source_trigger,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count,
-      g_stack_point,
-      snapshot_latest,
-      snapshot_hash,
-      reason
+      g_stack_valid_q_day_count
    );
-
-   if(!snapshot_ok ||
-      snapshot_latest < latest_closed_m1 ||
-      !LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
+   if(stack_ok && ArraySize(g_source_times) > 0)
    {
-      string fallback_reason = "";
-      if(!LimniVisualBuildStackSnapshot(
+      snapshot_latest = g_source_times[ArraySize(g_source_times) - 1];
+      g_stack_point = direct_point;
+      direct_reason = "direct_cached_stack_ready";
+   }
+   else
+   {
+      direct_reason = "direct_cached_stack_failed";
+      stack_ok = LimniVisualBuildStackSnapshot(
          _Symbol,
          STATE_MAP_SCALE_LOOKBACK_DAYS,
          g_source_times,
@@ -321,24 +331,23 @@ bool StateMapEnsureStackCache(
          g_stack_day_count,
          g_stack_valid_q_day_count,
          g_stack_point,
-         fallback_reason
-      ))
+         build_reason
+      );
+      if(stack_ok)
       {
-         StateMapSetQStateFailure(
-            fallback_reason == "" ? (snapshot_ok ? "stack_snapshot_stale" : reason) : fallback_reason,
-            "Stack snapshot and local visual fallback are unavailable."
-         );
-         return false;
+         int fallback_count = ArraySize(g_source_times);
+         if(fallback_count <= 0)
+         {
+            stack_ok = false;
+            build_reason = "local_fallback_empty";
+         }
+         else
+            snapshot_latest = g_source_times[fallback_count - 1];
       }
+   }
 
-      int fallback_count = ArraySize(g_source_times);
-      if(fallback_count <= 0)
-      {
-         StateMapSetQStateFailure("stack_fallback_empty", "Local visual fallback returned no closed-M1 bars.");
-         return false;
-      }
-      snapshot_latest = g_source_times[fallback_count - 1];
-
+   if(stack_ok)
+   {
       ulong write_hash = 0;
       string write_reason = "";
       LimniVisualWriteStackSnapshot(
@@ -360,10 +369,52 @@ bool StateMapEnsureStackCache(
          write_reason
       );
    }
+   else
+   {
+      bool snapshot_ok = LimniVisualReadStackSnapshot(
+         _Symbol,
+         STATE_MAP_SCALE_LOOKBACK_DAYS,
+         g_source_times,
+         g_source_closes,
+         g_source_q,
+         g_source_line,
+         g_source_stoch,
+         g_source_ma,
+         g_source_ma_state,
+         g_source_trigger,
+         g_stack_copied,
+         g_stack_day_count,
+         g_stack_valid_q_day_count,
+         g_stack_point,
+         snapshot_latest,
+         snapshot_hash,
+         snapshot_reason
+      );
+
+      stack_ok =
+         snapshot_ok &&
+         snapshot_latest >= latest_closed_m1 &&
+         LimniSourceSeriesCoversChart(g_source_times, chart_oldest);
+      if(!stack_ok)
+      {
+         g_stack_failure_reason =
+            "direct=" + direct_reason +
+            "; build=" + (build_reason == "" ? "not_attempted" : build_reason) +
+            "; snapshot=" + (snapshot_reason == "" ? "not_available" : snapshot_reason);
+         if(g_stack_failure_reason != g_last_logged_stack_failure_reason)
+         {
+            Print("Limni StateMap stack unavailable: ", g_stack_failure_reason);
+            g_last_logged_stack_failure_reason = g_stack_failure_reason;
+         }
+         StateMapSetQStateFailure(g_stack_failure_reason, "Visual stack unavailable.");
+         return false;
+      }
+   }
 
    g_stack_cache_from = chart_oldest;
    g_stack_latest_closed_m1 = snapshot_latest;
    g_stack_ready = true;
+   g_stack_failure_reason = "";
    refreshed = true;
    return true;
 }
@@ -674,11 +725,9 @@ void StateMapClampPanelPosition()
 
 void StateMapEnsurePanelPosition()
 {
-   if(g_panel_x < 0 || g_panel_y < 0 || !g_panel_user_moved)
-   {
-      g_panel_x = StateMapDefaultPanelX();
-      g_panel_y = StateMapDefaultPanelY();
-   }
+   g_panel_x = StateMapDefaultPanelX();
+   g_panel_y = StateMapDefaultPanelY();
+   g_panel_user_moved = false;
    StateMapClampPanelPosition();
 }
 
@@ -870,9 +919,9 @@ void StateMapUpdatePanel(
       return;
 
    StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
-   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_qstate_color, g_qstate_color, 42, true);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 18, g_panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", true);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", state_value, g_panel_x + 18, g_panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(state_value) > 11 ? 15 : 18, 44, "Segoe UI Semibold", true);
+   StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_qstate_color, g_qstate_color, 42, false);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 18, g_panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", false);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", state_value, g_panel_x + 18, g_panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(state_value) > 11 ? 15 : 18, 44, "Segoe UI Semibold", false);
    StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", g_panel_x + STATE_MAP_PANEL_WIDTH - 42, g_panel_y + 18, 26, 26, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
 
    if(g_panel_minimized)
@@ -1109,28 +1158,15 @@ void OnChartEvent(
 
    if(id == CHARTEVENT_OBJECT_DRAG)
    {
-      int local_x = 0;
-      int local_y = 0;
-      if(!StateMapPanelDragOffset(sparam, local_x, local_y))
-         return;
-
-      g_panel_x = (int)ObjectGetInteger(0, sparam, OBJPROP_XDISTANCE) - local_x;
-      g_panel_y = (int)ObjectGetInteger(0, sparam, OBJPROP_YDISTANCE) - local_y;
-      g_panel_user_moved = true;
-      StateMapClampPanelPosition();
       StateMapRefreshPanelFromStored();
       return;
    }
 
    if(id == CHARTEVENT_CHART_CHANGE)
    {
-      if(!g_panel_user_moved)
-      {
-         g_panel_x = -1;
-         g_panel_y = -1;
-      }
-      else
-         StateMapClampPanelPosition();
+      g_panel_x = -1;
+      g_panel_y = -1;
+      g_panel_user_moved = false;
       StateMapRefreshPanelFromStored();
    }
 }

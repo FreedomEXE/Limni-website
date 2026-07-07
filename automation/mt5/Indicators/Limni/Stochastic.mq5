@@ -3,7 +3,7 @@
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.14"
+#property version   "1.15"
 #property indicator_separate_window
 #property indicator_buffers 1
 #property indicator_plots 1
@@ -46,6 +46,8 @@ int g_stack_copied = 0;
 int g_stack_day_count = 0;
 int g_stack_valid_q_day_count = 0;
 uint g_last_debug_update_ms = 0;
+string g_stack_failure_reason = "";
+string g_last_logged_stack_failure_reason = "";
 
 datetime LatestClosedM1()
 {
@@ -74,10 +76,19 @@ bool EnsureStackCache(
 
    datetime snapshot_latest = 0;
    ulong snapshot_hash = 0;
-   string reason = "";
-   bool snapshot_ok = LimniVisualReadStackSnapshot(
-      _Symbol,
+   string direct_reason = "";
+   string build_reason = "";
+   string snapshot_reason = "";
+
+   double direct_point = _Point;
+   if(direct_point <= 0.0)
+      direct_point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+
+   bool stack_ok = LimniLoadCachedStackSeries(
+      chart_oldest,
+      chart_newest,
       ScaleLookbackDays,
+      direct_point,
       g_source_times,
       g_source_closes,
       g_source_q,
@@ -88,19 +99,18 @@ bool EnsureStackCache(
       g_source_trigger,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count,
-      g_stack_point,
-      snapshot_latest,
-      snapshot_hash,
-      reason
+      g_stack_valid_q_day_count
    );
-
-   if(!snapshot_ok ||
-      snapshot_latest < latest_closed_m1 ||
-      !LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
+   if(stack_ok && ArraySize(g_source_times) > 0)
    {
-      string fallback_reason = "";
-      if(!LimniVisualBuildStackSnapshot(
+      snapshot_latest = g_source_times[ArraySize(g_source_times) - 1];
+      g_stack_point = direct_point;
+      direct_reason = "direct_cached_stack_ready";
+   }
+   else
+   {
+      direct_reason = "direct_cached_stack_failed";
+      stack_ok = LimniVisualBuildStackSnapshot(
          _Symbol,
          ScaleLookbackDays,
          g_source_times,
@@ -115,23 +125,23 @@ bool EnsureStackCache(
          g_stack_day_count,
          g_stack_valid_q_day_count,
          g_stack_point,
-         fallback_reason
-      ))
+         build_reason
+      );
+      if(stack_ok)
       {
-         if(ShowDebugComment)
-            Comment("Stochastic\nsnapshot and local fallback unavailable: ", fallback_reason == "" ? reason : fallback_reason);
-         return false;
+         int fallback_count = ArraySize(g_source_times);
+         if(fallback_count <= 0)
+         {
+            stack_ok = false;
+            build_reason = "local_fallback_empty";
+         }
+         else
+            snapshot_latest = g_source_times[fallback_count - 1];
       }
+   }
 
-      int fallback_count = ArraySize(g_source_times);
-      if(fallback_count <= 0)
-      {
-         if(ShowDebugComment)
-            Comment("Stochastic\nlocal fallback returned no closed-M1 bars.");
-         return false;
-      }
-      snapshot_latest = g_source_times[fallback_count - 1];
-
+   if(stack_ok)
+   {
       ulong write_hash = 0;
       string write_reason = "";
       LimniVisualWriteStackSnapshot(
@@ -153,11 +163,54 @@ bool EnsureStackCache(
          write_reason
       );
    }
+   else
+   {
+      bool snapshot_ok = LimniVisualReadStackSnapshot(
+      _Symbol,
+      ScaleLookbackDays,
+      g_source_times,
+      g_source_closes,
+      g_source_q,
+      g_source_line,
+      g_source_stoch,
+      g_source_ma,
+      g_source_ma_state,
+      g_source_trigger,
+      g_stack_copied,
+      g_stack_day_count,
+      g_stack_valid_q_day_count,
+      g_stack_point,
+      snapshot_latest,
+      snapshot_hash,
+         snapshot_reason
+      );
+
+      stack_ok =
+         snapshot_ok &&
+         snapshot_latest >= latest_closed_m1 &&
+         LimniSourceSeriesCoversChart(g_source_times, chart_oldest);
+      if(!stack_ok)
+      {
+         g_stack_failure_reason =
+            "direct=" + direct_reason +
+            "; build=" + (build_reason == "" ? "not_attempted" : build_reason) +
+            "; snapshot=" + (snapshot_reason == "" ? "not_available" : snapshot_reason);
+         if(g_stack_failure_reason != g_last_logged_stack_failure_reason)
+         {
+            Print("Limni Stochastic stack unavailable: ", g_stack_failure_reason);
+            g_last_logged_stack_failure_reason = g_stack_failure_reason;
+         }
+         if(ShowDebugComment)
+            Comment("Stochastic\n", g_stack_failure_reason);
+         return false;
+      }
+   }
 
    g_stack_cache_from = chart_oldest;
    g_stack_latest_closed_m1 = snapshot_latest;
    g_stack_scale_lookback_days = ScaleLookbackDays;
    g_stack_ready = true;
+   g_stack_failure_reason = "";
    refreshed = true;
    return true;
 }
