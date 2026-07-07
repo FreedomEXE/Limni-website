@@ -1,0 +1,5 @@
+repo-StateMap-compile-log.txt
+Result: 0 errors, 0 warnings, 4435 msec elapsed, cpu='X64 Regular'
+
+active-StateMap-compile-log.txt
+Result: 0 errors, 0 warnings, 4421 msec elapsed, cpu='X64 Regular'

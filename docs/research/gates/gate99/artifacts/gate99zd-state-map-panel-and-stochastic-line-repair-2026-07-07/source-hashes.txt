@@ -1,0 +1,4 @@
+StateMap.mq5
+repo   A2AC7A02584641711A3D206F0DD6CD3D07C6ABB3E9EC84DBBF3F15774B9332D1  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\Limni\StateMap.mq5
+active A2AC7A02584641711A3D206F0DD6CD3D07C6ABB3E9EC84DBBF3F15774B9332D1  C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\Limni\StateMap.mq5
+match  True

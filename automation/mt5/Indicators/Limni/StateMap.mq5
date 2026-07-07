@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.52"
+#property version   "1.53"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -28,20 +28,20 @@ input int StochasticVisualBars = 120;
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INITIAL_PROJECT_BARS = 50000;
-const int STATE_MAP_PANEL_WIDTH = 404;
-const int STATE_MAP_PANEL_HEIGHT = 252;
-const int STATE_MAP_PANEL_MINIMIZED_HEIGHT = 48;
+const int STATE_MAP_PANEL_WIDTH = 460;
+const int STATE_MAP_PANEL_HEIGHT = 370;
+const int STATE_MAP_PANEL_MINIMIZED_HEIGHT = 68;
 const int STATE_MAP_PANEL_RIGHT = 18;
 const int STATE_MAP_PANEL_TOP = 22;
 const int STATE_MAP_PANEL_PAD = 12;
-const int STATE_MAP_HEADER_HEIGHT = 48;
-const int STATE_MAP_BLOCK_GAP = 8;
-const int STATE_MAP_BLOCK_WIDTH = 184;
-const int STATE_MAP_BLOCK_HEIGHT = 54;
+const int STATE_MAP_HEADER_HEIGHT = 68;
+const int STATE_MAP_BLOCK_GAP = 10;
+const int STATE_MAP_BLOCK_WIDTH = 213;
+const int STATE_MAP_BLOCK_HEIGHT = 62;
 const int STATE_MAP_STOCH_MAX_SEGMENTS = 120;
 const int STATE_MAP_STOCH_LEFT = 14;
 const int STATE_MAP_STOCH_BOTTOM = 28;
-const int STATE_MAP_STOCH_HEIGHT = 92;
+const int STATE_MAP_STOCH_HEIGHT = 132;
 const color STATE_MAP_PANEL_BG = C'24,28,38';
 const color STATE_MAP_PANEL_BORDER = C'49,63,82';
 const color STATE_MAP_TITLE_COLOR = C'151,164,181';
@@ -198,6 +198,55 @@ string StateMapTrendLabel(const int state)
    if(state < 0)
       return "DOWN";
    return "NEUTRAL";
+}
+
+bool StateMapHasQStateSnapshot()
+{
+   return g_qstate_asof > 0 && g_qstate_label != "VISUAL ONLY";
+}
+
+string StateMapPanelStateLabel()
+{
+   if(g_qstate_label == "VISUAL ONLY")
+      return "SYNCING";
+   if(g_qstate_label == "FAIL CLOSED")
+      return "DATA CHECK";
+   return g_qstate_label;
+}
+
+string StateMapPanelScoreLabel()
+{
+   if(!StateMapHasQStateSnapshot())
+      return "n/a";
+   return StateMapSignedScoreLabel(g_qstate_score);
+}
+
+string StateMapPanelConfidenceLabel()
+{
+   if(!StateMapHasQStateSnapshot())
+      return "n/a";
+   return DoubleToString(g_qstate_confidence, 2);
+}
+
+string StateMapStochZoneLabel(const double value)
+{
+   if(value == EMPTY_VALUE || !MathIsValidNumber(value))
+      return "waiting";
+   if(value >= 80.0)
+      return "upper zone";
+   if(value <= 20.0)
+      return "lower zone";
+   return "mid zone";
+}
+
+string StateMapPanelStatusLabel()
+{
+   if(g_qstate_label == "VISUAL ONLY")
+      return "q-state pending";
+   if(g_qstate_label == "FAIL CLOSED")
+      return StateMapReasonLabel(g_qstate_reason);
+   string reason = StateMapReasonLabel(g_qstate_reason);
+   return reason == "unknown" || reason == "not refreshed" ? "ready" : reason;
 }
 
 color StateMapTrendColor(const int state)
@@ -486,9 +535,9 @@ void StateMapDrawPanelBlock(
    int y = StateMapPanelY(local_y);
    StateMapDrawRect(prefix + "_Bg", x, y, width, height, STATE_MAP_BLOCK_BG, STATE_MAP_BLOCK_BORDER, 36);
    StateMapDrawRect(prefix + "_Accent", x, y, width, 3, accent, accent, 37);
-   StateMapDrawText(prefix + "_Title", title, x + 10, y + 8, STATE_MAP_MUTED_COLOR, 8, 38, "Segoe UI Semibold");
-   StateMapDrawText(prefix + "_Value", value, x + 10, y + 23, STATE_MAP_TEXT_COLOR, 11, 39, "Segoe UI Semibold");
-   StateMapDrawText(prefix + "_Detail", detail, x + 10, y + 41, STATE_MAP_MUTED_COLOR, 8, 39, "Segoe UI");
+   StateMapDrawText(prefix + "_Title", title, x + 12, y + 10, STATE_MAP_MUTED_COLOR, 8, 38, "Segoe UI Semibold");
+   StateMapDrawText(prefix + "_Value", StateMapClip(value, 24), x + 12, y + 27, STATE_MAP_TEXT_COLOR, 12, 39, "Segoe UI Semibold");
+   StateMapDrawText(prefix + "_Detail", StateMapClip(detail, 28), x + 12, y + 47, STATE_MAP_MUTED_COLOR, 8, 39, "Segoe UI");
 }
 
 bool StateMapCreateDialog()
@@ -517,19 +566,24 @@ void StateMapUpdatePanel(
 
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
    string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
-   string bars_value = IntegerToString(copied) + " / " + IntegerToString(valid_q_day_count);
+   string bars_value = IntegerToString(copied);
+   string q_days_value = IntegerToString(valid_q_day_count);
    string reason_value = StateMapReasonLabel(g_qstate_reason);
    string m1_label = g_qstate_asof > 0 ? StateMapTimeLabel(g_qstate_asof) : StateMapTimeLabel(g_stack_latest_closed_m1);
-   string center_flag = ShowCenterLine ? "CENTER ON" : "CENTER OFF";
-   string stoch_flag = ShowStochasticVisual ? "STOCH ON" : "STOCH OFF";
-   string score_value = StateMapSignedScoreLabel(g_qstate_score) + " / " + DoubleToString(g_qstate_confidence, 2);
+   string score_value = StateMapPanelScoreLabel();
+   string confidence_value = StateMapPanelConfidenceLabel();
    string trend_value = StateMapTrendLabel(latest_trend_state);
+   string state_value = StateMapPanelStateLabel();
+   string status_value = StateMapPanelStatusLabel();
+   string center_detail = ShowCenterLine ? "center line on" : "center line off";
+   string stoch_detail = ShowStochasticVisual ? StateMapStochZoneLabel(latest_stoch) : "hidden";
 
    string signature =
       IntegerToString(g_panel_x) + "|" +
       IntegerToString(g_panel_y) + "|" +
       (g_panel_minimized ? "min" : "full") + "|" +
-      g_qstate_label + "|" +
+      state_value + "|" +
+      status_value + "|" +
       reason_value + "|" +
       IntegerToString((int)g_qstate_asof) + "|" +
       DoubleToString(g_qstate_score, 4) + "|" +
@@ -538,18 +592,18 @@ void StateMapUpdatePanel(
       stoch_value + "|" +
       anchor_value + "|" +
       bars_value + "|" +
-      g_stack_source + "|" +
-      center_flag + "|" +
-      stoch_flag;
+      q_days_value + "|" +
+      center_detail + "|" +
+      stoch_detail;
 
    if(signature == g_panel_signature)
       return;
 
    StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Body", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, StateMapPanelHeight(), STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER, 30);
    StateMapDrawRect(STATE_MAP_PANEL_PREFIX + "Header", g_panel_x, g_panel_y, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_HEIGHT, g_qstate_color, g_qstate_color, 42, true);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 16, g_panel_y + 7, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", true);
-   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", g_qstate_label, g_panel_x + 16, g_panel_y + 23, STATE_MAP_BADGE_TEXT_COLOR, StringLen(g_qstate_label) > 11 ? 14 : 16, 44, "Segoe UI Semibold", true);
-   StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", g_panel_x + STATE_MAP_PANEL_WIDTH - 38, g_panel_y + 10, 24, 24, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "Title", "LIMNI STATE MAP", g_panel_x + 18, g_panel_y + 10, STATE_MAP_TITLE_COLOR, 8, 44, "Segoe UI Semibold", true);
+   StateMapDrawText(STATE_MAP_PANEL_PREFIX + "State", state_value, g_panel_x + 18, g_panel_y + 32, STATE_MAP_BADGE_TEXT_COLOR, StringLen(state_value) > 11 ? 15 : 18, 44, "Segoe UI Semibold", true);
+   StateMapDrawButton(STATE_MAP_PANEL_PREFIX + "Minimize", g_panel_minimized ? "+" : "-", g_panel_x + STATE_MAP_PANEL_WIDTH - 42, g_panel_y + 18, 26, 26, C'17,22,31', STATE_MAP_TEXT_COLOR, 46);
 
    if(g_panel_minimized)
    {
@@ -566,12 +620,13 @@ void StateMapUpdatePanel(
    int row_1 = STATE_MAP_HEADER_HEIGHT + STATE_MAP_PANEL_PAD;
    int row_2 = row_1 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
    int row_3 = row_2 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
+   int row_4 = row_3 + STATE_MAP_BLOCK_HEIGHT + STATE_MAP_BLOCK_GAP;
 
    StateMapDrawPanelBlock(
-      "QState",
-      "Q-STATE",
-      g_qstate_label,
-      "M1 " + m1_label,
+      "Signal",
+      "SIGNAL",
+      state_value,
+      status_value,
       left_x,
       row_1,
       STATE_MAP_BLOCK_WIDTH,
@@ -579,56 +634,78 @@ void StateMapUpdatePanel(
       g_qstate_color
    );
    StateMapDrawPanelBlock(
-      "Score",
-      "SCORE / CONF",
-      score_value,
-      "formula snapshot",
+      "AsOf",
+      "AS-OF",
+      m1_label,
+      "closed M1",
       right_x,
       row_1,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      StateMapSignedValueColor(g_qstate_score)
-   );
-   StateMapDrawPanelBlock(
-      "Momentum",
-      "MOMENTUM",
-      "STOCH " + stoch_value,
-      "TREND " + trend_value,
-      left_x,
-      row_2,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      StateMapTrendColor(latest_trend_state)
-   );
-   StateMapDrawPanelBlock(
-      "Anchor",
-      "ANCHOR",
-      anchor_value,
-      center_flag + " / " + stoch_flag,
-      right_x,
-      row_2,
-      STATE_MAP_BLOCK_WIDTH,
-      STATE_MAP_BLOCK_HEIGHT,
-      STATE_MAP_STOCH_LINE
-   );
-   StateMapDrawPanelBlock(
-      "Stack",
-      "STACK",
-      StateMapClip(g_stack_source, 18),
-      "BARS " + bars_value,
-      left_x,
-      row_3,
       STATE_MAP_BLOCK_WIDTH,
       STATE_MAP_BLOCK_HEIGHT,
       STATE_MAP_NEUTRAL_COLOR
    );
    StateMapDrawPanelBlock(
-      "Reason",
-      "REASON",
-      StateMapClip(reason_value, 19),
-      g_qstate_details == "" ? "snapshot detail" : StateMapClip(g_qstate_details, 24),
+      "Score",
+      "SCORE",
+      score_value,
+      "direction",
+      left_x,
+      row_2,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      StateMapHasQStateSnapshot() ? StateMapSignedValueColor(g_qstate_score) : STATE_MAP_NEUTRAL_COLOR
+   );
+   StateMapDrawPanelBlock(
+      "Confidence",
+      "CONFIDENCE",
+      confidence_value,
+      "q-state",
+      right_x,
+      row_2,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_NEUTRAL_COLOR
+   );
+   StateMapDrawPanelBlock(
+      "Trend",
+      "TREND",
+      trend_value,
+      center_detail,
+      left_x,
+      row_3,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      StateMapTrendColor(latest_trend_state)
+   );
+   StateMapDrawPanelBlock(
+      "Stochastic",
+      "STOCHASTIC",
+      stoch_value,
+      stoch_detail,
       right_x,
       row_3,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_STOCH_LINE
+   );
+   StateMapDrawPanelBlock(
+      "Anchor",
+      "ANCHOR",
+      anchor_value,
+      "center price",
+      left_x,
+      row_4,
+      STATE_MAP_BLOCK_WIDTH,
+      STATE_MAP_BLOCK_HEIGHT,
+      STATE_MAP_STOCH_LINE
+   );
+   StateMapDrawPanelBlock(
+      "Bars",
+      "BARS",
+      bars_value,
+      "q-days " + q_days_value,
+      right_x,
+      row_4,
       STATE_MAP_BLOCK_WIDTH,
       STATE_MAP_BLOCK_HEIGHT,
       STATE_MAP_STRESS_COLOR
@@ -702,13 +779,13 @@ void StateMapDrawStochasticVisual()
    if(chart_width <= 0 || chart_height <= 0)
       return;
 
-   int strip_width = MathMin(560, MathMax(300, chart_width - STATE_MAP_PANEL_WIDTH - 60));
+   int strip_width = MathMin(640, MathMax(420, chart_width - STATE_MAP_PANEL_WIDTH - 72));
    int strip_left = STATE_MAP_STOCH_LEFT;
-   int strip_top = MathMax(STATE_MAP_PANEL_TOP + STATE_MAP_PANEL_HEIGHT + 12, chart_height - STATE_MAP_STOCH_BOTTOM - STATE_MAP_STOCH_HEIGHT);
+   int strip_top = MathMax(STATE_MAP_STOCH_BOTTOM, chart_height - STATE_MAP_STOCH_BOTTOM - STATE_MAP_STOCH_HEIGHT);
    int plot_left = strip_left + 12;
-   int plot_top = strip_top + 22;
+   int plot_top = strip_top + 28;
    int plot_width = strip_width - 24;
-   int plot_height = STATE_MAP_STOCH_HEIGHT - 34;
+   int plot_height = STATE_MAP_STOCH_HEIGHT - 46;
    int requested = MathMax(24, MathMin(STATE_MAP_STOCH_MAX_SEGMENTS, StochasticVisualBars));
    int start = MathMax(0, count - requested);
    int bars = count - start;
@@ -727,6 +804,7 @@ void StateMapDrawStochasticVisual()
    if(signature == g_stoch_signature)
       return;
 
+   StateMapDeleteObjectGroup(group_prefix);
    StateMapDrawRect(group_prefix + "Bg", strip_left, strip_top, strip_width, STATE_MAP_STOCH_HEIGHT, STATE_MAP_STOCH_BG, STATE_MAP_PANEL_BORDER, 18);
    StateMapDrawText(group_prefix + "Title", "STOCHASTIC", strip_left + 12, strip_top + 6, STATE_MAP_TITLE_COLOR, 8, 20);
    StateMapDrawText(group_prefix + "Latest", latest_label, strip_left + strip_width - 48, strip_top + 6, STATE_MAP_TEXT_COLOR, 8, 20);
@@ -737,8 +815,12 @@ void StateMapDrawStochasticVisual()
    StateMapDrawRect(group_prefix + "Level80", plot_left, y80, plot_width, 1, STATE_MAP_STOCH_LEVEL, STATE_MAP_STOCH_LEVEL, 19);
    StateMapDrawRect(group_prefix + "Level50", plot_left, y50, plot_width, 1, C'46,57,72', C'46,57,72', 19);
    StateMapDrawRect(group_prefix + "Level20", plot_left, y20, plot_width, 1, STATE_MAP_STOCH_LEVEL, STATE_MAP_STOCH_LEVEL, 19);
+   StateMapDrawText(group_prefix + "L80", "80", plot_left + plot_width + 4, y80 - 6, STATE_MAP_MUTED_COLOR, 7, 20);
+   StateMapDrawText(group_prefix + "L20", "20", plot_left + plot_width + 4, y20 - 6, STATE_MAP_MUTED_COLOR, 7, 20);
 
    int drawn = 0;
+   int previous_x = -1;
+   int previous_y = -1;
    for(int i = 0; i < bars; i++)
    {
       double value = g_source_stoch[start + i];
@@ -747,15 +829,22 @@ void StateMapDrawStochasticVisual()
 
       int x = plot_left + (i * plot_width) / MathMax(1, bars - 1);
       int y = StateMapStochY(value, plot_top, plot_height);
-      int top = MathMin(y, y50);
-      int height = MathMax(2, MathAbs(y - y50) + 1);
       color bar_color = value >= 80.0 ? STATE_MAP_STRESS_COLOR : (value <= 20.0 ? STATE_MAP_SHORT_COLOR : STATE_MAP_STOCH_LINE);
-      StateMapDrawRect(group_prefix + "Seg_" + IntegerToString(drawn), x - 1, top, 3, height, bar_color, bar_color, 21);
+      if(previous_x >= 0)
+      {
+         int h_left = MathMin(previous_x, x);
+         int h_width = MathMax(2, MathAbs(x - previous_x) + 1);
+         StateMapDrawRect(group_prefix + "LineH_" + IntegerToString(drawn), h_left, previous_y - 1, h_width, 2, bar_color, bar_color, 21);
+
+         int v_top = MathMin(previous_y, y);
+         int v_height = MathMax(2, MathAbs(y - previous_y) + 1);
+         StateMapDrawRect(group_prefix + "LineV_" + IntegerToString(drawn), x - 1, v_top, 2, v_height, bar_color, bar_color, 21);
+      }
+      StateMapDrawRect(group_prefix + "Point_" + IntegerToString(drawn), x - 2, y - 2, 4, 4, bar_color, bar_color, 22);
+      previous_x = x;
+      previous_y = y;
       drawn++;
    }
-
-   for(int cleanup = drawn; cleanup < g_stoch_segments_drawn; cleanup++)
-      ObjectDelete(0, group_prefix + "Seg_" + IntegerToString(cleanup));
    g_stoch_segments_drawn = drawn;
    g_stoch_signature = signature;
 }
@@ -790,14 +879,14 @@ bool StateMapPanelDragOffset(const string name, int &local_x, int &local_y)
       return true;
    if(name == STATE_MAP_PANEL_PREFIX + "Title")
    {
-      local_x = 16;
-      local_y = 7;
+      local_x = 18;
+      local_y = 10;
       return true;
    }
    if(name == STATE_MAP_PANEL_PREFIX + "State")
    {
-      local_x = 16;
-      local_y = 23;
+      local_x = 18;
+      local_y = 32;
       return true;
    }
    return false;
