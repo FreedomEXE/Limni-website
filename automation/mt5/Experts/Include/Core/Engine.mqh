@@ -432,6 +432,9 @@ private:
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
       intent.max_slippage_points = 10.0;
+      intent.basic_take_profit_distance_price = 0.0;
+      intent.basic_stop_loss_distance_price = 0.0;
+      intent.basic_stop_take_profit_basis = "";
       intent.priority = 100;
       intent.score = harvest.managed_floating_pnl;
       intent.grid_key = 0;
@@ -445,7 +448,102 @@ private:
       bus.Add(intent);
    }
 
-   int EvaluateRevmaSymbol(const LP_SymbolMeta &meta, const LP_HarvestDecision &harvest)
+   bool EvaluateBasicStopTakeProfitGuard(
+      const LP_PortfolioState &portfolio,
+      string &reason,
+      double &open_pnl_pct
+   )
+   {
+      reason = "";
+      open_pnl_pct = 0.0;
+
+      if(!m_config.enable_basic_stop_take_profit)
+         return false;
+      if(m_config.revma_universe_mode != LP_UNIVERSE_FX28)
+         return false;
+      if(portfolio.managed_position_count <= 0 || portfolio.balance <= 0.0)
+         return false;
+
+      open_pnl_pct = 100.0 * portfolio.ea_floating_pnl / portfolio.balance;
+      if(m_config.basic_take_profit_pct > 0.0 && open_pnl_pct >= m_config.basic_take_profit_pct)
+         reason = "basic_account_tp_pct";
+      if(reason == "" && m_config.basic_stop_loss_pct > 0.0 && open_pnl_pct <= -m_config.basic_stop_loss_pct)
+         reason = "basic_account_sl_pct";
+
+      return reason != "";
+   }
+
+   void WriteBasicStopTakeProfitGuardReceipt(
+      const LP_PortfolioState &portfolio,
+      const string status,
+      const string reason,
+      const double open_pnl_pct
+   )
+   {
+      m_receipts.Write(
+         LP_RECEIPT_BASIC_SLTP_GUARD,
+         "",
+         status,
+         "scope=all28_account_pct" +
+            "|reason=" + reason +
+            "|open_pnl_pct=" + DoubleToString(open_pnl_pct, 6) +
+            "|take_profit_pct=" + DoubleToString(m_config.basic_take_profit_pct, 4) +
+            "|stop_loss_pct=" + DoubleToString(m_config.basic_stop_loss_pct, 4) +
+            "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
+            "|managed_floating_pnl=" + DoubleToString(portfolio.ea_floating_pnl, 2) +
+            "|balance=" + DoubleToString(portfolio.balance, 2),
+         LP_LANE_NONE,
+         LP_VARIANT_NONE,
+         0,
+         0,
+         0,
+         0
+      );
+   }
+
+   void AddBasicStopTakeProfitCloseIntent(
+      const LP_PortfolioState &portfolio,
+      const string reason,
+      const double open_pnl_pct,
+      LP_IntentBus &bus
+   )
+   {
+      LP_TradeIntent intent;
+      intent.intent_id = NextSystemIntentId();
+      intent.symbol_id = -1;
+      intent.symbol = "";
+      intent.lane_id = LP_LANE_NONE;
+      intent.variant_id = LP_VARIANT_NONE;
+      intent.action = LP_INTENT_CLOSE_ALL_EA;
+      intent.direction = LP_SIDE_NONE;
+      intent.emitted_at = TimeCurrent();
+      intent.source_bar_time = portfolio.asof;
+      intent.expires_at = 0;
+      intent.requested_lots = 0.0;
+      intent.max_slippage_points = 10.0;
+      intent.basic_take_profit_distance_price = 0.0;
+      intent.basic_stop_loss_distance_price = 0.0;
+      intent.basic_stop_take_profit_basis = "";
+      intent.priority = 100;
+      intent.score = open_pnl_pct;
+      intent.grid_key = 0;
+      intent.config_hash = m_config_hash;
+      intent.strategy_version_hash = LP_HashString("gate99zzb_basic_sltp_close_all_pct");
+      intent.human_reason = "basic_sltp_scope=all28_account_pct" +
+         "|reason=" + reason +
+         "|open_pnl_pct=" + DoubleToString(open_pnl_pct, 6) +
+         "|take_profit_pct=" + DoubleToString(m_config.basic_take_profit_pct, 4) +
+         "|stop_loss_pct=" + DoubleToString(m_config.basic_stop_loss_pct, 4) +
+         "|managed_positions=" + IntegerToString(portfolio.managed_position_count);
+      bus.Add(intent);
+      WriteBasicStopTakeProfitGuardReceipt(portfolio, "account_exit_intent", reason, open_pnl_pct);
+   }
+
+   int EvaluateRevmaSymbol(
+      const LP_SymbolMeta &meta,
+      const LP_HarvestDecision &harvest,
+      const bool basic_sltp_block_new_entries
+   )
    {
       LP_RevmaSignal signal;
       string detail = "";
@@ -461,7 +559,7 @@ private:
          return 0;
 
       int emitted = 0;
-      if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+      if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
          emitted = m_strategy_registry.EvaluateRevma(signal, m_config, m_grid_book, m_receipts, m_intent_bus);
 
       UpdateRevmaDashboard(emitted > 0);
@@ -704,8 +802,34 @@ public:
          LP_WriteHarvestState(m_receipts, harvest);
 
       string harvest_close_reason = "";
-      if(m_account_guard.RequiresAccountClose(portfolio, harvest_close_reason))
+      bool harvest_close_required = m_account_guard.RequiresAccountClose(portfolio, harvest_close_reason);
+      if(harvest_close_required)
          AddHarvestCloseIntent(harvest, m_intent_bus);
+
+      string basic_sltp_reason = "";
+      double basic_sltp_open_pnl_pct = 0.0;
+      bool basic_sltp_block_new_entries = EvaluateBasicStopTakeProfitGuard(
+         portfolio,
+         basic_sltp_reason,
+         basic_sltp_open_pnl_pct
+      );
+      if(basic_sltp_block_new_entries)
+      {
+         if(harvest_close_required)
+            WriteBasicStopTakeProfitGuardReceipt(
+               portfolio,
+               "triggered_harvest_close_already_queued",
+               basic_sltp_reason,
+               basic_sltp_open_pnl_pct
+            );
+         else
+            AddBasicStopTakeProfitCloseIntent(
+               portfolio,
+               basic_sltp_reason,
+               basic_sltp_open_pnl_pct,
+               m_intent_bus
+            );
+      }
 
       int cycle_new_bars = 0;
       int new_symbol_ids[LP_SYMBOL_COUNT];
@@ -749,7 +873,7 @@ public:
                   continue;
                if(!RevmaSymbolActive(meta))
                   continue;
-               EvaluateRevmaSymbol(meta, harvest);
+               EvaluateRevmaSymbol(meta, harvest, basic_sltp_block_new_entries);
             }
          }
          else if(m_config.enable_qstate_trend_variant)
@@ -783,7 +907,7 @@ public:
                      WriteQStateReceipt(signal);
                }
 
-               if(!harvest.block_new_entries && m_config.enable_strategy_evaluation)
+               if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
                {
                   m_intent_selector.Select(m_latest_signals, m_signal_available, m_config, m_grid_book);
                   m_intent_selector.WriteReceipt(m_receipts);
@@ -861,7 +985,10 @@ public:
                "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
                "|open_grids=" + IntegerToString(portfolio.open_grid_count) +
                "|harvest_state=" + LP_HarvestStateName(harvest.state) +
-               "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries),
+               "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries) +
+               "|basic_sltp_block_new_entries=" + LP_BoolText(basic_sltp_block_new_entries) +
+               "|basic_sltp_reason=" + basic_sltp_reason +
+               "|basic_sltp_open_pnl_pct=" + DoubleToString(basic_sltp_open_pnl_pct, 6),
             0,
             0,
             0,

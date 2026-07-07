@@ -137,6 +137,9 @@ private:
       plan.direction = intent.direction;
       plan.lots = intent.requested_lots;
       plan.max_slippage_points = intent.max_slippage_points;
+      plan.basic_take_profit_distance_price = intent.basic_take_profit_distance_price;
+      plan.basic_stop_loss_distance_price = intent.basic_stop_loss_distance_price;
+      plan.basic_stop_take_profit_basis = intent.basic_stop_take_profit_basis;
       plan.reason = intent.human_reason;
       plan.executable = true;
 

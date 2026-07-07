@@ -19,6 +19,9 @@ void LP_ResetTradePlan(LP_TradePlan &plan)
    plan.direction = LP_SIDE_NONE;
    plan.lots = 0.0;
    plan.max_slippage_points = 0.0;
+   plan.basic_take_profit_distance_price = 0.0;
+   plan.basic_stop_loss_distance_price = 0.0;
+   plan.basic_stop_take_profit_basis = "";
    plan.magic = 0;
    plan.comment = "";
    plan.reason = "";

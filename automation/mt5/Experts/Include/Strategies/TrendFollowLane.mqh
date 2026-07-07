@@ -61,6 +61,9 @@ private:
          (datetime)((long)TimeCurrent() + (long)config.qstate_intent_expiry_minutes * 60) : 0;
       intent.requested_lots = config.qstate_fixed_lots;
       intent.max_slippage_points = 10.0;
+      intent.basic_take_profit_distance_price = 0.0;
+      intent.basic_stop_loss_distance_price = 0.0;
+      intent.basic_stop_take_profit_basis = "";
       intent.priority = action == LP_INTENT_OPEN_GRID ? 50 : 40;
       intent.score = snapshot.pair_direction_score;
       intent.grid_key = grid_key;

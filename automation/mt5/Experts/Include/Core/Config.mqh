@@ -57,14 +57,20 @@ input int RevmaIntentExpiryMinutes = 10;
 input bool RevmaShowVisualDashboard = true;
 input int RevmaDashboardRefreshSeconds = 1;
 input bool RevmaDashboardScreenshotOnDivergentAdd = false;
-input string LP_INPUT_7 = "----- Future System: Q-State Legacy Disabled -----";
+input string LP_INPUT_7 = "----- Temporary Basic SL/TP -----";
+input bool EnableBasicStopTakeProfit = false;
+input double BasicTakeProfitQ = 2.0;
+input double BasicStopLossQ = 2.0;
+input double BasicTakeProfitPct = 1.0;
+input double BasicStopLossPct = 1.0;
+input string LP_INPUT_8 = "----- Future System: Q-State Legacy Disabled -----";
 input bool EnableQStateTrendVariant = false;
 input double QStateFixedLots = 0.01;
 input double QStateGridSpacingQ = 1.0;
 input int QStateGridCap = 50;
 input int QStateIntentExpiryMinutes = 10;
 input bool QStateReentryNextDayAfterHarvest = true;
-input string LP_INPUT_8 = "----- Diagnostics -----";
+input string LP_INPUT_9 = "----- Diagnostics -----";
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
 input string OutputFolder = "LimniPortfolioEA";
@@ -113,6 +119,11 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_show_visual_dashboard = RevmaShowVisualDashboard;
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
    config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
+   config.enable_basic_stop_take_profit = EnableBasicStopTakeProfit;
+   config.basic_take_profit_q = MathMax(0.0, BasicTakeProfitQ);
+   config.basic_stop_loss_q = MathMax(0.0, BasicStopLossQ);
+   config.basic_take_profit_pct = MathMax(0.0, BasicTakeProfitPct);
+   config.basic_stop_loss_pct = MathMax(0.0, BasicStopLossPct);
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
@@ -164,6 +175,11 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.revma_fixed_lots, 4) + "|" +
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
+      LP_BoolText(config.enable_basic_stop_take_profit) + "|" +
+      DoubleToString(config.basic_take_profit_q, 4) + "|" +
+      DoubleToString(config.basic_stop_loss_q, 4) + "|" +
+      DoubleToString(config.basic_take_profit_pct, 4) + "|" +
+      DoubleToString(config.basic_stop_loss_pct, 4) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +

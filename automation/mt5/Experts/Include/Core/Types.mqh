@@ -213,7 +213,8 @@ enum LP_ReceiptKind
    LP_RECEIPT_REVMA_SIGNAL = 22,
    LP_RECEIPT_REVMA_GRID_BIRTH = 23,
    LP_RECEIPT_REVMA_GRID_ADD = 24,
-   LP_RECEIPT_REVMA_GRID_ADD_SKIP = 25
+   LP_RECEIPT_REVMA_GRID_ADD_SKIP = 25,
+   LP_RECEIPT_BASIC_SLTP_GUARD = 26
 };
 
 struct LP_Config
@@ -260,6 +261,11 @@ struct LP_Config
    bool revma_show_visual_dashboard;
    int revma_dashboard_refresh_seconds;
    bool revma_dashboard_screenshot_on_divergent_add;
+   bool enable_basic_stop_take_profit;
+   double basic_take_profit_q;
+   double basic_stop_loss_q;
+   double basic_take_profit_pct;
+   double basic_stop_loss_pct;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
@@ -385,6 +391,9 @@ struct LP_TradeIntent
    datetime expires_at;
    double requested_lots;
    double max_slippage_points;
+   double basic_take_profit_distance_price;
+   double basic_stop_loss_distance_price;
+   string basic_stop_take_profit_basis;
    int priority;
    double score;
    ulong grid_key;
@@ -423,6 +432,9 @@ struct LP_TradePlan
    int direction;
    double lots;
    double max_slippage_points;
+   double basic_take_profit_distance_price;
+   double basic_stop_loss_distance_price;
+   string basic_stop_take_profit_basis;
    long magic;
    string comment;
    string reason;

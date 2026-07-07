@@ -46,6 +46,12 @@ void LP_WriteRunManifest(
          "|revma_visual_dashboard=" + LP_BoolText(config.revma_show_visual_dashboard) +
          "|revma_dashboard_refresh_seconds=" + IntegerToString(config.revma_dashboard_refresh_seconds) +
          "|revma_dashboard_screenshot_on_divergent_add=" + LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) +
+         "|basic_sltp_enabled=" + LP_BoolText(config.enable_basic_stop_take_profit) +
+         "|basic_sltp_effective_mode=" + (config.revma_universe_mode == LP_UNIVERSE_FX28 ? "all28_account_pct" : "single_pair_q") +
+         "|basic_tp_q=" + DoubleToString(config.basic_take_profit_q, 4) +
+         "|basic_sl_q=" + DoubleToString(config.basic_stop_loss_q, 4) +
+         "|basic_tp_pct=" + DoubleToString(config.basic_take_profit_pct, 4) +
+         "|basic_sl_pct=" + DoubleToString(config.basic_stop_loss_pct, 4) +
          "|legacy_qstate_enabled=" + LP_BoolText(config.enable_qstate_trend_variant) +
          (config.enable_qstate_trend_variant ?
             "|qstate_formula_id=" + LimniQStateFormulaId() +
@@ -101,6 +107,12 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_visual_dashboard", LP_BoolText(config.revma_show_visual_dashboard));
    receipts.Summary("revma_dashboard_refresh_seconds", IntegerToString(config.revma_dashboard_refresh_seconds));
    receipts.Summary("revma_dashboard_screenshot_on_divergent_add", LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add));
+   receipts.Summary("basic_sltp_enabled", LP_BoolText(config.enable_basic_stop_take_profit));
+   receipts.Summary("basic_sltp_effective_mode", config.revma_universe_mode == LP_UNIVERSE_FX28 ? "all28_account_pct" : "single_pair_q");
+   receipts.Summary("basic_take_profit_q", DoubleToString(config.basic_take_profit_q, 4));
+   receipts.Summary("basic_stop_loss_q", DoubleToString(config.basic_stop_loss_q, 4));
+   receipts.Summary("basic_take_profit_pct", DoubleToString(config.basic_take_profit_pct, 4));
+   receipts.Summary("basic_stop_loss_pct", DoubleToString(config.basic_stop_loss_pct, 4));
    receipts.Summary("qstate_trend_variant_enabled", LP_BoolText(config.enable_qstate_trend_variant));
    receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));

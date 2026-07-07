@@ -444,12 +444,41 @@ private:
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
       intent.max_slippage_points = 10.0;
+      intent.basic_take_profit_distance_price = 0.0;
+      intent.basic_stop_loss_distance_price = 0.0;
+      intent.basic_stop_take_profit_basis = "";
       intent.priority = action == LP_INTENT_OPEN_GRID ? 60 : 55;
       intent.score = signal.raw_score;
       intent.grid_key = grid_key;
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = m_strategy_version_hash;
       intent.human_reason = reason;
+   }
+
+   void ApplyBasicStopTakeProfit(
+      const double q_distance_basis,
+      const LP_Config &config,
+      LP_TradeIntent &intent
+   )
+   {
+      intent.basic_take_profit_distance_price = 0.0;
+      intent.basic_stop_loss_distance_price = 0.0;
+      intent.basic_stop_take_profit_basis = "";
+
+      if(!config.enable_basic_stop_take_profit)
+         return;
+      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
+         return;
+      if(q_distance_basis <= 0.0 || !MathIsValidNumber(q_distance_basis))
+         return;
+
+      if(config.basic_take_profit_q > 0.0)
+         intent.basic_take_profit_distance_price = q_distance_basis * config.basic_take_profit_q;
+      if(config.basic_stop_loss_q > 0.0)
+         intent.basic_stop_loss_distance_price = q_distance_basis * config.basic_stop_loss_q;
+
+      if(intent.basic_take_profit_distance_price > 0.0 || intent.basic_stop_loss_distance_price > 0.0)
+         intent.basic_stop_take_profit_basis = "single_q";
    }
 
    bool FrozenAddHit(
@@ -786,6 +815,7 @@ public:
          add_intent.requested_lots = config.revma_fixed_lots;
          add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
             (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
+         ApplyBasicStopTakeProfit(spacing_q, config, add_intent);
          bus.Add(add_intent);
          if(!CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction))
          {
@@ -856,6 +886,7 @@ public:
       open_intent.requested_lots = config.revma_fixed_lots;
       open_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
          (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
+      ApplyBasicStopTakeProfit(signal.q, config, open_intent);
       bus.Add(open_intent);
       UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted");
       receipts.Write(

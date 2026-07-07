@@ -35,6 +35,7 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_REVMA_GRID_BIRTH: return "revma_grid_birth";
       case LP_RECEIPT_REVMA_GRID_ADD: return "revma_grid_add";
       case LP_RECEIPT_REVMA_GRID_ADD_SKIP: return "revma_grid_add_skip";
+      case LP_RECEIPT_BASIC_SLTP_GUARD: return "basic_sltp_guard";
    }
    return "unknown";
 }
