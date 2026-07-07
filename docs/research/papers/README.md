@@ -11,7 +11,8 @@ PDF files local unless Git LFS is explicitly configured for this repo.
 - `sources.csv` - input ledger. Add one row per paper or source.
 - `papers_manifest.csv` - generated machine-readable download manifest.
 - `papers_manifest.json` - generated JSON copy of the manifest.
-- `pdf/` - local downloaded PDFs. Ignored by Git by default.
+- `pdf/` - local downloaded PDFs, saved by readable paper title. Ignored by Git
+  by default.
 - `text/` - extracted text sidecars when a local extractor is available.
 
 ## Source CSV Fields
@@ -24,6 +25,28 @@ Use stable lowercase ids such as `2014-bailey-lopezdeprado-deflated-sharpe`.
 If an arXiv id exists, put it in `arxiv`. If a DOI exists, put it in `doi`.
 If the only source is a landing page, put it in `url` and set `source_type` to
 `WEB_SOURCE`.
+
+## PDF Filenames
+
+Downloaded PDFs are saved with the paper title as the filename, not the source
+id. The script applies readable title case and lowercases common connector words
+inside the title:
+
+```text
+and, the, of, in, to, for, with, by, from, on, at, as, a, an, or
+```
+
+Examples:
+
+```text
+Carry Trades and Currency Crashes.pdf
+Common Risk Factors in Currency Markets.pdf
+The Deflated Sharpe Ratio Correcting for Selection Bias, Backtest Overfitting and Non-Normality.pdf
+```
+
+Windows-invalid filename characters such as `:`, `/`, `?`, and `*` are replaced
+with spaces. If two sources resolve to the same title filename, the script adds
+the source id as a suffix to avoid overwriting.
 
 ## Running
 
@@ -51,7 +74,8 @@ other piracy sources.
 
 ## Text Extraction
 
-The script writes `text/{id}.txt` when `pdftotext` is available locally.
+The script writes `text/{id}.txt` when `pdftotext` is available locally. Text
+sidecars stay id-based so they remain stable if a paper title is corrected.
 If `pdftotext` is not installed, the manifest marks:
 
 ```text

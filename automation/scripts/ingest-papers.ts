@@ -28,6 +28,32 @@ const MANIFEST_HEADER = [
 const MIN_PDF_BYTES = 10_000;
 const USER_AGENT =
   "LimniPoseidonPaperIngest/1.0 (+https://github.com/FreedomEXE/Limni-website; legal OA PDF discovery)";
+const LOWERCASE_TITLE_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "nor",
+  "of",
+  "on",
+  "or",
+  "per",
+  "the",
+  "to",
+  "via",
+  "vs",
+  "v",
+  "with",
+  "without",
+  "yet",
+]);
 
 type SourceRow = {
   id: string;
@@ -117,7 +143,7 @@ function usage(): string {
     "  --root=<path>               Paper workspace root. Default: docs/research/papers",
     "  --limit=<n>                 Process only the first n source rows.",
     "  --dry-run                   Resolve candidates and write manifests without downloading PDFs.",
-    "  --no-skip-existing          Re-download even when pdf/{id}.pdf already exists.",
+    "  --no-skip-existing          Re-download even when the title-case PDF already exists.",
     "  --unpaywall-email=<email>   Email required by Unpaywall. Or set UNPAYWALL_EMAIL.",
     "",
     "Statuses:",
@@ -140,14 +166,16 @@ async function main(): Promise<void> {
   const existingById = new Map(existingManifest.map((row) => [row.id, row]));
   const sourcesToProcess = options.limit === null ? sources : sources.slice(0, options.limit);
   const processIds = new Set(sourcesToProcess.map((source) => source.id));
+  const claimedPdfNames = new Set<string>();
   const rows: ManifestRow[] = [];
 
   for (const source of sources) {
+    const pdfFileName = reservePdfFileName(source, claimedPdfNames);
     if (!processIds.has(source.id)) {
       rows.push(existingById.get(source.id) ?? pendingRow(source));
       continue;
     }
-    rows.push(await processSource(source, paths, options, existingById.get(source.id)));
+    rows.push(await processSource(source, paths, options, existingById.get(source.id), pdfFileName));
   }
 
   await writeManifest(paths.manifestCsv, paths.manifestJson, rows);
@@ -189,9 +217,10 @@ async function processSource(
   paths: ReturnType<typeof paperPaths>,
   options: Options,
   existing: ManifestRow | undefined,
+  pdfFileName: string,
 ): Promise<ManifestRow> {
   validateSource(source);
-  const pdfPath = path.join(paths.pdfDir, `${safeFileName(source.id)}.pdf`);
+  const pdfPath = path.join(paths.pdfDir, pdfFileName);
   const textPath = path.join(paths.textDir, `${safeFileName(source.id)}.txt`);
   const repoPdfPath = toRepoRelative(pdfPath);
   const repoTextPath = toRepoRelative(textPath);
@@ -330,6 +359,31 @@ function pendingRow(source: SourceRow): ManifestRow {
     extraction_status: "NOT_RUN",
     extraction_failure_reason: "",
   };
+}
+
+function reservePdfFileName(source: SourceRow, claimedPdfNames: Set<string>): string {
+  const titleStem = titleCaseFileStem(source.title || source.id);
+  const idStem = safeFileName(source.id);
+  const candidates = [`${titleStem}.pdf`, `${titleStem} - ${idStem}.pdf`];
+
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (!claimedPdfNames.has(key)) {
+      claimedPdfNames.add(key);
+      return candidate;
+    }
+  }
+
+  let counter = 2;
+  while (true) {
+    const candidate = `${titleStem} - ${idStem} ${counter}.pdf`;
+    const key = candidate.toLowerCase();
+    if (!claimedPdfNames.has(key)) {
+      claimedPdfNames.add(key);
+      return candidate;
+    }
+    counter += 1;
+  }
 }
 
 function baseRow(source: SourceRow): Pick<ManifestRow, "id" | "title" | "doi" | "arxiv" | "url"> {
@@ -719,6 +773,43 @@ function failureForNoCandidate(source: SourceRow, options: Options): string {
 
 function safeFileName(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function titleCaseFileStem(value: string): string {
+  const cleaned = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, "")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const words = cleaned.split(" ").filter(Boolean);
+  const title = words.map((word, index) => titleCaseToken(word, index, words.length)).join(" ");
+  const stem = title.replace(/[. ]+$/g, "").trim();
+  return stem || safeFileName(value) || "Untitled Paper";
+}
+
+function titleCaseToken(token: string, index: number, total: number): string {
+  const match = token.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/);
+  if (!match) return token;
+  const [, leading, core, trailing] = match;
+  if (!core) return token;
+
+  const lowerCore = core.toLowerCase();
+  if (index > 0 && index < total - 1 && LOWERCASE_TITLE_WORDS.has(lowerCore)) {
+    return `${leading}${lowerCore}${trailing}`;
+  }
+
+  return `${leading}${core.split("-").map(titleCaseSegment).join("-")}${trailing}`;
+}
+
+function titleCaseSegment(segment: string): string {
+  if (!segment) return segment;
+  if (/^[A-Z0-9]{2,}$/.test(segment)) return segment;
+  const lower = segment.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 function stringOrEmpty(value: unknown): string {
