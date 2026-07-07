@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.54"
+#property version   "1.55"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -25,7 +25,7 @@
 input bool ShowCenterLine = true;
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
-const int STATE_MAP_MAX_INITIAL_PROJECT_BARS = 50000;
+const int STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS = 50000;
 const int STATE_MAP_PANEL_WIDTH = 460;
 const int STATE_MAP_PANEL_HEIGHT = 370;
 const int STATE_MAP_PANEL_MINIMIZED_HEIGHT = 68;
@@ -62,6 +62,8 @@ datetime g_stack_cache_from = 0;
 datetime g_stack_latest_closed_m1 = 0;
 bool g_stack_ready = false;
 double g_stack_point = 0.0;
+datetime g_projected_chart_oldest = 0;
+datetime g_projected_chart_newest = 0;
 datetime g_source_times[];
 double g_source_closes[];
 double g_source_q[];
@@ -270,7 +272,8 @@ bool StateMapEnsureStackCache(
 
    if(g_stack_ready &&
       g_stack_point == _Point &&
-      g_stack_latest_closed_m1 == latest_closed_m1)
+      g_stack_latest_closed_m1 == latest_closed_m1 &&
+      LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
    {
       return true;
    }
@@ -298,7 +301,9 @@ bool StateMapEnsureStackCache(
       reason
    );
 
-   if(!snapshot_ok || snapshot_latest < latest_closed_m1)
+   if(!snapshot_ok ||
+      snapshot_latest < latest_closed_m1 ||
+      !LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
    {
       string fallback_reason = "";
       if(!LimniVisualBuildStackSnapshot(
@@ -1172,7 +1177,15 @@ int OnCalculate(
    }
 
    bool chart_series = ArrayGetAsSeries(time);
-   int limit = LimniChangedBarLimit(rates_total, prev_calculated, STATE_MAP_MAX_INITIAL_PROJECT_BARS);
+   int limit = LimniStableProjectionLimit(
+      rates_total,
+      prev_calculated,
+      chart_oldest,
+      chart_newest,
+      g_projected_chart_oldest,
+      g_projected_chart_newest,
+      STATE_MAP_MAX_INCREMENTAL_PROJECT_BARS
+   );
    if(ShowCenterLine)
    {
       LimniProjectDoubleToChartLimit(
@@ -1216,6 +1229,9 @@ int OnCalculate(
          StateColorBuffer[idx] = 2.0;
       }
    }
+
+   g_projected_chart_oldest = chart_oldest;
+   g_projected_chart_newest = chart_newest;
 
    datetime latest_closed_m1 = StateMapLatestClosedM1();
    if(prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar)

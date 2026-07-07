@@ -3,7 +3,7 @@
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.12"
+#property version   "1.13"
 #property indicator_separate_window
 #property indicator_buffers 1
 #property indicator_plots 1
@@ -23,7 +23,7 @@
 input int ScaleLookbackDays = 0; // 0 = all prior completed days
 input bool ShowDebugComment = false;
 
-const int STOCHASTIC_MAX_INITIAL_PROJECT_BARS = 50000;
+const int STOCHASTIC_MAX_INCREMENTAL_PROJECT_BARS = 50000;
 
 double StochBuffer[];
 
@@ -32,6 +32,8 @@ datetime g_stack_latest_closed_m1 = 0;
 bool g_stack_ready = false;
 int g_stack_scale_lookback_days = -999;
 double g_stack_point = 0.0;
+datetime g_projected_chart_oldest = 0;
+datetime g_projected_chart_newest = 0;
 datetime g_source_times[];
 double g_source_closes[];
 double g_source_q[];
@@ -64,7 +66,8 @@ bool EnsureStackCache(
    if(g_stack_ready &&
       g_stack_scale_lookback_days == ScaleLookbackDays &&
       g_stack_point == _Point &&
-      g_stack_latest_closed_m1 == latest_closed_m1)
+      g_stack_latest_closed_m1 == latest_closed_m1 &&
+      LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
    {
       return true;
    }
@@ -92,7 +95,9 @@ bool EnsureStackCache(
       reason
    );
 
-   if(!snapshot_ok || snapshot_latest < latest_closed_m1)
+   if(!snapshot_ok ||
+      snapshot_latest < latest_closed_m1 ||
+      !LimniSourceSeriesCoversChart(g_source_times, chart_oldest))
    {
       string fallback_reason = "";
       if(!LimniVisualBuildStackSnapshot(
@@ -198,7 +203,15 @@ int OnCalculate(
       return rates_total;
    }
 
-   int limit = LimniChangedBarLimit(rates_total, prev_calculated, STOCHASTIC_MAX_INITIAL_PROJECT_BARS);
+   int limit = LimniStableProjectionLimit(
+      rates_total,
+      prev_calculated,
+      chart_oldest,
+      chart_newest,
+      g_projected_chart_oldest,
+      g_projected_chart_newest,
+      STOCHASTIC_MAX_INCREMENTAL_PROJECT_BARS
+   );
    LimniProjectDoubleToChartLimit(
       time,
       rates_total,
@@ -208,6 +221,8 @@ int OnCalculate(
       StochBuffer,
       limit
    );
+   g_projected_chart_oldest = chart_oldest;
+   g_projected_chart_newest = chart_newest;
 
    if(ShowDebugComment)
    {

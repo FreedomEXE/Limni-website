@@ -752,6 +752,47 @@ int LimniChangedBarLimit(const int rates_total, const int prev_calculated, const
    return limit;
 }
 
+bool LimniSourceSeriesCoversChart(const datetime &source_times[], const datetime chart_oldest)
+{
+   if(chart_oldest <= 0)
+      return true;
+
+   int source_count = ArraySize(source_times);
+   if(source_count <= 0)
+      return false;
+
+   return source_times[0] <= chart_oldest;
+}
+
+int LimniStableProjectionLimit(
+   const int rates_total,
+   const int prev_calculated,
+   const datetime chart_oldest,
+   const datetime chart_newest,
+   const datetime previous_chart_oldest,
+   const datetime previous_chart_newest,
+   const int max_incremental_bars = 20000
+)
+{
+   if(rates_total <= 0)
+      return 0;
+
+   bool needs_full_projection =
+      prev_calculated <= 0 ||
+      prev_calculated > rates_total ||
+      chart_oldest <= 0 ||
+      chart_newest <= 0 ||
+      previous_chart_oldest <= 0 ||
+      previous_chart_newest <= 0 ||
+      chart_oldest < previous_chart_oldest ||
+      chart_newest < previous_chart_newest;
+
+   if(needs_full_projection)
+      return rates_total;
+
+   return LimniChangedBarLimit(rates_total, prev_calculated, max_incremental_bars);
+}
+
 int LimniRecentChartIndex(const int rates_total, const bool chart_series, const int recent_offset)
 {
    return chart_series ? recent_offset : rates_total - 1 - recent_offset;
