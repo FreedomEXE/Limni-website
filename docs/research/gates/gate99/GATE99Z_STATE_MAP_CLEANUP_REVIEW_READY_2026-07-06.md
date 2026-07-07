@@ -65,14 +65,16 @@ LRMG price anchor/state overlay, q-state decision, and stochastic summary panel.
 ## State Map Panel
 
 The first cleanup panel used fixed chart objects instead of a single multiline
-label. The final dashboard-panel pass applies the useful design advice from the
-external panel notes without changing indicator semantics:
+label. The later dashboard-panel pass proved the data could be structured, but
+the tile version was still too cramped on real MT5 charts. The final status-card
+pass keeps the same stats but uses a larger, cleaner layout:
 
 ```text
 deep slate panel background
 muted compact title: LIMNI STATE MAP
 dominant colored state band: LONG / SHORT / NO TRADE / FAIL CLOSED
-2-column stat grid with stable tile positions
+large aligned stat rows instead of tiny boxed tiles
+subtle header and column dividers
 Segoe UI typography
 ```
 
@@ -90,8 +92,9 @@ bars / q-days
 ```
 
 The chart placement uses calculated left/top pixel coordinates inside a
-top-right panel instead of right-anchored long text strings. Stats are displayed
-as fixed tiles so changing values do not collapse into an unreadable line.
+top-right panel instead of right-anchored long text strings. The final visual
+surface deliberately avoids dense boxed cells because they rendered too small
+and noisy on live MT5 charts.
 
 This is a presentation-only cleanup. `LimniQStateCore.mqh` still owns the frozen
 q-state formula, formula ID/hash, closed-M1 loading, z-score normalization, and
@@ -153,6 +156,12 @@ Final dashboard-panel artifact folder:
 
 ```text
 docs/research/gates/gate99/artifacts/gate99z-state-map-dashboard-panel-2026-07-06/
+```
+
+Final status-card artifact folder:
+
+```text
+docs/research/gates/gate99/artifacts/gate99z-state-map-status-card-2026-07-06/
 ```
 
 ## Verdict

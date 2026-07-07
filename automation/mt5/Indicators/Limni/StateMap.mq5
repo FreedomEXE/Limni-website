@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.30"
+#property version   "1.40"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -23,25 +23,24 @@
 #include "..\\Include\\LimniQStateCore.mqh"
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
-const int STATE_MAP_PANEL_WIDTH = 300;
-const int STATE_MAP_PANEL_HEIGHT = 260;
+const int STATE_MAP_PANEL_WIDTH = 430;
+const int STATE_MAP_PANEL_HEIGHT = 276;
 const int STATE_MAP_PANEL_RIGHT = 18;
 const int STATE_MAP_PANEL_TOP = 22;
-const int STATE_MAP_PANEL_PADDING = 14;
-const int STATE_MAP_HEADER_HEIGHT = 68;
-const int STATE_MAP_BADGE_TOP = 30;
-const int STATE_MAP_BADGE_HEIGHT = 34;
-const int STATE_MAP_TILE_WIDTH = 132;
-const int STATE_MAP_TILE_HEIGHT = 38;
-const int STATE_MAP_TILE_GAP = 8;
+const int STATE_MAP_PANEL_PADDING = 20;
+const int STATE_MAP_HEADER_HEIGHT = 94;
+const int STATE_MAP_BADGE_TOP = 38;
+const int STATE_MAP_BADGE_HEIGHT = 42;
+const int STATE_MAP_STAT_COL_WIDTH = 188;
+const int STATE_MAP_STAT_COL_GAP = 16;
+const int STATE_MAP_STAT_ROW_HEIGHT = 39;
 const color STATE_MAP_PANEL_BG = C'13,17,24';
 const color STATE_MAP_HEADER_BG = C'22,29,40';
-const color STATE_MAP_TILE_BG = C'19,25,35';
 const color STATE_MAP_PANEL_BORDER = C'55,67,82';
-const color STATE_MAP_TILE_BORDER = C'33,43,56';
 const color STATE_MAP_TITLE_COLOR = C'151,162,176';
 const color STATE_MAP_TEXT_COLOR = C'231,236,243';
 const color STATE_MAP_MUTED_COLOR = C'137,148,162';
+const color STATE_MAP_SEPARATOR_COLOR = C'38,49,64';
 const color STATE_MAP_LONG_COLOR = C'0,185,108';
 const color STATE_MAP_SHORT_COLOR = C'238,72,94';
 const color STATE_MAP_NEUTRAL_COLOR = C'97,108,124';
@@ -119,6 +118,13 @@ string StateMapTimeLabel(const datetime value)
    MqlDateTime parts;
    TimeToStruct(value, parts);
    return StringFormat("%02d-%02d %02d:%02d", parts.mon, parts.day, parts.hour, parts.min);
+}
+
+string StateMapReasonLabel(const string reason)
+{
+   string output = reason == "" ? "unknown" : reason;
+   StringReplace(output, "_", " ");
+   return StateMapClip(output, 26);
 }
 
 void StateMapSetRectangle(
@@ -203,6 +209,26 @@ void StateMapEnsurePanelBackground()
       85
    );
    StateMapSetRectangle(
+      StateMapObjectName("HeaderRule"),
+      panel_left + STATE_MAP_PANEL_PADDING,
+      STATE_MAP_PANEL_TOP + STATE_MAP_HEADER_HEIGHT - 1,
+      STATE_MAP_PANEL_WIDTH - (STATE_MAP_PANEL_PADDING * 2),
+      1,
+      STATE_MAP_SEPARATOR_COLOR,
+      STATE_MAP_SEPARATOR_COLOR,
+      92
+   );
+   StateMapSetRectangle(
+      StateMapObjectName("ColumnRule"),
+      panel_left + STATE_MAP_PANEL_PADDING + STATE_MAP_STAT_COL_WIDTH + (STATE_MAP_STAT_COL_GAP / 2),
+      STATE_MAP_PANEL_TOP + STATE_MAP_HEADER_HEIGHT + 14,
+      1,
+      STATE_MAP_PANEL_HEIGHT - STATE_MAP_HEADER_HEIGHT - 34,
+      STATE_MAP_SEPARATOR_COLOR,
+      STATE_MAP_SEPARATOR_COLOR,
+      92
+   );
+   StateMapSetRectangle(
       STATE_MAP_BADGE_NAME,
       panel_left + STATE_MAP_PANEL_PADDING,
       STATE_MAP_PANEL_TOP + STATE_MAP_BADGE_TOP,
@@ -262,28 +288,19 @@ void StateMapSetStat(
 )
 {
    const int panel_left = StateMapPanelLeft();
-   const int grid_top = STATE_MAP_PANEL_TOP + STATE_MAP_HEADER_HEIGHT + 12;
+   const int grid_top = STATE_MAP_PANEL_TOP + STATE_MAP_HEADER_HEIGHT + 17;
    const int tile_x = panel_left + STATE_MAP_PANEL_PADDING +
-      column * (STATE_MAP_TILE_WIDTH + STATE_MAP_TILE_GAP);
-   const int tile_y = grid_top + row * (STATE_MAP_TILE_HEIGHT + STATE_MAP_TILE_GAP);
+      column * (STATE_MAP_STAT_COL_WIDTH + STATE_MAP_STAT_COL_GAP);
+   const int tile_y = grid_top + row * STATE_MAP_STAT_ROW_HEIGHT;
+   int value_font_size = StringLen(value) > 15 ? 10 : 12;
 
-   StateMapSetRectangle(
-      StateMapObjectName("Tile_" + key),
-      tile_x,
-      tile_y,
-      STATE_MAP_TILE_WIDTH,
-      STATE_MAP_TILE_HEIGHT,
-      STATE_MAP_TILE_BG,
-      STATE_MAP_TILE_BORDER,
-      88
-   );
    StateMapSetLabel(
       StateMapObjectName("Tag_" + key),
       label,
       STATE_MAP_MUTED_COLOR,
-      7,
-      tile_x + 10,
-      tile_y + 5,
+      8,
+      tile_x,
+      tile_y,
       "Segoe UI Semibold",
       ANCHOR_LEFT_UPPER,
       110
@@ -292,9 +309,9 @@ void StateMapSetStat(
       StateMapObjectName("Value_" + key),
       value,
       value_color,
-      10,
-      tile_x + 10,
-      tile_y + 19,
+      value_font_size,
+      tile_x,
+      tile_y + 15,
       "Segoe UI Semibold",
       ANCHOR_LEFT_UPPER,
       110
@@ -450,10 +467,10 @@ void StateMapRenderPanel(
    const int panel_left = StateMapPanelLeft();
    const int content_left = panel_left + STATE_MAP_PANEL_PADDING;
    const int content_center = panel_left + (STATE_MAP_PANEL_WIDTH / 2);
-   const int title_y = STATE_MAP_PANEL_TOP + 9;
+   const int title_y = STATE_MAP_PANEL_TOP + 11;
    const int badge_center_y = STATE_MAP_PANEL_TOP + STATE_MAP_BADGE_TOP + (STATE_MAP_BADGE_HEIGHT / 2);
 
-   int state_font_size = StringLen(g_qstate_label) > 9 ? 17 : 20;
+   int state_font_size = StringLen(g_qstate_label) > 9 ? 24 : 28;
    string stoch_value = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
    string anchor_value = latest_anchor == EMPTY_VALUE ? "n/a" : DoubleToString(latest_anchor, _Digits);
    string bars_value = IntegerToString(copied) + " / " + IntegerToString(valid_q_day_count);
@@ -462,7 +479,7 @@ void StateMapRenderPanel(
       STATE_MAP_TITLE_NAME,
       "LIMNI STATE MAP",
       STATE_MAP_TITLE_COLOR,
-      9,
+      11,
       content_left,
       title_y,
       "Segoe UI Semibold",
@@ -482,7 +499,7 @@ void StateMapRenderPanel(
    );
 
    StateMapSetStat("M1", "M1 AS-OF", StateMapTimeLabel(g_qstate_asof), STATE_MAP_TEXT_COLOR, 0, 0);
-   StateMapSetStat("Reason", "REASON", StateMapClip(g_qstate_reason, 18), STATE_MAP_TEXT_COLOR, 1, 0);
+   StateMapSetStat("Reason", "REASON", StateMapReasonLabel(g_qstate_reason), STATE_MAP_TEXT_COLOR, 1, 0);
    StateMapSetStat("Score", "SCORE", DoubleToString(g_qstate_score, 2), StateMapSignedValueColor(g_qstate_score), 0, 1);
    StateMapSetStat("Conf", "CONF", DoubleToString(g_qstate_confidence, 2), STATE_MAP_TEXT_COLOR, 1, 1);
    StateMapSetStat("Trend", "TREND", StateMapTrendLabel(latest_trend_state), StateMapTrendColor(latest_trend_state), 0, 2);
