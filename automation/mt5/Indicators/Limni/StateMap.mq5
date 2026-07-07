@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.41"
+#property version   "1.50"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -20,35 +20,29 @@
 #property indicator_style2 STYLE_SOLID
 #property indicator_width2 3
 
-#include <Controls\Dialog.mqh>
 #include <Controls\Label.mqh>
 #include <Controls\Panel.mqh>
-#include "..\\Include\\LimniQStateCore.mqh"
+#include "..\\Include\\LimniVisualRuntimeSnapshot.mqh"
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INITIAL_PROJECT_BARS = 50000;
-const int STATE_MAP_PANEL_WIDTH = 396;
-const int STATE_MAP_PANEL_HEIGHT = 272;
+const int STATE_MAP_PANEL_WIDTH = 280;
+const int STATE_MAP_PANEL_HEIGHT = 195;
 const int STATE_MAP_PANEL_RIGHT = 18;
 const int STATE_MAP_PANEL_TOP = 22;
-const int STATE_MAP_BODY_LEFT = 10;
-const int STATE_MAP_BODY_TOP = 8;
-const int STATE_MAP_BODY_RIGHT = 386;
-const int STATE_MAP_BODY_BOTTOM = 246;
-const int STATE_MAP_HEADER_LEFT = 18;
-const int STATE_MAP_HEADER_TOP = 16;
-const int STATE_MAP_HEADER_RIGHT = 378;
-const int STATE_MAP_HEADER_BOTTOM = 84;
-const int STATE_MAP_COLUMN_LEFT = 24;
-const int STATE_MAP_COLUMN_RIGHT = 210;
-const int STATE_MAP_ROW_TOP = 102;
-const int STATE_MAP_ROW_GAP = 34;
-const color STATE_MAP_PANEL_BG = C'8,13,21';
+const int STATE_MAP_HEADER_TOP = 0;
+const int STATE_MAP_HEADER_BOTTOM = 50;
+const int STATE_MAP_ROW_TOP = 65;
+const int STATE_MAP_ROW_GAP = 25;
+const int STATE_MAP_LABEL_COL_1 = 15;
+const int STATE_MAP_VALUE_COL_1 = 85;
+const int STATE_MAP_LABEL_COL_2 = 150;
+const int STATE_MAP_VALUE_COL_2 = 210;
+const color STATE_MAP_PANEL_BG = C'24,28,38';
 const color STATE_MAP_PANEL_BORDER = C'49,63,82';
 const color STATE_MAP_TITLE_COLOR = C'151,164,181';
 const color STATE_MAP_TEXT_COLOR = C'231,236,243';
 const color STATE_MAP_MUTED_COLOR = C'139,152,170';
-const color STATE_MAP_SEPARATOR_COLOR = C'35,47,64';
 const color STATE_MAP_LONG_COLOR = C'0,185,108';
 const color STATE_MAP_SHORT_COLOR = C'238,72,94';
 const color STATE_MAP_NEUTRAL_COLOR = C'83,96,115';
@@ -56,7 +50,6 @@ const color STATE_MAP_STRESS_COLOR = C'214,143,51';
 const color STATE_MAP_BADGE_TEXT_COLOR = clrWhite;
 
 const string STATE_MAP_OBJECT_PREFIX = "Limni_StateMap_";
-const string STATE_MAP_DIALOG_NAME = "Limni_StateMap_Dialog";
 
 double PriceAnchorBuffer[];
 double StateAnchorBuffer[];
@@ -87,14 +80,10 @@ double g_qstate_score = 0.0;
 double g_qstate_confidence = 0.0;
 color g_qstate_color = STATE_MAP_NEUTRAL_COLOR;
 
-CAppDialog g_state_dialog;
 CPanel g_panel_body;
 CPanel g_panel_header;
-CPanel g_panel_rule;
-CPanel g_panel_column_rule;
 CLabel g_panel_title;
 CLabel g_panel_state;
-CLabel g_panel_reason_line;
 CLabel g_label_m1;
 CLabel g_value_m1;
 CLabel g_label_score;
@@ -166,7 +155,14 @@ string StateMapReasonLabel(const string reason)
 {
    string output = reason == "" ? "unknown" : reason;
    StringReplace(output, "_", " ");
-   return StateMapClip(output, 26);
+   return StateMapClip(output, 12);
+}
+
+string StateMapSignedScoreLabel(const double value)
+{
+   if(value > 0.0)
+      return "+" + DoubleToString(value, 2);
+   return DoubleToString(value, 2);
 }
 
 string StateMapTrendLabel(const int state)
@@ -187,13 +183,13 @@ color StateMapTrendColor(const int state)
    return STATE_MAP_MUTED_COLOR;
 }
 
-color StateMapQStateColor(const LimniQStateDirection &decision)
+color StateMapQStateColor(const int state, const int trade_direction)
 {
-   if(decision.state == LIMNI_QSTATE_PAIR_STATE_STRESS)
+   if(state == LIMNI_QSTATE_PAIR_STATE_STRESS)
       return STATE_MAP_STRESS_COLOR;
-   if(decision.trade_direction == LIMNI_QSTATE_SIDE_LONG)
+   if(trade_direction == LIMNI_QSTATE_SIDE_LONG)
       return STATE_MAP_LONG_COLOR;
-   if(decision.trade_direction == LIMNI_QSTATE_SIDE_SHORT)
+   if(trade_direction == LIMNI_QSTATE_SIDE_SHORT)
       return STATE_MAP_SHORT_COLOR;
    return STATE_MAP_NEUTRAL_COLOR;
 }
@@ -223,21 +219,20 @@ bool StateMapEnsureStackCache(
 {
    refreshed = false;
    datetime latest_closed_m1 = StateMapLatestClosedM1();
-   datetime source_from = LimniLrmgSourceStartForChart(chart_oldest, STATE_MAP_SCALE_LOOKBACK_DAYS);
 
    if(g_stack_ready &&
       g_stack_point == _Point &&
-      g_stack_latest_closed_m1 == latest_closed_m1 &&
-      source_from >= g_stack_cache_from)
+      g_stack_latest_closed_m1 == latest_closed_m1)
    {
       return true;
    }
 
-   if(!LimniLoadCachedStackSeries(
-      chart_oldest,
-      chart_newest,
+   datetime snapshot_latest = 0;
+   ulong snapshot_hash = 0;
+   string reason = "";
+   if(!LimniVisualReadStackSnapshot(
+      _Symbol,
       STATE_MAP_SCALE_LOOKBACK_DAYS,
-      _Point,
       g_source_times,
       g_source_closes,
       g_source_q,
@@ -248,46 +243,60 @@ bool StateMapEnsureStackCache(
       g_source_trigger,
       g_stack_copied,
       g_stack_day_count,
-      g_stack_valid_q_day_count
+      g_stack_valid_q_day_count,
+      g_stack_point,
+      snapshot_latest,
+      snapshot_hash,
+      reason
    ))
    {
+      StateMapSetQStateFailure(reason, "Start LimniVisualRuntimeService and wait for a closed-M1 snapshot.");
       return false;
    }
 
-   g_stack_cache_from = source_from;
-   g_stack_latest_closed_m1 = latest_closed_m1;
-   g_stack_point = _Point;
+   g_stack_cache_from = chart_oldest;
+   g_stack_latest_closed_m1 = snapshot_latest;
    g_stack_ready = true;
    refreshed = true;
    return true;
 }
 
+int StateMapPanelAbsX(const int local_x)
+{
+   return StateMapPanelLeft() + local_x;
+}
+
+int StateMapPanelAbsY(const int local_y)
+{
+   return STATE_MAP_PANEL_TOP + local_y;
+}
+
 bool StateMapCreatePanel(CPanel &panel, const string suffix, const int x1, const int y1, const int x2, const int y2, const color bg, const color border)
 {
-   if(!panel.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, x1, y1, x2, y2))
+   if(!panel.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, StateMapPanelAbsX(x1), StateMapPanelAbsY(y1), StateMapPanelAbsX(x2), StateMapPanelAbsY(y2)))
       return false;
    panel.ColorBackground(bg);
    panel.ColorBorder(border);
    panel.BorderType(BORDER_FLAT);
-   return g_state_dialog.Add(panel);
+   return true;
 }
 
 bool StateMapCreateLabel(CLabel &label, const string suffix, const string text, const int x1, const int y1, const int x2, const int y2, const color text_color, const int font_size, const string font_name)
 {
-   if(!label.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, x1, y1, x2, y2))
+   if(!label.Create(0, STATE_MAP_OBJECT_PREFIX + suffix, 0, StateMapPanelAbsX(x1), StateMapPanelAbsY(y1), StateMapPanelAbsX(x2), StateMapPanelAbsY(y2)))
       return false;
    label.Text(text);
    label.Color(text_color);
    label.Font(font_name);
    label.FontSize(font_size);
-   return g_state_dialog.Add(label);
+   return true;
 }
 
-bool StateMapCreateStatLabels(CLabel &tag, CLabel &value, const string suffix, const string caption, const int x, const int y)
+bool StateMapCreateStatLabels(CLabel &tag, CLabel &value, const string suffix, const string caption, const int label_x, const int value_x, const int y)
 {
-   if(!StateMapCreateLabel(tag, suffix + "_Tag", caption, x, y, x + 154, y + 13, STATE_MAP_MUTED_COLOR, 7, "Segoe UI Semibold"))
+   if(!StateMapCreateLabel(tag, suffix + "_Tag", caption, label_x, y, label_x + 62, y + 17, STATE_MAP_MUTED_COLOR, 8, "Segoe UI"))
       return false;
-   return StateMapCreateLabel(value, suffix + "_Value", "", x, y + 13, x + 160, y + 31, STATE_MAP_TEXT_COLOR, 10, "Segoe UI Semibold");
+   return StateMapCreateLabel(value, suffix + "_Value", "", value_x, y, value_x + 66, y + 18, STATE_MAP_TEXT_COLOR, 9, "Segoe UI Semibold");
 }
 
 bool StateMapCreateDialog()
@@ -295,57 +304,31 @@ bool StateMapCreateDialog()
    if(g_panel_ready)
       return true;
 
-   int panel_left = StateMapPanelLeft();
-   if(!g_state_dialog.Create(
-      0,
-      STATE_MAP_DIALOG_NAME,
-      0,
-      panel_left,
-      STATE_MAP_PANEL_TOP,
-      panel_left + STATE_MAP_PANEL_WIDTH,
-      STATE_MAP_PANEL_TOP + STATE_MAP_PANEL_HEIGHT
-   ))
-   {
+   if(!StateMapCreatePanel(g_panel_body, "Body", 0, 0, STATE_MAP_PANEL_WIDTH, STATE_MAP_PANEL_HEIGHT, STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER))
       return false;
-   }
-
-   g_state_dialog.Caption("Limni State Map");
-
-   if(!StateMapCreatePanel(g_panel_body, "Body", STATE_MAP_BODY_LEFT, STATE_MAP_BODY_TOP, STATE_MAP_BODY_RIGHT, STATE_MAP_BODY_BOTTOM, STATE_MAP_PANEL_BG, STATE_MAP_PANEL_BORDER))
-      return false;
-   if(!StateMapCreatePanel(g_panel_header, "Header", STATE_MAP_HEADER_LEFT, STATE_MAP_HEADER_TOP, STATE_MAP_HEADER_RIGHT, STATE_MAP_HEADER_BOTTOM, STATE_MAP_NEUTRAL_COLOR, STATE_MAP_NEUTRAL_COLOR))
-      return false;
-   if(!StateMapCreatePanel(g_panel_rule, "Rule", 24, 94, 372, 95, STATE_MAP_SEPARATOR_COLOR, STATE_MAP_SEPARATOR_COLOR))
-      return false;
-   if(!StateMapCreatePanel(g_panel_column_rule, "ColumnRule", 196, 106, 197, 228, STATE_MAP_SEPARATOR_COLOR, STATE_MAP_SEPARATOR_COLOR))
+   if(!StateMapCreatePanel(g_panel_header, "Header", 0, STATE_MAP_HEADER_TOP, STATE_MAP_PANEL_WIDTH, STATE_MAP_HEADER_BOTTOM, STATE_MAP_NEUTRAL_COLOR, STATE_MAP_NEUTRAL_COLOR))
       return false;
 
-   if(!StateMapCreateLabel(g_panel_title, "Title", "LIMNI STATE MAP", 30, 22, 210, 38, STATE_MAP_TITLE_COLOR, 8, "Segoe UI Semibold"))
+   if(!StateMapCreateLabel(g_panel_title, "Title", "LIMNI STATE MAP", 15, 7, 180, 22, STATE_MAP_TITLE_COLOR, 8, "Segoe UI Semibold"))
       return false;
-   if(!StateMapCreateLabel(g_panel_state, "State", "NO TRADE", 30, 36, 370, 64, STATE_MAP_BADGE_TEXT_COLOR, 20, "Segoe UI Semibold"))
-      return false;
-   if(!StateMapCreateLabel(g_panel_reason_line, "ReasonLine", "reason: syncing", 30, 64, 370, 78, C'215,222,232', 8, "Segoe UI"))
+   if(!StateMapCreateLabel(g_panel_state, "State", "NO TRADE", 15, 22, 270, 47, STATE_MAP_BADGE_TEXT_COLOR, 16, "Segoe UI Semibold"))
       return false;
 
-   if(!StateMapCreateStatLabels(g_label_m1, g_value_m1, "M1", "M1 AS-OF", STATE_MAP_COLUMN_LEFT, STATE_MAP_ROW_TOP))
+   if(!StateMapCreateStatLabels(g_label_m1, g_value_m1, "M1", "M1", STATE_MAP_LABEL_COL_1, STATE_MAP_VALUE_COL_1, STATE_MAP_ROW_TOP))
       return false;
-   if(!StateMapCreateStatLabels(g_label_score, g_value_score, "Score", "SCORE", STATE_MAP_COLUMN_LEFT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP))
+   if(!StateMapCreateStatLabels(g_label_score, g_value_score, "Score", "SCORE", STATE_MAP_LABEL_COL_2, STATE_MAP_VALUE_COL_2, STATE_MAP_ROW_TOP))
       return false;
-   if(!StateMapCreateStatLabels(g_label_conf, g_value_conf, "Conf", "CONF", STATE_MAP_COLUMN_LEFT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 2))
+   if(!StateMapCreateStatLabels(g_label_conf, g_value_conf, "Conf", "CONF", STATE_MAP_LABEL_COL_1, STATE_MAP_VALUE_COL_1, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP))
       return false;
-   if(!StateMapCreateStatLabels(g_label_trend, g_value_trend, "Trend", "TREND", STATE_MAP_COLUMN_LEFT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 3))
+   if(!StateMapCreateStatLabels(g_label_trend, g_value_trend, "Trend", "TREND", STATE_MAP_LABEL_COL_2, STATE_MAP_VALUE_COL_2, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP))
       return false;
-
-   if(!StateMapCreateStatLabels(g_label_reason, g_value_reason, "Reason", "REASON", STATE_MAP_COLUMN_RIGHT, STATE_MAP_ROW_TOP))
+   if(!StateMapCreateStatLabels(g_label_reason, g_value_reason, "Reason", "REASON", STATE_MAP_LABEL_COL_1, STATE_MAP_VALUE_COL_1, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 2))
       return false;
-   if(!StateMapCreateStatLabels(g_label_stoch, g_value_stoch, "Stoch", "STOCH", STATE_MAP_COLUMN_RIGHT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP))
+   if(!StateMapCreateStatLabels(g_label_stoch, g_value_stoch, "Stoch", "STOCH", STATE_MAP_LABEL_COL_2, STATE_MAP_VALUE_COL_2, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 2))
       return false;
-   if(!StateMapCreateStatLabels(g_label_anchor, g_value_anchor, "Anchor", "ANCHOR", STATE_MAP_COLUMN_RIGHT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 2))
+   if(!StateMapCreateStatLabels(g_label_anchor, g_value_anchor, "Anchor", "ANCHOR", STATE_MAP_LABEL_COL_1, STATE_MAP_VALUE_COL_1, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 3))
       return false;
-   if(!StateMapCreateStatLabels(g_label_bars, g_value_bars, "Bars", "BARS / QDAYS", STATE_MAP_COLUMN_RIGHT, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 3))
-      return false;
-
-   if(!g_state_dialog.Run())
+   if(!StateMapCreateStatLabels(g_label_bars, g_value_bars, "Bars", "BARS", STATE_MAP_LABEL_COL_2, STATE_MAP_VALUE_COL_2, STATE_MAP_ROW_TOP + STATE_MAP_ROW_GAP * 3))
       return false;
 
    g_panel_ready = true;
@@ -391,14 +374,13 @@ void StateMapUpdateDialog(
    g_panel_header.ColorBorder(g_qstate_color);
    g_panel_state.Text(g_qstate_label);
    g_panel_state.Color(STATE_MAP_BADGE_TEXT_COLOR);
-   g_panel_state.FontSize(StringLen(g_qstate_label) > 10 ? 18 : 20);
-   g_panel_reason_line.Text("reason: " + reason_value);
+   g_panel_state.FontSize(StringLen(g_qstate_label) > 10 ? 14 : 16);
 
    StateMapPanelSetValue(g_value_m1, StateMapTimeLabel(g_qstate_asof), STATE_MAP_TEXT_COLOR);
-   StateMapPanelSetValue(g_value_score, DoubleToString(g_qstate_score, 2), StateMapSignedValueColor(g_qstate_score));
+   StateMapPanelSetValue(g_value_score, StateMapSignedScoreLabel(g_qstate_score), StateMapSignedValueColor(g_qstate_score));
    StateMapPanelSetValue(g_value_conf, DoubleToString(g_qstate_confidence, 2), STATE_MAP_TEXT_COLOR);
    StateMapPanelSetValue(g_value_trend, StateMapTrendLabel(latest_trend_state), StateMapTrendColor(latest_trend_state));
-   StateMapPanelSetValue(g_value_reason, reason_value, STATE_MAP_TEXT_COLOR, StringLen(reason_value) > 16 ? 8 : 10);
+   StateMapPanelSetValue(g_value_reason, reason_value, STATE_MAP_TEXT_COLOR, 8);
    StateMapPanelSetValue(g_value_stoch, stoch_value, STATE_MAP_TEXT_COLOR);
    StateMapPanelSetValue(g_value_anchor, anchor_value, STATE_MAP_TEXT_COLOR);
    StateMapPanelSetValue(g_value_bars, bars_value, STATE_MAP_TEXT_COLOR, StringLen(bars_value) > 14 ? 8 : 10);
@@ -406,140 +388,27 @@ void StateMapUpdateDialog(
    g_panel_signature = signature;
 }
 
-ulong StateMapPortfolioQStateHash(const LimniQStatePairFeatures &features[], const double &ccy_scores[])
-{
-   string payload = LimniQStateFormulaId() + "|" + (string)LimniQStateFormulaHash();
-   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
-   {
-      string canonical = LimniQStateCanonicalSymbol(symbol_id);
-      int base_ccy = -1;
-      int quote_ccy = -1;
-      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
-      double base_score = base_ccy >= 0 ? ccy_scores[base_ccy] : 0.0;
-      double quote_score = quote_ccy >= 0 ? ccy_scores[quote_ccy] : 0.0;
-      payload += "|" + IntegerToString(symbol_id) +
-         ":" + TimeToString(features[symbol_id].source_m1_time, TIME_DATE | TIME_SECONDS) +
-         ":" + DoubleToString(features[symbol_id].pair_q_score, 6) +
-         ":" + DoubleToString(base_score, 6) +
-         ":" + DoubleToString(quote_score, 6);
-   }
-   return LimniQStateHashString(payload);
-}
-
 bool StateMapRefreshQState()
 {
-   LimniQStatePairFeatures pair_features[LIMNI_QSTATE_SYMBOL_COUNT];
-   double ccy_sums[LIMNI_QSTATE_CCY_COUNT];
-   int ccy_counts[LIMNI_QSTATE_CCY_COUNT];
-   double ccy_scores[LIMNI_QSTATE_CCY_COUNT];
-   datetime portfolio_asof = 0;
-
-   for(int i = 0; i < LIMNI_QSTATE_SYMBOL_COUNT; i++)
-      LimniQStateResetPairFeatures(pair_features[i]);
-
-   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
-   {
-      ccy_sums[c] = 0.0;
-      ccy_counts[c] = 0;
-      ccy_scores[c] = 0.0;
-   }
-
-   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
-   {
-      string canonical = LimniQStateCanonicalSymbol(symbol_id);
-      string symbol = LimniQStateResolveBrokerSymbol(canonical);
-      if(!LimniQStateBuildPairFeatures(symbol, pair_features[symbol_id]))
-      {
-         StateMapSetQStateFailure(
-            pair_features[symbol_id].reason_code,
-            "reason=" + pair_features[symbol_id].reason_code +
-            "|symbol=" + symbol +
-            "|formula_id=" + LimniQStateFormulaId() +
-            "|formula_hash=" + (string)LimniQStateFormulaHash()
-         );
-         return false;
-      }
-
-      if(portfolio_asof <= 0)
-         portfolio_asof = pair_features[symbol_id].source_m1_time;
-      else if(pair_features[symbol_id].source_m1_time != portfolio_asof)
-      {
-         StateMapSetQStateFailure(
-            "mixed_source_m1_time",
-            "reason=mixed_source_m1_time" +
-            "|symbol=" + symbol +
-            "|expected=" + TimeToString(portfolio_asof, TIME_DATE | TIME_SECONDS) +
-            "|actual=" + TimeToString(pair_features[symbol_id].source_m1_time, TIME_DATE | TIME_SECONDS) +
-            "|formula_id=" + LimniQStateFormulaId() +
-            "|formula_hash=" + (string)LimniQStateFormulaHash()
-         );
-         return false;
-      }
-
-      int base_ccy = -1;
-      int quote_ccy = -1;
-      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
-      if(base_ccy < 0 || quote_ccy < 0)
-         continue;
-
-      ccy_sums[base_ccy] += pair_features[symbol_id].pair_q_score;
-      ccy_counts[base_ccy]++;
-      ccy_sums[quote_ccy] -= pair_features[symbol_id].pair_q_score;
-      ccy_counts[quote_ccy]++;
-   }
-
-   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
-   {
-      if(ccy_counts[c] > 0)
-         ccy_scores[c] = ccy_sums[c] / (double)ccy_counts[c];
-   }
-
-   int chart_symbol_id = LimniQStateSymbolIdFromBrokerSymbol(_Symbol);
-   if(chart_symbol_id < 0)
+   LimniVisualQStateSnapshot snapshot;
+   string reason = "";
+   if(!LimniVisualReadQStateSnapshot(_Symbol, snapshot, reason))
    {
       StateMapSetQStateFailure(
-         "chart_symbol_not_in_universe",
-         "reason=chart_symbol_not_in_universe|symbol=" + _Symbol
+         reason == "" ? snapshot.reason_code : reason,
+         snapshot.detail == "" ? "Start LimniVisualRuntimeService and wait for a portfolio q-state snapshot." : snapshot.detail
       );
       return false;
    }
 
-   string chart_canonical = LimniQStateCanonicalSymbol(chart_symbol_id);
-   int base_ccy = -1;
-   int quote_ccy = -1;
-   LimniQStateBaseQuote(chart_canonical, base_ccy, quote_ccy);
-   if(base_ccy < 0 || quote_ccy < 0)
-      return false;
-
-   LimniQStateDirection decision;
-   LimniQStateFinalizeDirection(
-      pair_features[chart_symbol_id],
-      ccy_scores[base_ccy],
-      ccy_scores[quote_ccy],
-      decision
-   );
-
-   ulong portfolio_hash = StateMapPortfolioQStateHash(pair_features, ccy_scores);
-   g_qstate_label = LimniQStateDirectionLabel(decision.trade_direction);
-   g_qstate_color = StateMapQStateColor(decision);
-   g_qstate_reason = decision.reason_code;
-   g_qstate_asof = portfolio_asof;
-   g_qstate_score = decision.pair_direction_score;
-   g_qstate_confidence = decision.confidence;
-   g_qstate_details = "formula_id=" + decision.formula_id +
-      "|formula_hash=" + (string)decision.formula_hash +
-      "|portfolio_asof_m1_time=" + TimeToString(portfolio_asof, TIME_DATE | TIME_SECONDS) +
-      "|portfolio_valid_pair_count=" + IntegerToString(LIMNI_QSTATE_SYMBOL_COUNT) +
-      "|portfolio_snapshot_hash=" + (string)portfolio_hash +
-      "|source_m1_time=" + TimeToString(decision.source_m1_time, TIME_DATE | TIME_SECONDS) +
-      "|state=" + IntegerToString(decision.state) +
-      "|reason_code=" + decision.reason_code +
-      "|pair_q_score=" + DoubleToString(decision.pair_q_score, 6) +
-      "|base_currency_score=" + DoubleToString(decision.base_currency_score, 6) +
-      "|quote_currency_score=" + DoubleToString(decision.quote_currency_score, 6) +
-      "|pair_direction_score=" + DoubleToString(decision.pair_direction_score, 6) +
-      "|confidence=" + DoubleToString(decision.confidence, 6);
-   return decision.valid;
+   g_qstate_label = LimniQStateDirectionLabel(snapshot.trade_direction);
+   g_qstate_color = StateMapQStateColor(snapshot.state, snapshot.trade_direction);
+   g_qstate_reason = snapshot.reason_code;
+   g_qstate_asof = snapshot.portfolio_asof_m1_time;
+   g_qstate_score = snapshot.pair_direction_score;
+   g_qstate_confidence = snapshot.confidence;
+   g_qstate_details = snapshot.detail;
+   return snapshot.valid;
 }
 
 void StateMapRenderPanel(
@@ -570,21 +439,9 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
-   if(g_panel_ready)
-      g_state_dialog.Destroy(reason);
+   StateMapDeleteObjects();
    g_panel_ready = false;
    g_panel_signature = "";
-}
-
-void OnChartEvent(
-   const int id,
-   const long &lparam,
-   const double &dparam,
-   const string &sparam
-)
-{
-   if(g_panel_ready)
-      g_state_dialog.ChartEvent(id, lparam, dparam, sparam);
 }
 
 int OnCalculate(
@@ -620,6 +477,7 @@ int OnCalculate(
       stack_refreshed
    ))
    {
+      StateMapRenderPanel(EMPTY_VALUE, 0, EMPTY_VALUE, 0, 0);
       return rates_total;
    }
    if(stack_refreshed)
@@ -661,8 +519,10 @@ int OnCalculate(
    datetime latest_closed_m1 = StateMapLatestClosedM1();
    if(prev_calculated <= 0 || latest_closed_m1 != g_last_qstate_refresh_bar)
    {
-      StateMapRefreshQState();
-      g_last_qstate_refresh_bar = latest_closed_m1;
+      if(StateMapRefreshQState())
+         g_last_qstate_refresh_bar = latest_closed_m1;
+      else
+         g_panel_signature = "";
    }
 
    int latest_source_index = ArraySize(g_source_times) - 1;
