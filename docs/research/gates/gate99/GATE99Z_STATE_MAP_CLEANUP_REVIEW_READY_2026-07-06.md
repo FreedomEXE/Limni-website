@@ -64,15 +64,19 @@ LRMG price anchor/state overlay, q-state decision, and stochastic summary panel.
 
 ## State Map Panel
 
-The panel now uses fixed chart objects instead of a single multiline label:
+The first cleanup panel used fixed chart objects instead of a single multiline
+label. The follow-up readability pass simplified the visible panel further:
 
 ```text
 title: LIMNI STATE MAP
-state: LONG / SHORT / NO TRADE / FAIL CLOSED
-meta: score, confidence, closed-M1 as-of time
-context: trend, stochastic, anchor
-sync: reason, copied bars, q-day count
+dominant badge: LONG / SHORT / NO TRADE / FAIL CLOSED
+detail row 1: closed-M1 as-of time, score, confidence
+detail row 2: trend, stochastic, reason
 ```
+
+The chart placement now uses calculated left/top pixel coordinates inside a
+top-right panel instead of right-anchored long text strings. This is meant to
+avoid text spill/overlap on MT5 charts and make the state readable at a glance.
 
 This is a presentation-only cleanup. `LimniQStateCore.mqh` still owns the frozen
 q-state formula, formula ID/hash, closed-M1 loading, z-score normalization, and
@@ -123,6 +127,12 @@ source-hashes.txt
 ```
 
 Repo and active-terminal `StateMap.mq5` hashes match.
+
+Additional readability-fix artifact folder:
+
+```text
+docs/research/gates/gate99/artifacts/gate99z-state-map-readability-fix-2026-07-06/
+```
 
 ## Verdict
 
