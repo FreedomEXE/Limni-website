@@ -3,7 +3,7 @@
 //|                   Limni State Map shared LRMG/q viewer           |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.53"
+#property version   "1.54"
 #property indicator_chart_window
 #property indicator_buffers 3
 #property indicator_plots 2
@@ -23,8 +23,6 @@
 #include "..\\Include\\LimniVisualRuntimeSnapshot.mqh"
 
 input bool ShowCenterLine = true;
-input bool ShowStochasticVisual = true;
-input int StochasticVisualBars = 120;
 
 const int STATE_MAP_SCALE_LOOKBACK_DAYS = 0;
 const int STATE_MAP_MAX_INITIAL_PROJECT_BARS = 50000;
@@ -38,10 +36,6 @@ const int STATE_MAP_HEADER_HEIGHT = 68;
 const int STATE_MAP_BLOCK_GAP = 10;
 const int STATE_MAP_BLOCK_WIDTH = 213;
 const int STATE_MAP_BLOCK_HEIGHT = 62;
-const int STATE_MAP_STOCH_MAX_SEGMENTS = 120;
-const int STATE_MAP_STOCH_LEFT = 14;
-const int STATE_MAP_STOCH_BOTTOM = 28;
-const int STATE_MAP_STOCH_HEIGHT = 132;
 const color STATE_MAP_PANEL_BG = C'24,28,38';
 const color STATE_MAP_PANEL_BORDER = C'49,63,82';
 const color STATE_MAP_TITLE_COLOR = C'151,164,181';
@@ -51,9 +45,6 @@ const color STATE_MAP_LONG_COLOR = C'0,185,108';
 const color STATE_MAP_SHORT_COLOR = C'238,72,94';
 const color STATE_MAP_NEUTRAL_COLOR = C'83,96,115';
 const color STATE_MAP_STRESS_COLOR = C'214,143,51';
-const color STATE_MAP_VISUAL_ONLY_COLOR = C'67,116,164';
-const color STATE_MAP_STOCH_BG = C'16,20,28';
-const color STATE_MAP_STOCH_LEVEL = C'70,82,98';
 const color STATE_MAP_STOCH_LINE = C'33,190,238';
 const color STATE_MAP_BLOCK_BG = C'31,37,49';
 const color STATE_MAP_BLOCK_BORDER = C'61,74,94';
@@ -82,7 +73,6 @@ int g_source_trigger[];
 int g_stack_copied = 0;
 int g_stack_day_count = 0;
 int g_stack_valid_q_day_count = 0;
-string g_stack_source = "waiting";
 
 datetime g_last_qstate_refresh_bar = 0;
 string g_qstate_label = "NO TRADE";
@@ -104,25 +94,12 @@ int g_panel_latest_trend_state = 0;
 double g_panel_latest_stoch = EMPTY_VALUE;
 int g_panel_latest_copied = 0;
 int g_panel_latest_valid_q_day_count = 0;
-string g_stoch_signature = "";
-int g_stoch_segments_drawn = 0;
 
 void StateMapSetQStateFailure(const string reason, const string details)
 {
    g_qstate_label = "FAIL CLOSED";
    g_qstate_color = STATE_MAP_STRESS_COLOR;
    g_qstate_reason = reason == "" ? "qstate_unavailable" : reason;
-   g_qstate_asof = 0;
-   g_qstate_score = 0.0;
-   g_qstate_confidence = 0.0;
-   g_qstate_details = details;
-}
-
-void StateMapSetVisualOnly(const string reason, const string details)
-{
-   g_qstate_label = "VISUAL ONLY";
-   g_qstate_color = STATE_MAP_VISUAL_ONLY_COLOR;
-   g_qstate_reason = reason == "" ? "qstate_snapshot_missing" : reason;
    g_qstate_asof = 0;
    g_qstate_score = 0.0;
    g_qstate_confidence = 0.0;
@@ -202,13 +179,11 @@ string StateMapTrendLabel(const int state)
 
 bool StateMapHasQStateSnapshot()
 {
-   return g_qstate_asof > 0 && g_qstate_label != "VISUAL ONLY";
+   return g_qstate_asof > 0;
 }
 
 string StateMapPanelStateLabel()
 {
-   if(g_qstate_label == "VISUAL ONLY")
-      return "SYNCING";
    if(g_qstate_label == "FAIL CLOSED")
       return "DATA CHECK";
    return g_qstate_label;
@@ -241,10 +216,8 @@ string StateMapStochZoneLabel(const double value)
 
 string StateMapPanelStatusLabel()
 {
-   if(g_qstate_label == "VISUAL ONLY")
-      return "q-state pending";
    if(g_qstate_label == "FAIL CLOSED")
-      return StateMapReasonLabel(g_qstate_reason);
+      return "data unavailable";
    string reason = StateMapReasonLabel(g_qstate_reason);
    return reason == "unknown" || reason == "not refreshed" ? "ready" : reason;
 }
@@ -325,9 +298,7 @@ bool StateMapEnsureStackCache(
       reason
    );
 
-   if(snapshot_ok && snapshot_latest >= latest_closed_m1)
-      g_stack_source = "service snapshot";
-   else
+   if(!snapshot_ok || snapshot_latest < latest_closed_m1)
    {
       string fallback_reason = "";
       if(!LimniVisualBuildStackSnapshot(
@@ -362,13 +333,307 @@ bool StateMapEnsureStackCache(
          return false;
       }
       snapshot_latest = g_source_times[fallback_count - 1];
-      g_stack_source = snapshot_ok ? "stale fallback" : "local fallback";
+
+      ulong write_hash = 0;
+      string write_reason = "";
+      LimniVisualWriteStackSnapshot(
+         _Symbol,
+         STATE_MAP_SCALE_LOOKBACK_DAYS,
+         g_stack_point,
+         g_source_times,
+         g_source_closes,
+         g_source_q,
+         g_source_line,
+         g_source_stoch,
+         g_source_ma,
+         g_source_ma_state,
+         g_source_trigger,
+         g_stack_copied,
+         g_stack_day_count,
+         g_stack_valid_q_day_count,
+         write_hash,
+         write_reason
+      );
    }
 
    g_stack_cache_from = chart_oldest;
    g_stack_latest_closed_m1 = snapshot_latest;
    g_stack_ready = true;
    refreshed = true;
+   return true;
+}
+
+ulong StateMapPortfolioQStateHash(
+   const LimniQStatePairFeatures &pair_features[],
+   const double &ccy_scores[]
+)
+{
+   string payload = LimniQStateFormulaId() + "|" + (string)LimniQStateFormulaHash();
+   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
+   {
+      string canonical = LimniQStateCanonicalSymbol(symbol_id);
+      int base_ccy = -1;
+      int quote_ccy = -1;
+      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
+      double base_score = base_ccy >= 0 ? ccy_scores[base_ccy] : 0.0;
+      double quote_score = quote_ccy >= 0 ? ccy_scores[quote_ccy] : 0.0;
+      payload += "|" + IntegerToString(symbol_id) +
+         ":" + LimniVisualStamp(pair_features[symbol_id].source_m1_time) +
+         ":" + DoubleToString(pair_features[symbol_id].pair_q_score, 6) +
+         ":" + DoubleToString(base_score, 6) +
+         ":" + DoubleToString(quote_score, 6);
+   }
+   return LimniQStateHashString(payload);
+}
+
+bool StateMapBuildLocalQStateSnapshot(
+   LimniVisualQStateSnapshot &snapshot,
+   string &reason_code
+)
+{
+   LimniVisualResetQStateSnapshot(snapshot);
+   reason_code = "";
+
+   int chart_symbol_id = LimniQStateSymbolIdFromBrokerSymbol(_Symbol);
+   if(chart_symbol_id < 0)
+   {
+      reason_code = "chart_symbol_not_in_forced28";
+      return false;
+   }
+
+   LimniQStatePairFeatures pair_features[LIMNI_QSTATE_SYMBOL_COUNT];
+   double ccy_sums[LIMNI_QSTATE_CCY_COUNT];
+   int ccy_counts[LIMNI_QSTATE_CCY_COUNT];
+   double ccy_scores[LIMNI_QSTATE_CCY_COUNT];
+   datetime portfolio_asof = 0;
+
+   for(int i = 0; i < LIMNI_QSTATE_SYMBOL_COUNT; i++)
+      LimniQStateResetPairFeatures(pair_features[i]);
+   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
+   {
+      ccy_sums[c] = 0.0;
+      ccy_counts[c] = 0;
+      ccy_scores[c] = 0.0;
+   }
+
+   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
+   {
+      string canonical = LimniQStateCanonicalSymbol(symbol_id);
+      string symbol = LimniQStateResolveBrokerSymbol(canonical);
+      datetime source_times[];
+      double source_closes[];
+      double source_q[];
+      double source_line[];
+      double source_stoch[];
+      double source_ma[];
+      int source_ma_state[];
+      int source_trigger[];
+      int copied = 0;
+      int day_count = 0;
+      int valid_q_day_count = 0;
+      double point = 0.0;
+      datetime snapshot_latest = 0;
+      ulong stack_snapshot_hash = 0;
+      string stack_reason = "";
+      bool stack_ok = LimniVisualReadStackSnapshot(
+         symbol,
+         STATE_MAP_SCALE_LOOKBACK_DAYS,
+         source_times,
+         source_closes,
+         source_q,
+         source_line,
+         source_stoch,
+         source_ma,
+         source_ma_state,
+         source_trigger,
+         copied,
+         day_count,
+         valid_q_day_count,
+         point,
+         snapshot_latest,
+         stack_snapshot_hash,
+         stack_reason
+      );
+
+      datetime symbol_latest = iTime(symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, 1);
+      if(!stack_ok || (symbol_latest > 0 && snapshot_latest < symbol_latest))
+      {
+         if(!LimniVisualBuildStackSnapshot(
+            symbol,
+            STATE_MAP_SCALE_LOOKBACK_DAYS,
+            source_times,
+            source_closes,
+            source_q,
+            source_line,
+            source_stoch,
+            source_ma,
+            source_ma_state,
+            source_trigger,
+            copied,
+            day_count,
+            valid_q_day_count,
+            point,
+            stack_reason
+         ))
+         {
+            reason_code = "qstate_stack_failed_" + canonical + "_" + stack_reason;
+            return false;
+         }
+
+         string write_reason = "";
+         LimniVisualWriteStackSnapshot(
+            symbol,
+            STATE_MAP_SCALE_LOOKBACK_DAYS,
+            point,
+            source_times,
+            source_closes,
+            source_q,
+            source_line,
+            source_stoch,
+            source_ma,
+            source_ma_state,
+            source_trigger,
+            copied,
+            day_count,
+            valid_q_day_count,
+            stack_snapshot_hash,
+            write_reason
+         );
+      }
+
+      if(!LimniVisualQStateFeaturesFromStack(
+         symbol,
+         source_times,
+         source_closes,
+         source_q,
+         source_line,
+         source_stoch,
+         source_ma_state,
+         source_trigger,
+         copied,
+         day_count,
+         valid_q_day_count,
+         point,
+         pair_features[symbol_id]
+      ))
+      {
+         reason_code = "qstate_features_failed_" + canonical + "_" + pair_features[symbol_id].reason_code;
+         return false;
+      }
+
+      if(portfolio_asof <= 0)
+         portfolio_asof = pair_features[symbol_id].source_m1_time;
+      else if(pair_features[symbol_id].source_m1_time != portfolio_asof)
+      {
+         reason_code = "local_qstate_mixed_source_m1";
+         return false;
+      }
+
+      int base_ccy = -1;
+      int quote_ccy = -1;
+      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
+      if(base_ccy < 0 || quote_ccy < 0)
+      {
+         reason_code = "local_qstate_base_quote_failed_" + canonical;
+         return false;
+      }
+
+      ccy_sums[base_ccy] += pair_features[symbol_id].pair_q_score;
+      ccy_counts[base_ccy]++;
+      ccy_sums[quote_ccy] -= pair_features[symbol_id].pair_q_score;
+      ccy_counts[quote_ccy]++;
+   }
+
+   if(portfolio_asof <= 0)
+   {
+      reason_code = "local_qstate_asof_missing";
+      return false;
+   }
+
+   for(int c = 0; c < LIMNI_QSTATE_CCY_COUNT; c++)
+   {
+      if(ccy_counts[c] > 0)
+         ccy_scores[c] = ccy_sums[c] / (double)ccy_counts[c];
+   }
+
+   ulong portfolio_hash = StateMapPortfolioQStateHash(pair_features, ccy_scores);
+   bool chart_snapshot_found = false;
+   for(int symbol_id = 0; symbol_id < LIMNI_QSTATE_SYMBOL_COUNT; symbol_id++)
+   {
+      string canonical = LimniQStateCanonicalSymbol(symbol_id);
+      string broker_symbol = LimniQStateResolveBrokerSymbol(canonical);
+      int base_ccy = -1;
+      int quote_ccy = -1;
+      LimniQStateBaseQuote(canonical, base_ccy, quote_ccy);
+      if(base_ccy < 0 || quote_ccy < 0)
+      {
+         reason_code = "qstate_base_quote_failed_" + canonical;
+         return false;
+      }
+
+      LimniQStateDirection decision;
+      LimniQStateFinalizeDirection(
+         pair_features[symbol_id],
+         ccy_scores[base_ccy],
+         ccy_scores[quote_ccy],
+         decision
+      );
+
+      LimniVisualQStateSnapshot out_snapshot;
+      LimniVisualResetQStateSnapshot(out_snapshot);
+      out_snapshot.valid = decision.valid;
+      out_snapshot.symbol = broker_symbol;
+      out_snapshot.canonical = canonical;
+      out_snapshot.formula_id = decision.formula_id;
+      out_snapshot.formula_hash = decision.formula_hash;
+      out_snapshot.portfolio_asof_m1_time = portfolio_asof;
+      out_snapshot.portfolio_valid_pair_count = LIMNI_QSTATE_SYMBOL_COUNT;
+      out_snapshot.portfolio_snapshot_hash = portfolio_hash;
+      out_snapshot.source_m1_time = decision.source_m1_time;
+      out_snapshot.state = decision.state;
+      out_snapshot.trade_direction = decision.trade_direction;
+      out_snapshot.market_mode = decision.market_mode;
+      out_snapshot.pair_q_score = decision.pair_q_score;
+      out_snapshot.base_currency_score = decision.base_currency_score;
+      out_snapshot.quote_currency_score = decision.quote_currency_score;
+      out_snapshot.pair_direction_score = decision.pair_direction_score;
+      out_snapshot.confidence = decision.confidence;
+      out_snapshot.reason_code = decision.reason_code;
+      out_snapshot.detail = "formula_id=" + decision.formula_id +
+         "|formula_hash=" + (string)decision.formula_hash +
+         "|portfolio_asof_m1_time=" + LimniVisualStamp(portfolio_asof) +
+         "|portfolio_valid_pair_count=" + IntegerToString(LIMNI_QSTATE_SYMBOL_COUNT) +
+         "|portfolio_snapshot_hash=" + (string)portfolio_hash +
+         "|source_m1_time=" + LimniVisualStamp(decision.source_m1_time) +
+         "|state=" + IntegerToString(decision.state) +
+         "|reason_code=" + decision.reason_code +
+         "|pair_q_score=" + DoubleToString(decision.pair_q_score, 6) +
+         "|base_currency_score=" + DoubleToString(decision.base_currency_score, 6) +
+         "|quote_currency_score=" + DoubleToString(decision.quote_currency_score, 6) +
+         "|pair_direction_score=" + DoubleToString(decision.pair_direction_score, 6) +
+         "|confidence=" + DoubleToString(decision.confidence, 6);
+
+      string qstate_write_reason = "";
+      if(!LimniVisualWriteQStateSnapshot(out_snapshot, qstate_write_reason))
+      {
+         reason_code = "qstate_write_failed_" + canonical + "_" + qstate_write_reason;
+         return false;
+      }
+
+      if(symbol_id == chart_symbol_id)
+      {
+         snapshot = out_snapshot;
+         chart_snapshot_found = true;
+      }
+   }
+
+   if(!chart_snapshot_found || !snapshot.valid)
+   {
+      reason_code = !chart_snapshot_found ? "chart_qstate_snapshot_missing" : "chart_qstate_snapshot_invalid";
+      return false;
+   }
+
+   reason_code = "qstate_snapshot_ready";
    return true;
 }
 
@@ -576,7 +841,7 @@ void StateMapUpdatePanel(
    string state_value = StateMapPanelStateLabel();
    string status_value = StateMapPanelStatusLabel();
    string center_detail = ShowCenterLine ? "center line on" : "center line off";
-   string stoch_detail = ShowStochasticVisual ? StateMapStochZoneLabel(latest_stoch) : "hidden";
+   string stoch_detail = StateMapStochZoneLabel(latest_stoch);
 
    string signature =
       IntegerToString(g_panel_x) + "|" +
@@ -716,16 +981,34 @@ void StateMapUpdatePanel(
 
 bool StateMapRefreshQState()
 {
+   datetime latest_closed_m1 = StateMapLatestClosedM1();
    LimniVisualQStateSnapshot snapshot;
    string reason = "";
-   if(!LimniVisualReadQStateSnapshot(_Symbol, snapshot, reason))
+   bool snapshot_ok = LimniVisualReadQStateSnapshot(_Symbol, snapshot, reason);
+   if(snapshot_ok && snapshot.valid && snapshot.portfolio_asof_m1_time >= latest_closed_m1)
    {
-      StateMapSetVisualOnly(
-         reason == "" ? snapshot.reason_code : reason,
-         snapshot.detail == "" ? "Q-state snapshot is not loaded; price/stochastic visuals remain active." : snapshot.detail
+      g_qstate_label = LimniQStateDirectionLabel(snapshot.trade_direction);
+      g_qstate_color = StateMapQStateColor(snapshot.state, snapshot.trade_direction);
+      g_qstate_reason = snapshot.reason_code;
+      g_qstate_asof = snapshot.portfolio_asof_m1_time;
+      g_qstate_score = snapshot.pair_direction_score;
+      g_qstate_confidence = snapshot.confidence;
+      g_qstate_details = snapshot.detail;
+      return true;
+   }
+
+   string local_reason = "";
+   if(!StateMapBuildLocalQStateSnapshot(snapshot, local_reason))
+   {
+      StateMapSetQStateFailure(
+         local_reason == "" ? (reason == "" ? "qstate_unavailable" : reason) : local_reason,
+         "service snapshot unavailable and local all-28 q-state fallback failed"
       );
       return false;
    }
+
+   string write_reason = "";
+   LimniVisualWriteQStateSnapshot(snapshot, write_reason);
 
    g_qstate_label = LimniQStateDirectionLabel(snapshot.trade_direction);
    g_qstate_color = StateMapQStateColor(snapshot.state, snapshot.trade_direction);
@@ -734,7 +1017,7 @@ bool StateMapRefreshQState()
    g_qstate_score = snapshot.pair_direction_score;
    g_qstate_confidence = snapshot.confidence;
    g_qstate_details = snapshot.detail;
-   return snapshot.valid;
+   return true;
 }
 
 void StateMapRenderPanel(
@@ -746,107 +1029,6 @@ void StateMapRenderPanel(
 )
 {
    StateMapUpdatePanel(latest_anchor, latest_trend_state, latest_stoch, copied, valid_q_day_count);
-}
-
-int StateMapStochY(const double value, const int plot_top, const int plot_height)
-{
-   double clipped = MathMax(0.0, MathMin(100.0, value));
-   return plot_top + (int)MathRound((100.0 - clipped) * (double)plot_height / 100.0);
-}
-
-void StateMapDrawStochasticVisual()
-{
-   string group_prefix = STATE_MAP_OBJECT_PREFIX + "StochVisual_";
-   if(!ShowStochasticVisual)
-   {
-      StateMapDeleteObjectGroup(group_prefix);
-      g_stoch_signature = "";
-      g_stoch_segments_drawn = 0;
-      return;
-   }
-
-   int count = ArraySize(g_source_stoch);
-   if(count < 2)
-   {
-      StateMapDeleteObjectGroup(group_prefix);
-      g_stoch_signature = "";
-      g_stoch_segments_drawn = 0;
-      return;
-   }
-
-   int chart_width = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS, 0);
-   int chart_height = (int)ChartGetInteger(0, CHART_HEIGHT_IN_PIXELS, 0);
-   if(chart_width <= 0 || chart_height <= 0)
-      return;
-
-   int strip_width = MathMin(640, MathMax(420, chart_width - STATE_MAP_PANEL_WIDTH - 72));
-   int strip_left = STATE_MAP_STOCH_LEFT;
-   int strip_top = MathMax(STATE_MAP_STOCH_BOTTOM, chart_height - STATE_MAP_STOCH_BOTTOM - STATE_MAP_STOCH_HEIGHT);
-   int plot_left = strip_left + 12;
-   int plot_top = strip_top + 28;
-   int plot_width = strip_width - 24;
-   int plot_height = STATE_MAP_STOCH_HEIGHT - 46;
-   int requested = MathMax(24, MathMin(STATE_MAP_STOCH_MAX_SEGMENTS, StochasticVisualBars));
-   int start = MathMax(0, count - requested);
-   int bars = count - start;
-   if(bars < 2 || plot_width <= 10 || plot_height <= 10)
-      return;
-
-   double latest_stoch = g_source_stoch[count - 1];
-   string latest_label = latest_stoch == EMPTY_VALUE ? "n/a" : DoubleToString(latest_stoch, 1);
-   string signature =
-      IntegerToString(chart_width) + "|" +
-      IntegerToString(chart_height) + "|" +
-      IntegerToString((int)g_stack_latest_closed_m1) + "|" +
-      IntegerToString(count) + "|" +
-      IntegerToString(requested) + "|" +
-      latest_label;
-   if(signature == g_stoch_signature)
-      return;
-
-   StateMapDeleteObjectGroup(group_prefix);
-   StateMapDrawRect(group_prefix + "Bg", strip_left, strip_top, strip_width, STATE_MAP_STOCH_HEIGHT, STATE_MAP_STOCH_BG, STATE_MAP_PANEL_BORDER, 18);
-   StateMapDrawText(group_prefix + "Title", "STOCHASTIC", strip_left + 12, strip_top + 6, STATE_MAP_TITLE_COLOR, 8, 20);
-   StateMapDrawText(group_prefix + "Latest", latest_label, strip_left + strip_width - 48, strip_top + 6, STATE_MAP_TEXT_COLOR, 8, 20);
-
-   int y80 = StateMapStochY(80.0, plot_top, plot_height);
-   int y50 = StateMapStochY(50.0, plot_top, plot_height);
-   int y20 = StateMapStochY(20.0, plot_top, plot_height);
-   StateMapDrawRect(group_prefix + "Level80", plot_left, y80, plot_width, 1, STATE_MAP_STOCH_LEVEL, STATE_MAP_STOCH_LEVEL, 19);
-   StateMapDrawRect(group_prefix + "Level50", plot_left, y50, plot_width, 1, C'46,57,72', C'46,57,72', 19);
-   StateMapDrawRect(group_prefix + "Level20", plot_left, y20, plot_width, 1, STATE_MAP_STOCH_LEVEL, STATE_MAP_STOCH_LEVEL, 19);
-   StateMapDrawText(group_prefix + "L80", "80", plot_left + plot_width + 4, y80 - 6, STATE_MAP_MUTED_COLOR, 7, 20);
-   StateMapDrawText(group_prefix + "L20", "20", plot_left + plot_width + 4, y20 - 6, STATE_MAP_MUTED_COLOR, 7, 20);
-
-   int drawn = 0;
-   int previous_x = -1;
-   int previous_y = -1;
-   for(int i = 0; i < bars; i++)
-   {
-      double value = g_source_stoch[start + i];
-      if(value == EMPTY_VALUE || !MathIsValidNumber(value))
-         continue;
-
-      int x = plot_left + (i * plot_width) / MathMax(1, bars - 1);
-      int y = StateMapStochY(value, plot_top, plot_height);
-      color bar_color = value >= 80.0 ? STATE_MAP_STRESS_COLOR : (value <= 20.0 ? STATE_MAP_SHORT_COLOR : STATE_MAP_STOCH_LINE);
-      if(previous_x >= 0)
-      {
-         int h_left = MathMin(previous_x, x);
-         int h_width = MathMax(2, MathAbs(x - previous_x) + 1);
-         StateMapDrawRect(group_prefix + "LineH_" + IntegerToString(drawn), h_left, previous_y - 1, h_width, 2, bar_color, bar_color, 21);
-
-         int v_top = MathMin(previous_y, y);
-         int v_height = MathMax(2, MathAbs(y - previous_y) + 1);
-         StateMapDrawRect(group_prefix + "LineV_" + IntegerToString(drawn), x - 1, v_top, 2, v_height, bar_color, bar_color, 21);
-      }
-      StateMapDrawRect(group_prefix + "Point_" + IntegerToString(drawn), x - 2, y - 2, 4, 4, bar_color, bar_color, 22);
-      previous_x = x;
-      previous_y = y;
-      drawn++;
-   }
-   g_stoch_segments_drawn = drawn;
-   g_stoch_signature = signature;
 }
 
 int OnInit()
@@ -945,8 +1127,6 @@ void OnChartEvent(
       else
          StateMapClampPanelPosition();
       StateMapRefreshPanelFromStored();
-      g_stoch_signature = "";
-      StateMapDrawStochasticVisual();
    }
 }
 
@@ -989,7 +1169,6 @@ int OnCalculate(
    if(stack_refreshed)
    {
       g_panel_signature = "";
-      g_stoch_signature = "";
    }
 
    bool chart_series = ArrayGetAsSeries(time);
@@ -1059,7 +1238,6 @@ int OnCalculate(
       g_stack_copied,
       g_stack_valid_q_day_count
    );
-   StateMapDrawStochasticVisual();
 
    return rates_total;
 }

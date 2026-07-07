@@ -3,7 +3,7 @@
 //|             LRMG event-range stochastic oscillator               |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.11"
+#property version   "1.12"
 #property indicator_separate_window
 #property indicator_buffers 1
 #property indicator_plots 1
@@ -126,6 +126,27 @@ bool EnsureStackCache(
          return false;
       }
       snapshot_latest = g_source_times[fallback_count - 1];
+
+      ulong write_hash = 0;
+      string write_reason = "";
+      LimniVisualWriteStackSnapshot(
+         _Symbol,
+         ScaleLookbackDays,
+         g_stack_point,
+         g_source_times,
+         g_source_closes,
+         g_source_q,
+         g_source_line,
+         g_source_stoch,
+         g_source_ma,
+         g_source_ma_state,
+         g_source_trigger,
+         g_stack_copied,
+         g_stack_day_count,
+         g_stack_valid_q_day_count,
+         write_hash,
+         write_reason
+      );
    }
 
    g_stack_cache_from = chart_oldest;
