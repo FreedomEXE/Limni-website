@@ -137,6 +137,17 @@ string LP_RevmaAnchorRelationName(const int anchor_relation)
    return "AT_OR_UNKNOWN";
 }
 
+bool LP_RevmaSymbolActive(
+   const LP_Config &config,
+   const LP_SymbolMeta &meta,
+   const string chart_symbol
+)
+{
+   if(config.revma_universe_mode == LP_UNIVERSE_FX28)
+      return true;
+   return meta.symbol_id == LP_SymbolIdFromBrokerSymbol(chart_symbol);
+}
+
 double LP_RevmaPipSize(const LP_SymbolMeta &meta)
 {
    double point = meta.point > 0.0 ? meta.point : SymbolInfoDouble(meta.broker_symbol, SYMBOL_POINT);
