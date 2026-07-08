@@ -1,0 +1,13 @@
+MT5 terminal sync gate - 2026-07-08T02:10:16.2709910-04:00
+Manifest: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\terminal-roots.json
+ArtifactDir: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run
+Source hash mismatches: 0
+Compile failures: 0
+Active Experts stale-input matches: 0
+Tester profile stale-input matches: 19
+Unknown running terminal64.exe count: 0
+Compile summary: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-compile-summary.txt
+Source hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-source-hash-proof.csv
+Active Experts stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-experts-stale-input-search.txt
+Tester profile stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-profiles-stale-input-search.txt
+Running terminals: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\running-terminals.txt

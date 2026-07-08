@@ -605,20 +605,28 @@ public:
          else
             m_stop_take_profit_guard.AddCloseIntent(m_config, m_config_hash, NextSystemIntentId(), portfolio, stop_take_profit, m_intent_bus, m_receipts);
       }
+      else
+      {
+         m_stop_take_profit_guard.WriteMonitoringReceipt(m_config, m_receipts, portfolio, stop_take_profit);
+      }
 
-      int revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
-         m_config,
-         m_grid_book,
-         m_receipts,
-         m_intent_bus
-      );
+      int revma_grid_exit_intents = 0;
+      if(!stop_take_profit_block_new_entries)
+      {
+         revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
+            m_config,
+            m_grid_book,
+            m_receipts,
+            m_intent_bus
+         );
+      }
       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
 
       int revma_grid_tp_sync_intents = 0;
-      if(revma_grid_exit_intents <= 0)
+      if(!stop_take_profit_block_new_entries && revma_grid_exit_intents <= 0)
       {
          revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
             m_config,
@@ -631,8 +639,12 @@ public:
       }
 
       int cycle_new_bars = 0;
+      int active_symbols_scanned = 0;
+      int clock_ready_symbols = 0;
+      int forced_initial_symbols = 0;
       int new_symbol_ids[LP_SYMBOL_COUNT];
       int new_symbol_count = 0;
+      bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
       for(int i = 0; i < m_symbol_cache.Count(); i++)
       {
          LP_SymbolMeta meta;
@@ -640,6 +652,7 @@ public:
             continue;
          if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
             continue;
+         active_symbols_scanned++;
 
          LP_TickSnapshot tick;
          m_tick_cache.RefreshTick(meta.broker_symbol, tick);
@@ -647,8 +660,16 @@ public:
          LP_BarClockState clock_state;
          if(!m_clock.RefreshSymbol(meta, clock_state))
             continue;
+         clock_ready_symbols++;
 
-         if(!clock_state.new_bar)
+         bool evaluate_symbol = clock_state.new_bar;
+         if(!evaluate_symbol && force_initial_fx28_scan)
+         {
+            evaluate_symbol = true;
+            forced_initial_symbols++;
+         }
+
+         if(!evaluate_symbol)
             continue;
 
          cycle_new_bars++;
@@ -699,6 +720,10 @@ public:
             "",
             source,
             "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
+               "|active_symbols_scanned=" + IntegerToString(active_symbols_scanned) +
+               "|clock_ready_symbols=" + IntegerToString(clock_ready_symbols) +
+               "|evaluated_symbols=" + IntegerToString(new_symbol_count) +
+               "|forced_initial_fx28_symbols=" + IntegerToString(forced_initial_symbols) +
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
                "|intents=" + IntegerToString(m_intent_bus.Count()) +
                "|active_system=" + LP_REVMA_SYSTEM_ID +

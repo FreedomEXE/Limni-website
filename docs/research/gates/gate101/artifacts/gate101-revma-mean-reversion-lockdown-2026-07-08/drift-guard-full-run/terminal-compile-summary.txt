@@ -1,0 +1,4 @@
+MT5 compile summary - 2026-07-08T02:11:59.1315948-04:00
+repo|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 34576 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\repo-LimniPortfolioEA-compile-log.txt
+terminal-14275|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 24950 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-14275-LimniPortfolioEA-compile-log.txt
+terminal-94497|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 33811 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\drift-guard-full-run\terminal-94497-LimniPortfolioEA-compile-log.txt

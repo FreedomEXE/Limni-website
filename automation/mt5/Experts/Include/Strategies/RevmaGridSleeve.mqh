@@ -1,5 +1,5 @@
 /*-----------------------------------------------
-  Revma v001 locked grid-sleeve strategy
+  Revma v001 locked mean-reversion grid strategy
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_REVMA_GRID_SLEEVE_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_GRID_SLEEVE_MQH__
@@ -97,19 +97,13 @@ private:
       return id;
    }
 
-   bool SleeveEnabled(const LP_Config &config, const int sleeve)
+   bool SleeveEnabled(const int sleeve)
    {
-      if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-         return config.revma_enable_continuation_sleeve;
-      if(sleeve == LP_REVMA_SLEEVE_REVERSION)
-         return config.revma_enable_reversion_sleeve;
-      return false;
+      return sleeve == LP_REVMA_SLEEVE_REVERSION;
    }
 
    string AddPolicyName(const LP_RevmaSignal &signal)
    {
-      if(signal.sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-         return signal.direction > 0 ? "continuation_add_higher" : "continuation_add_lower";
       if(signal.sleeve == LP_REVMA_SLEEVE_REVERSION)
          return signal.direction > 0 ? "reversion_add_lower" : "reversion_add_higher";
       return "none";
@@ -117,39 +111,13 @@ private:
 
    int SleeveFromVariant(const int variant_id)
    {
-      if(variant_id == LP_VARIANT_REVMA_CONTINUATION)
-         return LP_REVMA_SLEEVE_CONTINUATION;
       if(variant_id == LP_VARIANT_REVMA_REVERSION)
          return LP_REVMA_SLEEVE_REVERSION;
       return LP_REVMA_SLEEVE_NONE;
    }
 
-   bool ContinuationAddHasReachableTarget(
-      const LP_Config &config,
-      const int sleeve,
-      string &reason
-   )
-   {
-      reason = "";
-      if(sleeve != LP_REVMA_SLEEVE_CONTINUATION)
-         return true;
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return true;
-
-      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, sleeve);
-      double spacing_q = LP_RevmaGridSpacingQForSleeve(config, sleeve);
-      if(take_profit_q > 0.0 && spacing_q > 0.0 && take_profit_q <= spacing_q)
-      {
-         reason = "continuation_tp_not_above_grid_spacing";
-         return false;
-      }
-      return true;
-   }
-
    string AddPolicyNameFromFrozen(const int sleeve, const int direction)
    {
-      if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-         return direction > 0 ? "continuation_add_higher" : "continuation_add_lower";
       if(sleeve == LP_REVMA_SLEEVE_REVERSION)
          return direction > 0 ? "reversion_add_lower" : "reversion_add_higher";
       return "none";
@@ -496,20 +464,6 @@ private:
       if(spacing <= 0.0)
          return false;
 
-      if(frozen_add_policy == "continuation_add_higher")
-      {
-         if(grid.max_entry_price <= 0.0)
-            return false;
-         next_add_level = grid.max_entry_price + spacing;
-         return signal.price >= next_add_level;
-      }
-      if(frozen_add_policy == "continuation_add_lower")
-      {
-         if(grid.min_entry_price <= 0.0)
-            return false;
-         next_add_level = grid.min_entry_price - spacing;
-         return signal.price <= next_add_level;
-      }
       if(frozen_add_policy == "reversion_add_lower")
       {
          if(grid.min_entry_price <= 0.0)
@@ -1163,7 +1117,7 @@ public:
          double spacing = spacing_q * spacing_config_q;
          double next_add_level = 0.0;
 
-         if(!SleeveEnabled(config, frozen_sleeve))
+         if(!SleeveEnabled(frozen_sleeve))
          {
             string metadata = AddSkipMetadata(
                signal,
@@ -1241,38 +1195,6 @@ public:
                "other_reason_spacing_invalid"
             );
              UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing invalid", config);
-            receipts.Write(
-               LP_RECEIPT_REVMA_GRID_ADD_SKIP,
-               signal.symbol,
-               "add_skip_other_reason",
-               metadata,
-               LP_LANE_REVMA,
-               frozen_variant_id,
-               active_grid.grid_key,
-               0,
-               0,
-               0
-            );
-            return 0;
-         }
-
-         string target_guard_reason = "";
-         if(!ContinuationAddHasReachableTarget(config, frozen_sleeve, target_guard_reason))
-         {
-            string metadata = AddSkipMetadata(
-               signal,
-               active_grid,
-               birth_snapshot,
-               frozen_variant_id,
-               frozen_direction,
-               frozen_sleeve,
-               frozen_add_policy,
-               spacing_q,
-               spacing,
-               next_add_level,
-               target_guard_reason
-            );
-             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: continuation tp <= spacing", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,
@@ -1384,7 +1306,7 @@ public:
          0
       );
 
-      if(!SleeveEnabled(config, signal.sleeve))
+      if(!SleeveEnabled(signal.sleeve))
          return 0;
 
       if(!birth_allowed)

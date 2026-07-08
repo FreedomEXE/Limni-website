@@ -1,0 +1,4 @@
+MT5 compile summary - 2026-07-08T12:27:12.6687765-04:00
+repo|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 34386 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-revma-fx28-tester-activation-2026-07-08\terminal-sync\repo-LimniPortfolioEA-compile-log.txt
+terminal-14275|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 33094 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-revma-fx28-tester-activation-2026-07-08\terminal-sync\terminal-14275-LimniPortfolioEA-compile-log.txt
+terminal-94497|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 38963 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-revma-fx28-tester-activation-2026-07-08\terminal-sync\terminal-94497-LimniPortfolioEA-compile-log.txt

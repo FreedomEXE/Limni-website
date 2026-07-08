@@ -153,31 +153,26 @@ operator-readable account mode.
 
 ## Revma v001 Exit Contract Checkpoint
 
-Revma v001 is the current Pair Direction / Grid Sleeve strategy.
+Revma v001 is the current Pair Direction / Mean-Reversion Grid strategy.
 
 In `StopTakeProfitMode=SinglePairQAfterFees`, Revma single-pair exits are owned
-by the frozen active grid, not by individual entry signals. Reversion and
-continuation grids have separate operator values:
+by the frozen active grid, not by individual entry signals. Revma has one
+operator grid spacing and one generic stop/take-profit control set:
 
 ```text
-RevmaReversionGridSpacingQ
-RevmaContinuationGridSpacingQ
-RevmaReversionTakeProfit
-RevmaReversionStopLoss
-RevmaContinuationTakeProfit
-RevmaContinuationStopLoss
+RevmaGridSpacingQ
+TakeProfit
+StopLoss
+StopTakeProfitCloseCommissionPerLot
 ```
 
-The generic `RevmaGridSpacingQ`, `TakeProfit`, and `StopLoss` inputs remain the
-default Revma controls. Sleeve-specific values are overrides: keep a sleeve
-field at `0.0` to inherit the generic value, and set it above zero only when
-that sleeve must differ.
-
-Continuation grids need a reachable target. If a continuation grid is configured
-with `RevmaContinuationTakeProfit <= RevmaContinuationGridSpacingQ`, the next
-with-trend add can move the basket TP away at least as fast as the add cadence.
-The EA must skip continuation adds under that impossible setup instead of
-building an unhittable grid.
+Revma is mean-reversion only. LONG signals are eligible only below the
+centerline, and SHORT signals are eligible only above the centerline. With-trend
+states are rejected by Revma instead of being treated as a continuation sleeve.
+No continuation controls are registered, exposed, or executable in
+`LimniPortfolioEA`; if a continuation strategy returns later, it must return as
+a separate strategy with its own lifecycle, receipts, dashboard terms, and
+operator surface.
 
 The intended Revma grid TP behavior is broker-visible grid TP synchronization:
 
@@ -189,13 +184,136 @@ broker TP hit -> intended grid closes
 
 The Revma dashboard must show the operator state first (`LONG`/`SHORT` and
 `ACTIVE`/`WAITING`), then secondary details. The centerline is not optional for
-visual review because it determines whether the current signal is continuation
-or reversion. `BIRTH ID` means the live signal still matches the frozen grid
-identity; it is not a TP or profitability status.
+visual review because it determines whether the current signal is a valid
+mean-reversion setup. `BIRTH ID` means the live signal still matches the frozen
+grid identity; it is not a TP or profitability status.
 
 Account-level percent mode remains separate and must stay behind the account
 close execution switch. Do not duplicate account harvest, portfolio harvest, or
 strategy grid-exit logic without a named architecture gate.
+
+## Terminal Sync Gate
+
+A repo compile is not sufficient proof that Freedom's MT5 terminals are running
+the updated EA. Before calling an MT5 EA gate done, run the terminal sync gate:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Sync-LimniPortfolioEA-Terminals.ps1
+```
+
+Configured terminal roots live in `automation/mt5/terminal-roots.json`. Keep that
+manifest current when the active MT5 install changes.
+
+The sync gate:
+
+- compiles the repo EA source;
+- mirrors `Experts/Limni/LimniPortfolioEA.mq5`,
+  `Experts/Limni/LimniPortfolioEA.ex5`, and `Experts/Include/` into each
+  configured terminal `MQL5` tree;
+- compiles each terminal-local EA source;
+- writes SHA256 parity proof for the repo source/includes against each terminal
+  copy;
+- can install and hash-check the canonical FX28 tester profile
+  `MQL5\Profiles\Tester\LimniPortfolioEA.set`;
+- can archive saved tester profiles that still contain banned old input names,
+  then enforce zero stale tester-profile matches;
+- fails if active EA/README paths reintroduce old Revma split-sleeve terms;
+- warns by default if saved tester profiles still contain stale keys, because
+  those are user/tester settings rather than active EA source;
+- records running `terminal64.exe` processes and can fail on unknown terminals
+  with `-FailOnUnknownRunningTerminal`.
+
+Use `-FailOnStaleTesterProfiles` only when the gate explicitly includes tester
+profile cleanup.
+
+When an all-28 Strategy Tester run is part of the gate, force the tester profile
+into the MT5 data roots before launch:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Sync-LimniPortfolioEA-Terminals.ps1 -SyncTesterProfile -FailOnTesterProfileDrift
+```
+
+When stale saved tester profiles must be removed from active MT5 profile roots,
+archive them into the gate artifact instead of deleting them:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Sync-LimniPortfolioEA-Terminals.ps1 -SyncTesterProfile -FailOnTesterProfileDrift -ArchiveStaleTesterProfiles -FailOnStaleTesterProfiles
+```
+
+## Revma FX28 Fast Smoke
+
+`LimniPortfolioEA` supports all-28 Revma testing. Use:
+
+```text
+RevmaUniverseMode = UniverseFx28
+```
+
+The first fast all-28 mechanics preset is:
+
+```text
+automation/mt5/tester-presets/limni-portfolio-revma-fx28-fast-smoke-20260101-20260108.ini
+```
+
+For the Strategy Tester input grid, load:
+
+```text
+automation/mt5/tester-presets/limni-portfolio-revma-fx28-fast-smoke.set
+```
+
+For repeatable command-line proof, use the runner instead of relying on the MT5
+UI's remembered input grid:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Run-LimniPortfolioEA-FX28Smoke.ps1
+```
+
+The runner installs a run-specific `LimniPortfolioEA.set`, launches the official
+tester config path, verifies receipt proof for 28-symbol evaluation and
+account-level close execution, then restores the canonical FX28 `.set` profile
+in each configured terminal data root.
+
+Recommended first-pass MT5 settings:
+
+```text
+Expert=Limni\LimniPortfolioEA.ex5
+Symbol=EURUSD.i
+Period=M1
+Model=Open prices only / fastest smoke
+RevmaUniverseMode=UniverseFx28
+RevmaQProfile=Fast
+RevmaShowVisualDashboard=false
+StopTakeProfitMode=MultiCurrencyPercentAfterFees
+EnableCloseExecution=true
+EnableAccountCloseExecution=true
+RequireAllSymbols=true
+```
+
+`Symbol=EURUSD.i` only drives the tester clock. With `UniverseFx28`, the EA
+evaluates the fixed 28-pair universe from `Experts/Include/Core/SymbolUniverse.mqh`.
+Start with the fast one-week preset before extending the date range.
+
+For the first patched FX28 run, verify the first `engine_step` receipt reports:
+
+```text
+active_symbols_scanned=28
+clock_ready_symbols=28
+evaluated_symbols=28
+forced_initial_fx28_symbols=28
+```
+
+For multi-currency TP proof, use the managed close-all receipts. In
+`StopTakeProfitMode=MultiCurrencyPercentAfterFees`, broker ticket `T/P` fields
+are not the proof surface. The expected receipts are:
+
+```text
+stop_take_profit_guard status=monitoring
+stop_take_profit_guard status=account_exit_intent liquidation_active=true
+order_request status=close_scan_complete close_scope=account_all_ea
+```
+
+If `close_all_pending=true`, later engine steps should keep emitting account
+close-all intents and should block new Revma entries until managed positions are
+flat.
 
 ## Rules
 

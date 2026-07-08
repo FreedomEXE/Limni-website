@@ -1,0 +1,20 @@
+MT5 tester profile stale-input search - 2026-07-08T02:12:09.7969771-04:00
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:48:RevmaSleeveMode=1||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:53:RevmaReversionGridSpacingQ=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:54:RevmaContinuationGridSpacingQ=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:63:RevmaReversionTakeProfit=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:64:RevmaReversionStopLoss=0.0||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:65:RevmaContinuationTakeProfit=1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCAD.i.M1.last_year.200.ini:66:RevmaContinuationStopLoss=1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCHF.i.M1.20250301_20250304.200.ini:49:RevmaSleeveMode=0||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCHF.i.M1.20260101_20260104.200.ini:49:RevmaSleeveMode=2||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDCHF.i.M1.last_year.200.ini:48:RevmaSleeveMode=2||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.AUDUSD.i.M1.20260101_20260104.200.ini:49:RevmaSleeveMode=2||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.M1.20260101_20260104.230.ini:48:RevmaSleeveMode=2||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:34:RevmaSleeveMode=1||0||0||2||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:39:RevmaReversionGridSpacingQ=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:40:RevmaContinuationGridSpacingQ=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:49:RevmaReversionTakeProfit=0.1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:50:RevmaReversionStopLoss=0.0||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:51:RevmaContinuationTakeProfit=1||0.0||0.000000||0.000000||N
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set:52:RevmaContinuationStopLoss=1||0.0||0.000000||0.000000||N

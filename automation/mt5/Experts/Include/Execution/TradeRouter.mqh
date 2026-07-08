@@ -485,6 +485,7 @@ private:
          plan,
          partial ? "reduce_request" : "close_request",
           "ticket=" + (string)ticket +
+             "|close_scope=" + (plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" : (partial ? "grid_reduce" : "grid_close")) +
              "|position_lots=" + DoubleToString(position_lots, 2) +
              "|close_lots=" + DoubleToString(close_lots, 2) +
              "|grid_magic=" + (string)plan.magic
@@ -534,8 +535,12 @@ private:
       m_trade.SetExpertMagicNumber(plan.magic);
       m_trade.SetDeviationInPoints((ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
 
+      string close_scope = plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" :
+         (plan.action == LP_INTENT_REDUCE_GRID ? "grid_reduce" : "grid_close");
+      int matched = 0;
       int attempted = 0;
       int closed = 0;
+      int skipped_due_to_close_limit = 0;
       double remaining_lots = plan.lots;
       bool reduce_done = false;
 
@@ -559,7 +564,14 @@ private:
                continue;
          }
 
+         matched++;
          if(attempted >= m_config.max_close_positions_per_step)
+         {
+            skipped_due_to_close_limit++;
+            continue;
+         }
+
+         if(reduce_done)
             break;
 
          attempted++;
@@ -577,8 +589,13 @@ private:
          receipts,
          plan,
           "close_scan_complete",
-          "attempted=" + IntegerToString(attempted) +
+          "close_scope=" + close_scope +
+             "|matched=" + IntegerToString(matched) +
+             "|attempted=" + IntegerToString(attempted) +
              "|closed=" + IntegerToString(closed) +
+             "|skipped_due_to_close_limit=" + IntegerToString(skipped_due_to_close_limit) +
+             "|close_limit=" + IntegerToString(m_config.max_close_positions_per_step) +
+             "|close_all_pending=" + LP_BoolText(plan.action == LP_INTENT_CLOSE_ALL_EA && skipped_due_to_close_limit > 0) +
              "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
              "|reduce_done=" + LP_BoolText(reduce_done) +
              "|grid_magic=" + (string)plan.magic

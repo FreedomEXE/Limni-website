@@ -302,7 +302,8 @@ private:
       else
       {
          signal.valid = false;
-         signal.reason_code = direction.valid ? "sleeve_unclassified" : direction.reason_code;
+         signal.anchor_relation = relation;
+         signal.reason_code = direction.valid ? "mean_reversion_setup_required" : direction.reason_code;
       }
    }
 

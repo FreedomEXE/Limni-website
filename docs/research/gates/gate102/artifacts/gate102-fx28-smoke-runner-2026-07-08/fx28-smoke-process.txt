@@ -1,0 +1,12 @@
+
+
+TerminalId   : 14275
+Pid          : 11984
+ExitCode     : 0
+TimedOut     : False
+Config       : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-ru
+               nner-2026-07-08\gate102-fx28-smoke.ini
+RunProfile   : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-ru
+               nner-2026-07-08\LimniPortfolioEA.set
+OutputFolder : LimniPortfolioEA_Gate102_FX28_SMOKE_20260708-131313
+Report       : Gate102_FX28_SMOKE_20260708-131313

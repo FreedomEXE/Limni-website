@@ -1,0 +1,38 @@
+Gate 101 repo compile summary
+Date: 2026-07-08
+
+Source:
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Limni\LimniPortfolioEA.mq5
+
+Log:
+C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\gate101-revma-mean-reversion-lockdown-2026-07-08\repo-LimniPortfolioEA-compile-log.txt
+
+MetaEditor:
+C:\Program Files\OANDA Global MetaTrader 5 Terminal\MetaEditor64.exe
+
+MetaEditor process exit code:
+1
+
+Compile result line:
+Result: 0 errors, 0 warnings, 23187 msec elapsed, cpu='X64 Regular'
+
+Verdict:
+PASS - clean compile log. Local MetaEditor exit code 1 matches the known clean-log pattern from prior gates.
+
+Terminal sync correction:
+The actual terminal source trees were synced after Freedom reported stale input menu entries.
+
+Synced terminal roots:
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\14275C4F9441C73E9E6547075C33FE6C\MQL5
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5
+
+Terminal compile result lines:
+14275... Result: 0 errors, 0 warnings, 24242 ms elapsed, cpu='X64 Regular'
+94497... Result: 0 errors, 0 warnings, 23881 ms elapsed, cpu='X64 Regular'
+
+Terminal Experts stale input search:
+14275... MQL5\Experts: NO MATCHES
+94497... MQL5\Experts: NO MATCHES
+
+Remaining stale old-input keys:
+Only saved tester profile/config files under 94497...\MQL5\Profiles\Tester still contain old RevmaSleeveMode / RevmaContinuationGridSpacingQ keys.

@@ -63,7 +63,6 @@ enum LP_VariantId
    LP_VARIANT_NONE = 0,
    LP_VARIANT_STRICT = 1,
    LP_VARIANT_LOOSE = 2,
-   LP_VARIANT_REVMA_CONTINUATION = 10,
    LP_VARIANT_REVMA_REVERSION = 11
 };
 
@@ -80,13 +79,6 @@ enum LP_RevmaQProfile
    LP_REVMA_Q_PROFILE_SLOW = 2,
    LP_REVMA_Q_PROFILE_FULL = 3,
    LP_REVMA_Q_PROFILE_CUSTOM = 4
-};
-
-enum LP_RevmaSleeveMode
-{
-   LP_REVMA_SLEEVES_BOTH = 0,
-   LP_REVMA_SLEEVES_TREND_ONLY = 1,
-   LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY = 2
 };
 
 enum LP_StopTakeProfitMode
@@ -268,15 +260,10 @@ struct LP_Config
    bool enable_qstate_trend_variant;
    bool enable_revma_system;
    LP_UniverseMode revma_universe_mode;
-   LP_RevmaSleeveMode revma_sleeve_mode;
-   bool revma_enable_continuation_sleeve;
-   bool revma_enable_reversion_sleeve;
    LP_RevmaQProfile revma_q_profile;
    int revma_max_m1_bars;
    double revma_fixed_lots;
    double revma_grid_spacing_q;
-   double revma_reversion_grid_spacing_q;
-   double revma_continuation_grid_spacing_q;
    int revma_intent_expiry_minutes;
    bool revma_show_visual_dashboard;
    int revma_dashboard_refresh_seconds;
@@ -284,10 +271,6 @@ struct LP_Config
    LP_StopTakeProfitMode stop_take_profit_mode;
    double take_profit_value;
    double stop_loss_value;
-   double revma_reversion_take_profit_value;
-   double revma_reversion_stop_loss_value;
-   double revma_continuation_take_profit_value;
-   double revma_continuation_stop_loss_value;
    double stop_take_profit_close_commission_per_lot;
    double max_currency_signed_lots;
    double max_currency_gross_lots;

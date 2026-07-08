@@ -1,0 +1,13 @@
+MT5 terminal sync gate - 2026-07-08T12:48:42.8392368-04:00
+Manifest: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\terminal-roots.json
+ArtifactDir: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync
+Source hash mismatches: 0
+Compile failures: 0
+Active Experts stale-input matches: 0
+Tester profile stale-input matches: 5
+Unknown running terminal64.exe count: 0
+Compile summary: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync\terminal-compile-summary.txt
+Source hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync\terminal-source-hash-proof.csv
+Active Experts stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync\terminal-experts-stale-input-search.txt
+Tester profile stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync\terminal-profiles-stale-input-search.txt
+Running terminals: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-tp-repro-2026-07-08\pre-run-terminal-sync\running-terminals.txt

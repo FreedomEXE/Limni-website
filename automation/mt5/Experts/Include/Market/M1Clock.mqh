@@ -33,22 +33,18 @@ public:
       if(!meta.tradable)
          return false;
 
-      long synchronized = 0;
-      if(!SeriesInfoInteger(meta.broker_symbol, PERIOD_M1, SERIES_SYNCHRONIZED, synchronized))
-      {
-         m_sync_fail_count++;
-         return false;
-      }
-      state.synchronized = synchronized > 0;
-      if(!state.synchronized)
+      datetime times[1];
+      if(CopyTime(meta.broker_symbol, PERIOD_M1, 1, 1, times) != 1)
       {
          m_sync_fail_count++;
          return false;
       }
 
-      datetime times[1];
-      if(CopyTime(meta.broker_symbol, PERIOD_M1, 1, 1, times) != 1)
-         return false;
+      long synchronized = 0;
+      if(SeriesInfoInteger(meta.broker_symbol, PERIOD_M1, SERIES_SYNCHRONIZED, synchronized))
+         state.synchronized = synchronized > 0;
+      else
+         state.synchronized = false;
 
       state.last_bar_time = times[0];
       int id = meta.symbol_id;

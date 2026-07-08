@@ -1,5 +1,5 @@
 /*-----------------------------------------------
-  Revma v001 system contracts
+  Revma v001 mean-reversion system contracts
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_REVMA_TYPES_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_TYPES_MQH__
@@ -10,12 +10,11 @@
 
 #define LP_REVMA_SYSTEM_ID "revma-v001"
 #define LP_REVMA_SYSTEM_NAME "Revma v001"
-#define LP_REVMA_FORMULA_ID "revma-pair-direction-grid-v001"
+#define LP_REVMA_FORMULA_ID "revma-mean-reversion-grid-v001"
 
 enum LP_RevmaSleeve
 {
    LP_REVMA_SLEEVE_NONE = 0,
-   LP_REVMA_SLEEVE_CONTINUATION = 1,
    LP_REVMA_SLEEVE_REVERSION = 2
 };
 
@@ -41,15 +40,6 @@ string LP_RevmaQProfileName(const int profile)
    if(profile == LP_REVMA_Q_PROFILE_CUSTOM)
       return "CUSTOM";
    return "UNKNOWN";
-}
-
-string LP_RevmaSleeveModeName(const int mode)
-{
-   if(mode == LP_REVMA_SLEEVES_TREND_ONLY)
-      return "REVMA_TREND_ONLY";
-   if(mode == LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY)
-      return "REVMA_MEAN_REVERSION_ONLY";
-   return "REVMA_TREND_AND_MEAN_REVERSION";
 }
 
 int LP_RevmaDefaultMaxM1BarsForProfile(const int profile)
@@ -87,65 +77,45 @@ string LP_RevmaConfigQProfileId(const LP_Config &config)
 
 string LP_RevmaSleeveName(const int sleeve)
 {
-   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-      return "CONTINUATION";
    if(sleeve == LP_REVMA_SLEEVE_REVERSION)
-      return "REVERSION";
+      return "MEAN_REVERSION";
    return "NONE";
 }
 
 double LP_RevmaGridSpacingQForSleeve(const LP_Config &config, const int sleeve)
 {
-   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-      return config.revma_continuation_grid_spacing_q > 0.0 ?
-         config.revma_continuation_grid_spacing_q : config.revma_grid_spacing_q;
-   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
-      return config.revma_reversion_grid_spacing_q > 0.0 ?
-         config.revma_reversion_grid_spacing_q : config.revma_grid_spacing_q;
+   if(sleeve == LP_REVMA_SLEEVE_NONE)
+      return config.revma_grid_spacing_q;
    return config.revma_grid_spacing_q;
 }
 
 double LP_RevmaTakeProfitQForSleeve(const LP_Config &config, const int sleeve)
 {
-   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-      return config.revma_continuation_take_profit_value > 0.0 ?
-         config.revma_continuation_take_profit_value : config.take_profit_value;
-   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
-      return config.revma_reversion_take_profit_value > 0.0 ?
-         config.revma_reversion_take_profit_value : config.take_profit_value;
+   if(sleeve == LP_REVMA_SLEEVE_NONE)
+      return config.take_profit_value;
    return config.take_profit_value;
 }
 
 double LP_RevmaStopLossQForSleeve(const LP_Config &config, const int sleeve)
 {
-   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-      return config.revma_continuation_stop_loss_value > 0.0 ?
-         config.revma_continuation_stop_loss_value : config.stop_loss_value;
-   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
-      return config.revma_reversion_stop_loss_value > 0.0 ?
-         config.revma_reversion_stop_loss_value : config.stop_loss_value;
+   if(sleeve == LP_REVMA_SLEEVE_NONE)
+      return config.stop_loss_value;
    return config.stop_loss_value;
 }
 
 bool LP_RevmaAnySleeveTakeProfitEnabled(const LP_Config &config)
 {
-   return config.take_profit_value > 0.0 ||
-      config.revma_reversion_take_profit_value > 0.0 ||
-      config.revma_continuation_take_profit_value > 0.0;
+   return config.take_profit_value > 0.0;
 }
 
 bool LP_RevmaAnySleeveStopTakeProfitEnabled(const LP_Config &config)
 {
    return LP_RevmaAnySleeveTakeProfitEnabled(config) ||
-      config.stop_loss_value > 0.0 ||
-      config.revma_reversion_stop_loss_value > 0.0 ||
-      config.revma_continuation_stop_loss_value > 0.0;
+      config.stop_loss_value > 0.0;
 }
 
 int LP_RevmaVariantForSleeve(const int sleeve)
 {
-   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
-      return LP_VARIANT_REVMA_CONTINUATION;
    if(sleeve == LP_REVMA_SLEEVE_REVERSION)
       return LP_VARIANT_REVMA_REVERSION;
    return LP_VARIANT_NONE;
@@ -157,12 +127,11 @@ ulong LP_RevmaFormulaHash()
    payload += "|system_id=" + LP_REVMA_SYSTEM_ID;
    payload += "|pair_direction_formula_id=" + LimniPairDirectionFormulaId();
    payload += "|pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash();
-   payload += "|birth_context=direction_plus_anchor_relation";
-   payload += "|long_above=continuation_add_higher";
-   payload += "|short_below=continuation_add_lower";
+   payload += "|birth_context=direction_plus_anchor_relation_mean_reversion_only";
    payload += "|long_below=reversion_add_lower";
    payload += "|short_above=reversion_add_higher";
-   payload += "|grid_sleeve_locked_at_birth";
+   payload += "|with_trend_states_rejected";
+   payload += "|grid_setup_locked_at_birth";
    payload += "|separate_system_no_external_trade_trigger";
    return LP_HashString(payload);
 }
@@ -319,9 +288,12 @@ bool LP_RevmaClassifySleeve(
    if(anchor_relation == 0)
       return false;
 
-   bool continuation = (direction > 0 && anchor_relation > 0) ||
-      (direction < 0 && anchor_relation < 0);
-   sleeve = continuation ? LP_REVMA_SLEEVE_CONTINUATION : LP_REVMA_SLEEVE_REVERSION;
+   bool mean_reversion = (direction > 0 && anchor_relation < 0) ||
+      (direction < 0 && anchor_relation > 0);
+   if(!mean_reversion)
+      return false;
+
+   sleeve = LP_REVMA_SLEEVE_REVERSION;
    return true;
 }
 

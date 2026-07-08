@@ -111,8 +111,6 @@ string LP_StrategyCommentName(const int lane_id, const int variant_id)
 {
    if(lane_id == LP_LANE_REVMA)
    {
-      if(variant_id == LP_VARIANT_REVMA_CONTINUATION)
-         return "RevmaTrend";
       if(variant_id == LP_VARIANT_REVMA_REVERSION)
          return "RevmaMeanRev";
       return "Revma";
