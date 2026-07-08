@@ -43,12 +43,25 @@ public:
       const LP_Config &config,
       LP_GridBook &grid_book,
       LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus,
+      const bool birth_allowed
+   )
+   {
+      if(!m_enabled)
+         return 0;
+      return m_revma.Evaluate(signal, config, grid_book, receipts, bus, birth_allowed);
+   }
+
+   int EvaluateRevmaGridExits(
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_ReceiptWriter &receipts,
       LP_IntentBus &bus
    )
    {
       if(!m_enabled)
          return 0;
-      return m_revma.Evaluate(signal, config, grid_book, receipts, bus);
+      return m_revma.EvaluateGridExits(config, grid_book, receipts, bus);
    }
 
    string RevmaVisualDashboardText()

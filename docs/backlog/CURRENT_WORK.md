@@ -8,6 +8,71 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
+### Current Override - 2026-07-07
+
+Active lane: Gate 99ZZE `revma-grid-basket-tp-repair`.
+
+Current repo branch:
+`codex/gate88-mt5-lifecycle-protection-controls`.
+
+Current pushed branch head observed during recovery:
+`fa44e296 Ingest research paper batch 02 metadata`.
+
+Gate 99ZZE corrects the intended one-pair crude Revma TP/SL behavior after
+manual visual testing showed that the earlier Gate 99ZZC broker-side ticket
+SL/TP scaffolding did not match the research contract.
+
+Corrected contract:
+
+- `StopTakeProfitMode=SinglePairQAfterFees` means frozen active Revma
+  grid/basket TP/SL, not per-ticket broker TP/SL.
+- `TakeProfit` and `StopLoss` are q units for the active Revma grid.
+- The EA sums active grid open money, subtracts estimated close fees, and emits
+  a close-grid intent when the grid threshold is hit.
+- MT5 trade table `T/P` and `S/L` fields may remain `0.00000`; proof is through
+  `revma_grid_exit`, close request/result receipts, and flat post-close grid
+  inventory.
+- Tester defaults are set for the first one-pair crude TP smoke:
+  `EnableCloseExecution=true`, `EnableAccountCloseExecution=false`,
+  `StopTakeProfitMode=SinglePairQAfterFees`, `TakeProfit=0.1`, `StopLoss=0.0`,
+  `OutputFolder=LimniPortfolioEA_Gate99ZZE_Smoke`.
+
+Gate 99ZZE report:
+`docs/research/gates/gate99/GATE99ZZE_REVMA_GRID_BASKET_TP_REPAIR_2026-07-07.md`.
+
+Gate 99ZZD boundary and shadow packet remain useful research context, but their
+old broker-side single-pair scaffolding wording is superseded by Gate 99ZZE.
+
+One-pair hidden TP smoke passed on `AUDCHF.i` for `2026.01.01` through
+`2026.01.04` with `TakeProfit=0.1` and `StopLoss=0.0`: `3` births, `36` adds,
+`6` grid TP triggers, `39` attempted closes, `39` closes, final grid inventory
+flat, and no bad order results.
+
+Freedom's latest correction: Gate 99ZZE's managed close-grid checkpoint is not
+accepted as final because MT5 tickets still show `T/P=0.00000`. Intended
+behavior is a visible/effective grid-level TP: with one trade it is that
+ticket's TP; after adds, the grid TP moves/updates so the whole grid closes at
+the configured basket/q target.
+
+External review prompt:
+`docs/research/gates/gate99/CHATGPT_REVIEW_GATE99ZZE_REVMA_GRID_TP_ARCHITECTURE_PROMPT_2026-07-07.md`.
+
+Next-chat handoff:
+`docs/research/gates/gate99/NEXT_CHAT_GATE99ZZE_REVMA_GRID_TP_REVIEW_WAIT_PROMPT_2026-07-07.md`.
+
+Next valid EA action: wait for ChatGPT Pro code review. Do not patch, run
+all-28, or optimize before review is read and Freedom approves the next narrow
+repair gate.
+
+Frozen: no new operator inputs, no all-28 Revma backtest, no optimization, no
+exposure/grid-cap validation, no performance/profitability/promotion/
+live-readiness claim, no Katarakti work, no Q-state/future-system resurrection,
+no paper-ingestion work, and no `.husky` hook staging or cleanup.
+
+Paper ingestion remains a separate lane owned by `docs/research/papers/*`,
+`docs/literature/papers/*`, and
+`docs/literature/papers/limni_remaining_research_paper_links.csv`.
+
 ### Current Override - 2026-07-05
 
 Active lane: `LimniKataraktiEA` / Gate 98 closeout to Gate 99

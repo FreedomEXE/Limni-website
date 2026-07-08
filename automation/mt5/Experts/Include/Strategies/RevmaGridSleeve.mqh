@@ -455,110 +455,6 @@ private:
       intent.human_reason = reason;
    }
 
-   double EstimatedCloseFeePriceDistance(
-      const string symbol,
-      const double lots,
-      const LP_Config &config,
-      double &fee_money,
-      double &money_per_price,
-      string &note
-   )
-   {
-      fee_money = 0.0;
-      money_per_price = 0.0;
-      note = "";
-
-      double abs_lots = MathAbs(lots);
-      if(abs_lots <= 0.0 || config.stop_take_profit_close_commission_per_lot <= 0.0)
-         return 0.0;
-
-      fee_money = abs_lots * config.stop_take_profit_close_commission_per_lot;
-      double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-      double tick_value = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-      if(tick_size <= 0.0 || tick_value <= 0.0)
-      {
-         note = "fee_adjustment_unavailable_symbol_tick_value";
-         return 0.0;
-      }
-
-      money_per_price = (tick_value / tick_size) * abs_lots;
-      if(money_per_price <= 0.0 || !MathIsValidNumber(money_per_price))
-      {
-         note = "fee_adjustment_unavailable_money_per_price";
-         return 0.0;
-      }
-
-      double distance = fee_money / money_per_price;
-      if(distance <= 0.0 || !MathIsValidNumber(distance))
-      {
-         note = "fee_adjustment_unavailable_distance";
-         return 0.0;
-      }
-      return distance;
-   }
-
-   void ApplyStopTakeProfit(
-      const double q_distance_basis,
-      const LP_Config &config,
-      LP_TradeIntent &intent
-   )
-   {
-      intent.take_profit_distance_price = 0.0;
-      intent.stop_loss_distance_price = 0.0;
-      intent.stop_take_profit_basis = "";
-
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return;
-      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
-         return;
-      if(q_distance_basis <= 0.0 || !MathIsValidNumber(q_distance_basis))
-         return;
-
-      double fee_money = 0.0;
-      double money_per_price = 0.0;
-      string fee_note = "";
-      double fee_price_distance = EstimatedCloseFeePriceDistance(
-         intent.symbol,
-         intent.requested_lots,
-         config,
-         fee_money,
-         money_per_price,
-         fee_note
-      );
-
-      double raw_take_profit_distance = config.take_profit_value > 0.0 ?
-         q_distance_basis * config.take_profit_value : 0.0;
-      double raw_stop_loss_distance = config.stop_loss_value > 0.0 ?
-         q_distance_basis * config.stop_loss_value : 0.0;
-
-      if(raw_take_profit_distance > 0.0)
-         intent.take_profit_distance_price = raw_take_profit_distance + fee_price_distance;
-      if(raw_stop_loss_distance > 0.0)
-      {
-         double adjusted_stop_distance = raw_stop_loss_distance - fee_price_distance;
-         if(adjusted_stop_distance > 0.0)
-            intent.stop_loss_distance_price = adjusted_stop_distance;
-         else
-            fee_note = fee_note == "" ? "stop_loss_disabled_fee_exceeds_distance" :
-               fee_note + ",stop_loss_disabled_fee_exceeds_distance";
-      }
-
-      if(raw_take_profit_distance > 0.0 || raw_stop_loss_distance > 0.0)
-      {
-         intent.stop_take_profit_basis = "single_pair_q_after_fees" +
-            "|take_profit_value_q=" + DoubleToString(config.take_profit_value, 4) +
-            "|stop_loss_value_q=" + DoubleToString(config.stop_loss_value, 4) +
-            "|raw_take_profit_distance_price=" + DoubleToString(raw_take_profit_distance, 8) +
-            "|raw_stop_loss_distance_price=" + DoubleToString(raw_stop_loss_distance, 8) +
-            "|fee_price_adjustment=" + DoubleToString(fee_price_distance, 8) +
-            "|estimated_close_fee_money=" + DoubleToString(fee_money, 2) +
-            "|money_per_price=" + DoubleToString(money_per_price, 2) +
-            "|close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2);
-         if(fee_note != "")
-            intent.stop_take_profit_basis += "|fee_note=" + fee_note;
-      }
-   }
-
    bool FrozenAddHit(
       const string frozen_add_policy,
       const LP_RevmaSignal &signal,
@@ -618,6 +514,263 @@ private:
       return DoubleToString(value, 5);
    }
 
+   bool MoneyPerPriceDistance(
+      const string symbol,
+      const double lots,
+      double &money_per_price,
+      string &note
+   )
+   {
+      money_per_price = 0.0;
+      note = "";
+      double abs_lots = MathAbs(lots);
+      if(abs_lots <= 0.0)
+      {
+         note = "grid_lots_invalid";
+         return false;
+      }
+
+      double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+      double tick_value = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+      if(tick_size <= 0.0 || tick_value <= 0.0)
+      {
+         note = "symbol_tick_value_unavailable";
+         return false;
+      }
+
+      money_per_price = (tick_value / tick_size) * abs_lots;
+      if(money_per_price <= 0.0 || !MathIsValidNumber(money_per_price))
+      {
+         note = "money_per_price_invalid";
+         return false;
+      }
+      return true;
+   }
+
+   double GridCloseFeeMoney(const LP_GridInventoryRow &grid, const LP_Config &config)
+   {
+      if(config.stop_take_profit_close_commission_per_lot <= 0.0)
+         return 0.0;
+      return MathAbs(grid.lots) * config.stop_take_profit_close_commission_per_lot;
+   }
+
+   string BasketExitVisualText(
+      const string symbol,
+      const LP_GridInventoryRow &grid,
+      const LP_RevmaGridBirthSnapshot &birth,
+      const LP_Config &config
+   )
+   {
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+         return "";
+      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
+         return "";
+
+      double q_basis = birth.valid && birth.q > 0.0 ? birth.q : 0.0;
+      if(q_basis <= 0.0)
+         return " basket exit: waiting for birth q\n";
+
+      double money_per_price = 0.0;
+      string note = "";
+      if(!MoneyPerPriceDistance(symbol, grid.lots, money_per_price, note))
+         return " basket exit: unavailable (" + note + ")\n";
+
+      double close_fee = GridCloseFeeMoney(grid, config);
+      double net_open_money = grid.floating_pnl - close_fee;
+      double take_profit_money = config.take_profit_value > 0.0 ?
+         q_basis * config.take_profit_value * money_per_price : 0.0;
+      double stop_loss_money = config.stop_loss_value > 0.0 ?
+         q_basis * config.stop_loss_value * money_per_price : 0.0;
+
+      return " avg entry: " + PriceText(grid.avg_entry_price) +
+            "  pnl: " + DoubleToString(grid.floating_pnl, 2) + "\n" +
+         " basket net: " + DoubleToString(net_open_money, 2) +
+            "  tp: " + DoubleToString(take_profit_money, 2) +
+            "  sl: " + DoubleToString(stop_loss_money, 2) + "\n";
+   }
+
+   string BasketExitMetadata(
+      const string symbol,
+      const LP_GridInventoryRow &grid,
+      const LP_RevmaGridBirthSnapshot &birth,
+      const LP_Config &config,
+      const string reason,
+      const double q_basis,
+      const double money_per_price,
+      const double gross_open_money,
+      const double estimated_close_fee,
+      const double net_open_money,
+      const double take_profit_money,
+      const double stop_loss_money
+   )
+   {
+      return "scope=single_pair_grid_q_after_fees" +
+         "|reason=" + reason +
+         "|symbol=" + symbol +
+         "|grid_key=" + (string)grid.grid_key +
+         "|grid_variant_id=" + IntegerToString(grid.variant_id) +
+         "|grid_direction=" + LP_RevmaDirectionName(grid.direction) +
+         "|grid_family=" + IntegerToString(grid.grid_family) +
+         "|grid_positions=" + IntegerToString(grid.position_count) +
+         "|grid_lots=" + DoubleToString(grid.lots, 2) +
+         "|grid_tickets=" + grid.tickets +
+         "|avg_entry=" + DoubleToString(grid.avg_entry_price, 5) +
+         "|min_entry=" + DoubleToString(grid.min_entry_price, 5) +
+         "|max_entry=" + DoubleToString(grid.max_entry_price, 5) +
+         "|q_basis=" + DoubleToString(q_basis, 8) +
+         "|take_profit_value_q=" + DoubleToString(config.take_profit_value, 4) +
+         "|stop_loss_value_q=" + DoubleToString(config.stop_loss_value, 4) +
+         "|money_per_price=" + DoubleToString(money_per_price, 2) +
+         "|gross_open_money=" + DoubleToString(gross_open_money, 2) +
+         "|estimated_close_fee=" + DoubleToString(estimated_close_fee, 2) +
+         "|net_open_money_after_fees=" + DoubleToString(net_open_money, 2) +
+         "|take_profit_target_money_after_fees=" + DoubleToString(take_profit_money, 2) +
+         "|stop_loss_target_money_after_fees=" + DoubleToString(stop_loss_money, 2) +
+         "|close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) +
+         BirthSnapshotMetadata(birth);
+   }
+
+   void BuildGridCloseIntent(
+      const string symbol,
+      const LP_GridInventoryRow &grid,
+      const string reason,
+      const string metadata,
+      const double score,
+      LP_TradeIntent &intent
+   )
+   {
+      intent.intent_id = NextIntentId();
+      intent.symbol_id = grid.symbol_id;
+      intent.symbol = symbol;
+      intent.lane_id = LP_LANE_REVMA;
+      intent.variant_id = grid.variant_id;
+      intent.action = LP_INTENT_CLOSE_GRID;
+      intent.direction = grid.direction;
+      intent.emitted_at = TimeCurrent();
+      intent.source_bar_time = TimeCurrent();
+      intent.expires_at = 0;
+      intent.requested_lots = 0.0;
+      intent.max_slippage_points = 10.0;
+      intent.take_profit_distance_price = 0.0;
+      intent.stop_loss_distance_price = 0.0;
+      intent.stop_take_profit_basis = "";
+      intent.priority = 95;
+      intent.score = score;
+      intent.grid_key = grid.grid_key;
+      intent.config_hash = m_config_hash;
+      intent.strategy_version_hash = LP_HashString("gate99zze_revma_grid_summed_sltp");
+      intent.human_reason = "revma_grid_basket_exit|" + metadata;
+   }
+
+   bool QueueGridExitIfTriggered(
+      const LP_GridInventoryRow &grid,
+      const LP_Config &config,
+      LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus
+   )
+   {
+      if(grid.lane_id != LP_LANE_REVMA || grid.position_count <= 0 || grid.lots <= 0.0)
+         return false;
+
+      LP_RevmaGridBirthSnapshot birth;
+      if(!FindBirth(grid.grid_key, birth))
+         return false;
+      if(!birth.valid || birth.q <= 0.0)
+         return false;
+
+      string symbol = LP_ResolveBrokerSymbol(LP_CanonicalSymbol(grid.symbol_id), config.broker_symbol_suffix);
+      double money_per_price = 0.0;
+      string money_note = "";
+      if(!MoneyPerPriceDistance(symbol, grid.lots, money_per_price, money_note))
+      {
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_EXIT,
+            symbol,
+            "basket_exit_unavailable",
+            "scope=single_pair_grid_q_after_fees|reason=" + money_note +
+               "|grid_key=" + (string)grid.grid_key +
+               "|grid_positions=" + IntegerToString(grid.position_count) +
+               "|grid_lots=" + DoubleToString(grid.lots, 2),
+            LP_LANE_REVMA,
+            grid.variant_id,
+            grid.grid_key,
+            0,
+            0,
+            0
+         );
+         return false;
+      }
+
+      double q_basis = birth.q;
+      double take_profit_money = config.take_profit_value > 0.0 ?
+         q_basis * config.take_profit_value * money_per_price : 0.0;
+      double stop_loss_money = config.stop_loss_value > 0.0 ?
+         q_basis * config.stop_loss_value * money_per_price : 0.0;
+      double gross_open_money = grid.floating_pnl;
+      double estimated_close_fee = GridCloseFeeMoney(grid, config);
+      double net_open_money = gross_open_money - estimated_close_fee;
+
+      string reason = "";
+      string status = "";
+      if(take_profit_money > 0.0 && net_open_money >= take_profit_money)
+      {
+         reason = "take_profit_grid_q_after_fees";
+         status = "revma_basket_tp_reached";
+      }
+      if(reason == "" && stop_loss_money > 0.0 && net_open_money <= -stop_loss_money)
+      {
+         reason = "stop_loss_grid_q_after_fees";
+         status = "revma_basket_sl_reached";
+      }
+      if(reason == "")
+         return false;
+
+      string metadata = BasketExitMetadata(
+         symbol,
+         grid,
+         birth,
+         config,
+         reason,
+         q_basis,
+         money_per_price,
+         gross_open_money,
+         estimated_close_fee,
+         net_open_money,
+         take_profit_money,
+         stop_loss_money
+      );
+
+      LP_TradeIntent close_intent;
+      BuildGridCloseIntent(symbol, grid, reason, metadata, net_open_money, close_intent);
+      bus.Add(close_intent);
+
+      receipts.Write(
+         LP_RECEIPT_REVMA_GRID_EXIT,
+         symbol,
+         status,
+         metadata,
+         LP_LANE_REVMA,
+         grid.variant_id,
+         grid.grid_key,
+         close_intent.intent_id,
+         0,
+         0
+      );
+      receipts.Write(
+         LP_RECEIPT_REVMA_GRID_EXIT,
+         symbol,
+         "revma_grid_close_intent",
+         metadata + "|intent_id=" + (string)close_intent.intent_id,
+         LP_LANE_REVMA,
+         grid.variant_id,
+         grid.grid_key,
+         close_intent.intent_id,
+         0,
+         0
+      );
+      return true;
+   }
+
    void UpdateVisualText(
       const LP_RevmaSignal &signal,
       const bool has_grid,
@@ -628,7 +781,8 @@ private:
       const int frozen_sleeve,
       const string frozen_add_policy,
       const double next_add_level,
-      const string last_action
+      const string last_action,
+      const LP_Config &config
    )
    {
       string current_policy = AddPolicyName(signal);
@@ -676,9 +830,10 @@ private:
          " current variant: V" + IntegerToString(signal.variant_id) +
             "  matches birth: " + LP_BoolText(current_matches) + "\n" +
          " next add level: " + PriceText(next_add_level) + "\n" +
-         " open positions: " + IntegerToString(grid.position_count) +
-            "  lots: " + DoubleToString(grid.lots, 2) + "\n" +
-         " last action: " + last_action;
+          " open positions: " + IntegerToString(grid.position_count) +
+             "  lots: " + DoubleToString(grid.lots, 2) + "\n" +
+         BasketExitVisualText(signal.symbol, grid, birth, config) +
+          " last action: " + last_action;
 
       if(m_last_divergent_add_text != "")
          m_visual_text += "\n\n" + m_last_divergent_add_text;
@@ -716,12 +871,39 @@ public:
       return true;
    }
 
+   int EvaluateGridExits(
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus
+   )
+   {
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+         return 0;
+      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
+         return 0;
+      if(config.take_profit_value <= 0.0 && config.stop_loss_value <= 0.0)
+         return 0;
+
+      int emitted = 0;
+      for(int i = 0; i < grid_book.OpenGridCount(); i++)
+      {
+         LP_GridInventoryRow grid;
+         if(!grid_book.GetGrid(i, grid))
+            continue;
+         if(QueueGridExitIfTriggered(grid, config, receipts, bus))
+            emitted++;
+      }
+      return emitted;
+   }
+
    int Evaluate(
       const LP_RevmaSignal &signal,
       const LP_Config &config,
       LP_GridBook &grid_book,
       LP_ReceiptWriter &receipts,
-      LP_IntentBus &bus
+      LP_IntentBus &bus,
+      const bool birth_allowed
    )
    {
       if(!signal.valid)
@@ -765,7 +947,7 @@ public:
                next_add_level,
                "other_reason_frozen_sleeve_disabled"
             );
-            UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: frozen sleeve disabled");
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: frozen sleeve disabled", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,
@@ -796,7 +978,7 @@ public:
                next_add_level,
                "other_reason_frozen_policy_unavailable"
             );
-            UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: frozen policy unavailable");
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: frozen policy unavailable", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,
@@ -827,7 +1009,7 @@ public:
                next_add_level,
                "other_reason_spacing_invalid"
             );
-            UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing invalid");
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing invalid", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,
@@ -860,7 +1042,7 @@ public:
                next_add_level,
                "grid_found_but_add_spacing_not_reached"
             );
-            UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing not reached");
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing not reached", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,
@@ -893,8 +1075,7 @@ public:
          add_intent.requested_lots = config.revma_fixed_lots;
          add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
             (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-         ApplyStopTakeProfit(spacing_q, config, add_intent);
-         bus.Add(add_intent);
+          bus.Add(add_intent);
          if(!CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction))
          {
             m_last_divergent_add_text =
@@ -911,7 +1092,7 @@ public:
                 " receipt: current_matches_birth_identity=false";
             m_dashboard_screenshot_requested = true;
           }
-         UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "add intent emitted");
+          UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "add intent emitted", config);
          receipts.Write(
             LP_RECEIPT_REVMA_GRID_ADD,
             signal.symbol,
@@ -943,6 +1124,24 @@ public:
       if(!SleeveEnabled(config, signal.sleeve))
          return 0;
 
+      if(!birth_allowed)
+      {
+         UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, AddPolicyName(signal), 0.0, "birth blocked: waiting for fresh state", config);
+         receipts.Write(
+            LP_RECEIPT_REVMA_REENTRY_GATE,
+            signal.symbol,
+            "birth_blocked_waiting_for_fresh_state",
+            NoActiveGridAddSkipMetadata(signal, "birth_gate_denied"),
+            LP_LANE_REVMA,
+            signal.variant_id,
+            0,
+            0,
+            0,
+            0
+         );
+         return 0;
+      }
+
       LP_TradeIntent open_intent;
       BuildIntent(signal, LP_INTENT_OPEN_GRID, 0, signal.variant_id, signal.direction, "", open_intent);
       int grid_family = (int)(open_intent.intent_id % 9000) + 1;
@@ -964,9 +1163,8 @@ public:
       open_intent.requested_lots = config.revma_fixed_lots;
       open_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
          (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-      ApplyStopTakeProfit(signal.q, config, open_intent);
       bus.Add(open_intent);
-      UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted");
+      UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted", config);
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_BIRTH,
          signal.symbol,

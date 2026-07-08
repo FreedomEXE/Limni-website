@@ -1,0 +1,5 @@
+done=True
+folder=C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\Common\Files\LimniPortfolioEA_Gate99ZZE_AUDCHF_TP01_20260101_20260104
+ini=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate99\artifacts\gate99zze-revma-grid-basket-tp-repair-2026-07-07\smoke-configs\gate99zze-audchf-tp01-20260101-20260104.ini
+receipt=C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\Common\Files\LimniPortfolioEA_Gate99ZZE_AUDCHF_TP01_20260101_20260104\LimniPortfolioEA_EightcapGlobal_Live_1767225600_receipts.csv
+summary=C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\Common\Files\LimniPortfolioEA_Gate99ZZE_AUDCHF_TP01_20260101_20260104\LimniPortfolioEA_EightcapGlobal_Live_1767225600_summary.csv

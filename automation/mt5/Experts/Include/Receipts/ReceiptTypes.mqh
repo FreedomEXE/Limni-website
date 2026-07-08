@@ -36,6 +36,8 @@ string LP_ReceiptKindName(const int kind)
       case LP_RECEIPT_REVMA_GRID_ADD: return "revma_grid_add";
       case LP_RECEIPT_REVMA_GRID_ADD_SKIP: return "revma_grid_add_skip";
       case LP_RECEIPT_STOP_TAKE_PROFIT_GUARD: return "stop_take_profit_guard";
+      case LP_RECEIPT_REVMA_REENTRY_GATE: return "revma_reentry_gate";
+      case LP_RECEIPT_REVMA_GRID_EXIT: return "revma_grid_exit";
    }
    return "unknown";
 }

@@ -1,0 +1,6 @@
+Gate 99ZZE source proof
+Active terminal source copied from repo for LimniPortfolioEA and changed includes.
+repo_result=Result: 0 errors, 0 warnings, 18090 msec elapsed, cpu='X64 Regular'
+active_result=Result: 0 errors, 0 warnings, 17880 msec elapsed, cpu='X64 Regular'
+source_hash_mismatches=0
+source_hash_mismatches=0

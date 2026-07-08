@@ -4,6 +4,16 @@ Date: 2026-07-07
 
 Branch: `codex/gate88-mt5-lifecycle-protection-controls`
 
+Correction note, 2026-07-07:
+
+Gate 99ZZE supersedes the single-pair Revma SL/TP behavior described here.
+This Gate 99ZZC report records the temporary broker-side ticket TP/SL
+scaffolding that compiled, but that behavior is not the intended Revma crude
+TP contract. The corrected single-pair q mode is managed grid/basket TP/SL:
+summed active Revma grid money after estimated close fees triggers a
+close-grid intent. MT5 ticket `T/P` and `S/L` fields are expected to remain
+`0.00000` in that corrected mode.
+
 ## Scope
 
 This gate removes user-facing future-system controls from `LimniPortfolioEA`
@@ -70,11 +80,14 @@ Single-pair SL/TP mode:
 - `StopTakeProfitMode=LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES`.
 - `TakeProfit=0.1` means 0.1q.
 - `StopLoss=0.1` means 0.1q.
-- New Revma birth/add orders receive broker-side `TP`/`SL` price distances.
-- TP distance is increased by estimated close-fee price distance.
-- SL distance is reduced by estimated close-fee price distance.
-- Receipts include raw q distance, fee price adjustment, estimated close fee,
-  final price distances, and broker min-stop-distance notes.
+- Historical Gate 99ZZC implementation note: this mode was initially wired as
+  per-ticket broker `TP`/`SL` distance scaffolding.
+- Superseded Gate 99ZZE correction: the intended Revma single-pair q mode is
+  managed frozen-grid TP/SL. The EA sums active grid money after estimated
+  close fees and emits a close-grid intent when the configured q threshold is
+  reached.
+- Broker-side ticket `TP`/`SL` values are no longer the proof surface for this
+  mode.
 
 Multi-currency SL/TP mode:
 
@@ -158,8 +171,8 @@ Static source check:
 - No performance, profitability, promotion, or live-readiness claim is made.
 - The close-fee model is a simple per-lot estimate borrowed from the previous
   EA pattern. It is deliberately replaceable by the later TP/SL research algo.
-- Single-pair broker-side SL/TP applies to new orders only. It does not
-  retroactively modify already-open positions.
+- Historical single-pair broker-side SL/TP scaffolding was superseded by Gate
+  99ZZE's managed frozen-grid close contract.
 - Multi-currency percent mode is an account-level close-all guard for managed
   positions, not the final multi-level TP/SL manager.
 

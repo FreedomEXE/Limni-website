@@ -156,6 +156,15 @@ public:
       return m_snapshot_hash;
    }
 
+   bool GetGrid(const int index, LP_GridInventoryRow &row)
+   {
+      ResetRow(row);
+      if(index < 0 || index >= m_open_grid_count)
+         return false;
+      row = m_rows[index];
+      return true;
+   }
+
    string SummaryMessage()
    {
       string message = "open_grids=" + IntegerToString(m_open_grid_count) +

@@ -257,9 +257,10 @@ private:
          receipts,
          plan,
          partial ? "reduce_request" : "close_request",
-         "ticket=" + (string)ticket +
-            "|position_lots=" + DoubleToString(position_lots, 2) +
-            "|close_lots=" + DoubleToString(close_lots, 2)
+          "ticket=" + (string)ticket +
+             "|position_lots=" + DoubleToString(position_lots, 2) +
+             "|close_lots=" + DoubleToString(close_lots, 2) +
+             "|grid_magic=" + (string)plan.magic
       );
 
       bool ok = false;
@@ -348,11 +349,12 @@ private:
       WriteOrderRequest(
          receipts,
          plan,
-         "close_scan_complete",
-         "attempted=" + IntegerToString(attempted) +
-            "|closed=" + IntegerToString(closed) +
-            "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
-            "|reduce_done=" + LP_BoolText(reduce_done)
+          "close_scan_complete",
+          "attempted=" + IntegerToString(attempted) +
+             "|closed=" + IntegerToString(closed) +
+             "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
+             "|reduce_done=" + LP_BoolText(reduce_done) +
+             "|grid_magic=" + (string)plan.magic
       );
       return closed > 0;
    }

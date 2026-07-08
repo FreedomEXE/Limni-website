@@ -8,34 +8,80 @@
 #include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
 #include "..\\Strategies\\RevmaTypes.mqh"
 
-input string LP_INPUT_0 = "********** LimniPortfolioEA **********";
-input string LP_INPUT_1 = "----- Execution Barrier -----";
-input LP_ExecutionMode ExecutionMode = LP_EXECUTION_DISABLED;
-input bool EnableTrading = false;
+enum ExecutionModeInput
+{
+   ExecutionDisabled = 0,    // Disabled
+   ExecutionDryRun = 1,      // Dry Run
+   ExecutionTester = 2,      // Tester
+   ExecutionLive = 3         // Live
+};
+
+enum NewsGuardModeInput
+{
+   NewsDisabled = 0,         // Disabled
+   NewsManualFile = 1,       // Manual File
+   NewsRequiredForLive = 2   // Required For Live
+};
+
+enum NewsImpactLevelInput
+{
+   NewsImpactLow = 1,        // Low
+   NewsImpactMedium = 2,     // Medium
+   NewsImpactHigh = 3        // High
+};
+
+enum UniverseModeInput
+{
+   UniverseCurrentChart = 0, // Current Chart
+   UniverseFx28 = 1          // FX28
+};
+
+enum RevmaSleeveModeInput
+{
+   RevmaSleevesBoth = 0,     // Both
+   RevmaContinuationOnly = 1,// Continuation Only
+   RevmaReversionOnly = 2    // Reversion Only
+};
+
+enum RevmaQProfileInput
+{
+   RevmaQFast = 0,           // Fast
+   RevmaQMedium = 1,         // Medium
+   RevmaQSlow = 2,           // Slow
+   RevmaQFull = 3,           // Full
+   RevmaQCustom = 4          // Custom
+};
+
+enum StopTakeProfitModeInput
+{
+   StopTakeProfitDisabled = 0,       // Disabled
+   SinglePairQAfterFees = 1,         // Single Pair Grid Q After Fees
+   MultiCurrencyPercentAfterFees = 2 // Multi Currency Percent After Fees
+};
+
+input group "Execution"
+input ExecutionModeInput ExecutionMode = ExecutionTester;
+input bool EnableTrading = true;
 input bool AllowLiveTrading = false;
-input bool EnableOpenOrderRouting = false;
-input bool EnableCloseExecution = false;
+input bool EnableOpenOrderRouting = true;
+input bool EnableCloseExecution = true;
 input bool EnableAccountCloseExecution = false;
-input bool EnableStrategyEvaluation = false;
+input bool EnableStrategyEvaluation = true;
 input bool RequireHedgingAccount = true;
 input bool RequireAllSymbols = false;
-input string LP_INPUT_2 = "----- Symbol Universe -----";
-input string BrokerSymbolSuffix = "";
-input string LP_INPUT_3 = "----- Calendar Guards -----";
+
+input group "Symbol Universe"
+input string BrokerSymbolSuffix = ".i";
+
+input group "Calendar Guards"
 input bool UseWeekBoundaryGuard = true;
 input double BrokerToEstOffsetHours = 0.0;
-input LP_NewsGuardMode NewsGuardMode = LP_NEWS_GUARD_REQUIRED_FOR_LIVE;
+input NewsGuardModeInput NewsGuardMode = NewsDisabled;
 input string NewsCalendarFile = "LimniPortfolioEA\\news_events.csv";
 input int NewsBlockBeforeMinutes = 30;
 input int NewsBlockAfterMinutes = 30;
-input string LP_INPUT_4 = "----- Portfolio Harvest Governor -----";
-input bool EnablePortfolioHarvestGovernor = false;
-input double HarvestInitialTargetMoney = 0.0;
-input double HarvestTrailMoney = 0.0;
-input bool HarvestSoftLockOnBreach = true;
-input bool HarvestGridWinddownOnBreach = true;
-input bool HarvestArmEmergencyLiquidation = false;
-input string LP_INPUT_5 = "----- Portfolio Risk Guards -----";
+
+input group "Portfolio Risk Guards"
 input bool EnableCurrencyExposureGuard = false;
 input double MaxCurrencySignedLots = 5.0;
 input double MaxCurrencyGrossLots = 10.0;
@@ -43,32 +89,35 @@ input int MaxSameDirectionGridsPerCurrency = 4;
 input int MaxManagedPositions = 200;
 input double MaxSingleOrderLots = 1.0;
 input int MaxClosePositionsPerStep = 10;
-input int NewsMinimumImpact = 3;
-input string LP_INPUT_6 = "----- Revma -----";
-input LP_UniverseMode RevmaUniverseMode = LP_UNIVERSE_CURRENT_CHART;
-input LP_RevmaSleeveMode RevmaSleeveMode = LP_REVMA_SLEEVES_BOTH;
-input LP_RevmaQProfile RevmaQProfile = LP_REVMA_Q_PROFILE_MEDIUM;
-input int RevmaMaxM1Bars = 50000;
+input NewsImpactLevelInput NewsMinimumImpact = NewsImpactHigh;
+
+input group "Revma"
+input UniverseModeInput RevmaUniverseMode = UniverseCurrentChart;
+input RevmaSleeveModeInput RevmaSleeveMode = RevmaSleevesBoth;
+input RevmaQProfileInput RevmaQProfile = RevmaQMedium;
+input int RevmaCustomMaxM1Bars = 50000;
 input double RevmaFixedLots = 0.01;
-input double RevmaGridSpacingQ = 1.0;
+input double RevmaGridSpacingQ = 0.1;
 input int RevmaIntentExpiryMinutes = 10;
 input bool RevmaShowVisualDashboard = true;
 input int RevmaDashboardRefreshSeconds = 1;
 input bool RevmaDashboardScreenshotOnDivergentAdd = false;
-input string LP_INPUT_7 = "----- Stop / Take Profit -----";
-input LP_StopTakeProfitMode StopTakeProfitMode = LP_SLTP_DISABLED;
-input double TakeProfit = 0.0;
+
+input group "Stop / Take Profit"
+input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
+input double TakeProfit = 0.1;
 input double StopLoss = 0.0;
-input double StopTakeProfitCloseCommissionPerLot = 7.00;
-input string LP_INPUT_8 = "----- Diagnostics -----";
+input double StopTakeProfitCloseCommissionPerLot = 0.00;
+
+input group "Diagnostics"
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
-input string OutputFolder = "LimniPortfolioEA";
+input string OutputFolder = "LimniPortfolioEA_Gate99ZZE_Smoke";
 
 void LP_LoadConfig(LP_Config &config)
 {
-   config.execution_mode = ExecutionMode;
-   config.news_guard_mode = NewsGuardMode;
+   config.execution_mode = (LP_ExecutionMode)ExecutionMode;
+   config.news_guard_mode = (LP_NewsGuardMode)NewsGuardMode;
    config.enable_trading = EnableTrading;
    config.allow_live_trading = AllowLiveTrading;
    config.enable_open_order_routing = EnableOpenOrderRouting;
@@ -89,32 +138,32 @@ void LP_LoadConfig(LP_Config &config)
    config.output_folder = OutputFolder;
    config.news_calendar_file = NewsCalendarFile;
    config.export_to_common_files = ExportToCommonFiles;
-   config.enable_portfolio_harvest_governor = EnablePortfolioHarvestGovernor;
-   config.harvest_initial_target_money = HarvestInitialTargetMoney;
-   config.harvest_trail_money = HarvestTrailMoney;
-   config.harvest_soft_lock_on_breach = HarvestSoftLockOnBreach;
-   config.harvest_grid_winddown_on_breach = HarvestGridWinddownOnBreach;
-   config.harvest_arm_emergency_liquidation = HarvestArmEmergencyLiquidation;
+   config.enable_portfolio_harvest_governor = false;
+   config.harvest_initial_target_money = 0.0;
+   config.harvest_trail_money = 0.0;
+   config.harvest_soft_lock_on_breach = false;
+   config.harvest_grid_winddown_on_breach = false;
+   config.harvest_arm_emergency_liquidation = false;
    config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
    config.enable_qstate_trend_variant = false;
    config.enable_revma_system = true;
-   config.revma_universe_mode = RevmaUniverseMode;
-   config.revma_sleeve_mode = RevmaSleeveMode;
+   config.revma_universe_mode = (LP_UniverseMode)RevmaUniverseMode;
+   config.revma_sleeve_mode = (LP_RevmaSleeveMode)RevmaSleeveMode;
    config.revma_enable_continuation_sleeve =
-      RevmaSleeveMode == LP_REVMA_SLEEVES_BOTH ||
-      RevmaSleeveMode == LP_REVMA_SLEEVES_TREND_ONLY;
+      config.revma_sleeve_mode == LP_REVMA_SLEEVES_BOTH ||
+      config.revma_sleeve_mode == LP_REVMA_SLEEVES_TREND_ONLY;
    config.revma_enable_reversion_sleeve =
-      RevmaSleeveMode == LP_REVMA_SLEEVES_BOTH ||
-      RevmaSleeveMode == LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY;
-   config.revma_q_profile = RevmaQProfile;
-   config.revma_max_m1_bars = RevmaMaxM1Bars;
+      config.revma_sleeve_mode == LP_REVMA_SLEEVES_BOTH ||
+      config.revma_sleeve_mode == LP_REVMA_SLEEVES_MEAN_REVERSION_ONLY;
+   config.revma_q_profile = (LP_RevmaQProfile)RevmaQProfile;
+   config.revma_max_m1_bars = RevmaCustomMaxM1Bars;
    config.revma_fixed_lots = RevmaFixedLots;
    config.revma_grid_spacing_q = RevmaGridSpacingQ;
    config.revma_intent_expiry_minutes = RevmaIntentExpiryMinutes;
    config.revma_show_visual_dashboard = RevmaShowVisualDashboard;
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
    config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
-   config.stop_take_profit_mode = StopTakeProfitMode;
+   config.stop_take_profit_mode = (LP_StopTakeProfitMode)StopTakeProfitMode;
    config.take_profit_value = MathMax(0.0, TakeProfit);
    config.stop_loss_value = MathMax(0.0, StopLoss);
    config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
@@ -124,7 +173,7 @@ void LP_LoadConfig(LP_Config &config)
    config.max_managed_positions = MaxManagedPositions;
    config.max_single_order_lots = MaxSingleOrderLots;
    config.max_close_positions_per_step = MaxClosePositionsPerStep;
-   config.news_minimum_impact = NewsMinimumImpact;
+   config.news_minimum_impact = (int)NewsMinimumImpact;
    config.qstate_scale_lookback_days = LIMNI_QSTATE_V001_SCALE_LOOKBACK_DAYS;
    config.qstate_fixed_lots = 0.01;
    config.qstate_grid_spacing_q = 1.0;
