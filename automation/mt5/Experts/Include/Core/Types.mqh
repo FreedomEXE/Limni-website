@@ -88,6 +88,12 @@ enum LP_StopTakeProfitMode
    LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES = 2
 };
 
+enum LP_ReceiptMode
+{
+   LP_RECEIPT_MODE_FULL = 0,
+   LP_RECEIPT_MODE_COMPACT_LONG_RUN = 1
+};
+
 enum LP_MarketMode
 {
    LP_MARKET_UNKNOWN = 0,
@@ -250,6 +256,7 @@ struct LP_Config
    string output_folder;
    string news_calendar_file;
    bool export_to_common_files;
+   LP_ReceiptMode receipt_mode;
    bool enable_portfolio_harvest_governor;
    double harvest_initial_target_money;
    double harvest_trail_money;
@@ -576,6 +583,13 @@ string LP_StopTakeProfitModeName(const LP_StopTakeProfitMode mode)
    if(mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
       return "MULTI_CURRENCY_PERCENT_AFTER_FEES";
    return "DISABLED";
+}
+
+string LP_ReceiptModeName(const LP_ReceiptMode mode)
+{
+   if(mode == LP_RECEIPT_MODE_COMPACT_LONG_RUN)
+      return "COMPACT_LONG_RUN";
+   return "FULL";
 }
 
 string LP_PositionGroupName(const int group)

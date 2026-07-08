@@ -8,11 +8,18 @@ param(
     [string]$Period = "M1",
     [string]$FromDate = "2026.01.01",
     [string]$ToDate = "2026.01.08",
+    [ValidateSet("FAST_5000", "MEDIUM_50000", "SLOW_250000", "FULL_ALL")]
+    [string]$QProfile = "FAST_5000",
+    [ValidateSet("OpenPrices", "M1OHLC", "EveryTick")]
+    [string]$TesterModel = "OpenPrices",
     [double]$TakeProfit = 0.001,
     [double]$StopLoss = 0.0,
+    [ValidateSet("Full", "CompactLongRun")]
+    [string]$ReceiptMode = "Full",
     [int]$TimeoutSeconds = 240,
     [string]$Login = "",
     [string]$Server = "",
+    [switch]$BenchmarkMode,
     [switch]$LeaveRunProfile
 )
 
@@ -59,6 +66,44 @@ function Format-InvariantDouble([double]$value, [int]$digits) {
     return $value.ToString("F$digits", [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
+function Format-OutputDecimalPart([double]$value, [int]$digits) {
+    return (Format-InvariantDouble $value $digits).Replace("-", "m").Replace(".", "p")
+}
+
+function Get-ReceiptModeInputValue([string]$mode) {
+    if ($mode -eq "CompactLongRun") {
+        return 1
+    }
+    return 0
+}
+
+function Get-ReceiptModeOutputPart([string]$mode) {
+    if ($mode -eq "CompactLongRun") {
+        return "RC"
+    }
+    return "RF"
+}
+
+function Get-QProfileInputValue([string]$profile) {
+    if ($profile -eq "MEDIUM_50000") { return 1 }
+    if ($profile -eq "SLOW_250000") { return 2 }
+    if ($profile -eq "FULL_ALL") { return 3 }
+    return 0
+}
+
+function Get-QProfileCustomBars([string]$profile) {
+    if ($profile -eq "FAST_5000") { return 5000 }
+    if ($profile -eq "MEDIUM_50000") { return 50000 }
+    if ($profile -eq "SLOW_250000") { return 250000 }
+    return 0
+}
+
+function Get-TesterModelValue([string]$model) {
+    if ($model -eq "M1OHLC") { return 1 }
+    if ($model -eq "EveryTick") { return 0 }
+    return 2
+}
+
 function Set-TesterInputLine([string[]]$lines, [string]$key, [string]$line) {
     $found = $false
     for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -78,6 +123,14 @@ function Get-ReceiptField([string]$message, [string]$key) {
         return $matches[2]
     }
     return ""
+}
+
+function Get-FileLineCount([string]$path) {
+    $count = 0
+    foreach ($line in [System.IO.File]::ReadLines($path)) {
+        $count++
+    }
+    return $count
 }
 
 function Install-TesterProfile(
@@ -148,7 +201,15 @@ $terminalDataRoot = Split-Path -Parent $terminalRoot
 $terminalBaseRoot = Split-Path -Parent $terminalDataRoot
 $commonFiles = Join-Path $terminalBaseRoot "Common\Files"
 
-$outputFolder = "LimniPortfolioEA_Gate102_FX28_SMOKE_$stamp"
+$tpPart = Format-OutputDecimalPart $TakeProfit 3
+$slPart = Format-OutputDecimalPart $StopLoss 3
+$receiptModeInput = Get-ReceiptModeInputValue $ReceiptMode
+$receiptModePart = Get-ReceiptModeOutputPart $ReceiptMode
+$qProfileInput = Get-QProfileInputValue $QProfile
+$qProfileCustomBars = Get-QProfileCustomBars $QProfile
+$testerModelValue = Get-TesterModelValue $TesterModel
+$outputFolder = "AUTO"
+$outputFolderPrefix = "LimniPortfolioEA_Rv_FX28_${QProfile}_APct_TP${tpPart}_SL${slPart}_L0p010_G0p10Q_${receiptModePart}_NCG_NEG_AC_"
 $runProfile = Join-Path $ArtifactDir $TesterProfileName
 $tpText = Format-InvariantDouble $TakeProfit 3
 $slText = Format-InvariantDouble $StopLoss 3
@@ -161,19 +222,22 @@ $profileLines = Set-TesterInputLine $profileLines "EnableCloseExecution" "Enable
 $profileLines = Set-TesterInputLine $profileLines "EnableAccountCloseExecution" "EnableAccountCloseExecution=true||false||0||true||N"
 $profileLines = Set-TesterInputLine $profileLines "RequireAllSymbols" "RequireAllSymbols=true||false||0||true||N"
 $profileLines = Set-TesterInputLine $profileLines "RevmaUniverseMode" "RevmaUniverseMode=1||0||0||1||N"
-$profileLines = Set-TesterInputLine $profileLines "RevmaQProfile" "RevmaQProfile=0||0||0||4||N"
+$profileLines = Set-TesterInputLine $profileLines "RevmaQProfile" "RevmaQProfile=$qProfileInput||0||0||4||N"
+$profileLines = Set-TesterInputLine $profileLines "RevmaCustomMaxM1Bars" "RevmaCustomMaxM1Bars=$qProfileCustomBars||5000||1000||250000||N"
 $profileLines = Set-TesterInputLine $profileLines "RevmaShowVisualDashboard" "RevmaShowVisualDashboard=false||false||0||true||N"
 $profileLines = Set-TesterInputLine $profileLines "StopTakeProfitMode" "StopTakeProfitMode=2||0||0||2||N"
 $profileLines = Set-TesterInputLine $profileLines "TakeProfit" "TakeProfit=$tpText||$tpText||0.000000||10.000000||N"
 $profileLines = Set-TesterInputLine $profileLines "StopLoss" "StopLoss=$slText||$slText||0.000000||10.000000||N"
 $profileLines = Set-TesterInputLine $profileLines "MaxClosePositionsPerStep" "MaxClosePositionsPerStep=50||10||1||100||N"
 $profileLines = Set-TesterInputLine $profileLines "ExportToCommonFiles" "ExportToCommonFiles=true||false||0||true||N"
+$profileLines = Set-TesterInputLine $profileLines "ReceiptMode" "ReceiptMode=$receiptModeInput||0||0||1||N"
 $profileLines = Set-TesterInputLine $profileLines "OutputFolder" "OutputFolder=$outputFolder"
 Set-Content -LiteralPath $runProfile -Value $profileLines -Encoding ASCII
 
 Install-TesterProfile $configuredTerminals $runProfile $TesterProfileName $ArtifactDir "backup-before-run-$stamp"
 
-$report = "Gate102_FX28_SMOKE_$stamp"
+$reportScope = if ($BenchmarkMode) { "GATE104_SPEED" } else { "Gate102_FX28_SMOKE" }
+$report = "${reportScope}_${QProfile}_${TesterModel}_$stamp"
 $configPath = Join-Path $ArtifactDir "gate102-fx28-smoke.ini"
 $configLines = New-Object System.Collections.Generic.List[string]
 $configLines.Add("[Common]")
@@ -186,7 +250,7 @@ $configLines.Add("Expert=Limni\LimniPortfolioEA.ex5")
 $configLines.Add("ExpertParameters=$TesterProfileName")
 $configLines.Add("Symbol=$Symbol")
 $configLines.Add("Period=$Period")
-$configLines.Add("Model=2")
+$configLines.Add("Model=$testerModelValue")
 $configLines.Add("ExecutionMode=0")
 $configLines.Add("Optimization=0")
 $configLines.Add("OptimizationCriterion=1")
@@ -204,6 +268,7 @@ Set-Content -LiteralPath $configPath -Value $configLines -Encoding ASCII
 
 $process = $null
 $timedOut = $false
+$runStartedAt = Get-Date
 try {
     $process = Start-Process -FilePath $terminalExe -ArgumentList "/config:$configPath" -PassThru -WindowStyle Hidden
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -222,15 +287,25 @@ finally {
         Install-TesterProfile $configuredTerminals $TesterProfileSource $TesterProfileName $ArtifactDir "backup-after-run-$stamp"
     }
 }
+$runEndedAt = Get-Date
 
 $processSummary = [pscustomobject]@{
     TerminalId = $terminal.id
     Pid = if ($null -ne $process) { $process.Id } else { 0 }
     ExitCode = if ($null -ne $process) { $process.ExitCode } else { "" }
     TimedOut = $timedOut
+    QProfile = $QProfile
+    TesterModel = $TesterModel
+    TesterModelValue = $testerModelValue
+    ReceiptMode = $ReceiptMode
+    BenchmarkMode = [bool]$BenchmarkMode
+    StartedAt = $runStartedAt.ToString("o")
+    EndedAt = $runEndedAt.ToString("o")
+    WallSeconds = [Math]::Round(($runEndedAt - $runStartedAt).TotalSeconds, 3)
     Config = $configPath
     RunProfile = $runProfile
     OutputFolder = $outputFolder
+    OutputFolderPrefix = $outputFolderPrefix
     Report = $report
 }
 $processSummary | Format-List | Out-String | Set-Content -LiteralPath (Join-Path $ArtifactDir "fx28-smoke-process.txt")
@@ -240,11 +315,15 @@ if ($timedOut) {
     exit 1
 }
 
-$receiptFolder = Join-Path $commonFiles $outputFolder
-if (!(Test-Path -LiteralPath $receiptFolder)) {
-    Write-Error "Receipt folder missing: $receiptFolder"
+$receiptFolderItem = Get-ChildItem -LiteralPath $commonFiles -Directory |
+    Where-Object { $_.Name -like "$outputFolderPrefix*" -and $_.LastWriteTime -ge $runStartedAt.AddMinutes(-1) } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+if ($null -eq $receiptFolderItem) {
+    Write-Error "Receipt folder missing for prefix: $outputFolderPrefix"
     exit 1
 }
+$receiptFolder = $receiptFolderItem.FullName
 $receiptPath = Get-ChildItem -LiteralPath $receiptFolder -Filter "*_receipts.csv" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
@@ -256,12 +335,73 @@ if ($null -eq $receiptPath -or $null -eq $summaryPath) {
     exit 1
 }
 
-$receipts = Import-Csv -LiteralPath $receiptPath.FullName
 $summaryRows = Import-Csv -LiteralPath $summaryPath.FullName
 $metrics = @{}
 foreach ($row in $summaryRows) {
     $metrics[$row.metric] = $row.value
 }
+
+if ($BenchmarkMode) {
+    $processExitCode = if ($null -ne $process -and $process.ExitCode -ne $null) { [int]$process.ExitCode } else { 0 }
+    $benchmarkStatus = "PASS_BENCHMARK_RECEIPTS_PRESENT"
+    if ($processExitCode -ne 0) {
+        $benchmarkStatus = "STOPPED_OR_FAILED_BENCHMARK"
+    } elseif ($timedOut) {
+        $benchmarkStatus = "TIMED_OUT_BENCHMARK"
+    }
+
+    $receiptLineCount = Get-FileLineCount $receiptPath.FullName
+    $receiptDataRows = [Math]::Max(0, $receiptLineCount - 1)
+    $headerLine = Get-Content -LiteralPath $receiptPath.FullName -TotalCount 1
+    $headRows = @(Get-Content -LiteralPath $receiptPath.FullName -TotalCount 40 | ConvertFrom-Csv)
+    $runStart = @($headRows | Where-Object { $_.receipt_type -eq "run_start" -and $_.status -eq "started" } | Select-Object -First 1)
+    $firstEngine = @($headRows | Where-Object { $_.receipt_type -eq "engine_step" } | Select-Object -First 1)
+    $tailLines = @(Get-Content -LiteralPath $receiptPath.FullName -Tail 800)
+    $tailRows = @(@($headerLine) + $tailLines | ConvertFrom-Csv)
+    $lastEngine = @($tailRows | Where-Object { $_.receipt_type -eq "engine_step" } | Select-Object -Last 1)
+
+    $benchmarkLines = New-Object System.Collections.Generic.List[string]
+    $benchmarkLines.Add("Gate104 FX28 tester speed benchmark - $(Get-Date -Format o)")
+    $benchmarkLines.Add("artifact_dir=$ArtifactDir")
+    $benchmarkLines.Add("terminal_id=$($terminal.id)")
+    $benchmarkLines.Add("q_profile=$QProfile")
+    $benchmarkLines.Add("tester_model=$TesterModel")
+    $benchmarkLines.Add("tester_model_value=$testerModelValue")
+    $benchmarkLines.Add("receipt_mode=$ReceiptMode")
+    $benchmarkLines.Add("process_exit_code=$processExitCode")
+    $benchmarkLines.Add("timed_out=$timedOut")
+    $benchmarkLines.Add("from_date=$FromDate")
+    $benchmarkLines.Add("to_date=$ToDate")
+    $benchmarkLines.Add("take_profit=$tpText")
+    $benchmarkLines.Add("stop_loss=$slText")
+    $benchmarkLines.Add("wall_seconds=$([Math]::Round(($runEndedAt - $runStartedAt).TotalSeconds, 3))")
+    $benchmarkLines.Add("receipt_folder=$receiptFolder")
+    $benchmarkLines.Add("receipts=$($receiptPath.FullName)")
+    $benchmarkLines.Add("summary=$($summaryPath.FullName)")
+    $benchmarkLines.Add("receipt_bytes=$($receiptPath.Length)")
+    $benchmarkLines.Add("summary_bytes=$($summaryPath.Length)")
+    $benchmarkLines.Add("receipt_rows=$receiptDataRows")
+    foreach ($key in @("receipt_mode", "compact_receipt_rows_skipped", "balance", "equity", "open_position_count", "managed_position_count", "revma_q_profile", "revma_q_profile_id")) {
+        if ($metrics.ContainsKey($key)) {
+            $benchmarkLines.Add("$key=$($metrics[$key])")
+        }
+    }
+    if ($runStart.Count -gt 0) { $benchmarkLines.Add("run_start=$($runStart[0].message)") }
+    if ($firstEngine.Count -gt 0) { $benchmarkLines.Add("first_engine=$($firstEngine[0].message)") }
+    if ($lastEngine.Count -gt 0) { $benchmarkLines.Add("last_engine=$($lastEngine[0].message)") }
+    $benchmarkLines.Add("status=$benchmarkStatus")
+    $benchmarkPath = Join-Path $ArtifactDir "fx28-speed-benchmark.txt"
+    Set-Content -LiteralPath $benchmarkPath -Value $benchmarkLines -Encoding ASCII
+    Write-Output ($benchmarkLines -join [Environment]::NewLine)
+    if ($benchmarkStatus -ne "PASS_BENCHMARK_RECEIPTS_PRESENT") {
+        Write-Error "FX28 speed benchmark did not complete cleanly. See $benchmarkPath"
+        exit 1
+    }
+    Write-Output "FX28 speed benchmark PASS"
+    exit 0
+}
+
+$receipts = Import-Csv -LiteralPath $receiptPath.FullName
 
 $runStart = @($receipts | Where-Object { $_.receipt_type -eq "run_start" -and $_.status -eq "started" } | Select-Object -First 1)
 $engineRows = @($receipts | Where-Object { $_.receipt_type -eq "engine_step" })

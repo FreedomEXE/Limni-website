@@ -63,6 +63,8 @@ void LP_WriteRunManifest(
    receipts.Summary("ea_version", LP_EA_VERSION);
    receipts.Summary("build_gate", LP_BUILD_GATE);
    receipts.Summary("build_scope", LP_BUILD_SCOPE);
+   receipts.Summary("run_id", receipts.RunId());
+   receipts.Summary("output_folder", config.output_folder);
    receipts.Summary("config_hash", (string)config_hash);
    receipts.Summary("symbol_universe_hash", (string)symbol_universe_hash);
    receipts.Summary("execution_mode", LP_ExecutionModeName(config.execution_mode));
@@ -74,6 +76,7 @@ void LP_WriteRunManifest(
    receipts.Summary("strategy_evaluation_enabled", LP_BoolText(config.enable_strategy_evaluation));
    receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
    receipts.Summary("news_calendar_file", config.news_calendar_file);
+   receipts.Summary("receipt_mode", LP_ReceiptModeName(config.receipt_mode));
    receipts.Summary("week_boundary_description", LP_WeekBoundaryDescription());
    receipts.Summary("portfolio_harvest_governor_enabled", LP_BoolText(config.enable_portfolio_harvest_governor));
    receipts.Summary("harvest_initial_target_money", DoubleToString(config.harvest_initial_target_money, 2));

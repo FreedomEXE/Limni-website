@@ -240,6 +240,79 @@ archive them into the gate artifact instead of deleting them:
 powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Sync-LimniPortfolioEA-Terminals.ps1 -SyncTesterProfile -FailOnTesterProfileDrift -ArchiveStaleTesterProfiles -FailOnStaleTesterProfiles
 ```
 
+## MT5 Output Folder Workflow
+
+MT5 test receipts write under the terminal Common Files root:
+
+```text
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\Common\Files
+```
+
+MT5 Strategy Tester reports can also write directly into a terminal data root,
+for example:
+
+```text
+C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\<terminal-id>
+```
+
+Keep only current or unreviewed `LimniPortfolioEA*` test folders at the top
+level. Keep top-level tester report files such as `Gate*.htm`, `Gate*.png`,
+and `Gate*.symbols.xml` out of the terminal root after they have been captured.
+Reviewed/analyzed tests and reports belong under an adjacent:
+
+```text
+LimniPortfolioEA_Archive
+```
+
+The working rule is:
+
+- before reviewing test results, inventory top-level `LimniPortfolioEA*` output
+  folders plus terminal-root `Gate*` tester report files, then identify every
+  unreviewed run, including tests Freedom ran outside Codex;
+- do not let old reviewed runs or tester reports stack at the top level;
+- after a run has been examined and captured in the evidence ledger, move the
+  whole run folder and any related tester report files into
+  `LimniPortfolioEA_Archive`;
+- leave the active or next-to-review run folder at top level only until its
+  review is complete;
+- if multiple user-run folders appear between Codex sessions, classify them
+  first instead of assuming Codex knows the run order.
+
+New tests should use `OutputFolder=AUTO`. AUTO output names include the Revma
+system, universe, q profile, stop/take-profit mode, TP, SL, lot size, grid
+spacing, receipt mode, guard states, account-close state, and a run stamp, for
+example:
+
+```text
+LimniPortfolioEA_Rv_FX28_MEDIUM_50000_APct_TP1p000_SL0p000_L0p010_G0p10Q_RC_NCG_NEG_AC_...
+```
+
+After source or profile changes, run the terminal sync gate with
+`-SyncTesterProfile -FailOnTesterProfileDrift` so the saved MT5 tester profile
+uses the canonical `OutputFolder=AUTO` setting.
+
+Receipt mode is part of the evidence contract:
+
+```text
+ReceiptMode=Full
+```
+
+Use `Full` for short mechanics proof, debugging, parity fixtures, or any run
+where every receipt row is required.
+
+```text
+ReceiptMode=CompactLongRun
+```
+
+Use `CompactLongRun` for long-regime research runs. Compact mode keeps run
+manifest/summary, failures, TP triggers and liquidation, order results, grid
+birth/add/exit receipts, changed inventory snapshots, and sampled/extreme
+stop-take-profit monitoring rows. It suppresses repeated no-change reentry,
+spacing-skip, monitoring, trade-plan, request, and transaction rows that make
+multi-year tester receipts grow into multi-gigabyte files. It must not be used
+to prove a new receipt schema until a short `Full` vs `CompactLongRun` parity
+fixture confirms identical trade behavior.
+
 ## Revma FX28 Fast Smoke
 
 `LimniPortfolioEA` supports all-28 Revma testing. Use:

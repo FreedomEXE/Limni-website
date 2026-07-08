@@ -52,6 +52,12 @@ enum StopTakeProfitModeInput
    MultiCurrencyPercentAfterFees = 2 // Multi Currency Percent After Fees
 };
 
+enum ReceiptModeInput
+{
+   ReceiptFull = 0,          // Full
+   ReceiptCompactLongRun = 1 // Compact Long Run
+};
+
 input group "Execution"
 input ExecutionModeInput ExecutionMode = ExecutionTester;
 input bool EnableTrading = true;
@@ -104,7 +110,62 @@ input double StopTakeProfitCloseCommissionPerLot = 0.00;
 input group "Diagnostics"
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
-input string OutputFolder = "LimniPortfolioEA_Gate101_Smoke";
+input ReceiptModeInput ReceiptMode = ReceiptFull;
+input string OutputFolder = "AUTO";
+
+string LP_OutputFolderNumberPart(const double value, const int digits)
+{
+   string text = DoubleToString(value, digits);
+   StringReplace(text, "-", "m");
+   StringReplace(text, ".", "p");
+   return text;
+}
+
+string LP_OutputFolderStopModePart(const LP_StopTakeProfitMode mode)
+{
+   if(mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
+      return "APct";
+   if(mode == LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+      return "GQ";
+   return "NoTP";
+}
+
+string LP_OutputFolderReceiptModePart(const LP_ReceiptMode mode)
+{
+   if(mode == LP_RECEIPT_MODE_COMPACT_LONG_RUN)
+      return "RC";
+   return "RF";
+}
+
+bool LP_OutputFolderAutoRequested(const string requested_folder)
+{
+   return requested_folder == "" ||
+      requested_folder == "AUTO" ||
+      requested_folder == "auto" ||
+      requested_folder == "Auto";
+}
+
+string LP_ResolveOutputFolder(const LP_Config &config, const string requested_folder)
+{
+   if(!LP_OutputFolderAutoRequested(requested_folder))
+      return requested_folder;
+
+   string stamp = LP_SafePart(LP_Stamp(TimeLocal()) + "_R" + IntegerToString((long)GetTickCount()));
+   string folder = "LimniPortfolioEA_Rv_" +
+      LP_UniverseModeName(config.revma_universe_mode) + "_" +
+      LP_RevmaConfigQProfileId(config) + "_" +
+      LP_OutputFolderStopModePart(config.stop_take_profit_mode) +
+      "_TP" + LP_OutputFolderNumberPart(config.take_profit_value, 3) +
+      "_SL" + LP_OutputFolderNumberPart(config.stop_loss_value, 3) +
+      "_L" + LP_OutputFolderNumberPart(config.revma_fixed_lots, 3) +
+      "_G" + LP_OutputFolderNumberPart(config.revma_grid_spacing_q, 2) + "Q_" +
+      LP_OutputFolderReceiptModePart(config.receipt_mode) + "_" +
+      (config.enable_currency_exposure_guard ? "CG" : "NCG") + "_" +
+      (config.enable_portfolio_harvest_governor ? "EG" : "NEG") + "_" +
+      (config.enable_account_close_execution ? "AC" : "NAC") + "_" +
+      stamp;
+   return folder;
+}
 
 void LP_LoadConfig(LP_Config &config)
 {
@@ -127,9 +188,9 @@ void LP_LoadConfig(LP_Config &config)
    config.news_block_before_minutes = NewsBlockBeforeMinutes;
    config.news_block_after_minutes = NewsBlockAfterMinutes;
    config.broker_symbol_suffix = BrokerSymbolSuffix;
-   config.output_folder = OutputFolder;
    config.news_calendar_file = NewsCalendarFile;
    config.export_to_common_files = ExportToCommonFiles;
+   config.receipt_mode = (LP_ReceiptMode)ReceiptMode;
    config.enable_portfolio_harvest_governor = false;
    config.harvest_initial_target_money = 0.0;
    config.harvest_trail_money = 0.0;
@@ -168,6 +229,7 @@ void LP_LoadConfig(LP_Config &config)
    config.qstate_max_spread_cost_q = LIMNI_QSTATE_V001_MAX_SPREAD_COST_Q;
    config.qstate_intent_expiry_minutes = 10;
    config.qstate_reentry_next_day_after_harvest = true;
+   config.output_folder = LP_ResolveOutputFolder(config, OutputFolder);
 }
 
 ulong LP_ConfigHash(const LP_Config &config)
@@ -182,6 +244,7 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.enable_strategy_evaluation) + "|" +
       LP_BoolText(config.require_hedging_account) + "|" +
       LP_BoolText(config.require_all_symbols) + "|" +
+      LP_ReceiptModeName(config.receipt_mode) + "|" +
       DoubleToString(config.broker_to_est_offset_hours, 2) + "|" +
       config.broker_symbol_suffix + "|" +
       config.news_calendar_file + "|" +

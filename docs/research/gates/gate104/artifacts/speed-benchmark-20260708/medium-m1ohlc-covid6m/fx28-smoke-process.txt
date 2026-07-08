@@ -1,0 +1,25 @@
+
+
+TerminalId         : 14275
+Pid                : 18972
+ExitCode           : 0
+TimedOut           : False
+QProfile           : MEDIUM_50000
+TesterModel        : M1OHLC
+TesterModelValue   : 1
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T17:57:33.3363662-04:00
+EndedAt            : 2026-07-08T18:11:02.6408578-04:00
+WallSeconds        : 809.304
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\speed-benchmark
+                     -20260708\medium-m1ohlc-covid6m\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\speed-benchmark
+                     -20260708\medium-m1ohlc-covid6m\LimniPortfolioEA_speed_benchmark.set
+OutputFolder       : AUTO
+OutputFolderPrefix : LimniPortfolioEA_Rv_FX28_MEDIUM_50000_APct_TP0p750_SL0p000_L0p010_G0p10Q_RC_NCG_NEG_AC_
+Report             : GATE104_SPEED_MEDIUM_50000_M1OHLC_20260708-175733
+
+
+
+
