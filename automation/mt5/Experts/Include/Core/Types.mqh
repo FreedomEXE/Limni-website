@@ -130,7 +130,8 @@ enum LP_IntentAction
    LP_INTENT_ADD_GRID_LEG = 2,
    LP_INTENT_REDUCE_GRID = 3,
    LP_INTENT_CLOSE_GRID = 4,
-   LP_INTENT_CLOSE_ALL_EA = 5
+   LP_INTENT_CLOSE_ALL_EA = 5,
+   LP_INTENT_SYNC_GRID_TP = 6
 };
 
 enum LP_RiskDecisionCode
@@ -274,6 +275,8 @@ struct LP_Config
    int revma_max_m1_bars;
    double revma_fixed_lots;
    double revma_grid_spacing_q;
+   double revma_reversion_grid_spacing_q;
+   double revma_continuation_grid_spacing_q;
    int revma_intent_expiry_minutes;
    bool revma_show_visual_dashboard;
    int revma_dashboard_refresh_seconds;
@@ -281,6 +284,10 @@ struct LP_Config
    LP_StopTakeProfitMode stop_take_profit_mode;
    double take_profit_value;
    double stop_loss_value;
+   double revma_reversion_take_profit_value;
+   double revma_reversion_stop_loss_value;
+   double revma_continuation_take_profit_value;
+   double revma_continuation_stop_loss_value;
    double stop_take_profit_close_commission_per_lot;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
@@ -409,6 +416,8 @@ struct LP_TradeIntent
    double max_slippage_points;
    double take_profit_distance_price;
    double stop_loss_distance_price;
+   double target_take_profit_price;
+   double target_stop_loss_price;
    string stop_take_profit_basis;
    int priority;
    double score;
@@ -450,6 +459,8 @@ struct LP_TradePlan
    double max_slippage_points;
    double take_profit_distance_price;
    double stop_loss_distance_price;
+   double target_take_profit_price;
+   double target_stop_loss_price;
    string stop_take_profit_basis;
    long magic;
    string comment;

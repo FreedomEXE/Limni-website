@@ -24,6 +24,26 @@ private:
    ulong m_snapshot_hash;
    int m_recovery_state;
 
+   double PositionDealCommission()
+   {
+      long position_id = (long)PositionGetInteger(POSITION_IDENTIFIER);
+      if(position_id <= 0)
+         return 0.0;
+      if(!HistorySelectByPosition(position_id))
+         return 0.0;
+
+      double commission = 0.0;
+      int deals = HistoryDealsTotal();
+      for(int i = 0; i < deals; i++)
+      {
+         ulong deal = HistoryDealGetTicket(i);
+         if(deal == 0)
+            continue;
+         commission += HistoryDealGetDouble(deal, DEAL_COMMISSION);
+      }
+      return commission;
+   }
+
 public:
    void Reset()
    {
@@ -71,7 +91,9 @@ public:
 
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
          string symbol = PositionGetString(POSITION_SYMBOL);
-         double profit = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+         double profit = PositionGetDouble(POSITION_PROFIT) +
+            PositionGetDouble(POSITION_SWAP) +
+            PositionDealCommission();
          int group = LP_POSITION_GROUP_EXTERNAL;
 
          if(!LP_IsManagedMagic(magic))

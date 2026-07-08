@@ -20,6 +20,9 @@ struct LP_GridInventoryRow
    int position_count;
    double lots;
    double floating_pnl;
+   double price_pnl;
+   double swap;
+   double commission;
    double avg_entry_price;
    double min_entry_price;
    double max_entry_price;
@@ -47,6 +50,9 @@ private:
       row.position_count = 0;
       row.lots = 0.0;
       row.floating_pnl = 0.0;
+      row.price_pnl = 0.0;
+      row.swap = 0.0;
+      row.commission = 0.0;
       row.avg_entry_price = 0.0;
       row.min_entry_price = 0.0;
       row.max_entry_price = 0.0;
@@ -61,6 +67,26 @@ private:
             return i;
       }
       return -1;
+   }
+
+   double PositionDealCommission()
+   {
+      long position_id = (long)PositionGetInteger(POSITION_IDENTIFIER);
+      if(position_id <= 0)
+         return 0.0;
+      if(!HistorySelectByPosition(position_id))
+         return 0.0;
+
+      double commission = 0.0;
+      int deals = HistoryDealsTotal();
+      for(int i = 0; i < deals; i++)
+      {
+         ulong deal = HistoryDealGetTicket(i);
+         if(deal == 0)
+            continue;
+         commission += HistoryDealGetDouble(deal, DEAL_COMMISSION);
+      }
+      return commission;
    }
 
 public:
@@ -116,7 +142,10 @@ public:
 
          double lots = PositionGetDouble(POSITION_VOLUME);
          double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
-         double pnl = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+         double price_pnl = PositionGetDouble(POSITION_PROFIT);
+         double swap = PositionGetDouble(POSITION_SWAP);
+         double commission = PositionDealCommission();
+         double pnl = price_pnl + swap + commission;
          m_rows[row_index].position_count++;
          double previous_lots = m_rows[row_index].lots;
          m_rows[row_index].lots += lots;
@@ -127,6 +156,9 @@ public:
          if(open_price > m_rows[row_index].max_entry_price)
             m_rows[row_index].max_entry_price = open_price;
          m_rows[row_index].floating_pnl += pnl;
+         m_rows[row_index].price_pnl += price_pnl;
+         m_rows[row_index].swap += swap;
+         m_rows[row_index].commission += commission;
          if(m_rows[row_index].tickets == "")
             m_rows[row_index].tickets = (string)ticket;
          else if(StringLen(m_rows[row_index].tickets) < 180)
@@ -186,7 +218,10 @@ public:
             ":min_entry=" + DoubleToString(m_rows[i].min_entry_price, 5) +
             ":max_entry=" + DoubleToString(m_rows[i].max_entry_price, 5) +
             ":tickets=" + m_rows[i].tickets +
-            ":pnl=" + DoubleToString(m_rows[i].floating_pnl, 2);
+            ":pnl=" + DoubleToString(m_rows[i].floating_pnl, 2) +
+            ":price_pnl=" + DoubleToString(m_rows[i].price_pnl, 2) +
+            ":swap=" + DoubleToString(m_rows[i].swap, 2) +
+            ":commission=" + DoubleToString(m_rows[i].commission, 2);
       }
       return message;
    }

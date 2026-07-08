@@ -64,9 +64,26 @@ public:
       return m_revma.EvaluateGridExits(config, grid_book, receipts, bus);
    }
 
+   int SyncRevmaGridTakeProfits(
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus
+   )
+   {
+      if(!m_enabled)
+         return 0;
+      return m_revma.SyncGridTakeProfits(config, grid_book, receipts, bus);
+   }
+
    string RevmaVisualDashboardText()
    {
       return m_revma.VisualDashboardText();
+   }
+
+   double RevmaVisualCenterlinePrice()
+   {
+      return m_revma.VisualDashboardCenterlinePrice();
    }
 
    bool ConsumeRevmaDashboardScreenshotRequest()

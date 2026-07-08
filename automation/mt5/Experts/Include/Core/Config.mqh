@@ -98,6 +98,8 @@ input RevmaQProfileInput RevmaQProfile = RevmaQMedium;
 input int RevmaCustomMaxM1Bars = 50000;
 input double RevmaFixedLots = 0.01;
 input double RevmaGridSpacingQ = 0.1;
+input double RevmaReversionGridSpacingQ = 0.0;
+input double RevmaContinuationGridSpacingQ = 0.0;
 input int RevmaIntentExpiryMinutes = 10;
 input bool RevmaShowVisualDashboard = true;
 input int RevmaDashboardRefreshSeconds = 1;
@@ -107,6 +109,10 @@ input group "Stop / Take Profit"
 input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
 input double TakeProfit = 0.1;
 input double StopLoss = 0.0;
+input double RevmaReversionTakeProfit = 0.0;
+input double RevmaReversionStopLoss = 0.0;
+input double RevmaContinuationTakeProfit = 0.0;
+input double RevmaContinuationStopLoss = 0.0;
 input double StopTakeProfitCloseCommissionPerLot = 0.00;
 
 input group "Diagnostics"
@@ -159,6 +165,8 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_max_m1_bars = RevmaCustomMaxM1Bars;
    config.revma_fixed_lots = RevmaFixedLots;
    config.revma_grid_spacing_q = RevmaGridSpacingQ;
+   config.revma_reversion_grid_spacing_q = MathMax(0.0, RevmaReversionGridSpacingQ);
+   config.revma_continuation_grid_spacing_q = MathMax(0.0, RevmaContinuationGridSpacingQ);
    config.revma_intent_expiry_minutes = RevmaIntentExpiryMinutes;
    config.revma_show_visual_dashboard = RevmaShowVisualDashboard;
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
@@ -166,6 +174,10 @@ void LP_LoadConfig(LP_Config &config)
    config.stop_take_profit_mode = (LP_StopTakeProfitMode)StopTakeProfitMode;
    config.take_profit_value = MathMax(0.0, TakeProfit);
    config.stop_loss_value = MathMax(0.0, StopLoss);
+   config.revma_reversion_take_profit_value = MathMax(0.0, RevmaReversionTakeProfit);
+   config.revma_reversion_stop_loss_value = MathMax(0.0, RevmaReversionStopLoss);
+   config.revma_continuation_take_profit_value = MathMax(0.0, RevmaContinuationTakeProfit);
+   config.revma_continuation_stop_loss_value = MathMax(0.0, RevmaContinuationStopLoss);
    config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
@@ -214,10 +226,16 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_RevmaConfigQProfileId(config) + "|" +
       DoubleToString(config.revma_fixed_lots, 4) + "|" +
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
+      DoubleToString(config.revma_reversion_grid_spacing_q, 2) + "|" +
+      DoubleToString(config.revma_continuation_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
       LP_StopTakeProfitModeName(config.stop_take_profit_mode) + "|" +
       DoubleToString(config.take_profit_value, 4) + "|" +
       DoubleToString(config.stop_loss_value, 4) + "|" +
+      DoubleToString(config.revma_reversion_take_profit_value, 4) + "|" +
+      DoubleToString(config.revma_reversion_stop_loss_value, 4) + "|" +
+      DoubleToString(config.revma_continuation_take_profit_value, 4) + "|" +
+      DoubleToString(config.revma_continuation_stop_loss_value, 4) + "|" +
       DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +

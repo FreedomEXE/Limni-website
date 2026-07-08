@@ -292,6 +292,8 @@ private:
       intent.max_slippage_points = 10.0;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
+      intent.target_take_profit_price = 0.0;
+      intent.target_stop_loss_price = 0.0;
       intent.stop_take_profit_basis = "";
       intent.priority = 100;
       intent.score = harvest.managed_floating_pnl;
@@ -344,7 +346,8 @@ private:
       if(m_revma_visual_reporter.UpdateRequired(m_config, dashboard_text, emitted > 0))
       {
          bool screenshot_requested = m_strategy_registry.ConsumeRevmaDashboardScreenshotRequest();
-         m_revma_visual_reporter.Update(m_config, dashboard_text, screenshot_requested, m_receipts);
+         double centerline_price = m_strategy_registry.RevmaVisualCenterlinePrice();
+         m_revma_visual_reporter.Update(m_config, dashboard_text, centerline_price, screenshot_requested, m_receipts);
       }
 
       if(emitted > 0)
@@ -614,6 +617,19 @@ public:
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
 
+      int revma_grid_tp_sync_intents = 0;
+      if(revma_grid_exit_intents <= 0)
+      {
+         revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
+            m_config,
+            m_grid_book,
+            m_receipts,
+            m_intent_bus
+         );
+         if(revma_grid_tp_sync_intents > 0)
+            m_total_intents += revma_grid_tp_sync_intents;
+      }
+
       int cycle_new_bars = 0;
       int new_symbol_ids[LP_SYMBOL_COUNT];
       int new_symbol_count = 0;
@@ -693,6 +709,7 @@ public:
                "|stop_take_profit_block_new_entries=" + LP_BoolText(exit_block_new_entries) +
                "|stop_take_profit_reason=" + stop_take_profit.reason +
                "|revma_grid_exit_intents=" + IntegerToString(revma_grid_exit_intents) +
+               "|revma_grid_tp_sync_intents=" + IntegerToString(revma_grid_tp_sync_intents) +
                "|stop_take_profit_net_open_pct_after_fees=" + DoubleToString(stop_take_profit.net_open_pct, 6) +
                "|stop_take_profit_estimated_close_fee=" + DoubleToString(stop_take_profit.estimated_close_fee, 2),
             0,

@@ -29,6 +29,11 @@ private:
          action == LP_INTENT_REDUCE_GRID;
    }
 
+   bool IsProtectionModifyAction(const int action)
+   {
+      return action == LP_INTENT_SYNC_GRID_TP;
+   }
+
    int VolumePrecision(const double step)
    {
       double scaled = step;
@@ -232,6 +237,228 @@ private:
       );
    }
 
+   void WriteModifyResult(
+      LP_ReceiptWriter &receipts,
+      const LP_TradePlan &plan,
+      const ulong ticket,
+      const bool ok,
+      const MqlTradeResult &result
+   )
+   {
+      int digits = 5;
+      if(StringLen(plan.symbol) > 0 && SymbolInfoInteger(plan.symbol, SYMBOL_EXIST))
+         digits = (int)SymbolInfoInteger(plan.symbol, SYMBOL_DIGITS);
+      receipts.Write(
+         LP_RECEIPT_ORDER_RESULT,
+         plan.symbol,
+         ok ? "modified" : "modify_failed",
+         "plan_id=" + (string)plan.plan_id +
+            "|ticket=" + (string)ticket +
+            "|ok=" + LP_BoolText(ok) +
+            "|retcode=" + IntegerToString((int)result.retcode) +
+            "|retcode_name=" + LP_RetcodeName(result.retcode) +
+            "|order=" + (string)result.order +
+            "|deal=" + (string)result.deal +
+            "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits),
+         plan.lane_id,
+         plan.variant_id,
+         0,
+         plan.intent_id,
+         plan.decision_id,
+         plan.magic
+      );
+   }
+
+   bool TargetTakeProfitTradable(
+      const LP_TradePlan &plan,
+      string &reason
+   )
+   {
+      reason = "";
+      if(plan.target_take_profit_price <= 0.0)
+      {
+         reason = "target_take_profit_missing";
+         return false;
+      }
+
+      MqlTick tick;
+      if(!SymbolInfoTick(plan.symbol, tick) || tick.ask <= 0.0 || tick.bid <= 0.0)
+      {
+         reason = "tick_unavailable";
+         return false;
+      }
+
+      double point = SymbolInfoDouble(plan.symbol, SYMBOL_POINT);
+      long stop_level_points = (long)SymbolInfoInteger(plan.symbol, SYMBOL_TRADE_STOPS_LEVEL);
+      double min_stop_distance = point > 0.0 && stop_level_points > 0 ? (double)stop_level_points * point : 0.0;
+
+      if(plan.direction > 0)
+      {
+         if(plan.target_take_profit_price <= tick.bid)
+         {
+            reason = "long_tp_not_above_bid";
+            return false;
+         }
+         if(min_stop_distance > 0.0 && plan.target_take_profit_price - tick.bid < min_stop_distance)
+         {
+            reason = "long_tp_inside_stop_level";
+            return false;
+         }
+      }
+      else if(plan.direction < 0)
+      {
+         if(plan.target_take_profit_price >= tick.ask)
+         {
+            reason = "short_tp_not_below_ask";
+            return false;
+         }
+         if(min_stop_distance > 0.0 && tick.ask - plan.target_take_profit_price < min_stop_distance)
+         {
+            reason = "short_tp_inside_stop_level";
+            return false;
+         }
+      }
+      else
+      {
+         reason = "invalid_direction";
+         return false;
+      }
+
+      return true;
+   }
+
+   bool TakeProfitAlreadySynced(
+      const string symbol,
+      const double current_take_profit,
+      const double target_take_profit
+   )
+   {
+      if(current_take_profit <= 0.0 || target_take_profit <= 0.0)
+         return false;
+      double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+      double tolerance = point > 0.0 ? point * 0.5 : 0.00000001;
+      return MathAbs(current_take_profit - target_take_profit) <= tolerance;
+   }
+
+   bool PositionDirectionMatchesPlan(const long position_type, const int direction)
+   {
+      if(direction > 0)
+         return position_type == POSITION_TYPE_BUY;
+      if(direction < 0)
+         return position_type == POSITION_TYPE_SELL;
+      return false;
+   }
+
+   bool SyncGridTakeProfit(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
+   {
+      string barrier_reason = "";
+      bool can_place = CanPlaceOrders(barrier_reason);
+      if(!can_place || m_config.execution_mode == LP_EXECUTION_DRY_RUN)
+      {
+         WriteOrderRequest(receipts, plan, "grid_tp_sync_dry_or_blocked", "reason=" + (barrier_reason == "" ? "dry_run" : barrier_reason));
+         return false;
+      }
+
+      string target_reason = "";
+      if(!TargetTakeProfitTradable(plan, target_reason))
+      {
+         WriteOrderRequest(
+            receipts,
+            plan,
+            "grid_tp_sync_target_invalid",
+            "reason=" + target_reason +
+               "|grid_magic=" + (string)plan.magic +
+               "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, 8)
+         );
+         return false;
+      }
+
+      int digits = 5;
+      if(StringLen(plan.symbol) > 0 && SymbolInfoInteger(plan.symbol, SYMBOL_EXIST))
+         digits = (int)SymbolInfoInteger(plan.symbol, SYMBOL_DIGITS);
+
+      int matched = 0;
+      int skipped_synced = 0;
+      int attempted = 0;
+      int modified = 0;
+      int failed = 0;
+
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0)
+            continue;
+         if(!PositionSelectByTicket(ticket))
+            continue;
+
+         long magic = (long)PositionGetInteger(POSITION_MAGIC);
+         if(magic != plan.magic)
+            continue;
+         if(PositionGetString(POSITION_SYMBOL) != plan.symbol)
+            continue;
+
+         long position_type = (long)PositionGetInteger(POSITION_TYPE);
+         if(!PositionDirectionMatchesPlan(position_type, plan.direction))
+            continue;
+
+         matched++;
+         double current_stop_loss = PositionGetDouble(POSITION_SL);
+         double current_take_profit = PositionGetDouble(POSITION_TP);
+         if(TakeProfitAlreadySynced(plan.symbol, current_take_profit, plan.target_take_profit_price))
+         {
+            skipped_synced++;
+            continue;
+         }
+
+         WriteOrderRequest(
+            receipts,
+            plan,
+            "grid_tp_modify_request",
+            "ticket=" + (string)ticket +
+               "|current_stop_loss=" + PriceText(current_stop_loss, digits) +
+               "|current_take_profit=" + PriceText(current_take_profit, digits) +
+               "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
+               "|grid_magic=" + (string)plan.magic
+         );
+
+         MqlTradeRequest request;
+         MqlTradeResult result;
+         ZeroMemory(request);
+         ZeroMemory(result);
+         request.action = TRADE_ACTION_SLTP;
+         request.position = ticket;
+         request.symbol = plan.symbol;
+         request.magic = plan.magic;
+         request.sl = current_stop_loss;
+         request.tp = plan.target_take_profit_price;
+         request.deviation = (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points));
+
+         attempted++;
+         bool ok = OrderSend(request, result);
+         bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+         if(accepted)
+            modified++;
+         else
+            failed++;
+         WriteModifyResult(receipts, plan, ticket, accepted, result);
+      }
+
+      WriteOrderRequest(
+         receipts,
+         plan,
+         "grid_tp_sync_scan_complete",
+         "matched=" + IntegerToString(matched) +
+            "|attempted=" + IntegerToString(attempted) +
+            "|modified=" + IntegerToString(modified) +
+            "|skipped_already_synced=" + IntegerToString(skipped_synced) +
+            "|failed=" + IntegerToString(failed) +
+            "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
+            "|grid_magic=" + (string)plan.magic
+      );
+
+      return matched > 0 && failed == 0;
+   }
+
    bool CloseTicket(
       const ulong ticket,
       const LP_TradePlan &plan,
@@ -407,6 +634,9 @@ public:
 
    bool Execute(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
    {
+      if(IsProtectionModifyAction(plan.action))
+         return SyncGridTakeProfit(plan, receipts);
+
       if(IsCloseAction(plan.action))
          return CloseMatchingPositions(plan, receipts);
 

@@ -63,6 +63,8 @@ private:
       intent.max_slippage_points = 10.0;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
+      intent.target_take_profit_price = 0.0;
+      intent.target_stop_loss_price = 0.0;
       intent.stop_take_profit_basis = "";
       intent.priority = action == LP_INTENT_OPEN_GRID ? 50 : 40;
       intent.score = snapshot.pair_direction_score;

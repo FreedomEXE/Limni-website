@@ -9,6 +9,7 @@
 #include "..\\Receipts\\ReceiptWriter.mqh"
 #include "IntentBus.mqh"
 #include "RevmaTypes.mqh"
+#include "Revma\\RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot
 {
@@ -84,8 +85,10 @@ private:
    int m_birth_count;
    int m_birth_capacity;
    string m_visual_text;
+   double m_visual_centerline_price;
    string m_last_divergent_add_text;
    bool m_dashboard_screenshot_requested;
+   LP_RevmaGridProtectionManager m_protection_manager;
 
    ulong NextIntentId()
    {
@@ -119,6 +122,28 @@ private:
       if(variant_id == LP_VARIANT_REVMA_REVERSION)
          return LP_REVMA_SLEEVE_REVERSION;
       return LP_REVMA_SLEEVE_NONE;
+   }
+
+   bool ContinuationAddHasReachableTarget(
+      const LP_Config &config,
+      const int sleeve,
+      string &reason
+   )
+   {
+      reason = "";
+      if(sleeve != LP_REVMA_SLEEVE_CONTINUATION)
+         return true;
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+         return true;
+
+      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, sleeve);
+      double spacing_q = LP_RevmaGridSpacingQForSleeve(config, sleeve);
+      if(take_profit_q > 0.0 && spacing_q > 0.0 && take_profit_q <= spacing_q)
+      {
+         reason = "continuation_tp_not_above_grid_spacing";
+         return false;
+      }
+      return true;
    }
 
    string AddPolicyNameFromFrozen(const int sleeve, const int direction)
@@ -320,6 +345,7 @@ private:
       double distance_from_avg_entry_q = 0.0;
       if(spacing_q > 0.0 && grid.avg_entry_price > 0.0)
          distance_from_avg_entry_q = (signal.price - grid.avg_entry_price) / spacing_q;
+      double spacing_value_q = spacing_q > 0.0 ? spacing_price / spacing_q : 0.0;
 
       bool current_matches = CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction);
       return "system_id=" + signal.system_id +
@@ -346,6 +372,7 @@ private:
          "|avg_entry=" + DoubleToString(grid.avg_entry_price, 5) +
          "|min_entry=" + DoubleToString(grid.min_entry_price, 5) +
          "|max_entry=" + DoubleToString(grid.max_entry_price, 5) +
+         "|grid_spacing_value_q=" + DoubleToString(spacing_value_q, 4) +
          "|spacing_q=" + DoubleToString(spacing_q, 8) +
          "|spacing_price=" + DoubleToString(spacing_price, 8) +
          "|next_add_level=" + DoubleToString(next_add_level, 5) +
@@ -446,6 +473,8 @@ private:
       intent.max_slippage_points = 10.0;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
+      intent.target_take_profit_price = 0.0;
+      intent.target_stop_loss_price = 0.0;
       intent.stop_take_profit_basis = "";
       intent.priority = action == LP_INTENT_OPEN_GRID ? 60 : 55;
       intent.score = signal.raw_score;
@@ -514,6 +543,87 @@ private:
       return DoubleToString(value, 5);
    }
 
+   string DashboardCleanText(const string value)
+   {
+      string out = value;
+      StringReplace(out, "\r", " ");
+      StringReplace(out, "\n", " | ");
+      return out;
+   }
+
+   string DashboardPadRight(const string value, const int width)
+   {
+      string out = ShortText(DashboardCleanText(value), width);
+      while(StringLen(out) < width)
+         out += " ";
+      return out;
+   }
+
+   string DashboardBorder()
+   {
+      return "+------------------------------------------------------+\n";
+   }
+
+   string DashboardTitle(const string title)
+   {
+      return "| " + DashboardPadRight(title, 52) + " |\n";
+   }
+
+   string DashboardRow(const string label, const string value)
+   {
+      return "| " + DashboardPadRight(label, 12) + " | " + DashboardPadRight(value, 35) + " |\n";
+   }
+
+   string DashboardSection(const string title)
+   {
+      return DashboardBorder() + DashboardTitle(title) + DashboardBorder();
+   }
+
+   string BrokerTakeProfitText(
+      const string symbol,
+      const LP_GridInventoryRow &grid,
+      const LP_RevmaGridBirthSnapshot &birth,
+      const LP_Config &config
+   )
+   {
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+         return "off";
+      int grid_sleeve = birth.valid ? birth.sleeve : SleeveFromVariant(grid.variant_id);
+      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
+      if(take_profit_q <= 0.0)
+         return "off";
+      if(!birth.valid || birth.q <= 0.0)
+         return "waiting birth q";
+      if(grid.avg_entry_price <= 0.0 || grid.lots <= 0.0)
+         return "waiting grid";
+
+      double money_per_price = 0.0;
+      string note = "";
+      if(!MoneyPerPriceDistance(symbol, grid.lots, money_per_price, note))
+         return "n/a " + note;
+
+      int digits = 5;
+      if(SymbolInfoInteger(symbol, SYMBOL_EXIST))
+         digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+      double target_money = birth.q * take_profit_q * money_per_price;
+      string fee_source = "";
+      double required_money = target_money + GridCloseFeeMoney(grid, config, fee_source) - grid.swap - grid.commission;
+      double distance = required_money / money_per_price;
+      if(distance <= 0.0 || !MathIsValidNumber(distance))
+         return "n/a distance";
+
+      double target_tp = 0.0;
+      if(grid.direction > 0)
+         target_tp = NormalizeDouble(grid.avg_entry_price + distance, digits);
+      else if(grid.direction < 0)
+         target_tp = NormalizeDouble(grid.avg_entry_price - distance, digits);
+      else
+         return "n/a direction";
+
+      return DoubleToString(target_tp, digits);
+   }
+
    bool MoneyPerPriceDistance(
       const string symbol,
       const double lots,
@@ -547,11 +657,45 @@ private:
       return true;
    }
 
-   double GridCloseFeeMoney(const LP_GridInventoryRow &grid, const LP_Config &config)
+   double ObservedOpenCommissionFeeMoney(const LP_GridInventoryRow &grid)
+   {
+      if(grid.commission >= 0.0)
+         return 0.0;
+      return MathAbs(grid.commission);
+   }
+
+   double ConfiguredCloseFeeMoney(const LP_GridInventoryRow &grid, const LP_Config &config)
    {
       if(config.stop_take_profit_close_commission_per_lot <= 0.0)
          return 0.0;
       return MathAbs(grid.lots) * config.stop_take_profit_close_commission_per_lot;
+   }
+
+   double GridCloseFeeMoney(
+      const LP_GridInventoryRow &grid,
+      const LP_Config &config,
+      string &fee_source
+   )
+   {
+      double configured_fee = ConfiguredCloseFeeMoney(grid, config);
+      double observed_open_fee = ObservedOpenCommissionFeeMoney(grid);
+      if(configured_fee > 0.0 && configured_fee >= observed_open_fee)
+      {
+         fee_source = "configured_per_lot";
+         return configured_fee;
+      }
+      if(observed_open_fee > 0.0)
+      {
+         fee_source = "observed_open_commission";
+         return observed_open_fee;
+      }
+      if(configured_fee > 0.0)
+      {
+         fee_source = "configured_per_lot";
+         return configured_fee;
+      }
+      fee_source = "zero";
+      return 0.0;
    }
 
    string BasketExitVisualText(
@@ -575,12 +719,16 @@ private:
       if(!MoneyPerPriceDistance(symbol, grid.lots, money_per_price, note))
          return " basket exit: unavailable (" + note + ")\n";
 
-      double close_fee = GridCloseFeeMoney(grid, config);
+      string close_fee_source = "";
+      double close_fee = GridCloseFeeMoney(grid, config, close_fee_source);
       double net_open_money = grid.floating_pnl - close_fee;
-      double take_profit_money = config.take_profit_value > 0.0 ?
-         q_basis * config.take_profit_value * money_per_price : 0.0;
-      double stop_loss_money = config.stop_loss_value > 0.0 ?
-         q_basis * config.stop_loss_value * money_per_price : 0.0;
+      int grid_sleeve = birth.valid ? birth.sleeve : SleeveFromVariant(grid.variant_id);
+      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
+      double stop_loss_q = LP_RevmaStopLossQForSleeve(config, grid_sleeve);
+      double take_profit_money = take_profit_q > 0.0 ?
+         q_basis * take_profit_q * money_per_price : 0.0;
+      double stop_loss_money = stop_loss_q > 0.0 ?
+         q_basis * stop_loss_q * money_per_price : 0.0;
 
       return " avg entry: " + PriceText(grid.avg_entry_price) +
             "  pnl: " + DoubleToString(grid.floating_pnl, 2) + "\n" +
@@ -599,7 +747,11 @@ private:
       const double money_per_price,
       const double gross_open_money,
       const double estimated_close_fee,
+      const string estimated_close_fee_source,
       const double net_open_money,
+      const int grid_sleeve,
+      const double take_profit_q,
+      const double stop_loss_q,
       const double take_profit_money,
       const double stop_loss_money
    )
@@ -609,6 +761,7 @@ private:
          "|symbol=" + symbol +
          "|grid_key=" + (string)grid.grid_key +
          "|grid_variant_id=" + IntegerToString(grid.variant_id) +
+         "|grid_sleeve=" + LP_RevmaSleeveName(grid_sleeve) +
          "|grid_direction=" + LP_RevmaDirectionName(grid.direction) +
          "|grid_family=" + IntegerToString(grid.grid_family) +
          "|grid_positions=" + IntegerToString(grid.position_count) +
@@ -618,11 +771,16 @@ private:
          "|min_entry=" + DoubleToString(grid.min_entry_price, 5) +
          "|max_entry=" + DoubleToString(grid.max_entry_price, 5) +
          "|q_basis=" + DoubleToString(q_basis, 8) +
-         "|take_profit_value_q=" + DoubleToString(config.take_profit_value, 4) +
-         "|stop_loss_value_q=" + DoubleToString(config.stop_loss_value, 4) +
+         "|take_profit_value_q=" + DoubleToString(take_profit_q, 4) +
+         "|stop_loss_value_q=" + DoubleToString(stop_loss_q, 4) +
          "|money_per_price=" + DoubleToString(money_per_price, 2) +
          "|gross_open_money=" + DoubleToString(gross_open_money, 2) +
+         "|price_pnl=" + DoubleToString(grid.price_pnl, 2) +
+         "|swap=" + DoubleToString(grid.swap, 2) +
+         "|commission=" + DoubleToString(grid.commission, 2) +
          "|estimated_close_fee=" + DoubleToString(estimated_close_fee, 2) +
+         "|estimated_close_fee_source=" + estimated_close_fee_source +
+         "|observed_open_commission_fee=" + DoubleToString(ObservedOpenCommissionFeeMoney(grid), 2) +
          "|net_open_money_after_fees=" + DoubleToString(net_open_money, 2) +
          "|take_profit_target_money_after_fees=" + DoubleToString(take_profit_money, 2) +
          "|stop_loss_target_money_after_fees=" + DoubleToString(stop_loss_money, 2) +
@@ -653,6 +811,8 @@ private:
       intent.max_slippage_points = 10.0;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
+      intent.target_take_profit_price = 0.0;
+      intent.target_stop_loss_price = 0.0;
       intent.stop_take_profit_basis = "";
       intent.priority = 95;
       intent.score = score;
@@ -702,12 +862,16 @@ private:
       }
 
       double q_basis = birth.q;
-      double take_profit_money = config.take_profit_value > 0.0 ?
-         q_basis * config.take_profit_value * money_per_price : 0.0;
-      double stop_loss_money = config.stop_loss_value > 0.0 ?
-         q_basis * config.stop_loss_value * money_per_price : 0.0;
+      int grid_sleeve = birth.sleeve;
+      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
+      double stop_loss_q = LP_RevmaStopLossQForSleeve(config, grid_sleeve);
+      double take_profit_money = take_profit_q > 0.0 ?
+         q_basis * take_profit_q * money_per_price : 0.0;
+      double stop_loss_money = stop_loss_q > 0.0 ?
+         q_basis * stop_loss_q * money_per_price : 0.0;
       double gross_open_money = grid.floating_pnl;
-      double estimated_close_fee = GridCloseFeeMoney(grid, config);
+      string estimated_close_fee_source = "";
+      double estimated_close_fee = GridCloseFeeMoney(grid, config, estimated_close_fee_source);
       double net_open_money = gross_open_money - estimated_close_fee;
 
       string reason = "";
@@ -735,7 +899,11 @@ private:
          money_per_price,
          gross_open_money,
          estimated_close_fee,
+         estimated_close_fee_source,
          net_open_money,
+         grid_sleeve,
+         take_profit_q,
+         stop_loss_q,
          take_profit_money,
          stop_loss_money
       );
@@ -787,56 +955,59 @@ private:
    {
       string current_policy = AddPolicyName(signal);
       bool current_matches = has_grid && CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction);
-      m_visual_text =
-         "LIMNI REVMA DASHBOARD\n" +
-         "CURRENT SIGNAL\n" +
-         " symbol: " + signal.symbol + "\n" +
-         " direction: " + LP_RevmaDirectionName(signal.direction) +
-            "  sleeve: " + LP_RevmaSleeveName(signal.sleeve) + "\n" +
-         " implied add: " + current_policy + "\n" +
-         " q profile: " + signal.q_profile_id +
-            "  q: " + DoubleToString(signal.q, 8) + "\n" +
-         " anchor: " + PriceText(signal.anchor) +
-            "  price: " + PriceText(signal.price) + "\n" +
-         " stoch: " + DoubleToString(signal.stoch, 2) +
-            "  trend: " + IntegerToString(signal.trend_state) + "\n" +
-         " variant/formula: V" + IntegerToString(signal.variant_id) +
-            " / " + (string)signal.formula_hash + "\n\n" +
-         "ACTIVE GRID\n";
+      int display_direction = has_grid ? frozen_direction : signal.direction;
+      string status = has_grid ? "ACTIVE" : "WAITING";
+      string display_sleeve = has_grid ? LP_RevmaSleeveName(frozen_sleeve) : LP_RevmaSleeveName(signal.sleeve);
+      string display_policy = has_grid ? frozen_add_policy : current_policy;
+      string state_line = LP_RevmaDirectionName(display_direction) + " / " + status;
+      string relation_line = LP_RevmaAnchorRelationName(signal.anchor_relation) +
+         " / " + DoubleToString(signal.anchor_distance_q, 2) + "q";
+      int display_sleeve_id = has_grid ? frozen_sleeve : signal.sleeve;
+      double spacing_value_q = LP_RevmaGridSpacingQForSleeve(config, display_sleeve_id);
+      double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, display_sleeve_id);
+      double stop_loss_q = LP_RevmaStopLossQForSleeve(config, display_sleeve_id);
+      string birth_identity = current_matches ? "OK" : "CURRENT DIFFERS";
+
+      m_visual_centerline_price = signal.anchor;
+
+      m_visual_text = DashboardSection("LIMNI REVMA");
+      m_visual_text += DashboardRow("STATE", state_line);
+      m_visual_text += DashboardRow("SETUP", display_sleeve);
+      m_visual_text += DashboardRow("ACTION", last_action);
+      m_visual_text += DashboardSection("CENTERLINE");
+      m_visual_text += DashboardRow("SYMBOL", signal.symbol);
+      m_visual_text += DashboardRow("CENTER", PriceText(signal.anchor));
+      m_visual_text += DashboardRow("PRICE", PriceText(signal.price));
+      m_visual_text += DashboardRow("RELATION", relation_line);
+      m_visual_text += DashboardRow("Q", DoubleToString(signal.q, 8));
 
       if(!has_grid)
       {
-         m_visual_text +=
-            " grid: none\n" +
-            " last action: " + last_action;
+         m_visual_text += DashboardSection("GRID");
+         m_visual_text += DashboardRow("POSITIONS", "0");
+         m_visual_text += DashboardRow("ADD MODE", display_policy);
+         m_visual_text += DashboardRow("SPACING Q", DoubleToString(spacing_value_q, 2));
+         m_visual_text += DashboardRow("TP/SL Q", DoubleToString(take_profit_q, 2) + " / " + DoubleToString(stop_loss_q, 2));
          return;
       }
 
-      string birth_q_profile = birth.valid ? birth.q_profile_id : "missing";
-      string birth_anchor = birth.valid ? PriceText(birth.anchor) : "missing";
-      string birth_price = birth.valid ? PriceText(birth.price) : "missing";
-      string birth_formula = birth.valid ? (string)birth.formula_hash : "missing";
-      m_visual_text +=
-         " grid_id: " + (string)grid.grid_key +
-            "  tickets: " + ShortText(grid.tickets, 42) + "\n" +
-         " birth direction: " + LP_RevmaDirectionName(frozen_direction) +
-            "  order side: " + LP_RevmaDirectionName(grid.direction) + "\n" +
-         " frozen sleeve: " + LP_RevmaSleeveName(frozen_sleeve) + "\n" +
-         " frozen add: " + frozen_add_policy + "\n" +
-         " birth q profile: " + birth_q_profile + "\n" +
-         " birth anchor/price: " + birth_anchor + " / " + birth_price + "\n" +
-         " birth variant/formula: V" + IntegerToString(frozen_variant_id) +
-            " / " + birth_formula + "\n" +
-         " current variant: V" + IntegerToString(signal.variant_id) +
-            "  matches birth: " + LP_BoolText(current_matches) + "\n" +
-         " next add level: " + PriceText(next_add_level) + "\n" +
-          " open positions: " + IntegerToString(grid.position_count) +
-             "  lots: " + DoubleToString(grid.lots, 2) + "\n" +
-         BasketExitVisualText(signal.symbol, grid, birth, config) +
-          " last action: " + last_action;
+      m_visual_text += DashboardSection("GRID");
+      m_visual_text += DashboardRow("POSITIONS", IntegerToString(grid.position_count));
+      m_visual_text += DashboardRow("LOTS", DoubleToString(grid.lots, 2));
+      m_visual_text += DashboardRow("AVG ENTRY", PriceText(grid.avg_entry_price));
+      m_visual_text += DashboardRow("PNL", DoubleToString(grid.floating_pnl, 2));
+      m_visual_text += DashboardRow("TP", BrokerTakeProfitText(signal.symbol, grid, birth, config));
+      m_visual_text += DashboardRow("NEXT ADD", PriceText(next_add_level));
+      m_visual_text += DashboardRow("ADD MODE", display_policy);
+      m_visual_text += DashboardRow("SPACING Q", DoubleToString(spacing_value_q, 2));
+      m_visual_text += DashboardRow("TP/SL Q", DoubleToString(take_profit_q, 2) + " / " + DoubleToString(stop_loss_q, 2));
+      m_visual_text += DashboardRow("BIRTH ID", birth_identity);
 
       if(m_last_divergent_add_text != "")
-         m_visual_text += "\n\n" + m_last_divergent_add_text;
+      {
+         m_visual_text += DashboardSection("NOTE");
+         m_visual_text += DashboardRow("DIVERGE", m_last_divergent_add_text);
+      }
    }
 
 public:
@@ -848,8 +1019,10 @@ public:
       m_birth_count = 0;
       m_birth_capacity = 0;
       m_visual_text = "";
+      m_visual_centerline_price = 0.0;
       m_last_divergent_add_text = "";
       m_dashboard_screenshot_requested = false;
+      m_protection_manager.Reset();
       ArrayResize(m_births, 0);
    }
 
@@ -863,12 +1036,69 @@ public:
       return m_visual_text;
    }
 
+   double VisualDashboardCenterlinePrice()
+   {
+      return m_visual_centerline_price;
+   }
+
    bool ConsumeDashboardScreenshotRequest()
    {
       if(!m_dashboard_screenshot_requested)
          return false;
       m_dashboard_screenshot_requested = false;
       return true;
+   }
+
+   int SyncGridTakeProfits(
+      const LP_Config &config,
+      LP_GridBook &grid_book,
+      LP_ReceiptWriter &receipts,
+      LP_IntentBus &bus
+   )
+   {
+      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
+         return 0;
+      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
+         return 0;
+      if(!LP_RevmaAnySleeveTakeProfitEnabled(config))
+         return 0;
+
+      int emitted = 0;
+      for(int i = 0; i < grid_book.OpenGridCount(); i++)
+      {
+         LP_GridInventoryRow grid;
+         if(!grid_book.GetGrid(i, grid))
+            continue;
+         if(grid.lane_id != LP_LANE_REVMA || grid.position_count <= 0 || grid.lots <= 0.0)
+            continue;
+
+         LP_RevmaGridBirthSnapshot birth;
+         if(!FindBirth(grid.grid_key, birth))
+            continue;
+         if(!birth.valid || birth.q <= 0.0)
+            continue;
+         int grid_sleeve = birth.sleeve;
+         if(LP_RevmaTakeProfitQForSleeve(config, grid_sleeve) <= 0.0)
+            continue;
+
+         string symbol = LP_ResolveBrokerSymbol(LP_CanonicalSymbol(grid.symbol_id), config.broker_symbol_suffix);
+         if(m_protection_manager.QueueGridTakeProfitSync(
+            symbol,
+            grid,
+            config,
+            birth.q,
+            grid_sleeve,
+            BirthSnapshotMetadata(birth),
+            NextIntentId(),
+            m_config_hash,
+            receipts,
+            bus
+         ))
+         {
+            emitted++;
+         }
+      }
+      return emitted;
    }
 
    int EvaluateGridExits(
@@ -882,7 +1112,7 @@ public:
          return 0;
       if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
          return 0;
-      if(config.take_profit_value <= 0.0 && config.stop_loss_value <= 0.0)
+      if(!LP_RevmaAnySleeveStopTakeProfitEnabled(config))
          return 0;
 
       int emitted = 0;
@@ -908,7 +1138,7 @@ public:
    {
       if(!signal.valid)
          return 0;
-      if(signal.q <= 0.0 || config.revma_fixed_lots <= 0.0 || config.revma_grid_spacing_q <= 0.0)
+      if(signal.q <= 0.0 || config.revma_fixed_lots <= 0.0)
          return 0;
 
       LP_GridInventoryRow active_grid;
@@ -929,7 +1159,8 @@ public:
          int frozen_sleeve = birth_snapshot.valid ? birth_snapshot.sleeve : SleeveFromVariant(active_grid.variant_id);
          string frozen_add_policy = birth_snapshot.valid ? birth_snapshot.add_policy : AddPolicyNameFromFrozen(frozen_sleeve, frozen_direction);
          double spacing_q = birth_snapshot.valid && birth_snapshot.q > 0.0 ? birth_snapshot.q : signal.q;
-         double spacing = spacing_q * config.revma_grid_spacing_q;
+         double spacing_config_q = LP_RevmaGridSpacingQForSleeve(config, frozen_sleeve);
+         double spacing = spacing_q * spacing_config_q;
          double next_add_level = 0.0;
 
          if(!SleeveEnabled(config, frozen_sleeve))
@@ -1010,6 +1241,38 @@ public:
                "other_reason_spacing_invalid"
             );
              UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing invalid", config);
+            receipts.Write(
+               LP_RECEIPT_REVMA_GRID_ADD_SKIP,
+               signal.symbol,
+               "add_skip_other_reason",
+               metadata,
+               LP_LANE_REVMA,
+               frozen_variant_id,
+               active_grid.grid_key,
+               0,
+               0,
+               0
+            );
+            return 0;
+         }
+
+         string target_guard_reason = "";
+         if(!ContinuationAddHasReachableTarget(config, frozen_sleeve, target_guard_reason))
+         {
+            string metadata = AddSkipMetadata(
+               signal,
+               active_grid,
+               birth_snapshot,
+               frozen_variant_id,
+               frozen_direction,
+               frozen_sleeve,
+               frozen_add_policy,
+               spacing_q,
+               spacing,
+               next_add_level,
+               target_guard_reason
+            );
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: continuation tp <= spacing", config);
             receipts.Write(
                LP_RECEIPT_REVMA_GRID_ADD_SKIP,
                signal.symbol,

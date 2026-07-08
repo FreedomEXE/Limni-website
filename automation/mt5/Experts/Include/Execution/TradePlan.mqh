@@ -21,6 +21,8 @@ void LP_ResetTradePlan(LP_TradePlan &plan)
    plan.max_slippage_points = 0.0;
    plan.take_profit_distance_price = 0.0;
    plan.stop_loss_distance_price = 0.0;
+   plan.target_take_profit_price = 0.0;
+   plan.target_stop_loss_price = 0.0;
    plan.stop_take_profit_basis = "";
    plan.magic = 0;
    plan.comment = "";

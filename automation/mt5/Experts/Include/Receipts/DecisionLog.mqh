@@ -10,14 +10,22 @@
 string LP_StopTakeProfitReceiptFields(
    const string basis,
    const double take_profit_distance,
-   const double stop_loss_distance
+   const double stop_loss_distance,
+   const double target_take_profit_price,
+   const double target_stop_loss_price
 )
 {
-   if(basis == "" && take_profit_distance <= 0.0 && stop_loss_distance <= 0.0)
+   if(basis == "" &&
+      take_profit_distance <= 0.0 &&
+      stop_loss_distance <= 0.0 &&
+      target_take_profit_price <= 0.0 &&
+      target_stop_loss_price <= 0.0)
       return "";
    return "|sltp_basis=" + (basis == "" ? "none" : basis) +
       "|take_profit_distance_price=" + DoubleToString(MathMax(0.0, take_profit_distance), 8) +
-      "|stop_loss_distance_price=" + DoubleToString(MathMax(0.0, stop_loss_distance), 8);
+      "|stop_loss_distance_price=" + DoubleToString(MathMax(0.0, stop_loss_distance), 8) +
+      "|target_take_profit_price=" + DoubleToString(MathMax(0.0, target_take_profit_price), 8) +
+      "|target_stop_loss_price=" + DoubleToString(MathMax(0.0, target_stop_loss_price), 8);
 }
 
 void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
@@ -36,7 +44,9 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
           LP_StopTakeProfitReceiptFields(
              intent.stop_take_profit_basis,
              intent.take_profit_distance_price,
-             intent.stop_loss_distance_price
+             intent.stop_loss_distance_price,
+             intent.target_take_profit_price,
+             intent.target_stop_loss_price
           ) +
           "|reason=" + intent.human_reason,
       intent.lane_id,
@@ -80,7 +90,9 @@ void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
          LP_StopTakeProfitReceiptFields(
             plan.stop_take_profit_basis,
             plan.take_profit_distance_price,
-            plan.stop_loss_distance_price
+            plan.stop_loss_distance_price,
+            plan.target_take_profit_price,
+            plan.target_stop_loss_price
          ) +
          "|reason=" + plan.reason +
          "|comment=" + plan.comment,

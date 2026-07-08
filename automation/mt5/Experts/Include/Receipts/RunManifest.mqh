@@ -43,12 +43,18 @@ void LP_WriteRunManifest(
          "|revma_q_profile=" + LP_RevmaQProfileName(config.revma_q_profile) +
          "|revma_max_m1_bars=" + IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) +
          "|revma_q_profile_id=" + LP_RevmaConfigQProfileId(config) +
+         "|revma_reversion_grid_spacing_q=" + DoubleToString(config.revma_reversion_grid_spacing_q, 2) +
+         "|revma_continuation_grid_spacing_q=" + DoubleToString(config.revma_continuation_grid_spacing_q, 2) +
          "|revma_visual_dashboard=" + LP_BoolText(config.revma_show_visual_dashboard) +
          "|revma_dashboard_refresh_seconds=" + IntegerToString(config.revma_dashboard_refresh_seconds) +
          "|revma_dashboard_screenshot_on_divergent_add=" + LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) +
          "|sltp_mode=" + LP_StopTakeProfitModeName(config.stop_take_profit_mode) +
          "|take_profit_value=" + DoubleToString(config.take_profit_value, 4) +
          "|stop_loss_value=" + DoubleToString(config.stop_loss_value, 4) +
+         "|revma_reversion_take_profit_value=" + DoubleToString(config.revma_reversion_take_profit_value, 4) +
+         "|revma_reversion_stop_loss_value=" + DoubleToString(config.revma_reversion_stop_loss_value, 4) +
+         "|revma_continuation_take_profit_value=" + DoubleToString(config.revma_continuation_take_profit_value, 4) +
+         "|revma_continuation_stop_loss_value=" + DoubleToString(config.revma_continuation_stop_loss_value, 4) +
          "|sltp_close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2),
       0,
       0,
@@ -94,6 +100,8 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_mean_reversion_sleeve_enabled", LP_BoolText(config.revma_enable_reversion_sleeve));
    receipts.Summary("revma_fixed_lots", DoubleToString(config.revma_fixed_lots, 4));
    receipts.Summary("revma_grid_spacing_q", DoubleToString(config.revma_grid_spacing_q, 2));
+   receipts.Summary("revma_reversion_grid_spacing_q", DoubleToString(config.revma_reversion_grid_spacing_q, 2));
+   receipts.Summary("revma_continuation_grid_spacing_q", DoubleToString(config.revma_continuation_grid_spacing_q, 2));
    receipts.Summary("revma_intent_expiry_minutes", IntegerToString(config.revma_intent_expiry_minutes));
    receipts.Summary("revma_q_profile", LP_RevmaQProfileName(config.revma_q_profile));
    receipts.Summary("revma_max_m1_bars", IntegerToString(LP_RevmaResolvedMaxM1Bars(config)));
@@ -104,6 +112,10 @@ void LP_WriteRunManifest(
    receipts.Summary("stop_take_profit_mode", LP_StopTakeProfitModeName(config.stop_take_profit_mode));
    receipts.Summary("take_profit_value", DoubleToString(config.take_profit_value, 4));
    receipts.Summary("stop_loss_value", DoubleToString(config.stop_loss_value, 4));
+   receipts.Summary("revma_reversion_take_profit_value", DoubleToString(config.revma_reversion_take_profit_value, 4));
+   receipts.Summary("revma_reversion_stop_loss_value", DoubleToString(config.revma_reversion_stop_loss_value, 4));
+   receipts.Summary("revma_continuation_take_profit_value", DoubleToString(config.revma_continuation_take_profit_value, 4));
+   receipts.Summary("revma_continuation_stop_loss_value", DoubleToString(config.revma_continuation_stop_loss_value, 4));
    receipts.Summary("stop_take_profit_close_commission_per_lot", DoubleToString(config.stop_take_profit_close_commission_per_lot, 2));
    receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));

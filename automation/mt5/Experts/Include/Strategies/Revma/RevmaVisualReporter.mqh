@@ -15,32 +15,80 @@ private:
    string m_last_text;
    bool m_screenshot_captured;
 
+   void DeleteObjectIfExists(const string name)
+   {
+      if(ObjectFind(0, name) >= 0)
+         ObjectDelete(0, name);
+   }
+
+   void CleanupLegacyDashboardObjects()
+   {
+      for(int i = ObjectsTotal(0, -1, OBJ_LABEL) - 1; i >= 0; i--)
+      {
+         string name = ObjectName(0, i, -1, OBJ_LABEL);
+         if(name == "")
+            continue;
+         string text = ObjectGetString(0, name, OBJPROP_TEXT);
+         if(StringFind(name, "Label") == 0 && text == "Label")
+            ObjectDelete(0, name);
+      }
+   }
+
    void DrawDashboardText(const string text)
    {
       string lines[];
       int count = StringSplit(text, '\n', lines);
-      int max_lines = 34;
+      int max_render_lines = 30;
+      int cleanup_lines = 80;
       int x = 18;
       int y = 44;
-      int line_height = 15;
-      for(int i = 0; i < max_lines; i++)
+      int line_height = 17;
+      CleanupLegacyDashboardObjects();
+      for(int i = 0; i < cleanup_lines; i++)
       {
          string name = "Limni_RevmaDash_Line_" + IntegerToString(i);
+         if(i >= max_render_lines || i >= count || lines[i] == "")
+         {
+            DeleteObjectIfExists(name);
+            continue;
+         }
          if(ObjectFind(0, name) < 0)
             ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
          ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
          ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
          ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y + i * line_height);
          ObjectSetInteger(0, name, OBJPROP_COLOR, i == 0 ? C'87,194,255' : clrWhite);
-         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, i == 0 ? 10 : 8);
-         ObjectSetString(0, name, OBJPROP_FONT, i == 0 ? "Segoe UI Semibold" : "Consolas");
-         ObjectSetString(0, name, OBJPROP_TEXT, i < count ? lines[i] : "");
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);
+         ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
+         ObjectSetString(0, name, OBJPROP_TEXT, lines[i]);
          ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
          ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
          ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
          ObjectSetInteger(0, name, OBJPROP_ZORDER, 50);
       }
-      ChartRedraw(0);
+   }
+
+   void DrawCenterline(const double centerline_price)
+   {
+      string name = "Limni_Revma_Centerline";
+      if(centerline_price <= 0.0 || !MathIsValidNumber(centerline_price))
+      {
+         DeleteObjectIfExists(name);
+         return;
+      }
+
+      if(ObjectFind(0, name) < 0)
+         ObjectCreate(0, name, OBJ_HLINE, 0, 0, centerline_price);
+      ObjectSetDouble(0, name, OBJPROP_PRICE, centerline_price);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, C'87,194,255');
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DOT);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, name, OBJPROP_BACK, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 20);
+      ObjectSetString(0, name, OBJPROP_TEXT, "REVMA CENTER");
    }
 
    void CaptureDashboardScreenshot(
@@ -91,6 +139,9 @@ public:
       m_last_update = 0;
       m_last_text = "";
       m_screenshot_captured = false;
+      DeleteObjectIfExists("Limni_Revma_Centerline");
+      for(int i = 0; i < 80; i++)
+         DeleteObjectIfExists("Limni_RevmaDash_Line_" + IntegerToString(i));
    }
 
    bool UpdateRequired(
@@ -118,12 +169,15 @@ public:
    void Update(
       const LP_Config &config,
       const string text,
+      const double centerline_price,
       const bool screenshot_requested,
       LP_ReceiptWriter &receipts
    )
    {
       Comment("");
       DrawDashboardText(text);
+      DrawCenterline(centerline_price);
+      ChartRedraw(0);
       if(config.revma_dashboard_screenshot_on_divergent_add &&
          !m_screenshot_captured &&
          screenshot_requested)

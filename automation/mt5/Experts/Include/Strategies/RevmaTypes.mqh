@@ -94,6 +94,54 @@ string LP_RevmaSleeveName(const int sleeve)
    return "NONE";
 }
 
+double LP_RevmaGridSpacingQForSleeve(const LP_Config &config, const int sleeve)
+{
+   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
+      return config.revma_continuation_grid_spacing_q > 0.0 ?
+         config.revma_continuation_grid_spacing_q : config.revma_grid_spacing_q;
+   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
+      return config.revma_reversion_grid_spacing_q > 0.0 ?
+         config.revma_reversion_grid_spacing_q : config.revma_grid_spacing_q;
+   return config.revma_grid_spacing_q;
+}
+
+double LP_RevmaTakeProfitQForSleeve(const LP_Config &config, const int sleeve)
+{
+   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
+      return config.revma_continuation_take_profit_value > 0.0 ?
+         config.revma_continuation_take_profit_value : config.take_profit_value;
+   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
+      return config.revma_reversion_take_profit_value > 0.0 ?
+         config.revma_reversion_take_profit_value : config.take_profit_value;
+   return config.take_profit_value;
+}
+
+double LP_RevmaStopLossQForSleeve(const LP_Config &config, const int sleeve)
+{
+   if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)
+      return config.revma_continuation_stop_loss_value > 0.0 ?
+         config.revma_continuation_stop_loss_value : config.stop_loss_value;
+   if(sleeve == LP_REVMA_SLEEVE_REVERSION)
+      return config.revma_reversion_stop_loss_value > 0.0 ?
+         config.revma_reversion_stop_loss_value : config.stop_loss_value;
+   return config.stop_loss_value;
+}
+
+bool LP_RevmaAnySleeveTakeProfitEnabled(const LP_Config &config)
+{
+   return config.take_profit_value > 0.0 ||
+      config.revma_reversion_take_profit_value > 0.0 ||
+      config.revma_continuation_take_profit_value > 0.0;
+}
+
+bool LP_RevmaAnySleeveStopTakeProfitEnabled(const LP_Config &config)
+{
+   return LP_RevmaAnySleeveTakeProfitEnabled(config) ||
+      config.stop_loss_value > 0.0 ||
+      config.revma_reversion_stop_loss_value > 0.0 ||
+      config.revma_continuation_stop_loss_value > 0.0;
+}
+
 int LP_RevmaVariantForSleeve(const int sleeve)
 {
    if(sleeve == LP_REVMA_SLEEVE_CONTINUATION)

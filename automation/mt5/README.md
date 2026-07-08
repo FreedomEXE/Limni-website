@@ -155,16 +155,29 @@ operator-readable account mode.
 
 Revma v001 is the current Pair Direction / Grid Sleeve strategy.
 
-The current Gate 99ZZE checkpoint is grid based. In
-`StopTakeProfitMode=SinglePairQAfterFees`, `TakeProfit` and `StopLoss` are q
-units for the frozen active Revma grid, not broker-side ticket TP/SL distances.
-The EA sums the active grid's open money, subtracts estimated close fees, and
-queues a close-grid intent when the configured threshold is reached.
+In `StopTakeProfitMode=SinglePairQAfterFees`, Revma single-pair exits are owned
+by the frozen active grid, not by individual entry signals. Reversion and
+continuation grids have separate operator values:
 
-In this mode, the MT5 trade table `T/P` and `S/L` fields can remain `0.00000`.
-Gate 99ZZE proved managed close-grid behavior with `revma_grid_exit`, close
-request/result receipts, and flat post-close grid inventory. That is not the
-accepted final visible/grid TP contract.
+```text
+RevmaReversionGridSpacingQ
+RevmaContinuationGridSpacingQ
+RevmaReversionTakeProfit
+RevmaReversionStopLoss
+RevmaContinuationTakeProfit
+RevmaContinuationStopLoss
+```
+
+The generic `RevmaGridSpacingQ`, `TakeProfit`, and `StopLoss` inputs remain the
+default Revma controls. Sleeve-specific values are overrides: keep a sleeve
+field at `0.0` to inherit the generic value, and set it above zero only when
+that sleeve must differ.
+
+Continuation grids need a reachable target. If a continuation grid is configured
+with `RevmaContinuationTakeProfit <= RevmaContinuationGridSpacingQ`, the next
+with-trend add can move the basket TP away at least as fast as the add cadence.
+The EA must skip continuation adds under that impossible setup instead of
+building an unhittable grid.
 
 The intended Revma grid TP behavior is broker-visible grid TP synchronization:
 
@@ -174,16 +187,11 @@ new add fills -> all open tickets in that grid update to one shared basket TP
 broker TP hit -> intended grid closes
 ```
 
-The next architecture sequence is:
-
-```text
-99ZZF = behavior-preserving engine boundary refactor
-99ZZG = broker-visible Revma grid TP manager
-99ZZH = one-pair forced tiny TP visual proof
-```
-
-Do not run the forced tiny TP proof until the broker-visible modification path
-exists. The current code can only prove managed close-grid behavior again.
+The Revma dashboard must show the operator state first (`LONG`/`SHORT` and
+`ACTIVE`/`WAITING`), then secondary details. The centerline is not optional for
+visual review because it determines whether the current signal is continuation
+or reversion. `BIRTH ID` means the live signal still matches the frozen grid
+identity; it is not a TP or profitability status.
 
 Account-level percent mode remains separate and must stay behind the account
 close execution switch. Do not duplicate account harvest, portfolio harvest, or

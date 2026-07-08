@@ -32,9 +32,14 @@ private:
       return action == LP_INTENT_CLOSE_GRID || action == LP_INTENT_CLOSE_ALL_EA;
    }
 
+   bool IsProtectionModifyAction(const int action)
+   {
+      return action == LP_INTENT_SYNC_GRID_TP;
+   }
+
    bool IsKnownAction(const int action)
    {
-      return IsOpenAction(action) || IsReduceAction(action) || IsCloseAction(action);
+      return IsOpenAction(action) || IsReduceAction(action) || IsCloseAction(action) || IsProtectionModifyAction(action);
    }
 
    bool SymbolTradable(const string symbol)
@@ -115,6 +120,15 @@ private:
          }
       }
 
+      if(intent.action == LP_INTENT_SYNC_GRID_TP)
+      {
+         if(intent.direction == LP_SIDE_NONE || intent.grid_key <= 0 || intent.target_take_profit_price <= 0.0)
+         {
+            reason = "grid_tp_sync_missing_direction_grid_or_target";
+            return false;
+         }
+      }
+
       if(intent.expires_at > 0 && TimeCurrent() > intent.expires_at)
       {
          reason = "intent_expired";
@@ -139,6 +153,8 @@ private:
       plan.max_slippage_points = intent.max_slippage_points;
       plan.take_profit_distance_price = intent.take_profit_distance_price;
       plan.stop_loss_distance_price = intent.stop_loss_distance_price;
+      plan.target_take_profit_price = intent.target_take_profit_price;
+      plan.target_stop_loss_price = intent.target_stop_loss_price;
       plan.stop_take_profit_basis = intent.stop_take_profit_basis;
       plan.reason = intent.human_reason;
       plan.executable = true;
