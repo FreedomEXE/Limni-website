@@ -120,8 +120,8 @@ private:
       LP_HashMixInt(hash, portfolio.managed_position_count);
       LP_HashMixLong(hash, (long)MathRound(decision.net_open_pct * 10000.0));
       LP_HashMixLong(hash, (long)MathRound(decision.net_open_money * 100.0));
-      LP_HashMixLong(hash, (long)MathRound(config.take_profit_value * 10000.0));
-      LP_HashMixLong(hash, (long)MathRound(config.stop_loss_value * 10000.0));
+      LP_HashMixLong(hash, (long)MathRound(config.account_take_profit_pct * 10000.0));
+      LP_HashMixLong(hash, (long)MathRound(config.account_stop_loss_pct * 10000.0));
       LP_HashMixInt(hash, m_liquidation_active ? 1 : 0);
       LP_HashMixInt(hash, m_hwm_armed ? 1 : 0);
       LP_HashMixLong(hash, (long)MathRound(m_hwm_cycle_hwm_pct * 10000.0));
@@ -270,9 +270,9 @@ public:
       string trigger_reason = "";
       if(!m_liquidation_active)
       {
-         if(config.take_profit_value > 0.0 && decision.net_open_pct >= config.take_profit_value)
+         if(config.account_take_profit_pct > 0.0 && decision.net_open_pct >= config.account_take_profit_pct)
             trigger_reason = "take_profit_percent_after_fees";
-         if(trigger_reason == "" && config.stop_loss_value > 0.0 && decision.net_open_pct <= -config.stop_loss_value)
+         if(trigger_reason == "" && config.account_stop_loss_pct > 0.0 && decision.net_open_pct <= -config.account_stop_loss_pct)
             trigger_reason = "stop_loss_percent_after_fees";
          if(trigger_reason != "")
          {
@@ -311,8 +311,8 @@ public:
             "|gross_open_money=" + DoubleToString(decision.gross_open_money, 2) +
             "|estimated_close_fee=" + DoubleToString(decision.estimated_close_fee, 2) +
             "|net_open_money_after_fees=" + DoubleToString(decision.net_open_money, 2) +
-            "|take_profit_value_pct=" + DoubleToString(config.take_profit_value, 4) +
-            "|stop_loss_value_pct=" + DoubleToString(config.stop_loss_value, 4) +
+            "|account_take_profit_pct=" + DoubleToString(config.account_take_profit_pct, 4) +
+            "|account_stop_loss_pct=" + DoubleToString(config.account_stop_loss_pct, 4) +
             "|hwm_cycle_id=" + IntegerToString(decision.hwm_cycle_id) +
             "|hwm_cycle_active=" + LP_BoolText(decision.hwm_cycle_active) +
             "|hwm_armed=" + LP_BoolText(decision.hwm_armed) +

@@ -2,8 +2,8 @@
 
 Date: 2026-07-09
 
-Status: IMPLEMENTED, COMPILED. No MT5 Strategy Tester/backtest run was
-executed by Codex.
+Status: IMPLEMENTED, REPAIRED, COMPILED. No MT5 Strategy Tester/backtest run
+was executed by Codex.
 
 Branch: `codex/gate88-mt5-lifecycle-protection-controls`
 
@@ -19,6 +19,8 @@ Gate 107A implements the approved smallest safe contract:
 - individual grid exits and broker TP sync remain exact-grid scoped.
 - account/HWM/block-new-entry states no longer suppress existing Revma grid
   exits or broker TP sync.
+- TP layers are separated: individual grid q TP/SL is the harvest layer;
+  account percent/HWM is the portfolio cleanup layer.
 - same-symbol opposite-grid concurrency remains deferred.
 
 ## Code Changes
@@ -27,13 +29,19 @@ Changed source files:
 
 ```text
 automation/mt5/Experts/Include/Core/BuildInfo.mqh
+automation/mt5/Experts/Include/Core/Config.mqh
+automation/mt5/Experts/Include/Core/Types.mqh
 automation/mt5/Experts/Include/Core/Engine.mqh
+automation/mt5/Experts/Include/Portfolio/PortfolioStopTakeProfitGuard.mqh
 automation/mt5/Experts/Include/Portfolio/GridBook.mqh
+automation/mt5/Experts/Include/Receipts/RunManifest.mqh
+automation/mt5/Experts/Include/Strategies/Revma/RevmaGridProtectionManager.mqh
 automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh
 automation/mt5/Experts/Include/Strategies/RevmaTypes.mqh
 automation/mt5/Experts/Include/Strategies/StrategyRegistry.mqh
 automation/mt5/Experts/Limni/LimniPortfolioEA.mq5
 automation/mt5/Experts/Limni/LimniPortfolioEA.ex5
+automation/mt5/tester-presets/limni-portfolio-revma-fx28-fast-smoke.set
 ```
 
 ### State signal tradability
@@ -120,11 +128,12 @@ already printed.
 `LimniPortfolioEA.mq5` now declares visible MT5 properties:
 
 ```text
-#property version     "1.021"
-#property description "LimniPortfolioEA 0.1.21-gate107a Revma state harvest harness"
+#property version     "1.022"
+#property description "LimniPortfolioEA 0.1.22-gate107a-tpsep Revma TP layer separation repair"
 ```
 
-The internal build string remains `0.1.21-gate107a`.
+The internal build string is now `0.1.22-gate107a-tpsep` after the TP layer
+separation repair.
 
 The Revma visual dashboard now exposes:
 
@@ -137,6 +146,60 @@ The Revma visual dashboard now exposes:
 These are intended for Freedom's one-pair visual Strategy Tester smoke review.
 Codex did not run that test.
 
+## Gate 107A TP Layer Separation Repair
+
+Repair date: 2026-07-09.
+
+Reason:
+
+- Freedom's current-chart visual output in
+  `MULTI_CURRENCY_PERCENT_AFTER_FEES` mode showed births and both adverse and
+  favorable adds, but no `revma_grid_close_intent`, no
+  `broker_tp_sync_intent`, and no account basket TP receipt.
+- Code inspection confirmed individual Revma grid TP/SL and broker TP sync were
+  gated to `SinglePairQAfterFees`, while the account-level percent/HWM guard
+  was gated to `FX28`.
+- The previous `TakeProfit` and `StopLoss` inputs were overloaded between grid
+  q targets and account percent targets.
+
+Repair:
+
+- Replaced the overloaded EA inputs with:
+  - `GridTakeProfitQ`
+  - `GridStopLossQ`
+  - `AccountTakeProfitPct`
+  - `AccountStopLossPct`
+- Revma grid TP/SL now reads only `grid_take_profit_q` and
+  `grid_stop_loss_q`.
+- Account percent cleanup now reads only `account_take_profit_pct` and
+  `account_stop_loss_pct`.
+- HWM inputs remain separate.
+- Revma grid exit evaluation and broker TP sync no longer depend on
+  `StopTakeProfitMode`.
+- Revma grid exit evaluation and broker TP sync no longer require
+  `CURRENT_CHART`; they can operate for existing Revma grids in `FX28` as well.
+- Account percent/HWM cleanup remains in the portfolio guard and remains
+  `FX28`-scoped.
+- Run manifest and summary receipts now print:
+  - `grid_take_profit_q`
+  - `grid_stop_loss_q`
+  - `account_take_profit_pct`
+  - `account_stop_loss_pct`
+  - HWM fields separately
+- Legacy summary aliases `take_profit_value` and `stop_loss_value` are retained
+  as grid q aliases for report continuity only.
+- Repo tester preset keys were updated to the new split input names.
+
+Build metadata:
+
+```text
+LP_EA_VERSION = 0.1.22-gate107a-tpsep
+LP_BUILD_GATE = Gate107A
+LP_BUILD_SCOPE = revma-state-harvest-tp-layer-separation-repair
+#property version = 1.022
+#property description = LimniPortfolioEA 0.1.22-gate107a-tpsep Revma TP layer separation repair
+```
+
 ## Verification
 
 Allowed compile/sync only:
@@ -145,7 +208,26 @@ Allowed compile/sync only:
 powershell -ExecutionPolicy Bypass -File automation/mt5/tools/Sync-LimniPortfolioEA-Terminals.ps1
 ```
 
-Artifact:
+Latest repair artifact:
+
+```text
+docs/research/gates/gate101/artifacts/mt5-terminal-sync-20260709-072435/
+```
+
+Compile result:
+
+```text
+repo:           0 errors, 0 warnings
+terminal-14275: 0 errors, 0 warnings
+terminal-94497: 0 errors, 0 warnings
+source hash mismatches: 0
+compile failures: 0
+active Experts stale-input matches: 0
+tester profile stale-input matches: 0
+unknown running terminal64.exe count: 0
+```
+
+Previous Gate 107A implementation artifact:
 
 ```text
 docs/research/gates/gate101/artifacts/mt5-terminal-sync-20260709-060317/
@@ -162,12 +244,13 @@ compile failures: 0
 unknown running terminal64.exe count: 0
 ```
 
-Remaining warning:
+Remaining non-blocking warning:
 
 ```text
-tester profile hash mismatches: 1
-terminal-94497 Profiles/Tester/LimniPortfolioEA.set differs from the repo
-limni-portfolio-revma-fx28-fast-smoke.set preset.
+tester profile hash mismatches: 2
+terminal Profiles/Tester/LimniPortfolioEA.set files differ from the repo
+limni-portfolio-revma-fx28-fast-smoke.set preset, but stale input key search
+reports NO MATCHES for active Experts and tester profiles.
 ```
 
 This warning is tester-profile drift, not EA source compile failure. No tester

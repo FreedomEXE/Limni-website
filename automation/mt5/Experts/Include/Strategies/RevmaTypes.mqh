@@ -103,26 +103,26 @@ double LP_RevmaGridSpacingQForSleeve(const LP_Config &config, const int sleeve)
 double LP_RevmaTakeProfitQForSleeve(const LP_Config &config, const int sleeve)
 {
    if(sleeve == LP_REVMA_SLEEVE_NONE)
-      return config.take_profit_value;
-   return config.take_profit_value;
+      return config.grid_take_profit_q;
+   return config.grid_take_profit_q;
 }
 
 double LP_RevmaStopLossQForSleeve(const LP_Config &config, const int sleeve)
 {
    if(sleeve == LP_REVMA_SLEEVE_NONE)
-      return config.stop_loss_value;
-   return config.stop_loss_value;
+      return config.grid_stop_loss_q;
+   return config.grid_stop_loss_q;
 }
 
 bool LP_RevmaAnySleeveTakeProfitEnabled(const LP_Config &config)
 {
-   return config.take_profit_value > 0.0;
+   return config.grid_take_profit_q > 0.0;
 }
 
 bool LP_RevmaAnySleeveStopTakeProfitEnabled(const LP_Config &config)
 {
    return LP_RevmaAnySleeveTakeProfitEnabled(config) ||
-      config.stop_loss_value > 0.0;
+      config.grid_stop_loss_q > 0.0;
 }
 
 int LP_RevmaVariantForSleeve(const int sleeve)

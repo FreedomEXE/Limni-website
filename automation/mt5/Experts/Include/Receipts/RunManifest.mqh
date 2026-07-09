@@ -48,8 +48,10 @@ void LP_WriteRunManifest(
          "|revma_dashboard_refresh_seconds=" + IntegerToString(config.revma_dashboard_refresh_seconds) +
          "|revma_dashboard_screenshot_on_divergent_add=" + LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) +
          "|sltp_mode=" + LP_StopTakeProfitModeName(config.stop_take_profit_mode) +
-         "|take_profit_value=" + DoubleToString(config.take_profit_value, 4) +
-         "|stop_loss_value=" + DoubleToString(config.stop_loss_value, 4) +
+         "|grid_take_profit_q=" + DoubleToString(config.grid_take_profit_q, 4) +
+         "|grid_stop_loss_q=" + DoubleToString(config.grid_stop_loss_q, 4) +
+         "|account_take_profit_pct=" + DoubleToString(config.account_take_profit_pct, 4) +
+         "|account_stop_loss_pct=" + DoubleToString(config.account_stop_loss_pct, 4) +
          "|sltp_close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) +
          "|hwm_trail_arm_pct=" + DoubleToString(config.hwm_trail_arm_pct, 4) +
          "|hwm_trail_min_lock_pct=" + DoubleToString(config.hwm_trail_min_lock_pct, 4) +
@@ -109,8 +111,12 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_dashboard_refresh_seconds", IntegerToString(config.revma_dashboard_refresh_seconds));
    receipts.Summary("revma_dashboard_screenshot_on_divergent_add", LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add));
    receipts.Summary("stop_take_profit_mode", LP_StopTakeProfitModeName(config.stop_take_profit_mode));
-   receipts.Summary("take_profit_value", DoubleToString(config.take_profit_value, 4));
-   receipts.Summary("stop_loss_value", DoubleToString(config.stop_loss_value, 4));
+   receipts.Summary("grid_take_profit_q", DoubleToString(config.grid_take_profit_q, 4));
+   receipts.Summary("grid_stop_loss_q", DoubleToString(config.grid_stop_loss_q, 4));
+   receipts.Summary("account_take_profit_pct", DoubleToString(config.account_take_profit_pct, 4));
+   receipts.Summary("account_stop_loss_pct", DoubleToString(config.account_stop_loss_pct, 4));
+   receipts.Summary("take_profit_value", DoubleToString(config.grid_take_profit_q, 4));
+   receipts.Summary("stop_loss_value", DoubleToString(config.grid_stop_loss_q, 4));
    receipts.Summary("stop_take_profit_close_commission_per_lot", DoubleToString(config.stop_take_profit_close_commission_per_lot, 2));
    receipts.Summary("hwm_trail_arm_pct", DoubleToString(config.hwm_trail_arm_pct, 4));
    receipts.Summary("hwm_trail_min_lock_pct", DoubleToString(config.hwm_trail_min_lock_pct, 4));

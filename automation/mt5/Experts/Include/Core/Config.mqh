@@ -105,8 +105,10 @@ input bool RevmaDashboardScreenshotOnDivergentAdd = false;
 
 input group "Stop / Take Profit"
 input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
-input double TakeProfit = 0.1;
-input double StopLoss = 0.0;
+input double GridTakeProfitQ = 0.1;
+input double GridStopLossQ = 0.0;
+input double AccountTakeProfitPct = 0.0;
+input double AccountStopLossPct = 0.0;
 input double StopTakeProfitCloseCommissionPerLot = 0.00;
 input double HwmTrailArmPct = 0.010;
 input double HwmTrailMinLockPct = 0.005;
@@ -180,8 +182,10 @@ string LP_ResolveOutputFolder(const LP_Config &config, const string requested_fo
       LP_UniverseModeName(config.revma_universe_mode) + "_" +
       LP_RevmaConfigQProfileId(config) + "_" +
       LP_OutputFolderStopModePart(config.stop_take_profit_mode) +
-      "_TP" + LP_OutputFolderNumberPart(config.take_profit_value, 3) +
-      "_SL" + LP_OutputFolderNumberPart(config.stop_loss_value, 3) +
+      "_GTP" + LP_OutputFolderNumberPart(config.grid_take_profit_q, 3) +
+      "_GSL" + LP_OutputFolderNumberPart(config.grid_stop_loss_q, 3) +
+      "_ATP" + LP_OutputFolderNumberPart(config.account_take_profit_pct, 3) +
+      "_ASL" + LP_OutputFolderNumberPart(config.account_stop_loss_pct, 3) +
       "_L" + LP_OutputFolderNumberPart(config.revma_fixed_lots, 3) +
       "_G" + LP_OutputFolderNumberPart(config.revma_grid_spacing_q, 2) + "Q_" +
       LP_OutputFolderReceiptModePart(config.receipt_mode) + "_" +
@@ -240,8 +244,10 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
    config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
    config.stop_take_profit_mode = (LP_StopTakeProfitMode)StopTakeProfitMode;
-   config.take_profit_value = MathMax(0.0, TakeProfit);
-   config.stop_loss_value = MathMax(0.0, StopLoss);
+   config.grid_take_profit_q = MathMax(0.0, GridTakeProfitQ);
+   config.grid_stop_loss_q = MathMax(0.0, GridStopLossQ);
+   config.account_take_profit_pct = MathMax(0.0, AccountTakeProfitPct);
+   config.account_stop_loss_pct = MathMax(0.0, AccountStopLossPct);
    config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
    config.hwm_trail_arm_pct = MathMax(0.0, HwmTrailArmPct);
    config.hwm_trail_min_lock_pct = MathMax(0.0, HwmTrailMinLockPct);
@@ -298,8 +304,10 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
       LP_StopTakeProfitModeName(config.stop_take_profit_mode) + "|" +
-      DoubleToString(config.take_profit_value, 4) + "|" +
-      DoubleToString(config.stop_loss_value, 4) + "|" +
+      DoubleToString(config.grid_take_profit_q, 4) + "|" +
+      DoubleToString(config.grid_stop_loss_q, 4) + "|" +
+      DoubleToString(config.account_take_profit_pct, 4) + "|" +
+      DoubleToString(config.account_stop_loss_pct, 4) + "|" +
       DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) + "|" +
       DoubleToString(config.hwm_trail_arm_pct, 4) + "|" +
       DoubleToString(config.hwm_trail_min_lock_pct, 4) + "|" +

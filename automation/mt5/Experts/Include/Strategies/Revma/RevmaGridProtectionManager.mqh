@@ -102,7 +102,7 @@ private:
       const int grid_sleeve,
       double &target_take_profit_price,
       double &money_per_price,
-      double &take_profit_value_q,
+      double &grid_take_profit_q,
       double &take_profit_money,
       double &estimated_close_fee,
       string &estimated_close_fee_source,
@@ -112,25 +112,15 @@ private:
    {
       target_take_profit_price = 0.0;
       money_per_price = 0.0;
-      take_profit_value_q = 0.0;
+      grid_take_profit_q = 0.0;
       take_profit_money = 0.0;
       estimated_close_fee = 0.0;
       estimated_close_fee_source = "";
       required_gross_money = 0.0;
       note = "";
 
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-      {
-         note = "mode_not_single_pair_q_after_fees";
-         return false;
-      }
-      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
-      {
-         note = "universe_not_current_chart";
-         return false;
-      }
-      take_profit_value_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
-      if(take_profit_value_q <= 0.0)
+      grid_take_profit_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
+      if(grid_take_profit_q <= 0.0)
       {
          note = "take_profit_disabled";
          return false;
@@ -157,7 +147,7 @@ private:
       if(SymbolInfoInteger(symbol, SYMBOL_EXIST))
          digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
 
-      take_profit_money = q_basis * take_profit_value_q * money_per_price;
+      take_profit_money = q_basis * grid_take_profit_q * money_per_price;
       estimated_close_fee = GridCloseFeeMoney(grid, config, estimated_close_fee_source);
       required_gross_money = take_profit_money + estimated_close_fee - grid.swap - grid.commission;
       double price_distance = required_gross_money / money_per_price;
@@ -206,7 +196,7 @@ public:
    {
       double target_take_profit_price = 0.0;
       double money_per_price = 0.0;
-      double take_profit_value_q = 0.0;
+      double grid_take_profit_q = 0.0;
       double take_profit_money = 0.0;
       double estimated_close_fee = 0.0;
       string estimated_close_fee_source = "";
@@ -220,7 +210,7 @@ public:
          grid_sleeve,
          target_take_profit_price,
          money_per_price,
-         take_profit_value_q,
+         grid_take_profit_q,
          take_profit_money,
          estimated_close_fee,
          estimated_close_fee_source,
@@ -228,9 +218,7 @@ public:
          note
       ))
       {
-         if(note != "mode_not_single_pair_q_after_fees" &&
-            note != "universe_not_current_chart" &&
-            note != "take_profit_disabled" &&
+         if(note != "take_profit_disabled" &&
             note != "grid_not_active_revma")
          {
             receipts.Write(
@@ -270,7 +258,7 @@ public:
          "|grid_tickets=" + grid.tickets +
          "|avg_entry=" + PriceText(grid.avg_entry_price, digits) +
          "|q_basis=" + DoubleToString(q_basis, 8) +
-         "|take_profit_value_q=" + DoubleToString(take_profit_value_q, 4) +
+         "|grid_take_profit_q=" + DoubleToString(grid_take_profit_q, 4) +
          "|money_per_price=" + DoubleToString(money_per_price, 2) +
          "|current_price_pnl=" + DoubleToString(grid.price_pnl, 2) +
          "|current_swap=" + DoubleToString(grid.swap, 2) +

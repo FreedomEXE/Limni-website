@@ -1044,8 +1044,6 @@ private:
       const LP_Config &config
    )
    {
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return "off";
       int grid_sleeve = birth.valid ? birth.sleeve : SleeveFromVariant(grid.variant_id);
       double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, grid_sleeve);
       if(take_profit_q <= 0.0)
@@ -1163,8 +1161,6 @@ private:
       const LP_Config &config
    )
    {
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return "";
       if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
          return "";
 
@@ -1214,7 +1210,7 @@ private:
       const double stop_loss_money
    )
    {
-      return "scope=single_pair_grid_q_after_fees" +
+      return "scope=revma_grid_q_after_fees" +
          "|reason=" + reason +
          "|symbol=" + symbol +
          "|grid_key=" + (string)grid.grid_key +
@@ -1229,8 +1225,8 @@ private:
          "|min_entry=" + DoubleToString(grid.min_entry_price, 5) +
          "|max_entry=" + DoubleToString(grid.max_entry_price, 5) +
          "|q_basis=" + DoubleToString(q_basis, 8) +
-         "|take_profit_value_q=" + DoubleToString(take_profit_q, 4) +
-         "|stop_loss_value_q=" + DoubleToString(stop_loss_q, 4) +
+         "|grid_take_profit_q=" + DoubleToString(take_profit_q, 4) +
+         "|grid_stop_loss_q=" + DoubleToString(stop_loss_q, 4) +
          "|money_per_price=" + DoubleToString(money_per_price, 2) +
          "|gross_open_money=" + DoubleToString(gross_open_money, 2) +
          "|price_pnl=" + DoubleToString(grid.price_pnl, 2) +
@@ -1305,7 +1301,7 @@ private:
             LP_RECEIPT_REVMA_GRID_EXIT,
             symbol,
             "basket_exit_unavailable",
-            "scope=single_pair_grid_q_after_fees|reason=" + money_note +
+            "scope=revma_grid_q_after_fees|reason=" + money_note +
                "|grid_key=" + (string)grid.grid_key +
                "|grid_positions=" + IntegerToString(grid.position_count) +
                "|grid_lots=" + DoubleToString(grid.lots, 2),
@@ -1542,10 +1538,6 @@ public:
       LP_IntentBus &bus
    )
    {
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return 0;
-      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
-         return 0;
       if(!LP_RevmaAnySleeveTakeProfitEnabled(config))
          return 0;
 
@@ -1594,10 +1586,6 @@ public:
       LP_IntentBus &bus
    )
    {
-      if(config.stop_take_profit_mode != LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
-         return 0;
-      if(config.revma_universe_mode != LP_UNIVERSE_CURRENT_CHART)
-         return 0;
       if(!LP_RevmaAnySleeveStopTakeProfitEnabled(config))
          return 0;
 

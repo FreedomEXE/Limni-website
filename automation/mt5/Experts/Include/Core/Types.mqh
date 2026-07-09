@@ -278,8 +278,10 @@ struct LP_Config
    int revma_dashboard_refresh_seconds;
    bool revma_dashboard_screenshot_on_divergent_add;
    LP_StopTakeProfitMode stop_take_profit_mode;
-   double take_profit_value;
-   double stop_loss_value;
+   double grid_take_profit_q;
+   double grid_stop_loss_q;
+   double account_take_profit_pct;
+   double account_stop_loss_pct;
    double stop_take_profit_close_commission_per_lot;
    double hwm_trail_arm_pct;
    double hwm_trail_min_lock_pct;
