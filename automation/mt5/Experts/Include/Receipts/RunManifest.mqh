@@ -27,8 +27,12 @@ void LP_WriteRunManifest(
          "|allow_live_trading=" + LP_BoolText(config.allow_live_trading) +
          "|open_order_routing=" + LP_BoolText(config.enable_open_order_routing) +
          "|close_execution=" + LP_BoolText(config.enable_close_execution) +
-         "|account_close_execution=" + LP_BoolText(config.enable_account_close_execution) +
-         "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
+          "|account_close_execution=" + LP_BoolText(config.enable_account_close_execution) +
+          "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
+          "|timer_watchdog=" + LP_BoolText(config.use_timer_watchdog) +
+          "|timer_watchdog_seconds=" + IntegerToString(config.timer_watchdog_seconds) +
+          "|persist_revma_lifecycle_state=" + LP_BoolText(config.persist_revma_lifecycle_state) +
+          "|source_revision=" + config.source_revision +
          "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
          "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
          "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor) +
@@ -83,6 +87,10 @@ void LP_WriteRunManifest(
    receipts.Summary("close_execution_enabled", LP_BoolText(config.enable_close_execution));
    receipts.Summary("account_close_execution_enabled", LP_BoolText(config.enable_account_close_execution));
    receipts.Summary("strategy_evaluation_enabled", LP_BoolText(config.enable_strategy_evaluation));
+   receipts.Summary("timer_watchdog_enabled", LP_BoolText(config.use_timer_watchdog));
+   receipts.Summary("timer_watchdog_seconds", IntegerToString(config.timer_watchdog_seconds));
+   receipts.Summary("persist_revma_lifecycle_state", LP_BoolText(config.persist_revma_lifecycle_state));
+   receipts.Summary("source_revision", config.source_revision);
    receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
    receipts.Summary("news_calendar_file", config.news_calendar_file);
    receipts.Summary("receipt_mode", LP_ReceiptModeName(config.receipt_mode));

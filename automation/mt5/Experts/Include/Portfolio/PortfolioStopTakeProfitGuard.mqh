@@ -375,6 +375,11 @@ public:
       intent.priority = 100;
       intent.score = decision.net_open_pct;
       intent.grid_key = 0;
+      intent.grid_tickets = "";
+      intent.expected_grid_ticket_count = 0;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = decision.hwm_mode ? "account_hwm" : "account_tp";
       intent.config_hash = config_hash;
       intent.strategy_version_hash = decision.hwm_mode ? LP_HashString("gate105_hwm_trail_after_fees") : LP_HashString("gate102_stop_take_profit_close_all_pct_latched");
       intent.human_reason = "stop_take_profit_scope=" + intent.stop_take_profit_basis +

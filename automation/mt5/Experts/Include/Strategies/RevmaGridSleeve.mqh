@@ -85,6 +85,34 @@ void LP_ResetRevmaGridBirthSnapshot(LP_RevmaGridBirthSnapshot &birth)
    birth.favorable_add_count = 0;
 }
 
+#include "Revma\\RevmaResearchTelemetry.mqh"
+
+struct LP_RevmaPendingLifecycle
+{
+   bool valid;
+   ulong intent_id;
+   int event_type;
+   ulong grid_key;
+   string add_type;
+   LP_RevmaSignal signal;
+   int position_count_before;
+   double lots_before;
+   double grid_floating_pnl_before;
+};
+
+void LP_ResetRevmaPendingLifecycle(LP_RevmaPendingLifecycle &pending)
+{
+   pending.valid = false;
+   pending.intent_id = 0;
+   pending.event_type = LP_RESEARCH_LIFECYCLE_NONE;
+   pending.grid_key = 0;
+   pending.add_type = "";
+   LP_ResetRevmaSignal(pending.signal);
+   pending.position_count_before = 0;
+   pending.lots_before = 0.0;
+   pending.grid_floating_pnl_before = 0.0;
+}
+
 class LP_RevmaGridSleeve
 {
 private:
@@ -99,9 +127,17 @@ private:
    string m_last_divergent_add_text;
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
+   LP_RevmaResearchTelemetry m_research_telemetry;
    bool m_state_loaded;
    bool m_state_persistence_enabled;
    ulong m_last_blocked_birth_hash;
+   LP_RevmaPendingLifecycle m_pending_lifecycle[];
+   int m_pending_lifecycle_count;
+   int m_pending_lifecycle_capacity;
+   ulong m_persistence_write_count;
+   ulong m_persistence_failure_count;
+   ulong m_persistence_total_microseconds;
+   ulong m_persistence_max_microseconds;
 
    string StateFolder()
    {
@@ -110,7 +146,9 @@ private:
 
    string StateFileName()
    {
-      return StateFolder() + "\\revma_grid_birth_state.csv";
+      return StateFolder() + "\\revma_grid_birth_state_A" +
+         (string)AccountInfoInteger(ACCOUNT_LOGIN) +
+         "_C" + (string)m_config_hash + ".csv";
    }
 
    bool TesterRuntime()
@@ -268,17 +306,138 @@ private:
       return birth.valid;
    }
 
-   void PersistBirths()
+   int FindPendingLifecycleIndex(const ulong intent_id)
+   {
+      if(intent_id <= 0)
+         return -1;
+      for(int i = 0; i < m_pending_lifecycle_count; i++)
+      {
+         if(m_pending_lifecycle[i].valid && m_pending_lifecycle[i].intent_id == intent_id)
+            return i;
+      }
+      return -1;
+   }
+
+   void RememberPendingLifecycle(
+      const LP_TradeIntent &intent,
+      const LP_RevmaSignal &signal,
+      const string add_type,
+      const int position_count_before,
+      const double lots_before,
+      const double grid_floating_pnl_before
+   )
+   {
+      if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE || intent.intent_id <= 0)
+         return;
+
+      int index = FindPendingLifecycleIndex(intent.intent_id);
+      if(index < 0)
+      {
+         if(m_pending_lifecycle_count >= m_pending_lifecycle_capacity)
+         {
+            m_pending_lifecycle_capacity = m_pending_lifecycle_capacity <= 0 ? 32 : m_pending_lifecycle_capacity * 2;
+            ArrayResize(m_pending_lifecycle, m_pending_lifecycle_capacity);
+         }
+         index = m_pending_lifecycle_count;
+         m_pending_lifecycle_count++;
+      }
+
+      LP_ResetRevmaPendingLifecycle(m_pending_lifecycle[index]);
+      m_pending_lifecycle[index].valid = true;
+      m_pending_lifecycle[index].intent_id = intent.intent_id;
+      m_pending_lifecycle[index].event_type = intent.research_lifecycle_event;
+      m_pending_lifecycle[index].grid_key = intent.grid_key;
+      m_pending_lifecycle[index].add_type = add_type;
+      m_pending_lifecycle[index].signal = signal;
+      m_pending_lifecycle[index].position_count_before = position_count_before;
+      m_pending_lifecycle[index].lots_before = lots_before;
+      m_pending_lifecycle[index].grid_floating_pnl_before = grid_floating_pnl_before;
+   }
+
+   bool TakePendingLifecycle(const ulong intent_id, LP_RevmaPendingLifecycle &pending)
+   {
+      LP_ResetRevmaPendingLifecycle(pending);
+      int index = FindPendingLifecycleIndex(intent_id);
+      if(index < 0)
+         return false;
+      pending = m_pending_lifecycle[index];
+      m_pending_lifecycle[index].valid = false;
+      return pending.valid;
+   }
+
+   string ExecutionTruthMetadata(
+      const LP_RevmaPendingLifecycle &pending,
+      const LP_TradeExecutionResult &execution,
+      const string outcome
+   )
+   {
+      return "lifecycle_event=" + LP_ResearchLifecycleEventName(pending.event_type) +
+         "|execution_outcome=" + outcome +
+         "|grid_key=" + (string)pending.grid_key +
+         "|symbol=" + pending.signal.symbol +
+         "|direction=" + LP_RevmaDirectionName(pending.signal.direction) +
+         "|lane_id=" + IntegerToString(LP_LANE_REVMA) +
+         "|variant_id=" + IntegerToString(pending.signal.variant_id) +
+         "|add_type=" + pending.add_type +
+         "|intent_id=" + (string)pending.intent_id +
+         "|actual_deal_ticket=" + (string)execution.deal_ticket +
+         "|actual_position_ticket=" + (string)execution.position_ticket +
+         "|actual_lots=" + DoubleToString(execution.executed_lots, 2) +
+         "|actual_price=" + DoubleToString(execution.executed_price, 8) +
+         "|partial_fill=" + LP_BoolText(execution.partial_fill) +
+         "|position_count_before=" + IntegerToString(pending.position_count_before) +
+         "|lots_before=" + DoubleToString(pending.lots_before, 2) +
+         "|grid_floating_pnl_before=" + DoubleToString(pending.grid_floating_pnl_before, 2) +
+         "|execution_detail=" + execution.detail +
+         "|" + BirthMetadata(pending.signal);
+   }
+
+   void CompactBirths()
+   {
+      int write_index = 0;
+      for(int read_index = 0; read_index < m_birth_count; read_index++)
+      {
+         if(!m_births[read_index].valid || m_births[read_index].grid_key <= 0)
+            continue;
+         if(write_index != read_index)
+            m_births[write_index] = m_births[read_index];
+         write_index++;
+      }
+      m_birth_count = write_index;
+      if(m_birth_capacity < m_birth_count)
+         m_birth_capacity = m_birth_count;
+   }
+
+   void PersistBirths(LP_ReceiptWriter &receipts, const string cause)
    {
       if(!m_state_persistence_enabled)
          return;
 
+      ulong started_at = GetMicrosecondCount();
+      CompactBirths();
+
       FolderCreate(StateFolder(), FILE_COMMON);
       int handle = FileOpen(StateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle == INVALID_HANDLE)
+      {
+         m_persistence_failure_count++;
+         receipts.Write(
+            LP_RECEIPT_ERROR,
+            "",
+            "revma_lifecycle_persistence_failed",
+            "cause=" + cause + "|state_file=" + StateFileName() + "|error=" + IntegerToString(GetLastError()),
+            LP_LANE_REVMA,
+            0,
+            0,
+            0,
+            0,
+            0
+         );
+         Print(LP_EA_NAME, " revma lifecycle persistence failed: ", StateFileName());
          return;
+      }
 
-      FileWrite(
+      if(FileWrite(
          handle,
          "grid_key",
          "config_hash",
@@ -313,13 +472,20 @@ private:
          "add_sequence",
          "adverse_add_count",
          "favorable_add_count"
-      );
+      ) == 0)
+      {
+         m_persistence_failure_count++;
+         FileClose(handle);
+         receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_header|state_file=" + StateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
+         Print(LP_EA_NAME, " revma lifecycle persistence header write failed: ", StateFileName());
+         return;
+      }
 
       for(int i = 0; i < m_birth_count; i++)
       {
          if(!m_births[i].valid || m_births[i].grid_key <= 0)
             continue;
-         FileWrite(
+         if(FileWrite(
             handle,
             (string)m_births[i].grid_key,
             (string)m_config_hash,
@@ -354,10 +520,22 @@ private:
             IntegerToString(m_births[i].add_sequence),
             IntegerToString(m_births[i].adverse_add_count),
             IntegerToString(m_births[i].favorable_add_count)
-         );
+         ) == 0)
+         {
+            m_persistence_failure_count++;
+            FileClose(handle);
+            receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_row|grid_key=" + (string)m_births[i].grid_key + "|state_file=" + StateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, m_births[i].grid_key, 0, 0, 0);
+            Print(LP_EA_NAME, " revma lifecycle persistence row write failed: ", StateFileName());
+            return;
+         }
       }
 
       FileClose(handle);
+      ulong elapsed = GetMicrosecondCount() - started_at;
+      m_persistence_write_count++;
+      m_persistence_total_microseconds += elapsed;
+      if(elapsed > m_persistence_max_microseconds)
+         m_persistence_max_microseconds = elapsed;
    }
 
    void UpsertBirthSnapshot(const LP_RevmaGridBirthSnapshot &birth)
@@ -387,7 +565,7 @@ private:
       return true;
    }
 
-   void RecordAdd(const ulong grid_key, const string add_type)
+   void RecordAdd(const ulong grid_key, const string add_type, LP_ReceiptWriter &receipts)
    {
       int index = FindBirthIndex(grid_key);
       if(index < 0)
@@ -397,7 +575,7 @@ private:
          m_births[index].adverse_add_count++;
       else if(add_type == "favorable")
          m_births[index].favorable_add_count++;
-      PersistBirths();
+      PersistBirths(receipts, "executed_add");
    }
 
    bool LoadOnePersistedBirth(
@@ -635,6 +813,7 @@ private:
          if(grid_book.HasGridKey(m_births[i].grid_key))
             continue;
          ulong removed_key = m_births[i].grid_key;
+         m_research_telemetry.RecordGridClosed(m_births[i], "manual_or_external");
          m_births[i].valid = false;
          removed++;
          receipts.Write(
@@ -651,7 +830,7 @@ private:
          );
       }
       if(removed > 0)
-         PersistBirths();
+         PersistBirths(receipts, "stale_cleanup");
       return removed;
    }
 
@@ -946,6 +1125,11 @@ private:
       intent.priority = action == LP_INTENT_OPEN_GRID ? 60 : 55;
       intent.score = signal.raw_score;
       intent.grid_key = grid_key;
+      intent.grid_tickets = "";
+      intent.expected_grid_ticket_count = 0;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = "";
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = m_strategy_version_hash;
       intent.human_reason = reason;
@@ -1295,6 +1479,12 @@ private:
       intent.priority = 95;
       intent.score = score;
       intent.grid_key = grid.grid_key;
+      intent.grid_tickets = grid.tickets;
+      intent.expected_grid_ticket_count = grid.position_count;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = reason == "take_profit_grid_q_after_fees" ? "grid_tp" :
+         (reason == "stop_loss_grid_q_after_fees" ? "grid_sl" : "unknown_error");
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = LP_HashString("gate99zze_revma_grid_summed_sltp");
       intent.human_reason = "revma_grid_basket_exit|" + metadata;
@@ -1517,16 +1707,123 @@ public:
       m_state_loaded = false;
       m_state_persistence_enabled = true;
       m_last_blocked_birth_hash = 0;
+      m_pending_lifecycle_count = 0;
+      m_pending_lifecycle_capacity = 0;
+      m_persistence_write_count = 0;
+      m_persistence_failure_count = 0;
+      m_persistence_total_microseconds = 0;
+      m_persistence_max_microseconds = 0;
       m_protection_manager.Reset();
+      m_research_telemetry.Reset();
       ArrayResize(m_births, 0);
+      ArrayResize(m_pending_lifecycle, 0);
    }
 
    void Configure(const ulong config_hash, const LP_Config &config)
    {
       m_config_hash = config_hash;
-      m_state_persistence_enabled = !(TesterRuntime() &&
-         config.output_folder == "OFF" &&
-         config.receipt_mode == LP_RECEIPT_MODE_OFF);
+      m_state_persistence_enabled = config.persist_revma_lifecycle_state;
+   }
+
+   void RecordRiskDecision(
+      const LP_TradeIntent &intent,
+      const LP_RiskDecision &decision,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE ||
+         decision.decision != LP_RISK_REJECT)
+         return;
+
+      LP_RevmaPendingLifecycle pending;
+      if(!TakePendingLifecycle(intent.intent_id, pending))
+         return;
+
+      int receipt_kind = pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+         LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
+      LP_TradeExecutionResult execution;
+      LP_ResetTradeExecutionResult(execution);
+      execution.detail = "risk_reason=" + IntegerToString(decision.reason) +
+         "|risk_explanation=" + decision.explanation;
+      receipts.Write(
+         receipt_kind,
+         pending.signal.symbol,
+         "risk_rejected",
+         ExecutionTruthMetadata(pending, execution, "risk_rejected"),
+         LP_LANE_REVMA,
+         pending.signal.variant_id,
+         pending.grid_key,
+         pending.intent_id,
+         decision.decision_id,
+         0
+      );
+   }
+
+   void RecordExecutionOutcome(
+      const LP_TradePlan &plan,
+      const LP_TradeExecutionResult &execution,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      if(plan.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE)
+         return;
+
+      LP_RevmaPendingLifecycle pending;
+      if(!TakePendingLifecycle(plan.intent_id, pending))
+         return;
+
+      int receipt_kind = pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+         LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
+      if(!execution.accepted)
+      {
+         string rejection_outcome = execution.broker_rejected ? "broker_rejected" : "router_rejected";
+         receipts.Write(
+            receipt_kind,
+            pending.signal.symbol,
+            rejection_outcome,
+            ExecutionTruthMetadata(pending, execution, rejection_outcome),
+            LP_LANE_REVMA,
+            pending.signal.variant_id,
+            pending.grid_key,
+            pending.intent_id,
+            plan.decision_id,
+            plan.magic
+         );
+         return;
+      }
+
+      if(pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH)
+      {
+         RememberBirth(pending.grid_key, pending.signal, AddPolicyName(pending.signal));
+         PersistBirths(receipts, "executed_birth");
+         LP_RevmaGridBirthSnapshot birth;
+         if(FindBirth(pending.grid_key, birth))
+            m_research_telemetry.RecordExecutedBirth(birth, execution);
+      }
+      else if(pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_ADD)
+      {
+         RecordAdd(pending.grid_key, pending.add_type, receipts);
+         m_research_telemetry.RecordExecutedAdd(
+            pending.grid_key,
+            pending.add_type,
+            pending.position_count_before,
+            execution
+         );
+      }
+
+      string outcome = execution.partial_fill ? "partial_fill" : "executed_fill";
+      receipts.Write(
+         receipt_kind,
+         pending.signal.symbol,
+         outcome,
+         ExecutionTruthMetadata(pending, execution, outcome),
+         LP_LANE_REVMA,
+         pending.signal.variant_id,
+         pending.grid_key,
+         pending.intent_id,
+         plan.decision_id,
+         plan.magic
+      );
    }
 
    int LoadPersistedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
@@ -1539,6 +1836,45 @@ public:
    int CleanupClosedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
    {
       return CleanupClosedBirthsInternal(grid_book, receipts);
+   }
+
+   void ObserveGridPath(LP_GridBook &grid_book)
+   {
+      for(int i = 0; i < grid_book.OpenGridCount(); i++)
+      {
+         LP_GridInventoryRow grid;
+         if(!grid_book.GetGrid(i, grid))
+            continue;
+         if(grid.lane_id == LP_LANE_REVMA)
+            m_research_telemetry.ObserveGrid(grid);
+      }
+   }
+
+   void RecordCloseExecution(const LP_TradePlan &plan, const LP_TradeExecutionResult &execution)
+   {
+      m_research_telemetry.RecordCloseExecution(plan, execution);
+      m_research_telemetry.RecordAccountCloseExecution(plan, execution);
+   }
+
+   void FinalizeResearchTelemetry(const LP_Config &config, LP_ReceiptWriter &receipts)
+   {
+      m_research_telemetry.Finalize(config, receipts);
+      receipts.Summary("revma_lifecycle_persistence_failures", (string)m_persistence_failure_count);
+   }
+
+   ulong LifecyclePersistenceWriteCount()
+   {
+      return m_persistence_write_count;
+   }
+
+   ulong LifecyclePersistenceTotalMicroseconds()
+   {
+      return m_persistence_total_microseconds;
+   }
+
+   ulong LifecyclePersistenceMaxMicroseconds()
+   {
+      return m_persistence_max_microseconds;
    }
 
    string VisualDashboardText()
@@ -1659,9 +1995,10 @@ public:
       LP_RevmaGridBirthSnapshot birth_snapshot;
       LP_ResetRevmaGridBirthSnapshot(birth_snapshot);
 
-      if(has_active_grid)
-      {
-         FindBirth(active_grid.grid_key, birth_snapshot);
+       if(has_active_grid)
+       {
+          FindBirth(active_grid.grid_key, birth_snapshot);
+          m_research_telemetry.ObserveGridSignal(active_grid.grid_key, signal);
 
          int frozen_variant_id = birth_snapshot.valid ? birth_snapshot.variant_id : active_grid.variant_id;
          int frozen_direction = birth_snapshot.valid ? birth_snapshot.direction : active_grid.direction;
@@ -1852,11 +2189,21 @@ public:
             next_add_level,
             net_open_money_after_fees_before
          );
-         BuildIntent(signal, LP_INTENT_ADD_GRID_LEG, active_grid.grid_key, frozen_variant_id, frozen_direction, "revma_grid_add|" + metadata, add_intent);
-         add_intent.requested_lots = config.revma_fixed_lots;
-         add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
-            (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-          bus.Add(add_intent);
+          BuildIntent(signal, LP_INTENT_ADD_GRID_LEG, active_grid.grid_key, frozen_variant_id, frozen_direction, "revma_grid_add|" + metadata, add_intent);
+          add_intent.requested_lots = config.revma_fixed_lots;
+          add_intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_GRID_ADD;
+          add_intent.research_add_type = add_type;
+          add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
+             (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
+           RememberPendingLifecycle(
+              add_intent,
+              signal,
+              add_type,
+              active_grid.position_count,
+              active_grid.lots,
+              active_grid.floating_pnl
+           );
+           bus.Add(add_intent);
          if(!CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction))
          {
             m_last_divergent_add_text =
@@ -1875,9 +2222,9 @@ public:
           }
           UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "add intent emitted", config);
          receipts.Write(
-            LP_RECEIPT_REVMA_GRID_ADD,
-            signal.symbol,
-            "add_intent",
+             LP_RECEIPT_REVMA_GRID_ADD,
+             signal.symbol,
+            "intent_created",
             metadata,
             LP_LANE_REVMA,
             frozen_variant_id,
@@ -1886,8 +2233,7 @@ public:
             0,
             0
          );
-         RecordAdd(active_grid.grid_key, add_type);
-         return 1;
+          return 1;
       }
 
       if(receipts.ShouldBuildKnownCompactReceipt(LP_RECEIPT_REVMA_GRID_ADD_SKIP, "add_skip_no_active_grid_found"))
@@ -1941,8 +2287,8 @@ public:
          grid_family
       );
       string add_policy = AddPolicyName(signal);
-      RememberBirth(open_intent.grid_key, signal, add_policy);
-      PersistBirths();
+      open_intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_GRID_BIRTH;
+      open_intent.research_add_type = "";
       string birth = BirthMetadata(signal) +
          "|grid_key=" + (string)open_intent.grid_key +
          "|grid_family=" + IntegerToString(grid_family) +
@@ -1952,12 +2298,13 @@ public:
       open_intent.requested_lots = config.revma_fixed_lots;
       open_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
          (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
+      RememberPendingLifecycle(open_intent, signal, "", 0, 0.0, 0.0);
       bus.Add(open_intent);
       UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted", config);
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_BIRTH,
          signal.symbol,
-         "birth_intent",
+         "intent_created",
          birth,
          LP_LANE_REVMA,
          signal.variant_id,

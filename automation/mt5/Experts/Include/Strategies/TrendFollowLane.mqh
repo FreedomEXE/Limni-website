@@ -69,6 +69,11 @@ private:
       intent.priority = action == LP_INTENT_OPEN_GRID ? 50 : 40;
       intent.score = snapshot.pair_direction_score;
       intent.grid_key = grid_key;
+      intent.grid_tickets = "";
+      intent.expected_grid_ticket_count = 0;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = "";
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = m_strategy_version_hash;
       intent.human_reason = reason +

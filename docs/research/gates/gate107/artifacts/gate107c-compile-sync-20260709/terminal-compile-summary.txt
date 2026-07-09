@@ -1,0 +1,4 @@
+MT5 compile summary - 2026-07-09T15:00:49.8620780-04:00
+repo|exit_code=0|clean=False|Result: 5 errors, 0 warnings|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107c-compile-sync-20260709\repo-LimniPortfolioEA-compile-log.txt
+terminal-14275|exit_code=0|clean=False|Result: 5 errors, 0 warnings|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107c-compile-sync-20260709\terminal-14275-LimniPortfolioEA-compile-log.txt
+terminal-94497|exit_code=0|clean=False|Result: 5 errors, 0 warnings|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107c-compile-sync-20260709\terminal-94497-LimniPortfolioEA-compile-log.txt

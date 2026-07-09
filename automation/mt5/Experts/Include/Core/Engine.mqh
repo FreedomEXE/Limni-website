@@ -35,6 +35,7 @@
 #include "..\\Receipts\\RunManifest.mqh"
 #include "..\\Receipts\\DecisionLog.mqh"
 #include "..\\Receipts\\StateSnapshot.mqh"
+#include "..\\Receipts\\RuntimeTelemetry.mqh"
 
 class LP_Engine
 {
@@ -72,6 +73,7 @@ private:
    bool m_signal_available[LP_SYMBOL_COUNT];
 
    LP_ReceiptWriter m_receipts;
+   LP_RuntimeTelemetry m_runtime_telemetry;
    LP_SymbolSpecCache m_symbol_cache;
    LP_NewsCalendar m_news_calendar;
    LP_TickBarCache m_tick_cache;
@@ -101,6 +103,12 @@ private:
       if(!LP_NewsSourceConfigured(m_config))
          return true;
       return false;
+   }
+
+   bool LiveSchedulerBarrierFails()
+   {
+      return m_config.execution_mode == LP_EXECUTION_LIVE_ALLOWED &&
+         !m_config.use_timer_watchdog;
    }
 
    void WriteError(const string status, const string message)
@@ -151,6 +159,7 @@ private:
 
    void RefreshPortfolioAndGrid(LP_PortfolioState &portfolio)
    {
+      ulong started_at = m_runtime_telemetry.Start();
       m_position_commission_cache.BeginRefresh();
       m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache, m_currency_guard);
       m_position_commission_cache.EndRefresh();
@@ -160,6 +169,7 @@ private:
       m_portfolio_dirty = false;
       m_cached_positions_total = PositionsTotal();
       m_receipts.ObservePortfolioState(portfolio);
+      m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_INVENTORY_REFRESH, started_at);
    }
 
    void WriteRuntimeProfileSummary()
@@ -189,6 +199,7 @@ private:
       m_receipts.Summary("runtime_profile_compact_rows_skipped", (string)m_receipts.CompactSkippedRows());
       m_receipts.Summary("runtime_profile_elapsed_wall_seconds", DoubleToString(elapsed_seconds, 3));
       m_receipts.Summary("runtime_profile_tester_fast_cadence", LP_BoolText(TesterRuntime()));
+      m_runtime_telemetry.WriteSummary(m_receipts);
       Print(
          LP_EA_NAME,
          " runtime_profile|elapsed_wall_seconds=",
@@ -410,6 +421,11 @@ private:
       intent.priority = 100;
       intent.score = harvest.managed_floating_pnl;
       intent.grid_key = 0;
+      intent.grid_tickets = "";
+      intent.expected_grid_ticket_count = 0;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = "account_hwm";
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = LP_HashString("gate99w_harvest_close_all_next_day_reentry");
       intent.human_reason = "portfolio_harvest_state=" + LP_HarvestStateName(harvest.state) +
@@ -427,19 +443,29 @@ private:
       const MqlRates &latest_bar
    )
    {
+      ulong started_at = m_runtime_telemetry.Start();
       m_total_revma_symbol_evaluations++;
       LP_RevmaSignal signal;
       string detail = "";
       if(!m_revma_state.BuildSignalAtClosedBar(meta, m_config, latest_bar, signal, detail))
+      {
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_REVMA_SIGNAL_EVALUATION, started_at);
          return 0;
+      }
       if(!signal.valid)
+      {
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_REVMA_SIGNAL_EVALUATION, started_at);
          return 0;
+      }
 
       LP_CalendarDecision calendar;
       LP_EvaluateCalendar(signal.source_m1_time, m_config, calendar);
       m_news_calendar.Apply(signal.source_m1_time, meta, m_config, calendar);
       if(calendar.week_boundary_blocked || calendar.news_blocked)
+      {
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_REVMA_SIGNAL_EVALUATION, started_at);
          return 0;
+      }
 
       int emitted = 0;
       if(m_config.enable_strategy_evaluation)
@@ -471,6 +497,7 @@ private:
          receipt_detail += "|calendar_reason=" + calendar.reason;
          LP_WriteRevmaSignalReceipt(m_receipts, signal, "intents_emitted", receipt_detail, emitted);
       }
+      m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_REVMA_SIGNAL_EVALUATION, started_at);
       return emitted;
    }
 
@@ -510,6 +537,7 @@ public:
          m_signal_available[i] = false;
       }
       m_receipts.Reset();
+      m_runtime_telemetry.Reset();
       m_symbol_cache.Reset();
       m_news_calendar.Reset();
       m_clock.Reset();
@@ -560,6 +588,13 @@ public:
          return INIT_FAILED;
       }
 
+      if(LiveSchedulerBarrierFails())
+      {
+         WriteError("init_failed", "live_mode_requires_timer_watchdog");
+         m_receipts.Flush();
+         return INIT_FAILED;
+      }
+
       bool symbols_ok = m_symbol_cache.Load(m_config, m_receipts);
       if(!symbols_ok)
       {
@@ -593,6 +628,7 @@ public:
       m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
       m_strategy_registry.LoadRevmaGridState(m_grid_book, m_receipts);
       m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
+      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
 
       LP_HarvestDecision harvest;
       m_account_guard.Evaluate(state, harvest);
@@ -600,7 +636,7 @@ public:
          LP_WriteHarvestState(m_receipts, harvest);
 
       if(m_config.use_timer_watchdog)
-         EventSetTimer(5);
+         EventSetTimer(m_config.timer_watchdog_seconds);
 
       m_initialized = true;
       m_receipts.Write(
@@ -615,7 +651,9 @@ public:
          0,
          0
       );
+      ulong init_flush_started_at = m_runtime_telemetry.Start();
       m_receipts.Flush();
+      m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RECEIPT_FLUSH, init_flush_started_at);
 
       Print(LP_EA_NAME, " initialized. run_id=", m_receipts.RunId(), " execution=", LP_ExecutionModeName(m_config.execution_mode));
       return INIT_SUCCEEDED;
@@ -628,6 +666,7 @@ public:
 
       LP_PortfolioState state;
       RefreshPortfolioAndGrid(state);
+      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
       LP_WritePortfolioSummary(m_receipts, state);
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
@@ -637,6 +676,13 @@ public:
       m_receipts.Summary("total_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
       m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
       m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit", "reason=" + IntegerToString(reason), 0, 0, 0, 0, 0, 0);
+      m_strategy_registry.FinalizeRevmaResearchTelemetry(m_config, m_receipts);
+      m_runtime_telemetry.ObserveAggregate(
+         LP_RUNTIME_LIFECYCLE_PERSISTENCE,
+         m_strategy_registry.RevmaLifecyclePersistenceWriteCount(),
+         m_strategy_registry.RevmaLifecyclePersistenceTotalMicroseconds(),
+         m_strategy_registry.RevmaLifecyclePersistenceMaxMicroseconds()
+      );
       WriteRuntimeProfileSummary();
       m_receipts.Close();
       m_initialized = false;
@@ -679,7 +725,9 @@ public:
          0,
          (long)request.magic
       );
+      ulong transaction_flush_started_at = m_runtime_telemetry.Start();
       m_receipts.Flush();
+      m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RECEIPT_FLUSH, transaction_flush_started_at);
    }
 
    void Step(const string source)
@@ -704,6 +752,7 @@ public:
       bool tester_fast_cadence = TesterRuntime();
       bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
       bool scan_symbol_clocks = !tester_fast_cadence || force_initial_fx28_scan || TesterClosedM1ScanDue();
+      ulong closed_m1_scan_started_at = m_runtime_telemetry.Start();
       if(scan_symbol_clocks)
       {
          for(int i = 0; i < m_symbol_cache.Count(); i++)
@@ -740,6 +789,8 @@ public:
             }
          }
       }
+      if(scan_symbol_clocks)
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_CLOSED_M1_SCAN, closed_m1_scan_started_at);
       if(cycle_new_bars > 0)
       {
          m_total_closed_m1_cycles++;
@@ -762,6 +813,7 @@ public:
 
       LP_PortfolioState portfolio;
       RefreshPortfolioAndGrid(portfolio);
+      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
 
       bool grid_inventory_changed = m_step_count == 1 || m_grid_book.SnapshotHash() != m_last_grid_inventory_hash;
       if(m_step_count == 1 || portfolio.position_snapshot_hash != m_last_attribution_hash)
@@ -782,6 +834,7 @@ public:
       }
 
       LP_HarvestDecision harvest;
+      ulong account_close_started_at = m_runtime_telemetry.Start();
       m_account_guard.Evaluate(portfolio, harvest);
       if(harvest.block_new_entries)
          portfolio.recovery_state = LP_RECOVERY_LOCKED;
@@ -799,6 +852,7 @@ public:
          portfolio,
          stop_take_profit
       );
+      m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_ACCOUNT_CLOSE_EVALUATION, account_close_started_at);
       if(
          (m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES ||
           m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES) &&
@@ -838,10 +892,12 @@ public:
       m_stop_take_profit_liquidation_active = stop_take_profit.liquidation_active || harvest_close_required;
 
       int revma_grid_exit_intents = 0;
-      bool should_scan_grid_exits = portfolio.open_grid_count > 0 &&
+      bool account_liquidation_owns_closes = m_stop_take_profit_liquidation_active;
+      bool should_scan_grid_exits = !account_liquidation_owns_closes && portfolio.open_grid_count > 0 &&
          (!tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
       if(should_scan_grid_exits)
       {
+         ulong grid_close_started_at = m_runtime_telemetry.Start();
          m_total_grid_exit_scans++;
          revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
             m_config,
@@ -849,6 +905,7 @@ public:
             m_receipts,
             m_intent_bus
          );
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_GRID_CLOSE_EVALUATION, grid_close_started_at);
       }
       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
@@ -858,6 +915,7 @@ public:
       int revma_grid_tp_sync_intents = 0;
       bool tp_sync_periodic_due = tester_fast_cadence && m_closed_m1_cycles_since_tp_sync >= 15;
       bool should_scan_tp_sync = portfolio.open_grid_count > 0 &&
+         !account_liquidation_owns_closes &&
          revma_grid_exit_intents <= 0 &&
          (!tester_fast_cadence ||
           grid_inventory_changed ||
@@ -866,6 +924,7 @@ public:
           tp_sync_periodic_due);
       if(should_scan_tp_sync)
       {
+         ulong broker_tp_sync_started_at = m_runtime_telemetry.Start();
          m_total_tp_sync_scans++;
          revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
             m_config,
@@ -877,6 +936,7 @@ public:
          m_closed_m1_cycles_since_tp_sync = 0;
          if(revma_grid_tp_sync_intents > 0)
             m_total_intents += revma_grid_tp_sync_intents;
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_BROKER_TP_SYNC, broker_tp_sync_started_at);
       }
 
       if(cycle_new_bars > 0)
@@ -894,6 +954,7 @@ public:
 
       m_total_new_bars += cycle_new_bars;
 
+      m_currency_guard.BeginIntentBatch();
       for(int intent_index = 0; intent_index < m_intent_bus.Count(); intent_index++)
       {
          LP_TradeIntent intent;
@@ -904,13 +965,19 @@ public:
 
          LP_RiskDecision decision;
          LP_TradePlan plan;
+         ulong risk_reservation_started_at = m_runtime_telemetry.Start();
          m_risk_arbiter.Decide(intent, portfolio, m_currency_guard, decision, plan);
+         m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RISK_RESERVATION, risk_reservation_started_at);
          LP_LogRiskDecision(m_receipts, decision);
+         m_strategy_registry.RecordRevmaRiskDecision(intent, decision, m_receipts);
          if(plan.executable)
             LP_LogTradePlan(m_receipts, plan);
          if(plan.executable)
          {
-            m_trade_router.Execute(plan, m_receipts);
+            LP_TradeExecutionResult execution;
+            m_trade_router.Execute(plan, m_receipts, execution);
+            m_strategy_registry.RecordRevmaExecutionOutcome(plan, execution, m_receipts);
+            m_strategy_registry.RecordRevmaCloseExecution(plan, execution);
             m_portfolio_dirty = true;
          }
       }
@@ -946,7 +1013,9 @@ public:
             0,
             0
          );
-         m_receipts.Flush();
+          ulong flush_started_at = m_runtime_telemetry.Start();
+          m_receipts.Flush();
+          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RECEIPT_FLUSH, flush_started_at);
       }
    }
 };

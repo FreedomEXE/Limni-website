@@ -45,9 +45,27 @@ Gate 107 purpose:
 - receipts are enough for offline attribution.
 - tester speed must not degrade.
 
+### Gate 107C - Revma Research Integrity and Executor Boundary
+
+Gate 107C is open as a narrow implementation pass. It hardens execution-truth
+lifecycle receipts, exclusive close ownership, atomic FX28 risk reservation,
+strict Limni magic ownership, watchdog scheduling, bounded persistence, and
+summary-only runtime telemetry.
+
+Gate 107C does not change Revma signals, q-state formula, q-anchor or
+q-stochastic usage, entry logic, adverse/favorable add policy, grid TP/SL
+formula, account TP/HWM formula, optimization knobs, Candidate B, Kyma, pair
+TP, or HWM experiments. The FX28 fast/smoke preset pins
+`BrokerGridTpSyncMode=LiveOnly`, tester watchdog off, and lifecycle
+persistence on.
+
+Telemetry output is implemented as compact execution receipts plus final
+grid-outcome, bucket, and add-type CSV summaries. Its full attribution claim
+is not accepted until Freedom runs the controlled TelemetryOnly evidence pass.
+
 Stop line: no optimization, no promotion, no stochastic filter, no q-anchor
-filter, no quarantine, no recovery-only mode, no Candidate B/HWM work, and no
-EA implementation until Freedom explicitly opens the Gate 107 code pass.
+filter, no quarantine, no recovery-only mode, no Candidate B/HWM work, no
+pair-level TP, and no Strategy Tester execution by Codex.
 
 ### Current Override - 2026-07-07
 

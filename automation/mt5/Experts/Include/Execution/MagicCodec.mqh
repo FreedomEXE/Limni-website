@@ -41,15 +41,17 @@ long LP_BuildMagic(const int symbol_id, const int lane_id, const int variant_id,
       (long)MathMax(0, grid_family);
 }
 
-bool LP_IsManagedMagic(const long magic)
+bool LP_IsLimniMagicNamespace(const long magic)
 {
-   return magic >= LP_MAGIC_BASE && magic < LP_MAGIC_BASE + 100000000000000;
+   const long minimum_magic = LP_MAGIC_BASE + (long)LP_MAGIC_MAJOR_VERSION * 1000000000000;
+   const long maximum_magic = LP_MAGIC_BASE + (long)(LP_MAGIC_MAJOR_VERSION + 1) * 1000000000000;
+   return magic >= minimum_magic && magic < maximum_magic;
 }
 
 bool LP_DecodeMagic(const long magic, LP_MagicParts &parts)
 {
    LP_ResetMagicParts(parts);
-   if(!LP_IsManagedMagic(magic))
+   if(!LP_IsLimniMagicNamespace(magic))
       return false;
 
    long offset = magic - LP_MAGIC_BASE;
@@ -84,6 +86,12 @@ bool LP_DecodeMagic(const long magic, LP_MagicParts &parts)
       direction_code >= 0 &&
       direction_code <= 2;
    return parts.valid;
+}
+
+bool LP_IsManagedMagic(const long magic)
+{
+   LP_MagicParts parts;
+   return LP_DecodeMagic(magic, parts);
 }
 
 ulong LP_BuildGridKey(

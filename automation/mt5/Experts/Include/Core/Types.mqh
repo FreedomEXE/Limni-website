@@ -141,6 +141,13 @@ enum LP_IntentAction
    LP_INTENT_SYNC_GRID_TP = 6
 };
 
+enum LP_ResearchLifecycleEvent
+{
+   LP_RESEARCH_LIFECYCLE_NONE = 0,
+   LP_RESEARCH_LIFECYCLE_GRID_BIRTH = 1,
+   LP_RESEARCH_LIFECYCLE_GRID_ADD = 2
+};
+
 enum LP_RiskDecisionCode
 {
    LP_RISK_REJECT = 0,
@@ -254,6 +261,9 @@ struct LP_Config
    bool require_hedging_account;
    bool require_all_symbols;
    bool use_timer_watchdog;
+   int timer_watchdog_seconds;
+   bool persist_revma_lifecycle_state;
+   string source_revision;
    bool use_week_boundary_guard;
    double broker_to_est_offset_hours;
    int sunday_open_hour_est;
@@ -432,6 +442,9 @@ struct LP_TradeIntent
    ulong grid_key;
    string grid_tickets;
    int expected_grid_ticket_count;
+   int research_lifecycle_event;
+   string research_add_type;
+   string close_reason;
    ulong config_hash;
    ulong strategy_version_hash;
    string human_reason;
@@ -473,12 +486,62 @@ struct LP_TradePlan
    double target_stop_loss_price;
    string stop_take_profit_basis;
    long magic;
+   ulong grid_key;
    string grid_tickets;
    int expected_grid_ticket_count;
+   int research_lifecycle_event;
+   string research_add_type;
+   string close_reason;
    string comment;
    string reason;
    bool executable;
 };
+
+struct LP_TradeExecutionResult
+{
+   bool accepted;
+   bool partial_fill;
+   bool broker_rejected;
+   int action;
+   uint retcode;
+   ulong order_ticket;
+   ulong deal_ticket;
+   ulong position_ticket;
+   double requested_lots;
+   double executed_lots;
+   double executed_price;
+   double realized_profit;
+   double realized_swap;
+   double realized_commission;
+   int matched_positions;
+   int attempted_positions;
+   int closed_positions;
+   int failed_positions;
+   string detail;
+};
+
+void LP_ResetTradeExecutionResult(LP_TradeExecutionResult &result)
+{
+   result.accepted = false;
+   result.partial_fill = false;
+   result.broker_rejected = false;
+   result.action = LP_INTENT_NONE;
+   result.retcode = 0;
+   result.order_ticket = 0;
+   result.deal_ticket = 0;
+   result.position_ticket = 0;
+   result.requested_lots = 0.0;
+   result.executed_lots = 0.0;
+   result.executed_price = 0.0;
+   result.realized_profit = 0.0;
+   result.realized_swap = 0.0;
+   result.realized_commission = 0.0;
+   result.matched_positions = 0;
+   result.attempted_positions = 0;
+   result.closed_positions = 0;
+   result.failed_positions = 0;
+   result.detail = "";
+}
 
 struct LP_PortfolioState
 {
@@ -621,6 +684,15 @@ string LP_BrokerGridTpSyncModeName(const LP_BrokerGridTpSyncMode mode)
    if(mode == LP_BROKER_GRID_TP_SYNC_TESTER_AND_LIVE)
       return "TESTER_AND_LIVE";
    return "OFF";
+}
+
+string LP_ResearchLifecycleEventName(const int event)
+{
+   if(event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH)
+      return "grid_birth";
+   if(event == LP_RESEARCH_LIFECYCLE_GRID_ADD)
+      return "grid_add";
+   return "none";
 }
 
 bool LP_BrokerGridTpSyncEnabledForRuntime(const LP_BrokerGridTpSyncMode mode)

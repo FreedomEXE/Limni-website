@@ -48,6 +48,31 @@ public:
       return m_revma.CleanupClosedBirths(grid_book, receipts);
    }
 
+   void ObserveRevmaGridPath(LP_GridBook &grid_book)
+   {
+      m_revma.ObserveGridPath(grid_book);
+   }
+
+   void FinalizeRevmaResearchTelemetry(const LP_Config &config, LP_ReceiptWriter &receipts)
+   {
+      m_revma.FinalizeResearchTelemetry(config, receipts);
+   }
+
+   ulong RevmaLifecyclePersistenceWriteCount()
+   {
+      return m_revma.LifecyclePersistenceWriteCount();
+   }
+
+   ulong RevmaLifecyclePersistenceTotalMicroseconds()
+   {
+      return m_revma.LifecyclePersistenceTotalMicroseconds();
+   }
+
+   ulong RevmaLifecyclePersistenceMaxMicroseconds()
+   {
+      return m_revma.LifecyclePersistenceMaxMicroseconds();
+   }
+
    int EvaluateRevma(
       const LP_RevmaSignal &signal,
       const LP_Config &config,
@@ -104,6 +129,29 @@ public:
    ulong RevmaBrokerTpSyncTicketScanCount()
    {
       return m_revma.BrokerTpSyncTicketScanCount();
+   }
+
+   void RecordRevmaRiskDecision(
+      const LP_TradeIntent &intent,
+      const LP_RiskDecision &decision,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      m_revma.RecordRiskDecision(intent, decision, receipts);
+   }
+
+   void RecordRevmaExecutionOutcome(
+      const LP_TradePlan &plan,
+      const LP_TradeExecutionResult &execution,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      m_revma.RecordExecutionOutcome(plan, execution, receipts);
+   }
+
+   void RecordRevmaCloseExecution(const LP_TradePlan &plan, const LP_TradeExecutionResult &execution)
+   {
+      m_revma.RecordCloseExecution(plan, execution);
    }
 
    int EvaluateAll(

@@ -125,7 +125,10 @@ input bool HwmTrailBlockNewEntriesWhenArmed = true;
 input double HwmTrailHardStopLossPct = 0.000;
 
 input group "Diagnostics"
-input bool UseTimerWatchdog = false;
+input bool UseTimerWatchdog = true;
+input int TimerWatchdogSeconds = 5;
+input bool PersistRevmaLifecycleState = true;
+input string SourceRevision = "UNSET";
 input bool ExportToCommonFiles = true;
 input ReceiptModeInput ReceiptMode = ReceiptOff;
 input string OutputFolder = "OFF";
@@ -217,6 +220,9 @@ void LP_LoadConfig(LP_Config &config)
    config.require_hedging_account = RequireHedgingAccount;
    config.require_all_symbols = RequireAllSymbols;
    config.use_timer_watchdog = UseTimerWatchdog;
+   config.timer_watchdog_seconds = MathMax(1, TimerWatchdogSeconds);
+   config.persist_revma_lifecycle_state = PersistRevmaLifecycleState;
+   config.source_revision = SourceRevision;
    config.use_week_boundary_guard = UseWeekBoundaryGuard;
    config.broker_to_est_offset_hours = BrokerToEstOffsetHours;
    config.sunday_open_hour_est = 17;
@@ -292,9 +298,13 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.enable_close_execution) + "|" +
       LP_BoolText(config.enable_account_close_execution) + "|" +
       LP_BoolText(config.enable_strategy_evaluation) + "|" +
-      LP_BoolText(config.require_hedging_account) + "|" +
-      LP_BoolText(config.require_all_symbols) + "|" +
-      LP_ReceiptModeName(config.receipt_mode) + "|" +
+       LP_BoolText(config.require_hedging_account) + "|" +
+       LP_BoolText(config.require_all_symbols) + "|" +
+       LP_BoolText(config.use_timer_watchdog) + "|" +
+       IntegerToString(config.timer_watchdog_seconds) + "|" +
+       LP_BoolText(config.persist_revma_lifecycle_state) + "|" +
+       config.source_revision + "|" +
+       LP_ReceiptModeName(config.receipt_mode) + "|" +
       DoubleToString(config.broker_to_est_offset_hours, 2) + "|" +
       config.broker_symbol_suffix + "|" +
       config.news_calendar_file + "|" +

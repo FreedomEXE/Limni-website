@@ -38,6 +38,50 @@ private:
       return action == LP_INTENT_SYNC_GRID_TP;
    }
 
+   bool IsExecutedFillRetcode(const uint retcode)
+   {
+      return retcode == TRADE_RETCODE_DONE || retcode == TRADE_RETCODE_DONE_PARTIAL;
+   }
+
+   void CaptureExecutionResult(
+      const LP_TradePlan &plan,
+      const bool request_ok,
+      LP_TradeExecutionResult &execution
+   )
+   {
+      execution.action = plan.action;
+      execution.requested_lots = plan.lots;
+      execution.retcode = m_trade.ResultRetcode();
+      execution.order_ticket = m_trade.ResultOrder();
+      execution.deal_ticket = m_trade.ResultDeal();
+      execution.executed_lots = m_trade.ResultVolume();
+      execution.executed_price = m_trade.ResultPrice();
+      execution.partial_fill = execution.retcode == TRADE_RETCODE_DONE_PARTIAL;
+      execution.accepted = request_ok && IsExecutedFillRetcode(execution.retcode);
+      execution.broker_rejected = !execution.accepted && execution.retcode != TRADE_RETCODE_PLACED;
+
+      if(execution.deal_ticket > 0 && HistoryDealSelect(execution.deal_ticket))
+      {
+         execution.executed_lots = HistoryDealGetDouble(execution.deal_ticket, DEAL_VOLUME);
+         execution.executed_price = HistoryDealGetDouble(execution.deal_ticket, DEAL_PRICE);
+         execution.realized_profit += HistoryDealGetDouble(execution.deal_ticket, DEAL_PROFIT);
+         execution.realized_swap += HistoryDealGetDouble(execution.deal_ticket, DEAL_SWAP);
+         execution.realized_commission += HistoryDealGetDouble(execution.deal_ticket, DEAL_COMMISSION);
+         execution.position_ticket = (ulong)HistoryDealGetInteger(execution.deal_ticket, DEAL_POSITION_ID);
+      }
+
+      execution.detail = "request_ok=" + LP_BoolText(request_ok) +
+         "|retcode=" + IntegerToString((int)execution.retcode) +
+         "|retcode_name=" + LP_RetcodeName(execution.retcode) +
+         "|order_ticket=" + (string)execution.order_ticket +
+         "|deal_ticket=" + (string)execution.deal_ticket +
+         "|position_ticket=" + (string)execution.position_ticket +
+         "|executed_lots=" + DoubleToString(execution.executed_lots, 2) +
+         "|executed_price=" + DoubleToString(execution.executed_price, 8) +
+         "|partial_fill=" + LP_BoolText(execution.partial_fill) +
+         "|executed_fill=" + LP_BoolText(execution.accepted);
+   }
+
    int VolumePrecision(const double step)
    {
       double scaled = step;
@@ -195,10 +239,11 @@ private:
          plan.symbol,
          status,
          "plan_id=" + (string)plan.plan_id +
-            "|action=" + IntegerToString(plan.action) +
-            "|direction=" + IntegerToString(plan.direction) +
-            "|lots=" + DoubleToString(plan.lots, 2) +
-            "|" + message,
+             "|action=" + IntegerToString(plan.action) +
+             "|direction=" + IntegerToString(plan.direction) +
+             "|lots=" + DoubleToString(plan.lots, 2) +
+             "|close_reason=" + (plan.close_reason == "" ? "none" : plan.close_reason) +
+             "|" + message,
          plan.lane_id,
          plan.variant_id,
          0,
@@ -543,7 +588,8 @@ private:
       const ulong ticket,
       const LP_TradePlan &plan,
       LP_ReceiptWriter &receipts,
-      double &remaining_lots
+      double &remaining_lots,
+      LP_TradeExecutionResult &execution
    )
    {
       if(!PositionSelectByTicket(ticket))
@@ -568,7 +614,8 @@ private:
              "|close_scope=" + (plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" : (partial ? "grid_reduce" : "grid_close")) +
              "|position_lots=" + DoubleToString(position_lots, 2) +
              "|close_lots=" + DoubleToString(close_lots, 2) +
-             "|grid_magic=" + (string)plan.magic
+              "|grid_magic=" + (string)plan.magic +
+              "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason)
       );
 
       bool ok = false;
@@ -578,14 +625,32 @@ private:
       else
          ok = m_trade.PositionClose(ticket, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
 
-      if(ok && partial)
-         remaining_lots -= close_lots;
+      LP_TradeExecutionResult ticket_execution;
+      LP_ResetTradeExecutionResult(ticket_execution);
+      CaptureExecutionResult(plan, ok, ticket_execution);
+      execution.retcode = ticket_execution.retcode;
+      execution.order_ticket = ticket_execution.order_ticket;
+      execution.deal_ticket = ticket_execution.deal_ticket;
+      execution.position_ticket = ticket_execution.position_ticket;
+      execution.executed_lots += ticket_execution.executed_lots;
+      execution.realized_profit += ticket_execution.realized_profit;
+      execution.realized_swap += ticket_execution.realized_swap;
+      execution.realized_commission += ticket_execution.realized_commission;
+      execution.partial_fill = execution.partial_fill || ticket_execution.partial_fill;
+      if(ticket_execution.accepted)
+      {
+         execution.closed_positions++;
+         if(partial)
+            remaining_lots -= close_lots;
+      }
+      else
+         execution.failed_positions++;
 
-      WriteOrderResult(receipts, plan, ok, close_lots, symbol);
-      return ok;
+      WriteOrderResult(receipts, plan, ticket_execution.accepted, close_lots, symbol);
+      return ticket_execution.accepted;
    }
 
-   bool CloseMatchingPositions(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
+   bool CloseMatchingPositions(const LP_TradePlan &plan, LP_ReceiptWriter &receipts, LP_TradeExecutionResult &execution)
    {
       if(!m_config.enable_close_execution)
       {
@@ -646,6 +711,7 @@ private:
          }
 
          matched++;
+         execution.matched_positions++;
          if(attempted >= m_config.max_close_positions_per_step)
          {
             skipped_due_to_close_limit++;
@@ -656,7 +722,8 @@ private:
             break;
 
          attempted++;
-         if(CloseTicket(ticket, plan, receipts, remaining_lots))
+         execution.attempted_positions++;
+         if(CloseTicket(ticket, plan, receipts, remaining_lots, execution))
             closed++;
 
          if(plan.action == LP_INTENT_REDUCE_GRID && remaining_lots <= 0.0)
@@ -678,10 +745,18 @@ private:
              "|close_limit=" + IntegerToString(m_config.max_close_positions_per_step) +
              "|close_all_pending=" + LP_BoolText(plan.action == LP_INTENT_CLOSE_ALL_EA && skipped_due_to_close_limit > 0) +
              "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
-             "|reduce_done=" + LP_BoolText(reduce_done) +
-             "|grid_magic=" + (string)plan.magic
+              "|reduce_done=" + LP_BoolText(reduce_done) +
+              "|grid_magic=" + (string)plan.magic +
+              "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason)
       );
-      return closed > 0;
+      execution.accepted = closed > 0 && execution.failed_positions == 0;
+      execution.broker_rejected = closed == 0 && execution.attempted_positions > 0;
+      execution.detail = "matched=" + IntegerToString(execution.matched_positions) +
+         "|attempted=" + IntegerToString(execution.attempted_positions) +
+         "|closed=" + IntegerToString(execution.closed_positions) +
+         "|failed=" + IntegerToString(execution.failed_positions) +
+         "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason);
+      return execution.accepted;
    }
 
 public:
@@ -734,13 +809,16 @@ public:
       return true;
    }
 
-   bool Execute(const LP_TradePlan &plan, LP_ReceiptWriter &receipts)
+   bool Execute(const LP_TradePlan &plan, LP_ReceiptWriter &receipts, LP_TradeExecutionResult &execution)
    {
+      LP_ResetTradeExecutionResult(execution);
+      execution.action = plan.action;
+      execution.requested_lots = plan.lots;
       if(IsProtectionModifyAction(plan.action))
          return SyncGridTakeProfit(plan, receipts);
 
       if(IsCloseAction(plan.action))
-         return CloseMatchingPositions(plan, receipts);
+         return CloseMatchingPositions(plan, receipts, execution);
 
       if(!IsOpenAction(plan.action))
       {
@@ -801,8 +879,9 @@ public:
          return false;
       }
 
-      WriteOrderResult(receipts, plan, ok, normalized_lots, plan.symbol);
-      return ok;
+      CaptureExecutionResult(plan, ok, execution);
+      WriteOrderResult(receipts, plan, execution.accepted, normalized_lots, plan.symbol);
+      return execution.accepted;
    }
 
    ulong BrokerTpSyncTicketScanCount()

@@ -39,6 +39,9 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
          "|lots=" + DoubleToString(intent.requested_lots, 4) +
           "|score=" + DoubleToString(intent.score, 6) +
           "|grid_key=" + (string)intent.grid_key +
+          "|research_lifecycle_event=" + LP_ResearchLifecycleEventName(intent.research_lifecycle_event) +
+          "|research_add_type=" + intent.research_add_type +
+          "|close_reason=" + intent.close_reason +
           "|source_bar_time=" + LP_Stamp(intent.source_bar_time) +
           "|expires_at=" + LP_Stamp(intent.expires_at) +
           LP_StopTakeProfitReceiptFields(
@@ -86,7 +89,10 @@ void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
       "plan_id=" + (string)plan.plan_id +
          "|action=" + IntegerToString(plan.action) +
          "|direction=" + IntegerToString(plan.direction) +
-         "|lots=" + DoubleToString(plan.lots, 4) +
+          "|lots=" + DoubleToString(plan.lots, 4) +
+          "|research_lifecycle_event=" + LP_ResearchLifecycleEventName(plan.research_lifecycle_event) +
+          "|research_add_type=" + plan.research_add_type +
+          "|close_reason=" + plan.close_reason +
          LP_StopTakeProfitReceiptFields(
             plan.stop_take_profit_basis,
             plan.take_profit_distance_price,

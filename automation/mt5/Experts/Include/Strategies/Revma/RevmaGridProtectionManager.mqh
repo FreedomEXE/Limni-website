@@ -387,6 +387,9 @@ public:
       intent.grid_key = grid.grid_key;
       intent.grid_tickets = grid.tickets;
       intent.expected_grid_ticket_count = grid.position_count;
+      intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
+      intent.research_add_type = "";
+      intent.close_reason = "";
       intent.config_hash = config_hash;
       intent.strategy_version_hash = LP_HashString("gate99zzg_revma_grid_broker_tp_sync");
       intent.human_reason = "revma_grid_broker_tp_sync|" + metadata;

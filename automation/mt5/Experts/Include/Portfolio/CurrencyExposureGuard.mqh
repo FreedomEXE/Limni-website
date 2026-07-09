@@ -21,6 +21,11 @@ private:
    int m_max_same_direction_grids;
    int m_max_managed_positions;
    int m_managed_positions;
+   int m_reserved_managed_positions;
+   double m_reserved_signed_lots[LP_CCY_COUNT];
+   double m_reserved_gross_lots[LP_CCY_COUNT];
+   int m_reserved_grid_long_count[LP_CCY_COUNT];
+   int m_reserved_grid_short_count[LP_CCY_COUNT];
    ulong m_snapshot_hash;
    string m_hash_payload;
 
@@ -39,14 +44,26 @@ private:
       }
    }
 
+   void ClearReservations()
+   {
+      m_reserved_managed_positions = 0;
+      for(int i = 0; i < LP_CCY_COUNT; i++)
+      {
+         m_reserved_signed_lots[i] = 0.0;
+         m_reserved_gross_lots[i] = 0.0;
+         m_reserved_grid_long_count[i] = 0;
+         m_reserved_grid_short_count[i] = 0;
+      }
+   }
+
    int CandidateGridDirectionCount(const int ccy, const double delta)
    {
       if(ccy < 0 || ccy >= LP_CCY_COUNT)
          return 0;
       if(delta > 0.0)
-         return m_grid_long_count[ccy];
+         return m_grid_long_count[ccy] + m_reserved_grid_long_count[ccy];
       if(delta < 0.0)
-         return m_grid_short_count[ccy];
+         return m_grid_short_count[ccy] + m_reserved_grid_short_count[ccy];
       return 0;
    }
 
@@ -89,6 +106,7 @@ public:
       m_max_managed_positions = 0;
       m_snapshot_hash = 0;
       ClearExposure();
+      ClearReservations();
    }
 
    void Configure(const LP_Config &config)
@@ -103,7 +121,13 @@ public:
    void BeginRefresh()
    {
       ClearExposure();
+      ClearReservations();
       m_hash_payload = "";
+   }
+
+   void BeginIntentBatch()
+   {
+      ClearReservations();
    }
 
    void AccumulateManagedPosition(
@@ -179,7 +203,8 @@ public:
    string SummaryMessage()
    {
       string message = "enabled=" + LP_BoolText(m_enabled) +
-         "|managed_positions=" + IntegerToString(m_managed_positions);
+         "|managed_positions=" + IntegerToString(m_managed_positions) +
+         "|reserved_managed_positions=" + IntegerToString(m_reserved_managed_positions);
       for(int i = 0; i < LP_CCY_COUNT; i++)
       {
          message += "|" + LP_CcyCode(i) +
@@ -221,7 +246,7 @@ public:
          return false;
       }
 
-      if(m_max_managed_positions > 0 && m_managed_positions >= m_max_managed_positions &&
+      if(m_max_managed_positions > 0 && m_managed_positions + m_reserved_managed_positions >= m_max_managed_positions &&
          (intent.action == LP_INTENT_OPEN_GRID || intent.action == LP_INTENT_ADD_GRID_LEG))
       {
          reason = "max_managed_positions";
@@ -239,10 +264,10 @@ public:
 
       double base_delta = intent.direction * intent.requested_lots;
       double quote_delta = -intent.direction * intent.requested_lots;
-      double base_signed_after = m_exposure[base_ccy].signed_lots + base_delta;
-      double quote_signed_after = m_exposure[quote_ccy].signed_lots + quote_delta;
-      double base_gross_after = m_exposure[base_ccy].gross_lots + MathAbs(base_delta);
-      double quote_gross_after = m_exposure[quote_ccy].gross_lots + MathAbs(quote_delta);
+      double base_signed_after = m_exposure[base_ccy].signed_lots + m_reserved_signed_lots[base_ccy] + base_delta;
+      double quote_signed_after = m_exposure[quote_ccy].signed_lots + m_reserved_signed_lots[quote_ccy] + quote_delta;
+      double base_gross_after = m_exposure[base_ccy].gross_lots + m_reserved_gross_lots[base_ccy] + MathAbs(base_delta);
+      double quote_gross_after = m_exposure[quote_ccy].gross_lots + m_reserved_gross_lots[quote_ccy] + MathAbs(quote_delta);
 
       if(m_max_signed_lots > 0.0 &&
          (MathAbs(base_signed_after) > m_max_signed_lots || MathAbs(quote_signed_after) > m_max_signed_lots))
@@ -271,6 +296,49 @@ public:
       }
 
       reason = "currency_guard_pass";
+      return true;
+   }
+
+   bool ReserveCandidate(const LP_TradeIntent &intent, string &reason)
+   {
+      if(!m_enabled)
+      {
+         reason = "currency_guard_disabled";
+         return true;
+      }
+      if(intent.action != LP_INTENT_OPEN_GRID && intent.action != LP_INTENT_ADD_GRID_LEG)
+      {
+         reason = "reservation_not_required";
+         return true;
+      }
+      if(!AllowsCandidate(intent, reason))
+         return false;
+
+      int base_ccy = -1;
+      int quote_ccy = -1;
+      LP_CanonicalBaseQuote(LP_CanonicalSymbol(intent.symbol_id), base_ccy, quote_ccy);
+      if(base_ccy < 0 || quote_ccy < 0)
+      {
+         reason = "symbol_currency_unresolved";
+         return false;
+      }
+
+      double base_delta = intent.direction * intent.requested_lots;
+      double quote_delta = -intent.direction * intent.requested_lots;
+      m_reserved_signed_lots[base_ccy] += base_delta;
+      m_reserved_signed_lots[quote_ccy] += quote_delta;
+      m_reserved_gross_lots[base_ccy] += MathAbs(base_delta);
+      m_reserved_gross_lots[quote_ccy] += MathAbs(quote_delta);
+      if(base_delta > 0.0)
+         m_reserved_grid_long_count[base_ccy]++;
+      else if(base_delta < 0.0)
+         m_reserved_grid_short_count[base_ccy]++;
+      if(quote_delta > 0.0)
+         m_reserved_grid_long_count[quote_ccy]++;
+      else if(quote_delta < 0.0)
+         m_reserved_grid_short_count[quote_ccy]++;
+      m_reserved_managed_positions++;
+      reason = "currency_guard_reserved";
       return true;
    }
 };

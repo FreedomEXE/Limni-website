@@ -156,8 +156,12 @@ private:
       plan.target_take_profit_price = intent.target_take_profit_price;
       plan.target_stop_loss_price = intent.target_stop_loss_price;
       plan.stop_take_profit_basis = intent.stop_take_profit_basis;
+      plan.grid_key = intent.grid_key;
       plan.grid_tickets = intent.grid_tickets;
       plan.expected_grid_ticket_count = intent.expected_grid_ticket_count;
+      plan.research_lifecycle_event = intent.research_lifecycle_event;
+      plan.research_add_type = intent.research_add_type;
+      plan.close_reason = intent.close_reason;
       plan.reason = intent.human_reason;
       plan.executable = true;
 
@@ -222,7 +226,7 @@ public:
       }
 
       string guard_reason = "";
-      if(IsOpenAction(intent.action) && !currency_guard.AllowsCandidate(intent, guard_reason))
+      if(IsOpenAction(intent.action) && !currency_guard.ReserveCandidate(intent, guard_reason))
       {
          decision.decision = LP_RISK_REJECT;
          decision.reason = LP_RISK_REASON_CURRENCY_EXPOSURE;
@@ -237,7 +241,9 @@ public:
       decision.allow_new_order = IsOpenAction(intent.action);
       decision.allow_reduce = IsReduceAction(intent.action);
       decision.allow_close = IsCloseAction(intent.action);
-      decision.explanation = "approved_strategy_agnostic_plan";
+      decision.explanation = IsOpenAction(intent.action) ?
+         "approved_strategy_agnostic_plan|risk_reservation=" + guard_reason :
+         "approved_strategy_agnostic_plan";
 
       BuildPlanFromIntent(intent, decision.decision_id, plan);
       return true;
