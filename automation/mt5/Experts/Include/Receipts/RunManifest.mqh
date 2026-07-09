@@ -48,6 +48,8 @@ void LP_WriteRunManifest(
          "|revma_dashboard_refresh_seconds=" + IntegerToString(config.revma_dashboard_refresh_seconds) +
          "|revma_dashboard_screenshot_on_divergent_add=" + LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) +
          "|sltp_mode=" + LP_StopTakeProfitModeName(config.stop_take_profit_mode) +
+         "|broker_grid_tp_sync_mode=" + LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode) +
+         "|broker_grid_tp_sync_enabled_current_runtime=" + LP_BoolText(LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode)) +
          "|grid_take_profit_q=" + DoubleToString(config.grid_take_profit_q, 4) +
          "|grid_stop_loss_q=" + DoubleToString(config.grid_stop_loss_q, 4) +
          "|account_take_profit_pct=" + DoubleToString(config.account_take_profit_pct, 4) +
@@ -111,6 +113,8 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_dashboard_refresh_seconds", IntegerToString(config.revma_dashboard_refresh_seconds));
    receipts.Summary("revma_dashboard_screenshot_on_divergent_add", LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add));
    receipts.Summary("stop_take_profit_mode", LP_StopTakeProfitModeName(config.stop_take_profit_mode));
+   receipts.Summary("broker_grid_tp_sync_mode", LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode));
+   receipts.Summary("broker_grid_tp_sync_enabled_current_runtime", LP_BoolText(LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode)));
    receipts.Summary("grid_take_profit_q", DoubleToString(config.grid_take_profit_q, 4));
    receipts.Summary("grid_stop_loss_q", DoubleToString(config.grid_stop_loss_q, 4));
    receipts.Summary("account_take_profit_pct", DoubleToString(config.account_take_profit_pct, 4));

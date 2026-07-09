@@ -89,6 +89,13 @@ enum LP_StopTakeProfitMode
    LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES = 3
 };
 
+enum LP_BrokerGridTpSyncMode
+{
+   LP_BROKER_GRID_TP_SYNC_OFF = 0,
+   LP_BROKER_GRID_TP_SYNC_LIVE_ONLY = 1,
+   LP_BROKER_GRID_TP_SYNC_TESTER_AND_LIVE = 2
+};
+
 enum LP_ReceiptMode
 {
    LP_RECEIPT_MODE_OFF = 0,
@@ -278,6 +285,7 @@ struct LP_Config
    int revma_dashboard_refresh_seconds;
    bool revma_dashboard_screenshot_on_divergent_add;
    LP_StopTakeProfitMode stop_take_profit_mode;
+   LP_BrokerGridTpSyncMode broker_grid_tp_sync_mode;
    double grid_take_profit_q;
    double grid_stop_loss_q;
    double account_take_profit_pct;
@@ -422,6 +430,8 @@ struct LP_TradeIntent
    int priority;
    double score;
    ulong grid_key;
+   string grid_tickets;
+   int expected_grid_ticket_count;
    ulong config_hash;
    ulong strategy_version_hash;
    string human_reason;
@@ -463,6 +473,8 @@ struct LP_TradePlan
    double target_stop_loss_price;
    string stop_take_profit_basis;
    long magic;
+   string grid_tickets;
+   int expected_grid_ticket_count;
    string comment;
    string reason;
    bool executable;
@@ -586,6 +598,11 @@ string LP_NewsGuardModeName(const LP_NewsGuardMode mode)
    return "NEWS_GUARD_DISABLED";
 }
 
+bool LP_IsTesterRuntime()
+{
+   return (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
+}
+
 string LP_StopTakeProfitModeName(const LP_StopTakeProfitMode mode)
 {
    if(mode == LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
@@ -595,6 +612,24 @@ string LP_StopTakeProfitModeName(const LP_StopTakeProfitMode mode)
    if(mode == LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES)
       return "MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES";
    return "DISABLED";
+}
+
+string LP_BrokerGridTpSyncModeName(const LP_BrokerGridTpSyncMode mode)
+{
+   if(mode == LP_BROKER_GRID_TP_SYNC_LIVE_ONLY)
+      return "LIVE_ONLY";
+   if(mode == LP_BROKER_GRID_TP_SYNC_TESTER_AND_LIVE)
+      return "TESTER_AND_LIVE";
+   return "OFF";
+}
+
+bool LP_BrokerGridTpSyncEnabledForRuntime(const LP_BrokerGridTpSyncMode mode)
+{
+   if(mode == LP_BROKER_GRID_TP_SYNC_OFF)
+      return false;
+   if(mode == LP_BROKER_GRID_TP_SYNC_TESTER_AND_LIVE)
+      return true;
+   return !LP_IsTesterRuntime();
 }
 
 string LP_ReceiptModeName(const LP_ReceiptMode mode)
@@ -615,6 +650,30 @@ string LP_PositionGroupName(const int group)
    if(group == LP_POSITION_GROUP_EXTERNAL)
       return "external";
    return "unknown";
+}
+
+int LP_ParseTicketList(const string ticket_list, ulong &tickets[])
+{
+   ArrayResize(tickets, 0);
+   if(ticket_list == "")
+      return 0;
+
+   string parts[];
+   int raw_count = StringSplit(ticket_list, ';', parts);
+   if(raw_count <= 0)
+      return 0;
+
+   int valid_count = 0;
+   for(int i = 0; i < raw_count; i++)
+   {
+      ulong ticket = (ulong)StringToInteger(parts[i]);
+      if(ticket == 0)
+         continue;
+      ArrayResize(tickets, valid_count + 1, valid_count + 1);
+      tickets[valid_count] = ticket;
+      valid_count++;
+   }
+   return valid_count;
 }
 
 string LP_HarvestStateName(const int state)

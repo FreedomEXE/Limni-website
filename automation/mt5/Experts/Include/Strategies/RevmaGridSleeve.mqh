@@ -115,7 +115,7 @@ private:
 
    bool TesterRuntime()
    {
-      return (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
+      return LP_IsTesterRuntime();
    }
 
    int AnchorRelationFromPrice(const double price, const double anchor)
@@ -1559,6 +1559,11 @@ public:
       return true;
    }
 
+   ulong BrokerTpSyncTicketScanCount()
+   {
+      return m_protection_manager.TicketScanCount();
+   }
+
    int SyncGridTakeProfits(
       const LP_Config &config,
       LP_GridBook &grid_book,
@@ -1567,6 +1572,8 @@ public:
    )
    {
       if(!LP_RevmaAnySleeveTakeProfitEnabled(config))
+         return 0;
+      if(!LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode))
          return 0;
 
       int emitted = 0;

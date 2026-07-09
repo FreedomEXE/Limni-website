@@ -156,6 +156,8 @@ private:
       plan.target_take_profit_price = intent.target_take_profit_price;
       plan.target_stop_loss_price = intent.target_stop_loss_price;
       plan.stop_take_profit_basis = intent.stop_take_profit_basis;
+      plan.grid_tickets = intent.grid_tickets;
+      plan.expected_grid_ticket_count = intent.expected_grid_ticket_count;
       plan.reason = intent.human_reason;
       plan.executable = true;
 

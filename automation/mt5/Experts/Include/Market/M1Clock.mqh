@@ -34,6 +34,22 @@ public:
       if(!meta.tradable)
          return false;
 
+      datetime closed_bar_time = iTime(meta.broker_symbol, PERIOD_M1, 1);
+      if(closed_bar_time <= 0)
+      {
+         m_sync_fail_count++;
+         return false;
+      }
+
+      int id = meta.symbol_id;
+      if(id < 0 || id >= LP_SYMBOL_COUNT)
+         return false;
+
+      state.synchronized = true;
+      state.last_bar_time = closed_bar_time;
+      if(m_last_bar_time[id] > 0 && closed_bar_time == m_last_bar_time[id])
+         return true;
+
       MqlRates rates[1];
       if(CopyRates(meta.broker_symbol, PERIOD_M1, 1, 1, rates) != 1)
       {
@@ -41,12 +57,8 @@ public:
          return false;
       }
 
-      state.synchronized = true;
       state.last_bar_time = rates[0].time;
       state.close = rates[0].close;
-      int id = meta.symbol_id;
-      if(id < 0 || id >= LP_SYMBOL_COUNT)
-         return false;
 
       if(m_last_bar_time[id] == 0)
       {

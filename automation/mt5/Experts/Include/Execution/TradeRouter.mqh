@@ -16,6 +16,10 @@ private:
    CTrade m_trade;
    LP_Config m_config;
    bool m_ready;
+   ulong m_broker_tp_sync_ticket_scans;
+   ulong m_broker_tp_modify_attempts;
+   ulong m_order_open_attempts;
+   ulong m_order_close_attempts;
 
    bool IsOpenAction(const int action)
    {
@@ -382,65 +386,139 @@ private:
       int attempted = 0;
       int modified = 0;
       int failed = 0;
+      bool bounded_ticket_scan = false;
+      ulong tickets[];
+      int ticket_count = LP_ParseTicketList(plan.grid_tickets, tickets);
+      if(ticket_count > 0)
+         bounded_ticket_scan = true;
 
-      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      if(bounded_ticket_scan)
       {
-         ulong ticket = PositionGetTicket(i);
-         if(ticket == 0)
-            continue;
-         if(!PositionSelectByTicket(ticket))
-            continue;
-
-         long magic = (long)PositionGetInteger(POSITION_MAGIC);
-         if(magic != plan.magic)
-            continue;
-         if(PositionGetString(POSITION_SYMBOL) != plan.symbol)
-            continue;
-
-         long position_type = (long)PositionGetInteger(POSITION_TYPE);
-         if(!PositionDirectionMatchesPlan(position_type, plan.direction))
-            continue;
-
-         matched++;
-         double current_stop_loss = PositionGetDouble(POSITION_SL);
-         double current_take_profit = PositionGetDouble(POSITION_TP);
-         if(TakeProfitAlreadySynced(plan.symbol, current_take_profit, plan.target_take_profit_price))
+         for(int i = 0; i < ticket_count; i++)
          {
-            skipped_synced++;
-            continue;
+            ulong ticket = tickets[i];
+            m_broker_tp_sync_ticket_scans++;
+            if(ticket == 0)
+               continue;
+            if(!PositionSelectByTicket(ticket))
+               continue;
+
+            long magic = (long)PositionGetInteger(POSITION_MAGIC);
+            if(magic != plan.magic)
+               continue;
+            if(PositionGetString(POSITION_SYMBOL) != plan.symbol)
+               continue;
+
+            long position_type = (long)PositionGetInteger(POSITION_TYPE);
+            if(!PositionDirectionMatchesPlan(position_type, plan.direction))
+               continue;
+
+            matched++;
+            double current_stop_loss = PositionGetDouble(POSITION_SL);
+            double current_take_profit = PositionGetDouble(POSITION_TP);
+            if(TakeProfitAlreadySynced(plan.symbol, current_take_profit, plan.target_take_profit_price))
+            {
+               skipped_synced++;
+               continue;
+            }
+
+            WriteOrderRequest(
+               receipts,
+               plan,
+               "grid_tp_modify_request",
+               "ticket=" + (string)ticket +
+                  "|current_stop_loss=" + PriceText(current_stop_loss, digits) +
+                  "|current_take_profit=" + PriceText(current_take_profit, digits) +
+                  "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
+                  "|grid_magic=" + (string)plan.magic
+            );
+
+            MqlTradeRequest request;
+            MqlTradeResult result;
+            ZeroMemory(request);
+            ZeroMemory(result);
+            request.action = TRADE_ACTION_SLTP;
+            request.position = ticket;
+            request.symbol = plan.symbol;
+            request.magic = plan.magic;
+            request.sl = current_stop_loss;
+            request.tp = plan.target_take_profit_price;
+            request.deviation = (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points));
+
+            attempted++;
+            m_broker_tp_modify_attempts++;
+            bool ok = OrderSend(request, result);
+            bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+            if(accepted)
+               modified++;
+            else
+               failed++;
+            WriteModifyResult(receipts, plan, ticket, accepted, result);
          }
+      }
+      else
+      {
+         for(int i = PositionsTotal() - 1; i >= 0; i--)
+         {
+            m_broker_tp_sync_ticket_scans++;
+            ulong ticket = PositionGetTicket(i);
+            if(ticket == 0)
+               continue;
+            if(!PositionSelectByTicket(ticket))
+               continue;
 
-         WriteOrderRequest(
-            receipts,
-            plan,
-            "grid_tp_modify_request",
-            "ticket=" + (string)ticket +
-               "|current_stop_loss=" + PriceText(current_stop_loss, digits) +
-               "|current_take_profit=" + PriceText(current_take_profit, digits) +
-               "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
-               "|grid_magic=" + (string)plan.magic
-         );
+            long magic = (long)PositionGetInteger(POSITION_MAGIC);
+            if(magic != plan.magic)
+               continue;
+            if(PositionGetString(POSITION_SYMBOL) != plan.symbol)
+               continue;
 
-         MqlTradeRequest request;
-         MqlTradeResult result;
-         ZeroMemory(request);
-         ZeroMemory(result);
-         request.action = TRADE_ACTION_SLTP;
-         request.position = ticket;
-         request.symbol = plan.symbol;
-         request.magic = plan.magic;
-         request.sl = current_stop_loss;
-         request.tp = plan.target_take_profit_price;
-         request.deviation = (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points));
+            long position_type = (long)PositionGetInteger(POSITION_TYPE);
+            if(!PositionDirectionMatchesPlan(position_type, plan.direction))
+               continue;
 
-         attempted++;
-         bool ok = OrderSend(request, result);
-         bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
-         if(accepted)
-            modified++;
-         else
-            failed++;
-         WriteModifyResult(receipts, plan, ticket, accepted, result);
+            matched++;
+            double current_stop_loss = PositionGetDouble(POSITION_SL);
+            double current_take_profit = PositionGetDouble(POSITION_TP);
+            if(TakeProfitAlreadySynced(plan.symbol, current_take_profit, plan.target_take_profit_price))
+            {
+               skipped_synced++;
+               continue;
+            }
+
+            WriteOrderRequest(
+               receipts,
+               plan,
+               "grid_tp_modify_request",
+               "ticket=" + (string)ticket +
+                  "|current_stop_loss=" + PriceText(current_stop_loss, digits) +
+                  "|current_take_profit=" + PriceText(current_take_profit, digits) +
+                  "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
+                  "|grid_magic=" + (string)plan.magic
+            );
+
+            MqlTradeRequest request;
+            MqlTradeResult result;
+            ZeroMemory(request);
+            ZeroMemory(result);
+            request.action = TRADE_ACTION_SLTP;
+            request.position = ticket;
+            request.symbol = plan.symbol;
+            request.magic = plan.magic;
+            request.sl = current_stop_loss;
+            request.tp = plan.target_take_profit_price;
+            request.deviation = (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points));
+
+            attempted++;
+            m_broker_tp_modify_attempts++;
+            bool ok = OrderSend(request, result);
+            bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+            if(accepted)
+               modified++;
+            else
+               failed++;
+            WriteModifyResult(receipts, plan, ticket, accepted, result);
+         }
       }
 
       WriteOrderRequest(
@@ -452,6 +530,8 @@ private:
             "|modified=" + IntegerToString(modified) +
             "|skipped_already_synced=" + IntegerToString(skipped_synced) +
             "|failed=" + IntegerToString(failed) +
+            "|bounded_ticket_scan=" + LP_BoolText(bounded_ticket_scan) +
+            "|expected_grid_ticket_count=" + IntegerToString(plan.expected_grid_ticket_count) +
             "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits) +
             "|grid_magic=" + (string)plan.magic
       );
@@ -492,6 +572,7 @@ private:
       );
 
       bool ok = false;
+      m_order_close_attempts++;
       if(partial && close_lots < position_lots)
          ok = m_trade.PositionClosePartial(ticket, close_lots, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
       else
@@ -607,6 +688,10 @@ public:
    void Reset()
    {
       m_ready = false;
+      m_broker_tp_sync_ticket_scans = 0;
+      m_broker_tp_modify_attempts = 0;
+      m_order_open_attempts = 0;
+      m_order_close_attempts = 0;
    }
 
    void Configure(const LP_Config &config)
@@ -630,7 +715,7 @@ public:
          return false;
       }
 
-      bool is_tester = (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
+      bool is_tester = LP_IsTesterRuntime();
       if(is_tester)
          return m_config.execution_mode == LP_EXECUTION_TESTER_ONLY || m_config.execution_mode == LP_EXECUTION_LIVE_ALLOWED || m_config.execution_mode == LP_EXECUTION_DRY_RUN;
 
@@ -701,9 +786,15 @@ public:
       );
       bool ok = false;
       if(plan.direction > 0)
+      {
+         m_order_open_attempts++;
          ok = m_trade.Buy(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
+      }
       else if(plan.direction < 0)
+      {
+         m_order_open_attempts++;
          ok = m_trade.Sell(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
+      }
       else
       {
          WriteOrderRequest(receipts, plan, "direction_rejected", "reason=invalid_direction");
@@ -712,6 +803,26 @@ public:
 
       WriteOrderResult(receipts, plan, ok, normalized_lots, plan.symbol);
       return ok;
+   }
+
+   ulong BrokerTpSyncTicketScanCount()
+   {
+      return m_broker_tp_sync_ticket_scans;
+   }
+
+   ulong BrokerTpModifyAttemptCount()
+   {
+      return m_broker_tp_modify_attempts;
+   }
+
+   ulong OrderOpenAttemptCount()
+   {
+      return m_order_open_attempts;
+   }
+
+   ulong OrderCloseAttemptCount()
+   {
+      return m_order_close_attempts;
    }
 };
 

@@ -8,6 +8,7 @@
 #include "..\\Execution\\MagicCodec.mqh"
 #include "PositionCommissionCache.mqh"
 #include "GridBook.mqh"
+#include "CurrencyExposureGuard.mqh"
 
 class LP_PositionIndex
 {
@@ -117,7 +118,11 @@ public:
       m_dirty = false;
    }
 
-   void Refresh(LP_PositionCommissionCache &commission_cache, LP_GridBook &grid_book)
+   void Refresh(
+      LP_PositionCommissionCache &commission_cache,
+      LP_GridBook &grid_book,
+      LP_CurrencyExposureGuard &currency_guard
+   )
    {
       m_total_positions = PositionsTotal();
       m_managed_positions = 0;
@@ -131,6 +136,7 @@ public:
       m_external_floating_pnl = 0.0;
       ulong snapshot_hash = 1469598103934665603;
       grid_book.BeginRefresh();
+      currency_guard.BeginRefresh();
 
       for(int i = 0; i < m_total_positions; i++)
       {
@@ -143,13 +149,18 @@ public:
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
          LP_MagicParts parts;
          bool decoded_magic = LP_DecodeMagic(magic, parts);
+         bool managed_magic = LP_IsManagedMagic(magic);
+         string position_symbol = PositionGetString(POSITION_SYMBOL);
+         long position_type = (long)PositionGetInteger(POSITION_TYPE);
+         double lots = PositionGetDouble(POSITION_VOLUME);
+         double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
          double price_pnl = PositionGetDouble(POSITION_PROFIT);
          double swap = PositionGetDouble(POSITION_SWAP);
          double commission = commission_cache.CommissionForSelectedPosition();
          double profit = price_pnl + swap + commission;
          int group = LP_POSITION_GROUP_EXTERNAL;
 
-         if(!LP_IsManagedMagic(magic))
+         if(!managed_magic)
          {
             m_external_positions++;
             m_external_floating_pnl += profit;
@@ -183,12 +194,21 @@ public:
             grid_book.AccumulateSelectedPosition(
                parts,
                ticket,
-               PositionGetDouble(POSITION_VOLUME),
-               PositionGetDouble(POSITION_PRICE_OPEN),
+               lots,
+               open_price,
                price_pnl,
                swap,
                commission
             );
+         }
+
+         if(managed_magic)
+         {
+            int direction = position_type == POSITION_TYPE_BUY ? 1 :
+               (position_type == POSITION_TYPE_SELL ? -1 : 0);
+            int symbol_id = decoded_magic ? parts.symbol_id : LP_SymbolIdFromBrokerSymbol(position_symbol);
+            bool grid_position = decoded_magic && parts.grid_family > 0;
+            currency_guard.AccumulateManagedPosition(ticket, magic, symbol_id, direction, lots, grid_position);
          }
 
          LP_HashMixULong(snapshot_hash, ticket);
@@ -197,6 +217,7 @@ public:
       }
 
       grid_book.EndRefresh();
+      currency_guard.EndRefresh();
       m_snapshot_hash = snapshot_hash;
       m_recovery_state = LP_RECOVERY_OK;
       m_dirty = false;
@@ -234,10 +255,11 @@ public:
       const ulong config_hash,
       LP_PortfolioState &state,
       LP_GridBook &grid_book,
-      LP_PositionCommissionCache &commission_cache
+      LP_PositionCommissionCache &commission_cache,
+      LP_CurrencyExposureGuard &currency_guard
    )
    {
-      Refresh(commission_cache, grid_book);
+      Refresh(commission_cache, grid_book, currency_guard);
       state.asof = TimeCurrent();
       state.balance = AccountInfoDouble(ACCOUNT_BALANCE);
       state.equity = AccountInfoDouble(ACCOUNT_EQUITY);

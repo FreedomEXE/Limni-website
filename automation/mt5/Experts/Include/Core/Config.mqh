@@ -53,6 +53,13 @@ enum StopTakeProfitModeInput
    MultiCurrencyHwmTrailAfterFees = 3 // Multi Currency HWM Trail After Fees
 };
 
+enum BrokerGridTpSyncModeInput
+{
+   BrokerGridTpSyncOff = 0,          // Off
+   BrokerGridTpSyncLiveOnly = 1,     // Live Only
+   BrokerGridTpSyncTesterAndLive = 2 // Tester And Live
+};
+
 enum ReceiptModeInput
 {
    ReceiptOff = 0,           // Off
@@ -105,6 +112,7 @@ input bool RevmaDashboardScreenshotOnDivergentAdd = false;
 
 input group "Stop / Take Profit"
 input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
+input BrokerGridTpSyncModeInput BrokerGridTpSyncMode = BrokerGridTpSyncLiveOnly;
 input double GridTakeProfitQ = 0.1;
 input double GridStopLossQ = 0.0;
 input double AccountTakeProfitPct = 0.0;
@@ -244,6 +252,7 @@ void LP_LoadConfig(LP_Config &config)
    config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
    config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
    config.stop_take_profit_mode = (LP_StopTakeProfitMode)StopTakeProfitMode;
+   config.broker_grid_tp_sync_mode = (LP_BrokerGridTpSyncMode)BrokerGridTpSyncMode;
    config.grid_take_profit_q = MathMax(0.0, GridTakeProfitQ);
    config.grid_stop_loss_q = MathMax(0.0, GridStopLossQ);
    config.account_take_profit_pct = MathMax(0.0, AccountTakeProfitPct);
@@ -304,6 +313,7 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
       LP_StopTakeProfitModeName(config.stop_take_profit_mode) + "|" +
+      LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode) + "|" +
       DoubleToString(config.grid_take_profit_q, 4) + "|" +
       DoubleToString(config.grid_stop_loss_q, 4) + "|" +
       DoubleToString(config.account_take_profit_pct, 4) + "|" +

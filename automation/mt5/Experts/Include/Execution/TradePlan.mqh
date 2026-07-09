@@ -25,6 +25,8 @@ void LP_ResetTradePlan(LP_TradePlan &plan)
    plan.target_stop_loss_price = 0.0;
    plan.stop_take_profit_basis = "";
    plan.magic = 0;
+   plan.grid_tickets = "";
+   plan.expected_grid_ticket_count = 0;
    plan.comment = "";
    plan.reason = "";
    plan.executable = false;

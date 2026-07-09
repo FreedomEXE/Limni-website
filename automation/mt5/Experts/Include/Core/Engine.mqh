@@ -52,6 +52,7 @@ private:
    int m_total_position_grid_refreshes;
    int m_total_grid_exit_scans;
    int m_total_tp_sync_scans;
+   ulong m_total_revma_symbol_evaluations;
    ulong m_next_system_intent_id;
    uint m_started_tick_count;
    ulong m_last_attribution_hash;
@@ -123,7 +124,7 @@ private:
 
    bool TesterRuntime()
    {
-      return (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
+      return LP_IsTesterRuntime();
    }
 
    bool TesterClosedM1ScanDue()
@@ -151,9 +152,7 @@ private:
    void RefreshPortfolioAndGrid(LP_PortfolioState &portfolio)
    {
       m_position_commission_cache.BeginRefresh();
-      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache);
-      if(m_config.enable_currency_exposure_guard)
-         m_currency_guard.Refresh();
+      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache, m_currency_guard);
       m_position_commission_cache.EndRefresh();
       m_total_position_grid_refreshes++;
       m_cached_portfolio = portfolio;
@@ -168,6 +167,8 @@ private:
       double elapsed_seconds = 0.0;
       if(m_started_tick_count > 0)
          elapsed_seconds = (double)(GetTickCount() - m_started_tick_count) / 1000.0;
+      ulong broker_tp_sync_ticket_scans = m_strategy_registry.RevmaBrokerTpSyncTicketScanCount() +
+         m_trade_router.BrokerTpSyncTicketScanCount();
 
       m_receipts.Summary("runtime_profile_total_engine_steps", IntegerToString(m_step_count));
       m_receipts.Summary("runtime_profile_total_ticks", IntegerToString(m_tick_count));
@@ -175,14 +176,44 @@ private:
       m_receipts.Summary("runtime_profile_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
       m_receipts.Summary("runtime_profile_total_new_bars", IntegerToString(m_total_new_bars));
       m_receipts.Summary("runtime_profile_position_grid_refreshes", IntegerToString(m_total_position_grid_refreshes));
+      m_receipts.Summary("runtime_profile_fx28_symbol_evaluations", (string)m_total_revma_symbol_evaluations);
       m_receipts.Summary("runtime_profile_grid_exit_scans", IntegerToString(m_total_grid_exit_scans));
       m_receipts.Summary("runtime_profile_tp_sync_scans", IntegerToString(m_total_tp_sync_scans));
+      m_receipts.Summary("runtime_profile_broker_tp_sync_ticket_scans", (string)broker_tp_sync_ticket_scans);
+      m_receipts.Summary("runtime_profile_broker_tp_modify_attempts", (string)m_trade_router.BrokerTpModifyAttemptCount());
+      m_receipts.Summary("runtime_profile_order_open_attempts", (string)m_trade_router.OrderOpenAttemptCount());
+      m_receipts.Summary("runtime_profile_order_close_attempts", (string)m_trade_router.OrderCloseAttemptCount());
       m_receipts.Summary("runtime_profile_receipt_writes", (string)m_receipts.ReceiptWriteCount());
       m_receipts.Summary("runtime_profile_summary_writes", (string)m_receipts.SummaryWriteCount());
       m_receipts.Summary("runtime_profile_flushes", (string)m_receipts.FlushCount());
       m_receipts.Summary("runtime_profile_compact_rows_skipped", (string)m_receipts.CompactSkippedRows());
       m_receipts.Summary("runtime_profile_elapsed_wall_seconds", DoubleToString(elapsed_seconds, 3));
       m_receipts.Summary("runtime_profile_tester_fast_cadence", LP_BoolText(TesterRuntime()));
+      Print(
+         LP_EA_NAME,
+         " runtime_profile|elapsed_wall_seconds=",
+         DoubleToString(elapsed_seconds, 3),
+         "|total_ticks=",
+         IntegerToString(m_tick_count),
+         "|closed_m1_cycles=",
+         IntegerToString(m_total_closed_m1_cycles),
+         "|position_grid_refreshes=",
+         IntegerToString(m_total_position_grid_refreshes),
+         "|fx28_symbol_evaluations=",
+         (string)m_total_revma_symbol_evaluations,
+         "|grid_exit_scans=",
+         IntegerToString(m_total_grid_exit_scans),
+         "|broker_tp_sync_scans=",
+         IntegerToString(m_total_tp_sync_scans),
+         "|broker_tp_sync_ticket_scans=",
+         (string)broker_tp_sync_ticket_scans,
+         "|broker_tp_modify_attempts=",
+         (string)m_trade_router.BrokerTpModifyAttemptCount(),
+         "|order_open_attempts=",
+         (string)m_trade_router.OrderOpenAttemptCount(),
+         "|order_close_attempts=",
+         (string)m_trade_router.OrderCloseAttemptCount()
+      );
    }
 
    void WritePortfolioQStateReceipt(
@@ -396,6 +427,7 @@ private:
       const MqlRates &latest_bar
    )
    {
+      m_total_revma_symbol_evaluations++;
       LP_RevmaSignal signal;
       string detail = "";
       if(!m_revma_state.BuildSignalAtClosedBar(meta, m_config, latest_bar, signal, detail))
@@ -457,6 +489,7 @@ public:
       m_total_position_grid_refreshes = 0;
       m_total_grid_exit_scans = 0;
       m_total_tp_sync_scans = 0;
+      m_total_revma_symbol_evaluations = 0;
       m_next_system_intent_id = 990900000001;
       m_started_tick_count = 0;
       m_last_attribution_hash = 0;

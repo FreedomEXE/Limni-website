@@ -14,6 +14,8 @@
 class LP_RevmaGridProtectionManager
 {
 private:
+   ulong m_ticket_scan_count;
+
    string PriceText(const double value, const int digits)
    {
       if(value <= 0.0 || !MathIsValidNumber(value))
@@ -87,10 +89,19 @@ private:
    bool GridTakeProfitNeedsSync(
       const string symbol,
       const LP_GridInventoryRow &grid,
-      const double target_take_profit_price
+      const double target_take_profit_price,
+      int &matched,
+      int &unsynced
    )
    {
+      matched = 0;
+      unsynced = 0;
       if(target_take_profit_price <= 0.0)
+         return false;
+
+      ulong tickets[];
+      int ticket_count = LP_ParseTicketList(grid.tickets, tickets);
+      if(ticket_count <= 0)
          return false;
 
       long grid_magic = LP_BuildMagic(
@@ -101,11 +112,10 @@ private:
          grid.grid_family
       );
 
-      int matched = 0;
-      int unsynced = 0;
-      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      for(int i = 0; i < ticket_count; i++)
       {
-         ulong ticket = PositionGetTicket(i);
+         ulong ticket = tickets[i];
+         m_ticket_scan_count++;
          if(ticket == 0)
             continue;
          if(!PositionSelectByTicket(ticket))
@@ -242,6 +252,12 @@ private:
 public:
    void Reset()
    {
+      m_ticket_scan_count = 0;
+   }
+
+   ulong TicketScanCount()
+   {
+      return m_ticket_scan_count;
    }
 
    bool QueueGridTakeProfitSync(
@@ -308,11 +324,17 @@ public:
       if(SymbolInfoInteger(symbol, SYMBOL_EXIST))
          digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
 
-      if(!GridTakeProfitNeedsSync(symbol, grid, target_take_profit_price))
+      if(!LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode))
+         return false;
+
+      int matched = 0;
+      int unsynced = 0;
+      if(!GridTakeProfitNeedsSync(symbol, grid, target_take_profit_price, matched, unsynced))
          return false;
 
       string metadata = "scope=single_pair_grid_broker_tp" +
          "|reason=sync_grid_take_profit" +
+         "|broker_grid_tp_sync_mode=" + LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode) +
          "|symbol=" + symbol +
          "|grid_key=" + (string)grid.grid_key +
          "|grid_variant_id=" + IntegerToString(grid.variant_id) +
@@ -320,6 +342,9 @@ public:
          "|grid_direction=" + LP_RevmaDirectionName(grid.direction) +
          "|grid_family=" + IntegerToString(grid.grid_family) +
          "|grid_positions=" + IntegerToString(grid.position_count) +
+         "|grid_tickets_expected=" + IntegerToString(grid.position_count) +
+         "|grid_tickets_matched=" + IntegerToString(matched) +
+         "|grid_tickets_unsynced=" + IntegerToString(unsynced) +
          "|grid_lots=" + DoubleToString(grid.lots, 2) +
          "|grid_tickets=" + grid.tickets +
          "|avg_entry=" + PriceText(grid.avg_entry_price, digits) +
@@ -360,6 +385,8 @@ public:
       intent.priority = 90;
       intent.score = target_take_profit_price;
       intent.grid_key = grid.grid_key;
+      intent.grid_tickets = grid.tickets;
+      intent.expected_grid_ticket_count = grid.position_count;
       intent.config_hash = config_hash;
       intent.strategy_version_hash = LP_HashString("gate99zzg_revma_grid_broker_tp_sync");
       intent.human_reason = "revma_grid_broker_tp_sync|" + metadata;

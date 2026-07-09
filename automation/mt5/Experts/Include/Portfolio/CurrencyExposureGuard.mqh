@@ -22,6 +22,7 @@ private:
    int m_max_managed_positions;
    int m_managed_positions;
    ulong m_snapshot_hash;
+   string m_hash_payload;
 
    void ClearExposure()
    {
@@ -65,6 +66,19 @@ private:
       }
    }
 
+   void AppendCurrencyHash()
+   {
+      for(int c = 0; c < LP_CCY_COUNT; c++)
+      {
+         m_exposure[c].same_direction_grid_count = MathMax(m_grid_long_count[c], m_grid_short_count[c]);
+         m_hash_payload += LP_CcyCode(c) + ":" +
+            DoubleToString(m_exposure[c].signed_lots, 2) + ":" +
+            DoubleToString(m_exposure[c].gross_lots, 2) + ":" +
+            IntegerToString(m_grid_long_count[c]) + ":" +
+            IntegerToString(m_grid_short_count[c]) + "|";
+      }
+   }
+
 public:
    void Reset()
    {
@@ -86,10 +100,47 @@ public:
       m_max_managed_positions = config.max_managed_positions;
    }
 
-   void Refresh()
+   void BeginRefresh()
    {
       ClearExposure();
-      string hash_payload = "";
+      m_hash_payload = "";
+   }
+
+   void AccumulateManagedPosition(
+      const ulong ticket,
+      const long magic,
+      const int symbol_id,
+      const int direction,
+      const double lots,
+      const bool grid_position
+   )
+   {
+      if(symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT)
+         return;
+      if(direction != 1 && direction != -1)
+         return;
+      if(lots <= 0.0)
+         return;
+
+      int base_ccy = -1;
+      int quote_ccy = -1;
+      LP_CanonicalBaseQuote(LP_CanonicalSymbol(symbol_id), base_ccy, quote_ccy);
+
+      AddExposure(base_ccy, direction * lots, grid_position);
+      AddExposure(quote_ccy, -direction * lots, grid_position);
+      m_managed_positions++;
+      m_hash_payload += (string)ticket + ":" + (string)magic + ":" + DoubleToString(lots, 2) + ":" + IntegerToString(direction) + "|";
+   }
+
+   void EndRefresh()
+   {
+      AppendCurrencyHash();
+      m_snapshot_hash = LP_HashString(m_hash_payload);
+   }
+
+   void Refresh()
+   {
+      BeginRefresh();
 
       int total = PositionsTotal();
       for(int i = 0; i < total; i++)
@@ -112,33 +163,12 @@ public:
 
          long position_type = (long)PositionGetInteger(POSITION_TYPE);
          int direction = position_type == POSITION_TYPE_BUY ? 1 : (position_type == POSITION_TYPE_SELL ? -1 : 0);
-         if(direction == 0)
-            continue;
-
-         int base_ccy = -1;
-         int quote_ccy = -1;
-         LP_CanonicalBaseQuote(LP_CanonicalSymbol(symbol_id), base_ccy, quote_ccy);
-
          double lots = PositionGetDouble(POSITION_VOLUME);
          bool grid_position = decoded && parts.grid_family > 0;
-         AddExposure(base_ccy, direction * lots, grid_position);
-         AddExposure(quote_ccy, -direction * lots, grid_position);
-         m_managed_positions++;
-
-         hash_payload += (string)ticket + ":" + (string)magic + ":" + DoubleToString(lots, 2) + ":" + IntegerToString(direction) + "|";
+         AccumulateManagedPosition(ticket, magic, symbol_id, direction, lots, grid_position);
       }
 
-      for(int c = 0; c < LP_CCY_COUNT; c++)
-      {
-         m_exposure[c].same_direction_grid_count = MathMax(m_grid_long_count[c], m_grid_short_count[c]);
-         hash_payload += LP_CcyCode(c) + ":" +
-            DoubleToString(m_exposure[c].signed_lots, 2) + ":" +
-            DoubleToString(m_exposure[c].gross_lots, 2) + ":" +
-            IntegerToString(m_grid_long_count[c]) + ":" +
-            IntegerToString(m_grid_short_count[c]) + "|";
-      }
-
-      m_snapshot_hash = LP_HashString(hash_payload);
+      EndRefresh();
    }
 
    ulong SnapshotHash()

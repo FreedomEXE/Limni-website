@@ -101,6 +101,11 @@ public:
       return m_revma.ConsumeDashboardScreenshotRequest();
    }
 
+   ulong RevmaBrokerTpSyncTicketScanCount()
+   {
+      return m_revma.BrokerTpSyncTicketScanCount();
+   }
+
    int EvaluateAll(
       const LP_SignalSnapshot &snapshot,
       const LP_Config &config,
