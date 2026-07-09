@@ -87,13 +87,14 @@ private:
       const LP_PortfolioStopTakeProfitDecision &decision
    )
    {
-      string payload = IntegerToString(portfolio.managed_position_count) + "|" +
-         DoubleToString(decision.net_open_pct, 4) + "|" +
-         DoubleToString(decision.net_open_money, 2) + "|" +
-         DoubleToString(config.take_profit_value, 4) + "|" +
-         DoubleToString(config.stop_loss_value, 4) + "|" +
-         LP_BoolText(m_liquidation_active);
-      return LP_HashString(payload);
+      ulong hash = 1469598103934665603;
+      LP_HashMixInt(hash, portfolio.managed_position_count);
+      LP_HashMixLong(hash, (long)MathRound(decision.net_open_pct * 10000.0));
+      LP_HashMixLong(hash, (long)MathRound(decision.net_open_money * 100.0));
+      LP_HashMixLong(hash, (long)MathRound(config.take_profit_value * 10000.0));
+      LP_HashMixLong(hash, (long)MathRound(config.stop_loss_value * 10000.0));
+      LP_HashMixInt(hash, m_liquidation_active ? 1 : 0);
+      return hash;
    }
 
 public:

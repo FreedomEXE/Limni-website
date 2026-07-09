@@ -93,6 +93,9 @@ public:
       const bool has_active_grid
    )
    {
+      if(!receipts.ShouldBuildKnownCompactReceipt(LP_RECEIPT_REVMA_REENTRY_GATE, status))
+         return;
+
       receipts.Write(
          LP_RECEIPT_REVMA_REENTRY_GATE,
          signal.symbol,

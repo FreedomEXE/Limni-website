@@ -22,6 +22,7 @@
 #include "..\\Strategies\\PortfolioIntentSelector.mqh"
 #include "..\\Strategies\\IntentBus.mqh"
 #include "..\\Portfolio\\PositionIndex.mqh"
+#include "..\\Portfolio\\PositionCommissionCache.mqh"
 #include "..\\Portfolio\\GridBook.mqh"
 #include "..\\Portfolio\\PortfolioState.mqh"
 #include "..\\Portfolio\\CurrencyExposureGuard.mqh"
@@ -66,6 +67,7 @@ private:
    LP_RevmaVisualReporter m_revma_visual_reporter;
    LP_PortfolioIntentSelector m_intent_selector;
    LP_IntentBus m_intent_bus;
+   LP_PositionCommissionCache m_position_commission_cache;
    LP_PositionIndex m_position_index;
    LP_GridBook m_grid_book;
    LP_CurrencyExposureGuard m_currency_guard;
@@ -311,12 +313,13 @@ private:
    int EvaluateRevmaSymbol(
       const LP_SymbolMeta &meta,
       const LP_HarvestDecision &harvest,
-      const bool stop_take_profit_block_new_entries
+      const bool stop_take_profit_block_new_entries,
+      const MqlRates &latest_bar
    )
    {
       LP_RevmaSignal signal;
       string detail = "";
-      if(!m_revma_state.BuildSignal(meta, m_config, signal, detail))
+      if(!m_revma_state.BuildSignalAtClosedBar(meta, m_config, latest_bar, signal, detail))
          return 0;
       if(!signal.valid)
          return 0;
@@ -389,6 +392,7 @@ public:
       m_strategy_registry.Reset();
       m_intent_selector.Reset();
       m_intent_bus.Reset();
+      m_position_commission_cache.Reset();
       m_position_index.Reset();
       m_grid_book.Reset();
       m_currency_guard.Reset();
@@ -445,7 +449,6 @@ public:
          return INIT_FAILED;
       }
 
-      m_position_index.Refresh();
       m_account_guard.Configure(m_config);
       m_currency_guard.Configure(m_config);
       m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
@@ -453,10 +456,11 @@ public:
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
-      m_position_index.BuildPortfolioState(m_config_hash, state);
-      m_currency_guard.Refresh();
-      m_grid_book.Refresh();
-      state.open_grid_count = m_grid_book.OpenGridCount();
+      m_position_commission_cache.BeginRefresh();
+      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, state, m_grid_book, m_position_commission_cache);
+      if(m_config.enable_currency_exposure_guard)
+         m_currency_guard.Refresh();
+      m_position_commission_cache.EndRefresh();
       LP_WritePortfolioSummary(m_receipts, state);
       LP_WritePositionAttribution(m_receipts, state);
       m_last_attribution_hash = state.position_snapshot_hash;
@@ -498,9 +502,9 @@ public:
          EventKillTimer();
 
       LP_PortfolioState state;
-      m_position_index.BuildPortfolioState(m_config_hash, state);
-      m_grid_book.Refresh();
-      state.open_grid_count = m_grid_book.OpenGridCount();
+      m_position_commission_cache.BeginRefresh();
+      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, state, m_grid_book, m_position_commission_cache);
+      m_position_commission_cache.EndRefresh();
       LP_WritePortfolioSummary(m_receipts, state);
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
@@ -530,6 +534,7 @@ public:
    {
       if(!m_initialized)
          return;
+      m_position_commission_cache.Reset();
       m_position_index.MarkDirty();
       m_receipts.Write(
          LP_RECEIPT_TRADE_TRANSACTION,
@@ -559,10 +564,12 @@ public:
       m_intent_bus.Clear();
 
       LP_PortfolioState portfolio;
-      m_position_index.BuildPortfolioState(m_config_hash, portfolio);
-      m_currency_guard.Refresh();
-      m_grid_book.Refresh();
-      portfolio.open_grid_count = m_grid_book.OpenGridCount();
+      m_position_commission_cache.BeginRefresh();
+      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache);
+      if(m_config.enable_currency_exposure_guard)
+         m_currency_guard.Refresh();
+      m_position_commission_cache.EndRefresh();
+      m_receipts.ObservePortfolioState(portfolio);
 
       if(m_step_count == 1 || portfolio.position_snapshot_hash != m_last_attribution_hash)
       {
@@ -598,6 +605,19 @@ public:
          portfolio,
          stop_take_profit
       );
+      if(
+         m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES &&
+         m_config.revma_universe_mode == LP_UNIVERSE_FX28 &&
+         portfolio.managed_position_count > 0 &&
+         portfolio.balance > 0.0
+      )
+      {
+         m_receipts.ObserveStopTakeProfitMetrics(
+            portfolio.managed_position_count,
+            stop_take_profit.net_open_pct,
+            stop_take_profit.net_open_money
+         );
+      }
       if(stop_take_profit_block_new_entries)
       {
          if(harvest_close_required)
@@ -643,6 +663,7 @@ public:
       int clock_ready_symbols = 0;
       int forced_initial_symbols = 0;
       int new_symbol_ids[LP_SYMBOL_COUNT];
+      MqlRates new_symbol_bars[LP_SYMBOL_COUNT];
       int new_symbol_count = 0;
       bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
       for(int i = 0; i < m_symbol_cache.Count(); i++)
@@ -653,9 +674,6 @@ public:
          if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
             continue;
          active_symbols_scanned++;
-
-         LP_TickSnapshot tick;
-         m_tick_cache.RefreshTick(meta.broker_symbol, tick);
 
          LP_BarClockState clock_state;
          if(!m_clock.RefreshSymbol(meta, clock_state))
@@ -676,6 +694,8 @@ public:
          if(new_symbol_count < LP_SYMBOL_COUNT)
          {
             new_symbol_ids[new_symbol_count] = meta.symbol_id;
+            new_symbol_bars[new_symbol_count].time = clock_state.last_bar_time;
+            new_symbol_bars[new_symbol_count].close = clock_state.close;
             new_symbol_count++;
          }
       }
@@ -689,7 +709,7 @@ public:
                continue;
             if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
                continue;
-            EvaluateRevmaSymbol(meta, harvest, exit_block_new_entries);
+            EvaluateRevmaSymbol(meta, harvest, exit_block_new_entries, new_symbol_bars[i]);
          }
       }
 

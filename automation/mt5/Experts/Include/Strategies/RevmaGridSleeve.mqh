@@ -907,6 +907,12 @@ private:
       const LP_Config &config
    )
    {
+      if(!config.revma_show_visual_dashboard && !config.revma_dashboard_screenshot_on_divergent_add)
+      {
+         m_visual_centerline_price = signal.anchor;
+         return;
+      }
+
       string current_policy = AddPolicyName(signal);
       bool current_matches = has_grid && CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction);
       int display_direction = has_grid ? frozen_direction : signal.direction;
@@ -1214,32 +1220,35 @@ public:
 
          if(!add_hit)
          {
-            string metadata = AddSkipMetadata(
-               signal,
-               active_grid,
-               birth_snapshot,
-               frozen_variant_id,
-               frozen_direction,
-               frozen_sleeve,
-               frozen_add_policy,
-               spacing_q,
-               spacing,
-               next_add_level,
-               "grid_found_but_add_spacing_not_reached"
-            );
              UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "skip: spacing not reached", config);
-            receipts.Write(
-               LP_RECEIPT_REVMA_GRID_ADD_SKIP,
-               signal.symbol,
-               "add_skip_spacing_not_reached",
-               metadata,
-               LP_LANE_REVMA,
-               frozen_variant_id,
-               active_grid.grid_key,
-               0,
-               0,
-               0
-            );
+            if(receipts.ShouldBuildKnownCompactReceipt(LP_RECEIPT_REVMA_GRID_ADD_SKIP, "add_skip_spacing_not_reached"))
+            {
+               string metadata = AddSkipMetadata(
+                  signal,
+                  active_grid,
+                  birth_snapshot,
+                  frozen_variant_id,
+                  frozen_direction,
+                  frozen_sleeve,
+                  frozen_add_policy,
+                  spacing_q,
+                  spacing,
+                  next_add_level,
+                  "grid_found_but_add_spacing_not_reached"
+               );
+               receipts.Write(
+                  LP_RECEIPT_REVMA_GRID_ADD_SKIP,
+                  signal.symbol,
+                  "add_skip_spacing_not_reached",
+                  metadata,
+                  LP_LANE_REVMA,
+                  frozen_variant_id,
+                  active_grid.grid_key,
+                  0,
+                  0,
+                  0
+               );
+            }
             return 0;
          }
 
@@ -1293,30 +1302,13 @@ public:
          return 1;
       }
 
-      receipts.Write(
-         LP_RECEIPT_REVMA_GRID_ADD_SKIP,
-         signal.symbol,
-         "add_skip_no_active_grid_found",
-         NoActiveGridAddSkipMetadata(signal, "no_active_grid_found"),
-         LP_LANE_REVMA,
-         signal.variant_id,
-         0,
-         0,
-         0,
-         0
-      );
-
-      if(!SleeveEnabled(signal.sleeve))
-         return 0;
-
-      if(!birth_allowed)
+      if(receipts.ShouldBuildKnownCompactReceipt(LP_RECEIPT_REVMA_GRID_ADD_SKIP, "add_skip_no_active_grid_found"))
       {
-         UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, AddPolicyName(signal), 0.0, "birth blocked: waiting for fresh state", config);
          receipts.Write(
-            LP_RECEIPT_REVMA_REENTRY_GATE,
+            LP_RECEIPT_REVMA_GRID_ADD_SKIP,
             signal.symbol,
-            "birth_blocked_waiting_for_fresh_state",
-            NoActiveGridAddSkipMetadata(signal, "birth_gate_denied"),
+            "add_skip_no_active_grid_found",
+            NoActiveGridAddSkipMetadata(signal, "no_active_grid_found"),
             LP_LANE_REVMA,
             signal.variant_id,
             0,
@@ -1324,6 +1316,29 @@ public:
             0,
             0
          );
+      }
+
+      if(!SleeveEnabled(signal.sleeve))
+         return 0;
+
+      if(!birth_allowed)
+      {
+         UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, AddPolicyName(signal), 0.0, "birth blocked: waiting for fresh state", config);
+         if(receipts.ShouldBuildKnownCompactReceipt(LP_RECEIPT_REVMA_REENTRY_GATE, "birth_blocked_waiting_for_fresh_state"))
+         {
+            receipts.Write(
+               LP_RECEIPT_REVMA_REENTRY_GATE,
+               signal.symbol,
+               "birth_blocked_waiting_for_fresh_state",
+               NoActiveGridAddSkipMetadata(signal, "birth_gate_denied"),
+               LP_LANE_REVMA,
+               signal.variant_id,
+               0,
+               0,
+               0,
+               0
+            );
+         }
          return 0;
       }
 

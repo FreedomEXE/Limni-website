@@ -84,22 +84,94 @@ Use this ladder for speed and evidence quality:
 Do not use full receipts for multi-month or multi-year tests unless debugging a
 specific missing receipt or schema problem.
 
-## Next Speed Test
+## Historical Stopped Six-Year Test
 
 The attempted full six-year run was stopped after MT5 projected about two
-hours. Do not use that partial folder as strategy evidence. The speed fix made
-receipts manageable, but the tester runtime is still not fast enough for
-hundreds of six-year full-universe passes.
+hours. Do not use that partial folder as strategy evidence.
 
-Next work should improve runtime before reopening six-year survival:
+This warning is historical. The later EA-internal speed pass below supersedes
+the old "do not start another full six-year run" boundary for one controlled
+normal MT5 GUI six-year run using the recommended settings in this report.
+
+## Follow-Up Harness Fixes
+
+Follow-up report:
 
 ```text
-MEDIUM_50000
-TP 0.75%
-short/medium windows first
-parallel terminal workers or smaller fixed regime shards
-aggregate ledger after each shard
+docs/research/gates/gate104/GATE104_SPEED_FIXES_AND_SHARD_LEDGER_2026-07-08.md
 ```
 
-Do not start another full six-year run until the harness can split/parallelize
-or otherwise reduce wall-clock time.
+Summary:
+- benchmark timeout classification is fixed;
+- benchmark runs now write generated profile/config hashes and receipt
+  histograms;
+- compact summaries now include exact observed max-position and worst/best
+  account-TP net-open metrics;
+- deterministic serial sharding is working and wrote a one-month two-shard
+  ledger in `133.235s`;
+- true parallel terminal workers are blocked because configured compile roots
+  and runtime launch data roots do not currently map cleanly.
+
+## EA-Internal Speed Pass
+
+After Freedom rejected manual month-by-month operation, Gate 104 continued as an
+EA-internal tester-throughput pass for the normal MT5 GUI workflow. Revma
+strategy behavior stayed unchanged.
+
+Applied speed fixes:
+
+1. Cached per-symbol effective q median; q only changes when a completed day is
+   appended.
+2. Removed unused per-symbol tick refresh from the Revma hot loop.
+3. Removed unused `SERIES_SYNCHRONIZED` query after closed-bar history already
+   loads.
+4. Reused the closed M1 bar fetched by the clock instead of asking MT5 for the
+   same bar again in signal build.
+5. Combined portfolio-state and grid-book position scans into one selected
+   position pass.
+6. Cached constant formula hashes and q-profile ids instead of rebuilding and
+   hashing strings per bar.
+7. Skipped routine compact add-skip/reentry receipt payload construction before
+   metadata/dashboard strings are built.
+8. Avoided dashboard string construction when `RevmaShowVisualDashboard=false`.
+
+Post-fix benchmark matrix:
+
+| Window | Tester model | Runtime | Rows | Skipped rows | Final balance | Final inventory | Artifact |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 2026-01-01..2026-02-01 | Open prices | 40.385s | 10,216 | 655,185 | 11055.95 | flat | `gate104-ea-prebuild-skip-medium-openprices-1m-20260708` |
+| 2020-01-01..2020-07-01 | Open prices | 166.941s | 115,322 | 3,945,120 | 22699.62 | flat | `gate104-ea-prebuild-skip-medium-openprices-6m-20260708` |
+| 2020-01-01..2021-01-01 | Open prices | 277.295s | 169,619 | 7,755,544 | 30095.06 | flat in final summary | `gate104-ea-prebuild-skip-medium-openprices-1y-20260708` |
+
+Read:
+
+- The original one-month Open Prices benchmark was `88.56s`; the current
+  one-month benchmark is `40.385s`.
+- The original six-month Open Prices benchmark was `514.00s`; the current
+  six-month benchmark is `166.941s`.
+- The one-year continuous Open Prices run completed in `277.295s`.
+- A normal MT5 GUI six-year run is now reasonable as a single controlled
+  operator run, projected around the low-30-minute range on this machine.
+- This is speed/readiness evidence only. It is not a promotion or
+  live-readiness claim.
+
+Recommended six-year MT5 GUI settings:
+
+```text
+Model: Open prices only
+Period: M1
+From: 2020.01.01
+To: 2026.07.01
+RevmaUniverseMode: FX28
+RevmaQProfile: Medium
+RevmaCustomMaxM1Bars: 50000
+ReceiptMode: CompactLongRun
+RevmaShowVisualDashboard: false
+TakeProfit: 0.750
+StopLoss: 0.0
+EnableCloseExecution: true
+EnableAccountCloseExecution: true
+NewsGuardMode: Disabled
+EnableCurrencyExposureGuard: false
+OutputFolder: AUTO
+```

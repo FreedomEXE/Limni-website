@@ -27,26 +27,23 @@ public:
    {
       state.symbol = meta.broker_symbol;
       state.last_bar_time = 0;
+      state.close = 0.0;
       state.new_bar = false;
       state.synchronized = false;
 
       if(!meta.tradable)
          return false;
 
-      datetime times[1];
-      if(CopyTime(meta.broker_symbol, PERIOD_M1, 1, 1, times) != 1)
+      MqlRates rates[1];
+      if(CopyRates(meta.broker_symbol, PERIOD_M1, 1, 1, rates) != 1)
       {
          m_sync_fail_count++;
          return false;
       }
 
-      long synchronized = 0;
-      if(SeriesInfoInteger(meta.broker_symbol, PERIOD_M1, SERIES_SYNCHRONIZED, synchronized))
-         state.synchronized = synchronized > 0;
-      else
-         state.synchronized = false;
-
-      state.last_bar_time = times[0];
+      state.synchronized = true;
+      state.last_bar_time = rates[0].time;
+      state.close = rates[0].close;
       int id = meta.symbol_id;
       if(id < 0 || id >= LP_SYMBOL_COUNT)
          return false;

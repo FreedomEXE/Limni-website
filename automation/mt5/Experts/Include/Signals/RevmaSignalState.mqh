@@ -29,6 +29,8 @@ struct LP_RevmaSymbolState
    int q_day_count;
    int q_day_capacity;
    double q_days[];
+   int cached_q_day_count;
+   double cached_effective_q;
    bool has_confirmed_event;
    double base_price;
    double last_event_price;
@@ -76,6 +78,8 @@ private:
       state.q_day_count = 0;
       state.q_day_capacity = 0;
       ArrayResize(state.q_days, 0);
+      state.cached_q_day_count = -1;
+      state.cached_effective_q = 0.0;
       state.has_confirmed_event = false;
       state.base_price = 0.0;
       state.last_event_price = 0.0;
@@ -122,6 +126,8 @@ private:
       }
       state.q_days[state.q_day_count] = q_day;
       state.q_day_count++;
+      state.cached_q_day_count = -1;
+      state.cached_effective_q = 0.0;
    }
 
    double MedianValues(double &values[], const int count)
@@ -139,12 +145,20 @@ private:
    double EffectiveQ(LP_RevmaSymbolState &state)
    {
       if(state.q_day_count <= 0)
+      {
+         state.cached_q_day_count = 0;
+         state.cached_effective_q = 0.0;
          return 0.0;
+      }
+      if(state.cached_q_day_count == state.q_day_count && state.cached_effective_q > 0.0 && MathIsValidNumber(state.cached_effective_q))
+         return state.cached_effective_q;
       double samples[];
       ArrayResize(samples, state.q_day_count);
       for(int i = 0; i < state.q_day_count; i++)
          samples[i] = state.q_days[i];
-      return MedianValues(samples, state.q_day_count);
+      state.cached_effective_q = MedianValues(samples, state.q_day_count);
+      state.cached_q_day_count = state.q_day_count;
+      return state.cached_effective_q;
    }
 
    void FinishCurrentDay(LP_RevmaSymbolState &state)
@@ -507,6 +521,25 @@ public:
       string &detail
    )
    {
+      MqlRates latest_rates[1];
+      if(CopyRates(meta.broker_symbol, PERIOD_M1, 1, 1, latest_rates) != 1)
+      {
+         LP_ResetRevmaSignal(signal);
+         detail = "";
+         signal.reason_code = "latest_closed_m1_missing";
+         return false;
+      }
+      return BuildSignalAtClosedBar(meta, config, latest_rates[0], signal, detail);
+   }
+
+   bool BuildSignalAtClosedBar(
+      const LP_SymbolMeta &meta,
+      const LP_Config &config,
+      const MqlRates &latest_bar,
+      LP_RevmaSignal &signal,
+      string &detail
+   )
+   {
       LP_ResetRevmaSignal(signal);
       detail = "";
       if(meta.symbol_id < 0 || meta.symbol_id >= LP_SYMBOL_COUNT || !meta.tradable)
@@ -525,14 +558,13 @@ public:
          }
       }
 
-      datetime latest_times[1];
-      if(CopyTime(meta.broker_symbol, PERIOD_M1, 1, 1, latest_times) != 1)
+      if(latest_bar.time <= 0 || latest_bar.close <= 0.0 || !MathIsValidNumber(latest_bar.close))
       {
          signal.reason_code = "latest_closed_m1_missing";
          return false;
       }
 
-      datetime latest_closed = latest_times[0];
+      datetime latest_closed = latest_bar.time;
       if(latest_closed <= m_state[symbol_id].last_processed_m1)
       {
          BuildSignalFromResult(meta, m_state[symbol_id], config, m_state[symbol_id].latest_pair_direction, signal);
@@ -540,8 +572,16 @@ public:
          return signal.valid;
       }
 
+      datetime expected_next = (datetime)((long)m_state[symbol_id].last_processed_m1 + 60);
+      if(m_state[symbol_id].last_processed_m1 > 0 && latest_closed == expected_next)
+      {
+         ProcessClosedBar(m_state[symbol_id], meta, config, latest_bar, signal);
+         detail = detail == "" ? "clock_bar_processed=1" : detail + "|clock_bar_processed=1";
+         return signal.valid;
+      }
+
       MqlRates rates[];
-      datetime from_time = (datetime)((long)m_state[symbol_id].last_processed_m1 + 60);
+      datetime from_time = expected_next;
       int copied = CopyRates(meta.broker_symbol, PERIOD_M1, from_time, latest_closed, rates);
       if(copied <= 0)
       {

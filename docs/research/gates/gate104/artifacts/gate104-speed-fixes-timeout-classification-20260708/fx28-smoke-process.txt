@@ -1,0 +1,29 @@
+
+
+TerminalId         : 14275
+Pid                : 8596
+ExitCode           : -1
+TimedOut           : True
+QProfile           : FAST_5000
+TesterModel        : OpenPrices
+TesterModelValue   : 2
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T18:50:35.7591702-04:00
+EndedAt            : 2026-07-08T18:50:38.0113480-04:00
+WallSeconds        : 2.252
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-timeout-classification-20260708\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-timeout-classification-20260708\LimniPortfolioEA.set
+RunManifest        : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-timeout-classification-20260708\fx28-run-manifest.json
+RunProfileSha256   : CDC44178FD3270069B434FC037C98EB00682F5236D470729D157579796E799E3
+TesterConfigSha256 : 56B1A2CE78C933F1FAC8183B1E64DFE72C801EC297411B5D499629278C98868B
+OutputFolder       : LPEA_Rv_FX28_F5K_OpenPrices_RC_TP0p001_SL0p000_20260708-185035
+OutputFolderPrefix : LPEA_Rv_FX28_F5K_OpenPrices_RC_TP0p001_SL0p000_20260708-185035
+Report             : GATE104_SPEED_FAST_5000_OpenPrices_20260708-185035
+
+
+
+

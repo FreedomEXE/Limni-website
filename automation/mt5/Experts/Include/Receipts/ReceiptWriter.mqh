@@ -28,6 +28,16 @@ private:
    double m_compact_logged_worst_net_open_pct;
    double m_compact_logged_best_net_open_pct;
    int m_compact_logged_max_managed_positions;
+   bool m_portfolio_metrics_seen;
+   int m_max_open_position_count_observed;
+   int m_max_managed_position_count_observed;
+   int m_max_open_grid_count_observed;
+   bool m_stop_tp_metrics_seen;
+   int m_stop_tp_metric_observation_count;
+   double m_worst_stop_tp_net_open_pct_observed;
+   double m_best_stop_tp_net_open_pct_observed;
+   double m_worst_stop_tp_net_open_money_observed;
+   double m_best_stop_tp_net_open_money_observed;
 
    void ResetCompactState()
    {
@@ -37,6 +47,20 @@ private:
       m_compact_logged_worst_net_open_pct = 0.0;
       m_compact_logged_best_net_open_pct = 0.0;
       m_compact_logged_max_managed_positions = 0;
+   }
+
+   void ResetObservedMetrics()
+   {
+      m_portfolio_metrics_seen = false;
+      m_max_open_position_count_observed = 0;
+      m_max_managed_position_count_observed = 0;
+      m_max_open_grid_count_observed = 0;
+      m_stop_tp_metrics_seen = false;
+      m_stop_tp_metric_observation_count = 0;
+      m_worst_stop_tp_net_open_pct_observed = 0.0;
+      m_best_stop_tp_net_open_pct_observed = 0.0;
+      m_worst_stop_tp_net_open_money_observed = 0.0;
+      m_best_stop_tp_net_open_money_observed = 0.0;
    }
 
    bool Contains(const string haystack, const string needle)
@@ -224,6 +248,34 @@ private:
    }
 
 public:
+   bool ShouldBuildKnownCompactReceipt(const int kind, const string status)
+   {
+      if(m_receipt_mode == LP_RECEIPT_MODE_FULL)
+         return true;
+
+      if(kind == LP_RECEIPT_REVMA_GRID_ADD_SKIP)
+      {
+         if(status == "add_skip_spacing_not_reached" || status == "add_skip_no_active_grid_found")
+         {
+            m_compact_skipped_rows++;
+            return false;
+         }
+      }
+
+      if(kind == LP_RECEIPT_REVMA_REENTRY_GATE)
+      {
+         if(status != "fresh_state_change_detected" &&
+            status != "revma_grid_birth_allowed" &&
+            status != "startup_state_observed")
+         {
+            m_compact_skipped_rows++;
+            return false;
+         }
+      }
+
+      return true;
+   }
+
    void Reset()
    {
       m_handle = INVALID_HANDLE;
@@ -238,6 +290,7 @@ public:
       m_receipts_dirty = false;
       m_summary_dirty = false;
       ResetCompactState();
+      ResetObservedMetrics();
    }
 
    string RunId()
@@ -296,6 +349,55 @@ public:
       }
 
       return m_handle != INVALID_HANDLE && m_summary_handle != INVALID_HANDLE;
+   }
+
+   void ObservePortfolioState(const LP_PortfolioState &state)
+   {
+      if(!m_portfolio_metrics_seen)
+      {
+         m_portfolio_metrics_seen = true;
+         m_max_open_position_count_observed = state.open_position_count;
+         m_max_managed_position_count_observed = state.managed_position_count;
+         m_max_open_grid_count_observed = state.open_grid_count;
+         return;
+      }
+
+      if(state.open_position_count > m_max_open_position_count_observed)
+         m_max_open_position_count_observed = state.open_position_count;
+      if(state.managed_position_count > m_max_managed_position_count_observed)
+         m_max_managed_position_count_observed = state.managed_position_count;
+      if(state.open_grid_count > m_max_open_grid_count_observed)
+         m_max_open_grid_count_observed = state.open_grid_count;
+   }
+
+   void ObserveStopTakeProfitMetrics(
+      const int managed_positions,
+      const double net_open_pct,
+      const double net_open_money
+   )
+   {
+      if(managed_positions <= 0)
+         return;
+
+      m_stop_tp_metric_observation_count++;
+      if(!m_stop_tp_metrics_seen)
+      {
+         m_stop_tp_metrics_seen = true;
+         m_worst_stop_tp_net_open_pct_observed = net_open_pct;
+         m_best_stop_tp_net_open_pct_observed = net_open_pct;
+         m_worst_stop_tp_net_open_money_observed = net_open_money;
+         m_best_stop_tp_net_open_money_observed = net_open_money;
+         return;
+      }
+
+      if(net_open_pct < m_worst_stop_tp_net_open_pct_observed)
+         m_worst_stop_tp_net_open_pct_observed = net_open_pct;
+      if(net_open_pct > m_best_stop_tp_net_open_pct_observed)
+         m_best_stop_tp_net_open_pct_observed = net_open_pct;
+      if(net_open_money < m_worst_stop_tp_net_open_money_observed)
+         m_worst_stop_tp_net_open_money_observed = net_open_money;
+      if(net_open_money > m_best_stop_tp_net_open_money_observed)
+         m_best_stop_tp_net_open_money_observed = net_open_money;
    }
 
    void Write(
@@ -370,6 +472,20 @@ public:
    {
       if(m_summary_handle != INVALID_HANDLE)
       {
+         if(m_portfolio_metrics_seen)
+         {
+            FileWrite(m_summary_handle, "max_open_position_count_observed", IntegerToString(m_max_open_position_count_observed));
+            FileWrite(m_summary_handle, "max_managed_position_count_observed", IntegerToString(m_max_managed_position_count_observed));
+            FileWrite(m_summary_handle, "max_open_grid_count_observed", IntegerToString(m_max_open_grid_count_observed));
+         }
+         FileWrite(m_summary_handle, "stop_take_profit_metric_observations", IntegerToString(m_stop_tp_metric_observation_count));
+         if(m_stop_tp_metrics_seen)
+         {
+            FileWrite(m_summary_handle, "worst_stop_take_profit_net_open_pct_after_fees_observed", DoubleToString(m_worst_stop_tp_net_open_pct_observed, 6));
+            FileWrite(m_summary_handle, "best_stop_take_profit_net_open_pct_after_fees_observed", DoubleToString(m_best_stop_tp_net_open_pct_observed, 6));
+            FileWrite(m_summary_handle, "worst_stop_take_profit_net_open_money_after_fees_observed", DoubleToString(m_worst_stop_tp_net_open_money_observed, 2));
+            FileWrite(m_summary_handle, "best_stop_take_profit_net_open_money_after_fees_observed", DoubleToString(m_best_stop_tp_net_open_money_observed, 2));
+         }
          FileWrite(m_summary_handle, "compact_receipt_rows_skipped", (string)m_compact_skipped_rows);
          m_summary_dirty = true;
       }

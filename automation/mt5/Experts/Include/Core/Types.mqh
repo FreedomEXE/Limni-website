@@ -333,6 +333,7 @@ struct LP_BarClockState
 {
    string symbol;
    datetime last_bar_time;
+   double close;
    bool new_bar;
    bool synchronized;
 };
@@ -698,6 +699,22 @@ ulong LP_HashString(const string value)
       hash *= 1099511628211;
    }
    return hash;
+}
+
+void LP_HashMixULong(ulong &hash, const ulong value)
+{
+   hash ^= value;
+   hash *= 1099511628211;
+}
+
+void LP_HashMixLong(ulong &hash, const long value)
+{
+   LP_HashMixULong(hash, (ulong)value);
+}
+
+void LP_HashMixInt(ulong &hash, const int value)
+{
+   LP_HashMixULong(hash, (ulong)value);
 }
 
 #endif // __LIMNI_PORTFOLIO_TYPES_MQH__

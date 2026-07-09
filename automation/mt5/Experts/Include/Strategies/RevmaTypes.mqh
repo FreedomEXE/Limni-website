@@ -72,7 +72,18 @@ string LP_RevmaQProfileId(const int profile, const int max_m1_bars)
 
 string LP_RevmaConfigQProfileId(const LP_Config &config)
 {
-   return LP_RevmaQProfileId(config.revma_q_profile, LP_RevmaResolvedMaxM1Bars(config));
+   static int cached_profile = -999999;
+   static int cached_max_m1_bars = -999999;
+   static string cached_id = "";
+
+   int max_m1_bars = LP_RevmaResolvedMaxM1Bars(config);
+   if(cached_id != "" && cached_profile == config.revma_q_profile && cached_max_m1_bars == max_m1_bars)
+      return cached_id;
+
+   cached_profile = config.revma_q_profile;
+   cached_max_m1_bars = max_m1_bars;
+   cached_id = LP_RevmaQProfileId(config.revma_q_profile, max_m1_bars);
+   return cached_id;
 }
 
 string LP_RevmaSleeveName(const int sleeve)
@@ -123,6 +134,10 @@ int LP_RevmaVariantForSleeve(const int sleeve)
 
 ulong LP_RevmaFormulaHash()
 {
+   static ulong cached_hash = 0;
+   if(cached_hash != 0)
+      return cached_hash;
+
    string payload = LP_REVMA_FORMULA_ID;
    payload += "|system_id=" + LP_REVMA_SYSTEM_ID;
    payload += "|pair_direction_formula_id=" + LimniPairDirectionFormulaId();
@@ -133,7 +148,8 @@ ulong LP_RevmaFormulaHash()
    payload += "|with_trend_states_rejected";
    payload += "|grid_setup_locked_at_birth";
    payload += "|separate_system_no_external_trade_trigger";
-   return LP_HashString(payload);
+   cached_hash = LP_HashString(payload);
+   return cached_hash;
 }
 
 string LP_RevmaDirectionName(const int direction)

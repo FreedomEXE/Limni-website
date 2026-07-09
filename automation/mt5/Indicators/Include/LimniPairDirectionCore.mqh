@@ -105,6 +105,10 @@ string LimniPairDirectionFormulaId()
 
 ulong LimniPairDirectionFormulaHash()
 {
+   static ulong cached_hash = 0;
+   if(cached_hash != 0)
+      return cached_hash;
+
    string payload = LIMNI_PAIR_DIRECTION_V001_FORMULA_ID;
    payload += "|closed_m1_stack_only";
    payload += "|forced_long_short_for_valid_data";
@@ -119,7 +123,8 @@ ulong LimniPairDirectionFormulaHash()
    payload += "|failed_extension_q=0_25";
    payload += "|momentum_decay_q=0_25";
    payload += "|decision_samples=trend_anchor_trigger_or_q_move";
-   return LimniPairDirectionHashString(payload);
+   cached_hash = LimniPairDirectionHashString(payload);
+   return cached_hash;
 }
 
 double LimniPairDirectionClamp(const double value, const double min_value, const double max_value)

@@ -1,0 +1,23 @@
+
+TerminalId         : 14275
+Pid                : 20088
+ExitCode           : 0
+TimedOut           : False
+QProfile           : MEDIUM_50000
+TesterModel        : OpenPrices
+TesterModelValue   : 2
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T20:32:08.3494296-04:00
+EndedAt            : 2026-07-08T20:33:26.9661054-04:00
+WallSeconds        : 78.617
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-ea-combined-scan-medium-openprices-1m-20260708\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-ea-combined-scan-medium-openprices-1m-20260708\LimniPortfolioEA.set
+RunManifest        : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-ea-combined-scan-medium-openprices-1m-20260708\fx28-run-manifest.json
+RunProfileSha256   : 3805502D77777581E1113C93B07540168435EBF7E1DCB7507A7E748A745E0301
+TesterConfigSha256 : 56A8BC68E84FB84F96D3E9991670CD89825E5DAF614AE12A1520636D42AFCD02
+OutputFolder       : LPEA_Rv_FX28_M50K_OpenPrices_RC_TP0p750_SL0p000_20260708-203208
+OutputFolderPrefix : LPEA_Rv_FX28_M50K_OpenPrices_RC_TP0p750_SL0p000_20260708-203208
+Report             : GATE104_SPEED_MEDIUM_50000_OpenPrices_20260708-203208
+
+

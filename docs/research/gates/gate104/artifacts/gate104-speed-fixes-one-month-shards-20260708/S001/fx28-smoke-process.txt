@@ -1,0 +1,29 @@
+
+
+TerminalId         : 14275
+Pid                : 18940
+ExitCode           : 0
+TimedOut           : False
+QProfile           : MEDIUM_50000
+TesterModel        : OpenPrices
+TesterModelValue   : 2
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T19:02:13.7367296-04:00
+EndedAt            : 2026-07-08T19:03:12.2417145-04:00
+WallSeconds        : 58.505
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-one-month-shards-20260708\S001\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-one-month-shards-20260708\S001\LimniPortfolioEA.set
+RunManifest        : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-f
+                     ixes-one-month-shards-20260708\S001\fx28-run-manifest.json
+RunProfileSha256   : 2A670F9F298558BF791D6F535F1164DD19E325ED5594B5E8E790B7AC081AF8F6
+TesterConfigSha256 : 5D177F2EA86A916D2CDFFD4FE7410028BEEF406707D772727D794D5F01767FF1
+OutputFolder       : LPEA_S001_14275_MEDIUM_50000_OpenPrices_20260708190212
+OutputFolderPrefix : LPEA_S001_14275_MEDIUM_50000_OpenPrices_20260708190212
+Report             : GATE104_SPEED_MEDIUM_50000_OpenPrices_20260708-190213
+
+
+
+

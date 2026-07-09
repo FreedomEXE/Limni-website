@@ -8,6 +8,7 @@
 #include "..\\Core\\SymbolUniverse.mqh"
 #include "..\\Execution\\MagicCodec.mqh"
 #include "..\\Receipts\\ReceiptWriter.mqh"
+#include "PositionCommissionCache.mqh"
 
 struct LP_GridInventoryRow
 {
@@ -69,26 +70,6 @@ private:
       return -1;
    }
 
-   double PositionDealCommission()
-   {
-      long position_id = (long)PositionGetInteger(POSITION_IDENTIFIER);
-      if(position_id <= 0)
-         return 0.0;
-      if(!HistorySelectByPosition(position_id))
-         return 0.0;
-
-      double commission = 0.0;
-      int deals = HistoryDealsTotal();
-      for(int i = 0; i < deals; i++)
-      {
-         ulong deal = HistoryDealGetTicket(i);
-         if(deal == 0)
-            continue;
-         commission += HistoryDealGetDouble(deal, DEAL_COMMISSION);
-      }
-      return commission;
-   }
-
 public:
    void Reset()
    {
@@ -100,13 +81,78 @@ public:
       m_snapshot_hash = 0;
    }
 
-   void Refresh()
+   void BeginRefresh()
    {
       m_open_grid_count = 0;
       m_grid_position_count = 0;
       m_grid_lots = 0.0;
       m_grid_floating_pnl = 0.0;
-      string hash_payload = "";
+   }
+
+   void AccumulateSelectedPosition(
+      const LP_MagicParts &parts,
+      const ulong ticket,
+      const double lots,
+      const double open_price,
+      const double price_pnl,
+      const double swap,
+      const double commission
+   )
+   {
+      if(parts.grid_family <= 0)
+         return;
+
+      ulong key = LP_BuildGridKeyFromParts(parts);
+      int row_index = FindRow(key);
+      if(row_index < 0)
+      {
+         row_index = m_open_grid_count;
+         m_open_grid_count++;
+         ArrayResize(m_rows, m_open_grid_count, m_open_grid_count);
+         ResetRow(m_rows[row_index]);
+         m_rows[row_index].grid_key = key;
+         m_rows[row_index].symbol_id = parts.symbol_id;
+         m_rows[row_index].lane_id = parts.lane_id;
+         m_rows[row_index].variant_id = parts.variant_id;
+         m_rows[row_index].direction = parts.direction;
+         m_rows[row_index].grid_family = parts.grid_family;
+      }
+
+      double pnl = price_pnl + swap + commission;
+      m_rows[row_index].position_count++;
+      double previous_lots = m_rows[row_index].lots;
+      m_rows[row_index].lots += lots;
+      if(m_rows[row_index].lots > 0.0)
+         m_rows[row_index].avg_entry_price = (m_rows[row_index].avg_entry_price * previous_lots + open_price * lots) / m_rows[row_index].lots;
+      if(m_rows[row_index].min_entry_price <= 0.0 || open_price < m_rows[row_index].min_entry_price)
+         m_rows[row_index].min_entry_price = open_price;
+      if(open_price > m_rows[row_index].max_entry_price)
+         m_rows[row_index].max_entry_price = open_price;
+      m_rows[row_index].floating_pnl += pnl;
+      m_rows[row_index].price_pnl += price_pnl;
+      m_rows[row_index].swap += swap;
+      m_rows[row_index].commission += commission;
+      m_grid_position_count++;
+      m_grid_lots += lots;
+      m_grid_floating_pnl += pnl;
+   }
+
+   void EndRefresh()
+   {
+      ulong snapshot_hash = 1469598103934665603;
+      for(int row = 0; row < m_open_grid_count; row++)
+      {
+         LP_HashMixULong(snapshot_hash, m_rows[row].grid_key);
+         LP_HashMixInt(snapshot_hash, m_rows[row].position_count);
+         LP_HashMixInt(snapshot_hash, (int)MathRound(m_rows[row].lots * 100.0));
+      }
+
+      m_snapshot_hash = snapshot_hash;
+   }
+
+   void Refresh(LP_PositionCommissionCache &commission_cache)
+   {
+      BeginRefresh();
 
       int total = PositionsTotal();
       for(int i = 0; i < total; i++)
@@ -121,61 +167,15 @@ public:
          LP_MagicParts parts;
          if(!LP_DecodeMagic(magic, parts))
             continue;
-         if(parts.grid_family <= 0)
-            continue;
-
-         ulong key = LP_BuildGridKeyFromParts(parts);
-         int row_index = FindRow(key);
-         if(row_index < 0)
-         {
-            row_index = m_open_grid_count;
-            m_open_grid_count++;
-            ArrayResize(m_rows, m_open_grid_count, m_open_grid_count);
-            ResetRow(m_rows[row_index]);
-            m_rows[row_index].grid_key = key;
-            m_rows[row_index].symbol_id = parts.symbol_id;
-            m_rows[row_index].lane_id = parts.lane_id;
-            m_rows[row_index].variant_id = parts.variant_id;
-            m_rows[row_index].direction = parts.direction;
-            m_rows[row_index].grid_family = parts.grid_family;
-         }
-
          double lots = PositionGetDouble(POSITION_VOLUME);
          double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
          double price_pnl = PositionGetDouble(POSITION_PROFIT);
          double swap = PositionGetDouble(POSITION_SWAP);
-         double commission = PositionDealCommission();
-         double pnl = price_pnl + swap + commission;
-         m_rows[row_index].position_count++;
-         double previous_lots = m_rows[row_index].lots;
-         m_rows[row_index].lots += lots;
-         if(m_rows[row_index].lots > 0.0)
-            m_rows[row_index].avg_entry_price = (m_rows[row_index].avg_entry_price * previous_lots + open_price * lots) / m_rows[row_index].lots;
-         if(m_rows[row_index].min_entry_price <= 0.0 || open_price < m_rows[row_index].min_entry_price)
-            m_rows[row_index].min_entry_price = open_price;
-         if(open_price > m_rows[row_index].max_entry_price)
-            m_rows[row_index].max_entry_price = open_price;
-         m_rows[row_index].floating_pnl += pnl;
-         m_rows[row_index].price_pnl += price_pnl;
-         m_rows[row_index].swap += swap;
-         m_rows[row_index].commission += commission;
-         if(m_rows[row_index].tickets == "")
-            m_rows[row_index].tickets = (string)ticket;
-         else if(StringLen(m_rows[row_index].tickets) < 180)
-            m_rows[row_index].tickets += ";" + (string)ticket;
-         m_grid_position_count++;
-         m_grid_lots += lots;
-         m_grid_floating_pnl += pnl;
+         double commission = commission_cache.CommissionForSelectedPosition();
+         AccumulateSelectedPosition(parts, ticket, lots, open_price, price_pnl, swap, commission);
       }
 
-      for(int row = 0; row < m_open_grid_count; row++)
-      {
-         hash_payload += (string)m_rows[row].grid_key + ":" +
-            IntegerToString(m_rows[row].position_count) + ":" +
-            DoubleToString(m_rows[row].lots, 2) + "|";
-      }
-
-      m_snapshot_hash = LP_HashString(hash_payload);
+      EndRefresh();
    }
 
    int OpenGridCount()

@@ -1,0 +1,18 @@
+MT5 terminal sync gate - 2026-07-08T18:48:59.9325084-04:00
+Manifest: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\terminal-roots.json
+ArtifactDir: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708
+Source hash mismatches: 0
+Tester profile source: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\tester-presets\limni-portfolio-revma-fx28-fast-smoke.set
+Tester profile hash mismatches: 0
+Compile failures: 0
+MetaEditor exit code note: exit_code=1 can be clean in this local setup when the compile result line reports 0 errors, 0 warnings; clean=True is the gate signal.
+Active Experts stale-input matches: 0
+Tester profile stale-input matches: 0
+Unknown running terminal64.exe count: 0
+Compile summary: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\terminal-compile-summary.txt
+Source hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\terminal-source-hash-proof.csv
+Tester profile hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\terminal-tester-profile-hash-proof.csv
+Active Experts stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\terminal-experts-stale-input-search.txt
+Tester profile stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\terminal-profiles-stale-input-search.txt
+Stale tester profile archive: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\stale-tester-profile-archive.txt
+Running terminals: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-sync-20260708\running-terminals.txt

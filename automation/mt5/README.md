@@ -340,6 +340,28 @@ UI's remembered input grid:
 powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Run-LimniPortfolioEA-FX28Smoke.ps1
 ```
 
+For Gate 104 long-window speed work, split broad windows into deterministic
+date shards and run one worker per configured terminal:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Run-LimniPortfolioEA-Gate104Shards.ps1 -FromDate 2026.01.01 -ToDate 2026.02.01 -ShardDays 16 -QProfile MEDIUM_50000 -TesterModel OpenPrices -ReceiptMode CompactLongRun -MaxParallel 1
+```
+
+The shard runner writes a `gate104-shard-ledger.csv` and per-shard benchmark
+summaries. Shard runs are speed evidence unless a separate gate explicitly
+promotes them to strategy evidence.
+
+Keep `-MaxParallel 1` until the configured MT5 launchers are proven to open
+distinct terminal data roots. The runner refuses unverified parallel mode by
+default because two entries that compile separately can still launch the same
+tester profile.
+
+Receipt histograms can be generated for any completed receipt CSV:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Measure-LimniPortfolioEA-Receipts.ps1 -ReceiptCsv <path-to-receipts.csv>
+```
+
 The runner installs a run-specific `LimniPortfolioEA.set`, launches the official
 tester config path, verifies receipt proof for 28-symbol evaluation and
 account-level close execution, then restores the canonical FX28 `.set` profile
