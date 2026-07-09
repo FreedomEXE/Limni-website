@@ -16,12 +16,14 @@ struct LP_RevmaGridBirthSnapshot
    bool valid;
    ulong grid_key;
    datetime source_m1_time;
+   int symbol_id;
    int direction;
    int raw_direction;
    int anchor_relation;
    int sleeve;
    int variant_id;
    string add_policy;
+   datetime birth_time;
    double q;
    double q_pips;
    double anchor;
@@ -41,6 +43,9 @@ struct LP_RevmaGridBirthSnapshot
    ulong formula_hash;
    string pair_direction_formula_id;
    ulong pair_direction_formula_hash;
+   int add_sequence;
+   int adverse_add_count;
+   int favorable_add_count;
 };
 
 void LP_ResetRevmaGridBirthSnapshot(LP_RevmaGridBirthSnapshot &birth)
@@ -48,12 +53,14 @@ void LP_ResetRevmaGridBirthSnapshot(LP_RevmaGridBirthSnapshot &birth)
    birth.valid = false;
    birth.grid_key = 0;
    birth.source_m1_time = 0;
+   birth.symbol_id = -1;
    birth.direction = LP_SIDE_NONE;
    birth.raw_direction = LP_SIDE_NONE;
    birth.anchor_relation = 0;
    birth.sleeve = LP_REVMA_SLEEVE_NONE;
    birth.variant_id = LP_VARIANT_NONE;
    birth.add_policy = "";
+   birth.birth_time = 0;
    birth.q = 0.0;
    birth.q_pips = 0.0;
    birth.anchor = 0.0;
@@ -73,6 +80,9 @@ void LP_ResetRevmaGridBirthSnapshot(LP_RevmaGridBirthSnapshot &birth)
    birth.formula_hash = LP_RevmaFormulaHash();
    birth.pair_direction_formula_id = LimniPairDirectionFormulaId();
    birth.pair_direction_formula_hash = LimniPairDirectionFormulaHash();
+   birth.add_sequence = 0;
+   birth.adverse_add_count = 0;
+   birth.favorable_add_count = 0;
 }
 
 class LP_RevmaGridSleeve
@@ -89,6 +99,51 @@ private:
    string m_last_divergent_add_text;
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
+   bool m_state_loaded;
+   ulong m_last_blocked_birth_hash;
+
+   string StateFolder()
+   {
+      return "LimniPortfolioEA_State";
+   }
+
+   string StateFileName()
+   {
+      return StateFolder() + "\\revma_grid_birth_state.csv";
+   }
+
+   int AnchorRelationFromPrice(const double price, const double anchor)
+   {
+      if(price == EMPTY_VALUE || anchor == EMPTY_VALUE || price <= 0.0 || anchor <= 0.0)
+         return 0;
+      if(price > anchor)
+         return 1;
+      if(price < anchor)
+         return -1;
+      return 0;
+   }
+
+   string AnchorBucketMetadata(const int direction, const int anchor_relation, const string prefix)
+   {
+      return "|" + prefix + "_anchor_bucket=" + LP_RevmaAnchorBucketName(direction, anchor_relation);
+   }
+
+   string StochBucketMetadata(const double stoch, const string prefix)
+   {
+      return "|" + prefix + "_q_stochastic_raw=" + DoubleToString(stoch, 2) +
+         "|" + prefix + "_q_stochastic_bucket=" + LP_RevmaStochasticBucketName(stoch);
+   }
+
+   ulong BlockedBirthHash(const LP_RevmaSignal &signal, const LP_GridInventoryRow &grid)
+   {
+      ulong hash = 1469598103934665603;
+      LP_HashMixInt(hash, signal.symbol_id);
+      LP_HashMixInt(hash, signal.direction);
+      LP_HashMixULong(hash, grid.grid_key);
+      LP_HashMixInt(hash, grid.direction);
+      LP_HashMixInt(hash, (int)signal.source_m1_time);
+      return hash;
+   }
 
    ulong NextIntentId()
    {
@@ -156,12 +211,14 @@ private:
       m_births[index].valid = true;
       m_births[index].grid_key = grid_key;
       m_births[index].source_m1_time = signal.source_m1_time;
+      m_births[index].symbol_id = signal.symbol_id;
       m_births[index].direction = signal.direction;
       m_births[index].raw_direction = signal.raw_direction;
       m_births[index].anchor_relation = signal.anchor_relation;
       m_births[index].sleeve = signal.sleeve;
       m_births[index].variant_id = signal.variant_id;
       m_births[index].add_policy = add_policy;
+      m_births[index].birth_time = TimeCurrent();
       m_births[index].q = signal.q;
       m_births[index].q_pips = signal.q_pips;
       m_births[index].anchor = signal.anchor;
@@ -193,6 +250,387 @@ private:
       return birth.valid;
    }
 
+   void PersistBirths()
+   {
+      FolderCreate(StateFolder(), FILE_COMMON);
+      int handle = FileOpen(StateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
+      if(handle == INVALID_HANDLE)
+         return;
+
+      FileWrite(
+         handle,
+         "grid_key",
+         "config_hash",
+         "formula_hash",
+         "symbol_id",
+         "direction",
+         "raw_direction",
+         "anchor_relation",
+         "sleeve",
+         "variant_id",
+         "add_policy",
+         "birth_time",
+         "source_m1_time",
+         "q",
+         "q_pips",
+         "anchor",
+         "price",
+         "anchor_distance_q",
+         "stoch",
+         "trend_state",
+         "raw_score",
+         "trend_score",
+         "exhaustion_score",
+         "confidence",
+         "q_profile",
+         "max_m1_bars",
+         "q_profile_id",
+         "system_id",
+         "formula_id",
+         "pair_direction_formula_id",
+         "pair_direction_formula_hash",
+         "add_sequence",
+         "adverse_add_count",
+         "favorable_add_count"
+      );
+
+      for(int i = 0; i < m_birth_count; i++)
+      {
+         if(!m_births[i].valid || m_births[i].grid_key <= 0)
+            continue;
+         FileWrite(
+            handle,
+            (string)m_births[i].grid_key,
+            (string)m_config_hash,
+            (string)m_births[i].formula_hash,
+            IntegerToString(m_births[i].symbol_id),
+            IntegerToString(m_births[i].direction),
+            IntegerToString(m_births[i].raw_direction),
+            IntegerToString(m_births[i].anchor_relation),
+            IntegerToString(m_births[i].sleeve),
+            IntegerToString(m_births[i].variant_id),
+            m_births[i].add_policy,
+            LP_Stamp(m_births[i].birth_time),
+            LP_Stamp(m_births[i].source_m1_time),
+            DoubleToString(m_births[i].q, 8),
+            DoubleToString(m_births[i].q_pips, 2),
+            DoubleToString(m_births[i].anchor, 8),
+            DoubleToString(m_births[i].price, 8),
+            DoubleToString(m_births[i].anchor_distance_q, 8),
+            DoubleToString(m_births[i].stoch, 8),
+            IntegerToString(m_births[i].trend_state),
+            DoubleToString(m_births[i].raw_score, 8),
+            DoubleToString(m_births[i].trend_score, 8),
+            DoubleToString(m_births[i].exhaustion_score, 8),
+            DoubleToString(m_births[i].confidence, 8),
+            IntegerToString(m_births[i].q_profile),
+            IntegerToString(m_births[i].max_m1_bars),
+            m_births[i].q_profile_id,
+            m_births[i].system_id,
+            m_births[i].formula_id,
+            m_births[i].pair_direction_formula_id,
+            (string)m_births[i].pair_direction_formula_hash,
+            IntegerToString(m_births[i].add_sequence),
+            IntegerToString(m_births[i].adverse_add_count),
+            IntegerToString(m_births[i].favorable_add_count)
+         );
+      }
+
+      FileClose(handle);
+   }
+
+   void UpsertBirthSnapshot(const LP_RevmaGridBirthSnapshot &birth)
+   {
+      if(!birth.valid || birth.grid_key <= 0)
+         return;
+      int index = FindBirthIndex(birth.grid_key);
+      if(index < 0)
+      {
+         if(m_birth_count >= m_birth_capacity)
+         {
+            m_birth_capacity = m_birth_capacity <= 0 ? 32 : m_birth_capacity * 2;
+            ArrayResize(m_births, m_birth_capacity);
+         }
+         index = m_birth_count;
+         m_birth_count++;
+      }
+      m_births[index] = birth;
+   }
+
+   bool RemoveBirth(const ulong grid_key)
+   {
+      int index = FindBirthIndex(grid_key);
+      if(index < 0)
+         return false;
+      m_births[index].valid = false;
+      return true;
+   }
+
+   void RecordAdd(const ulong grid_key, const string add_type)
+   {
+      int index = FindBirthIndex(grid_key);
+      if(index < 0)
+         return;
+      m_births[index].add_sequence++;
+      if(add_type == "adverse")
+         m_births[index].adverse_add_count++;
+      else if(add_type == "favorable")
+         m_births[index].favorable_add_count++;
+      PersistBirths();
+   }
+
+   bool LoadOnePersistedBirth(
+      LP_ReceiptWriter &receipts,
+      LP_GridBook &grid_book,
+      const string grid_key_text,
+      const string config_hash_text,
+      const string formula_hash_text,
+      const string direction_text,
+      const string raw_direction_text,
+      const string anchor_relation_text,
+      const string sleeve_text,
+      const string variant_id_text,
+      const string add_policy,
+      const string birth_time_text,
+      const string source_m1_time_text,
+      const string q_text,
+      const string q_pips_text,
+      const string anchor_text,
+      const string price_text,
+      const string anchor_distance_q_text,
+      const string stoch_text,
+      const string trend_state_text,
+      const string raw_score_text,
+      const string trend_score_text,
+      const string exhaustion_score_text,
+      const string confidence_text,
+      const string q_profile_text,
+      const string max_m1_bars_text,
+      const string q_profile_id,
+      const string system_id,
+      const string formula_id,
+      const string pair_direction_formula_id,
+      const string pair_direction_formula_hash_text,
+      const string add_sequence_text,
+      const string adverse_add_count_text,
+      const string favorable_add_count_text
+   )
+   {
+      ulong grid_key = (ulong)StringToInteger(grid_key_text);
+      if(grid_key <= 0)
+         return false;
+
+      if(config_hash_text != (string)m_config_hash ||
+         formula_hash_text != (string)LP_RevmaFormulaHash())
+      {
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_EXIT,
+            "",
+            "revma_birth_state_fail_closed",
+            "reason=hash_mismatch|grid_key=" + grid_key_text +
+               "|state_config_hash=" + config_hash_text +
+               "|active_config_hash=" + (string)m_config_hash +
+               "|state_formula_hash=" + formula_hash_text +
+               "|active_formula_hash=" + (string)LP_RevmaFormulaHash(),
+            LP_LANE_REVMA,
+            0,
+            grid_key,
+            0,
+            0,
+            0
+         );
+         return false;
+      }
+
+      LP_GridInventoryRow grid;
+      if(!grid_book.FindGridKey(grid_key, grid))
+         return false;
+
+      LP_RevmaGridBirthSnapshot birth;
+      LP_ResetRevmaGridBirthSnapshot(birth);
+      birth.valid = true;
+      birth.grid_key = grid_key;
+      birth.symbol_id = grid.symbol_id;
+      birth.direction = (int)StringToInteger(direction_text);
+      birth.raw_direction = (int)StringToInteger(raw_direction_text);
+      birth.anchor_relation = (int)StringToInteger(anchor_relation_text);
+      birth.sleeve = (int)StringToInteger(sleeve_text);
+      birth.variant_id = (int)StringToInteger(variant_id_text);
+      birth.add_policy = add_policy;
+      birth.birth_time = StringToTime(birth_time_text);
+      birth.source_m1_time = StringToTime(source_m1_time_text);
+      birth.q = StringToDouble(q_text);
+      birth.q_pips = StringToDouble(q_pips_text);
+      birth.anchor = StringToDouble(anchor_text);
+      birth.price = StringToDouble(price_text);
+      birth.anchor_distance_q = StringToDouble(anchor_distance_q_text);
+      birth.stoch = StringToDouble(stoch_text);
+      birth.trend_state = (int)StringToInteger(trend_state_text);
+      birth.raw_score = StringToDouble(raw_score_text);
+      birth.trend_score = StringToDouble(trend_score_text);
+      birth.exhaustion_score = StringToDouble(exhaustion_score_text);
+      birth.confidence = StringToDouble(confidence_text);
+      birth.q_profile = (int)StringToInteger(q_profile_text);
+      birth.max_m1_bars = (int)StringToInteger(max_m1_bars_text);
+      birth.q_profile_id = q_profile_id;
+      birth.system_id = system_id;
+      birth.formula_id = formula_id;
+      birth.formula_hash = LP_RevmaFormulaHash();
+      birth.pair_direction_formula_id = pair_direction_formula_id;
+      birth.pair_direction_formula_hash = LimniPairDirectionFormulaHash();
+      birth.add_sequence = (int)StringToInteger(add_sequence_text);
+      birth.adverse_add_count = (int)StringToInteger(adverse_add_count_text);
+      birth.favorable_add_count = (int)StringToInteger(favorable_add_count_text);
+      UpsertBirthSnapshot(birth);
+      return true;
+   }
+
+   int LoadPersistedBirthsInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      m_state_loaded = true;
+      int handle = FileOpen(StateFileName(), FILE_READ | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
+      if(handle == INVALID_HANDLE)
+         return 0;
+
+      int loaded = 0;
+      bool header = true;
+      while(!FileIsEnding(handle))
+      {
+         string grid_key_text = FileReadString(handle);
+         if(grid_key_text == "" && FileIsEnding(handle))
+            break;
+
+         string config_hash_text = FileReadString(handle);
+         string formula_hash_text = FileReadString(handle);
+         string symbol_id_text = FileReadString(handle);
+         string direction_text = FileReadString(handle);
+         string raw_direction_text = FileReadString(handle);
+         string anchor_relation_text = FileReadString(handle);
+         string sleeve_text = FileReadString(handle);
+         string variant_id_text = FileReadString(handle);
+         string add_policy = FileReadString(handle);
+         string birth_time_text = FileReadString(handle);
+         string source_m1_time_text = FileReadString(handle);
+         string q_text = FileReadString(handle);
+         string q_pips_text = FileReadString(handle);
+         string anchor_text = FileReadString(handle);
+         string price_text = FileReadString(handle);
+         string anchor_distance_q_text = FileReadString(handle);
+         string stoch_text = FileReadString(handle);
+         string trend_state_text = FileReadString(handle);
+         string raw_score_text = FileReadString(handle);
+         string trend_score_text = FileReadString(handle);
+         string exhaustion_score_text = FileReadString(handle);
+         string confidence_text = FileReadString(handle);
+         string q_profile_text = FileReadString(handle);
+         string max_m1_bars_text = FileReadString(handle);
+         string q_profile_id = FileReadString(handle);
+         string system_id = FileReadString(handle);
+         string formula_id = FileReadString(handle);
+         string pair_direction_formula_id = FileReadString(handle);
+         string pair_direction_formula_hash_text = FileReadString(handle);
+         string add_sequence_text = FileReadString(handle);
+         string adverse_add_count_text = FileReadString(handle);
+         string favorable_add_count_text = FileReadString(handle);
+
+         if(header)
+         {
+            header = false;
+            if(grid_key_text == "grid_key")
+               continue;
+         }
+
+         if(LoadOnePersistedBirth(
+            receipts,
+            grid_book,
+            grid_key_text,
+            config_hash_text,
+            formula_hash_text,
+            direction_text,
+            raw_direction_text,
+            anchor_relation_text,
+            sleeve_text,
+            variant_id_text,
+            add_policy,
+            birth_time_text,
+            source_m1_time_text,
+            q_text,
+            q_pips_text,
+            anchor_text,
+            price_text,
+            anchor_distance_q_text,
+            stoch_text,
+            trend_state_text,
+            raw_score_text,
+            trend_score_text,
+            exhaustion_score_text,
+            confidence_text,
+            q_profile_text,
+            max_m1_bars_text,
+            q_profile_id,
+            system_id,
+            formula_id,
+            pair_direction_formula_id,
+            pair_direction_formula_hash_text,
+            add_sequence_text,
+            adverse_add_count_text,
+            favorable_add_count_text
+         ))
+         {
+            loaded++;
+         }
+      }
+
+      FileClose(handle);
+      if(loaded > 0)
+      {
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_BIRTH,
+            "",
+            "revma_birth_state_loaded",
+            "source=common_file|loaded_births=" + IntegerToString(loaded) +
+               "|state_file=" + StateFileName(),
+            LP_LANE_REVMA,
+            0,
+            0,
+            0,
+            0,
+            0
+         );
+      }
+      return loaded;
+   }
+
+   int CleanupClosedBirthsInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      int removed = 0;
+      for(int i = 0; i < m_birth_count; i++)
+      {
+         if(!m_births[i].valid || m_births[i].grid_key <= 0)
+            continue;
+         if(grid_book.HasGridKey(m_births[i].grid_key))
+            continue;
+         ulong removed_key = m_births[i].grid_key;
+         m_births[i].valid = false;
+         removed++;
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_EXIT,
+            "",
+            "revma_birth_state_stale_cleanup",
+            "grid_key=" + (string)removed_key + "|reason=open_grid_not_found",
+            LP_LANE_REVMA,
+            0,
+            removed_key,
+            0,
+            0,
+            0
+         );
+      }
+      if(removed > 0)
+         PersistBirths();
+      return removed;
+   }
+
    string BirthSnapshotMetadata(const LP_RevmaGridBirthSnapshot &birth)
    {
       if(!birth.valid)
@@ -212,6 +650,8 @@ private:
          "|birth_price=" + DoubleToString(birth.price, 5) +
          "|birth_anchor_distance_q=" + DoubleToString(birth.anchor_distance_q, 6) +
          "|birth_stoch=" + DoubleToString(birth.stoch, 2) +
+         AnchorBucketMetadata(birth.direction, birth.anchor_relation, "birth") +
+         StochBucketMetadata(birth.stoch, "birth") +
          "|birth_trend_state=" + IntegerToString(birth.trend_state) +
          "|birth_raw_score=" + DoubleToString(birth.raw_score, 6) +
          "|birth_trend_score=" + DoubleToString(birth.trend_score, 6) +
@@ -225,6 +665,10 @@ private:
          "|birth_formula_hash=" + (string)birth.formula_hash +
          "|birth_pair_direction_formula_id=" + birth.pair_direction_formula_id +
          "|birth_pair_direction_formula_hash=" + (string)birth.pair_direction_formula_hash +
+         "|birth_time=" + LP_Stamp(birth.birth_time) +
+         "|add_sequence=" + IntegerToString(birth.add_sequence) +
+         "|adverse_add_count=" + IntegerToString(birth.adverse_add_count) +
+         "|favorable_add_count=" + IntegerToString(birth.favorable_add_count) +
          "|birth_source_m1_time=" + LP_Stamp(birth.source_m1_time);
    }
 
@@ -251,6 +695,8 @@ private:
          "|entry_price=" + DoubleToString(signal.price, 5) +
          "|entry_anchor_distance_q=" + DoubleToString(signal.anchor_distance_q, 6) +
          "|entry_stoch=" + DoubleToString(signal.stoch, 2) +
+         AnchorBucketMetadata(signal.direction, signal.anchor_relation, "birth") +
+         StochBucketMetadata(signal.stoch, "birth") +
          "|entry_trend_state=" + IntegerToString(signal.trend_state) +
          "|entry_raw_score=" + DoubleToString(signal.raw_score, 6) +
          "|entry_trend_score=" + DoubleToString(signal.trend_score, 6) +
@@ -277,6 +723,8 @@ private:
          "|current_price=" + DoubleToString(signal.price, 5) +
          "|current_anchor_distance_q=" + DoubleToString(signal.anchor_distance_q, 6) +
          "|current_stoch=" + DoubleToString(signal.stoch, 2) +
+         AnchorBucketMetadata(signal.direction, signal.anchor_relation, "current") +
+         StochBucketMetadata(signal.stoch, "current") +
          "|current_trend_state=" + IntegerToString(signal.trend_state) +
          "|current_raw_score=" + DoubleToString(signal.raw_score, 6) +
          "|current_trend_score=" + DoubleToString(signal.trend_score, 6) +
@@ -305,15 +753,20 @@ private:
       const int frozen_direction,
       const int frozen_sleeve,
       const string frozen_add_policy,
+      const string add_type,
       const double spacing_q,
       const double spacing_price,
-      const double next_add_level
+      const double next_add_level,
+      const double net_open_money_after_fees_before
    )
    {
       double distance_from_avg_entry_q = 0.0;
       if(spacing_q > 0.0 && grid.avg_entry_price > 0.0)
          distance_from_avg_entry_q = (signal.price - grid.avg_entry_price) / spacing_q;
       double spacing_value_q = spacing_q > 0.0 ? spacing_price / spacing_q : 0.0;
+      int basket_age_minutes = 0;
+      if(birth.valid && birth.birth_time > 0)
+         basket_age_minutes = (int)MathMax(0, ((long)TimeCurrent() - (long)birth.birth_time) / 60);
 
       bool current_matches = CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction);
       return "system_id=" + signal.system_id +
@@ -334,9 +787,23 @@ private:
          "|frozen_direction=" + LP_RevmaDirectionName(frozen_direction) +
          "|frozen_sleeve=" + LP_RevmaSleeveName(frozen_sleeve) +
          "|frozen_add_policy=" + frozen_add_policy +
+         "|add_type=" + add_type +
+         "|add_sequence=" + IntegerToString(birth.valid ? birth.add_sequence + (add_type == "" ? 0 : 1) : 0) +
+         "|adverse_add_count=" + IntegerToString(birth.valid ? birth.adverse_add_count + (add_type == "adverse" ? 1 : 0) : 0) +
+         "|favorable_add_count=" + IntegerToString(birth.valid ? birth.favorable_add_count + (add_type == "favorable" ? 1 : 0) : 0) +
+         "|add_price=" + DoubleToString(signal.price, 5) +
+         "|add_q=" + DoubleToString(signal.q, 8) +
+         StochBucketMetadata(signal.stoch, "add") +
+         AnchorBucketMetadata(signal.direction, signal.anchor_relation, "current") +
+         "|basket_age_minutes=" + IntegerToString(basket_age_minutes) +
          "|current_matches_birth_identity=" + LP_BoolText(current_matches) +
          "|existing_positions=" + IntegerToString(grid.position_count) +
          "|existing_lots=" + DoubleToString(grid.lots, 2) +
+         "|position_count_before=" + IntegerToString(grid.position_count) +
+         "|lots_before=" + DoubleToString(grid.lots, 2) +
+         "|avg_entry_before=" + DoubleToString(grid.avg_entry_price, 5) +
+         "|min_entry_before=" + DoubleToString(grid.min_entry_price, 5) +
+         "|max_entry_before=" + DoubleToString(grid.max_entry_price, 5) +
          "|avg_entry=" + DoubleToString(grid.avg_entry_price, 5) +
          "|min_entry=" + DoubleToString(grid.min_entry_price, 5) +
          "|max_entry=" + DoubleToString(grid.max_entry_price, 5) +
@@ -346,6 +813,8 @@ private:
          "|next_add_level=" + DoubleToString(next_add_level, 5) +
          "|distance_from_avg_entry_q=" + DoubleToString(distance_from_avg_entry_q, 6) +
          "|floating_pnl=" + DoubleToString(grid.floating_pnl, 2) +
+         "|grid_floating_pnl_before=" + DoubleToString(grid.floating_pnl, 2) +
+         "|net_open_money_after_fees_before=" + DoubleToString(net_open_money_after_fees_before, 2) +
          BirthSnapshotMetadata(birth) +
          CurrentSignalMetadata(signal);
    }
@@ -358,9 +827,11 @@ private:
       const int frozen_direction,
       const int frozen_sleeve,
       const string frozen_add_policy,
+      const string add_type,
       const double spacing_q,
       const double spacing_price,
-      const double next_add_level
+      const double next_add_level,
+      const double net_open_money_after_fees_before
    )
    {
       return FrozenGridMetadata(
@@ -371,9 +842,11 @@ private:
          frozen_direction,
          frozen_sleeve,
          frozen_add_policy,
+         add_type,
          spacing_q,
          spacing_price,
-         next_add_level
+         next_add_level,
+         net_open_money_after_fees_before
       );
    }
 
@@ -400,9 +873,11 @@ private:
             frozen_direction,
             frozen_sleeve,
             frozen_add_policy,
+            "",
             spacing_q,
             spacing_price,
-            next_add_level
+            next_add_level,
+            grid.floating_pnl
          );
    }
 
@@ -452,31 +927,60 @@ private:
       intent.human_reason = reason;
    }
 
-   bool FrozenAddHit(
-      const string frozen_add_policy,
+   bool AddHit(
       const LP_RevmaSignal &signal,
       const LP_GridInventoryRow &grid,
       const double spacing,
-      double &next_add_level
+      double &next_add_level,
+      string &add_type
    )
    {
       next_add_level = 0.0;
+      add_type = "";
       if(spacing <= 0.0)
          return false;
 
-      if(frozen_add_policy == "reversion_add_lower")
+      if(grid.direction > 0)
       {
          if(grid.min_entry_price <= 0.0)
             return false;
-         next_add_level = grid.min_entry_price - spacing;
-         return signal.price <= next_add_level;
+         double adverse_level = grid.min_entry_price - spacing;
+         if(signal.price <= adverse_level)
+         {
+            next_add_level = adverse_level;
+            add_type = "adverse";
+            return true;
+         }
+         if(grid.max_entry_price <= 0.0)
+            return false;
+         double favorable_level = grid.max_entry_price + spacing;
+         if(signal.price >= favorable_level)
+         {
+            next_add_level = favorable_level;
+            add_type = "favorable";
+            return true;
+         }
       }
-      if(frozen_add_policy == "reversion_add_higher")
+      if(grid.direction < 0)
       {
          if(grid.max_entry_price <= 0.0)
             return false;
-         next_add_level = grid.max_entry_price + spacing;
-         return signal.price >= next_add_level;
+         double adverse_level = grid.max_entry_price + spacing;
+         if(signal.price >= adverse_level)
+         {
+            next_add_level = adverse_level;
+            add_type = "adverse";
+            return true;
+         }
+         if(grid.min_entry_price <= 0.0)
+            return false;
+         double favorable_level = grid.min_entry_price - spacing;
+         if(signal.price <= favorable_level)
+         {
+            next_add_level = favorable_level;
+            add_type = "favorable";
+            return true;
+         }
       }
       return false;
    }
@@ -922,6 +1426,8 @@ private:
       string state_line = LP_RevmaDirectionName(display_direction) + " / " + status;
       string relation_line = LP_RevmaAnchorRelationName(signal.anchor_relation) +
          " / " + DoubleToString(signal.anchor_distance_q, 2) + "q";
+      string anchor_bucket = LP_RevmaAnchorBucketName(signal.direction, signal.anchor_relation);
+      string stoch_bucket = LP_RevmaStochasticBucketName(signal.stoch);
       int display_sleeve_id = has_grid ? frozen_sleeve : signal.sleeve;
       double spacing_value_q = LP_RevmaGridSpacingQForSleeve(config, display_sleeve_id);
       double take_profit_q = LP_RevmaTakeProfitQForSleeve(config, display_sleeve_id);
@@ -939,12 +1445,15 @@ private:
       m_visual_text += DashboardRow("CENTER", PriceText(signal.anchor));
       m_visual_text += DashboardRow("PRICE", PriceText(signal.price));
       m_visual_text += DashboardRow("RELATION", relation_line);
+      m_visual_text += DashboardRow("ANCHOR", anchor_bucket);
+      m_visual_text += DashboardRow("STOCH", DoubleToString(signal.stoch, 2) + " " + stoch_bucket);
       m_visual_text += DashboardRow("Q", DoubleToString(signal.q, 8));
 
       if(!has_grid)
       {
          m_visual_text += DashboardSection("GRID");
          m_visual_text += DashboardRow("POSITIONS", "0");
+         m_visual_text += DashboardRow("ADD MODEL", "ADVERSE + FAVORABLE");
          m_visual_text += DashboardRow("ADD MODE", display_policy);
          m_visual_text += DashboardRow("SPACING Q", DoubleToString(spacing_value_q, 2));
          m_visual_text += DashboardRow("TP/SL Q", DoubleToString(take_profit_q, 2) + " / " + DoubleToString(stop_loss_q, 2));
@@ -958,7 +1467,10 @@ private:
       m_visual_text += DashboardRow("PNL", DoubleToString(grid.floating_pnl, 2));
       m_visual_text += DashboardRow("TP", BrokerTakeProfitText(signal.symbol, grid, birth, config));
       m_visual_text += DashboardRow("NEXT ADD", PriceText(next_add_level));
+      m_visual_text += DashboardRow("ADD MODEL", "ADVERSE + FAVORABLE");
       m_visual_text += DashboardRow("ADD MODE", display_policy);
+      m_visual_text += DashboardRow("ADD COUNT", "A " + IntegerToString(birth.valid ? birth.adverse_add_count : 0) +
+         " / F " + IntegerToString(birth.valid ? birth.favorable_add_count : 0));
       m_visual_text += DashboardRow("SPACING Q", DoubleToString(spacing_value_q, 2));
       m_visual_text += DashboardRow("TP/SL Q", DoubleToString(take_profit_q, 2) + " / " + DoubleToString(stop_loss_q, 2));
       m_visual_text += DashboardRow("BIRTH ID", birth_identity);
@@ -982,6 +1494,8 @@ public:
       m_visual_centerline_price = 0.0;
       m_last_divergent_add_text = "";
       m_dashboard_screenshot_requested = false;
+      m_state_loaded = false;
+      m_last_blocked_birth_hash = 0;
       m_protection_manager.Reset();
       ArrayResize(m_births, 0);
    }
@@ -989,6 +1503,18 @@ public:
    void Configure(const ulong config_hash)
    {
       m_config_hash = config_hash;
+   }
+
+   int LoadPersistedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      if(m_state_loaded)
+         return 0;
+      return LoadPersistedBirthsInternal(grid_book, receipts);
+   }
+
+   int CleanupClosedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      return CleanupClosedBirthsInternal(grid_book, receipts);
    }
 
    string VisualDashboardText()
@@ -1123,6 +1649,39 @@ public:
          double spacing = spacing_q * spacing_config_q;
          double next_add_level = 0.0;
 
+         if(signal.direction != LP_SIDE_NONE && signal.direction != active_grid.direction)
+         {
+            ulong blocked_hash = BlockedBirthHash(signal, active_grid);
+            if(blocked_hash != m_last_blocked_birth_hash)
+            {
+               m_last_blocked_birth_hash = blocked_hash;
+               int active_age_minutes = 0;
+               if(birth_snapshot.valid && birth_snapshot.birth_time > 0)
+                  active_age_minutes = (int)MathMax(0, ((long)TimeCurrent() - (long)birth_snapshot.birth_time) / 60);
+               receipts.Write(
+                  LP_RECEIPT_REVMA_GRID_BIRTH,
+                  signal.symbol,
+                  "birth_candidate_blocked_active_grid",
+                  "symbol=" + signal.symbol +
+                     "|lane_id=" + IntegerToString(LP_LANE_REVMA) +
+                     "|candidate_direction=" + LP_RevmaDirectionName(signal.direction) +
+                     "|active_grid_key=" + (string)active_grid.grid_key +
+                     "|active_grid_direction=" + LP_RevmaDirectionName(active_grid.direction) +
+                     AnchorBucketMetadata(signal.direction, signal.anchor_relation, "candidate_q") +
+                     StochBucketMetadata(signal.stoch, "candidate") +
+                     "|active_grid_age_minutes=" + IntegerToString(active_age_minutes) +
+                     "|active_grid_floating_pnl=" + DoubleToString(active_grid.floating_pnl, 2) +
+                     "|reason=ACTIVE_GRID_SYMBOL_LANE_CONTRACT",
+                  LP_LANE_REVMA,
+                  signal.variant_id,
+                  active_grid.grid_key,
+                  0,
+                  0,
+                  0
+               );
+            }
+         }
+
          if(!SleeveEnabled(frozen_sleeve))
          {
             string metadata = AddSkipMetadata(
@@ -1216,7 +1775,8 @@ public:
             return 0;
          }
 
-         bool add_hit = FrozenAddHit(frozen_add_policy, signal, active_grid, spacing, next_add_level);
+         string add_type = "";
+         bool add_hit = AddHit(signal, active_grid, spacing, next_add_level, add_type);
 
          if(!add_hit)
          {
@@ -1253,6 +1813,8 @@ public:
          }
 
          LP_TradeIntent add_intent;
+         string add_fee_source = "";
+         double net_open_money_after_fees_before = active_grid.floating_pnl - GridCloseFeeMoney(active_grid, config, add_fee_source);
          string metadata = AddMetadata(
             signal,
             active_grid,
@@ -1261,9 +1823,11 @@ public:
             frozen_direction,
             frozen_sleeve,
             frozen_add_policy,
+            add_type,
             spacing_q,
             spacing,
-            next_add_level
+            next_add_level,
+            net_open_money_after_fees_before
          );
          BuildIntent(signal, LP_INTENT_ADD_GRID_LEG, active_grid.grid_key, frozen_variant_id, frozen_direction, "revma_grid_add|" + metadata, add_intent);
          add_intent.requested_lots = config.revma_fixed_lots;
@@ -1299,6 +1863,7 @@ public:
             0,
             0
          );
+         RecordAdd(active_grid.grid_key, add_type);
          return 1;
       }
 
@@ -1354,6 +1919,7 @@ public:
       );
       string add_policy = AddPolicyName(signal);
       RememberBirth(open_intent.grid_key, signal, add_policy);
+      PersistBirths();
       string birth = BirthMetadata(signal) +
          "|grid_key=" + (string)open_intent.grid_key +
          "|grid_family=" + IntegerToString(grid_family) +

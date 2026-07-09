@@ -1,0 +1,8 @@
+gate_id Gate 106A: candidate-b-stress-overlay-export
+command tsx engine/scripts/verification/build-gate106a-candidate-b-stress-overlay.ts
+generated_at 2026-07-09T03:19:27.306Z
+git_commit 8885f4661c8235730902c7fa206b765124e9300f
+candidate_b_weekly_directions 7DB148F889896856E3B8835EF298FF63E16E87AA3BE079156BC909A816BCB632 docs/research/gates/gate106a/artifacts/candidate-b-stress-overlay-2026-07-09/candidate_b_weekly_directions.csv
+candidate_b_stress_alignment 1D420547C178D8743281F0FB579F4C6AF6B79E10889FD36BF479FD44EF06328A docs/research/gates/gate106a/artifacts/candidate-b-stress-overlay-2026-07-09/candidate_b_stress_alignment.csv
+summary_json 2CCF674C0C21983D2C3042F4EB7DACDC714A0F7DACEAB5815862BC9DF11A0F5D docs/research/gates/gate106a/artifacts/candidate-b-stress-overlay-2026-07-09/gate106a-summary.json
+report A0620442F42C4791340EC7D3F52840B4CDCE6ED99285D144E2E44AB88FF5FEC7 docs/research/gates/gate106a/GATE106A_CANDIDATE_B_STRESS_OVERLAY_2026-07-09.md

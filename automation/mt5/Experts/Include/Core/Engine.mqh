@@ -468,6 +468,8 @@ public:
       m_last_currency_exposure_hash = m_currency_guard.SnapshotHash();
       m_grid_book.WriteReceipt(m_receipts);
       m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
+      m_strategy_registry.LoadRevmaGridState(m_grid_book, m_receipts);
+      m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
 
       LP_HarvestDecision harvest;
       m_account_guard.Evaluate(state, harvest);
@@ -585,6 +587,7 @@ public:
       {
          m_grid_book.WriteReceipt(m_receipts);
          m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
+         m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
       }
 
       LP_HarvestDecision harvest;
@@ -643,22 +646,19 @@ public:
       }
 
       int revma_grid_exit_intents = 0;
-      if(!stop_take_profit_block_new_entries)
-      {
-         revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
-            m_config,
-            m_grid_book,
-            m_receipts,
-            m_intent_bus
-         );
-      }
+      revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
+         m_config,
+         m_grid_book,
+         m_receipts,
+         m_intent_bus
+      );
       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
 
       int revma_grid_tp_sync_intents = 0;
-      if(!stop_take_profit_block_new_entries && revma_grid_exit_intents <= 0)
+      if(revma_grid_exit_intents <= 0)
       {
          revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
             m_config,

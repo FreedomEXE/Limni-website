@@ -3,6 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
+#property version   "1.021"
+#property description "LimniPortfolioEA 0.1.21-gate107a Revma state harvest harness"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"

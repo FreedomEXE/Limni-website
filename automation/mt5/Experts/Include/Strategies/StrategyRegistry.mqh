@@ -38,6 +38,16 @@ public:
       m_revma.Configure(config_hash);
    }
 
+   int LoadRevmaGridState(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      return m_revma.LoadPersistedBirths(grid_book, receipts);
+   }
+
+   int CleanupRevmaGridState(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      return m_revma.CleanupClosedBirths(grid_book, receipts);
+   }
+
    int EvaluateRevma(
       const LP_RevmaSignal &signal,
       const LP_Config &config,

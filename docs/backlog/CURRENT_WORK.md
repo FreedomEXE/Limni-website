@@ -8,6 +8,47 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
+### Current Override - 2026-07-09
+
+Active lane: Gate 107 `revma-state-signal-harvest-harness`.
+
+Current repo branch:
+`codex/gate88-mt5-lifecycle-protection-controls`.
+
+Gate 106 is closed/deferred:
+
+```text
+No promotion. No optimization. Candidate B / HWM / account-level cleanup
+research deferred. Revma live/manual observations created a new architecture
+question that should not be mixed into Gate 106 evidence.
+```
+
+Gate 106 closeout:
+`docs/research/gates/gate106/GATE106_CLOSEOUT_DEFER_CANDIDATE_B_HWM_2026-07-09.md`.
+
+Gate 106A diagnostic evidence remains available but is not promotion evidence:
+`docs/research/gates/gate106a/GATE106A_CANDIDATE_B_STRESS_OVERLAY_2026-07-09.md`.
+
+Gate 107 architecture contract:
+`docs/research/gates/gate107/GATE107_REVMA_STATE_SIGNAL_HARVEST_HARNESS_ARCHITECTURE_2026-07-09.md`.
+
+Gate 107 purpose:
+
+- Revma remains mean-reversion.
+- Revma validity comes from the Revma state signal, not q-anchor location.
+- q-anchor bucket is metadata only.
+- q stochastic is birth/add/close metadata only.
+- both adverse and favorable adds are traded and tagged.
+- individual grid TP can harvest winners independently.
+- account TP/HWM remains a separate portfolio cleanup layer.
+- birth metadata persists by `grid_key` for restart safety.
+- receipts are enough for offline attribution.
+- tester speed must not degrade.
+
+Stop line: no optimization, no promotion, no stochastic filter, no q-anchor
+filter, no quarantine, no recovery-only mode, no Candidate B/HWM work, and no
+EA implementation until Freedom explicitly opens the Gate 107 code pass.
+
 ### Current Override - 2026-07-07
 
 Active lane: Gate 99ZZE `revma-grid-basket-tp-repair`.

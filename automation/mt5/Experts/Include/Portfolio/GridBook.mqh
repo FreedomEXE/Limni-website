@@ -128,6 +128,11 @@ public:
          m_rows[row_index].min_entry_price = open_price;
       if(open_price > m_rows[row_index].max_entry_price)
          m_rows[row_index].max_entry_price = open_price;
+      string ticket_text = (string)ticket;
+      if(m_rows[row_index].tickets == "")
+         m_rows[row_index].tickets = ticket_text;
+      else
+         m_rows[row_index].tickets += ";" + ticket_text;
       m_rows[row_index].floating_pnl += pnl;
       m_rows[row_index].price_pnl += price_pnl;
       m_rows[row_index].swap += swap;
@@ -245,6 +250,34 @@ public:
             row = m_rows[i];
             return true;
          }
+      }
+      return false;
+   }
+
+   bool FindGridKey(const ulong grid_key, LP_GridInventoryRow &row)
+   {
+      ResetRow(row);
+      if(grid_key <= 0)
+         return false;
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].grid_key == grid_key)
+         {
+            row = m_rows[i];
+            return true;
+         }
+      }
+      return false;
+   }
+
+   bool HasGridKey(const ulong grid_key)
+   {
+      if(grid_key <= 0)
+         return false;
+      for(int i = 0; i < m_open_grid_count; i++)
+      {
+         if(m_rows[i].grid_key == grid_key)
+            return true;
       }
       return false;
    }

@@ -142,9 +142,12 @@ ulong LP_RevmaFormulaHash()
    payload += "|system_id=" + LP_REVMA_SYSTEM_ID;
    payload += "|pair_direction_formula_id=" + LimniPairDirectionFormulaId();
    payload += "|pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash();
-   payload += "|birth_context=direction_plus_anchor_relation_mean_reversion_only";
-   payload += "|long_below=reversion_add_lower";
-   payload += "|short_above=reversion_add_higher";
+   payload += "|gate107a_state_signal_birth_anchor_metadata_only";
+   payload += "|birth_context=state_signal_q_anchor_metadata_only";
+   payload += "|long_below=adverse_add_lower";
+   payload += "|long_above=favorable_add_higher";
+   payload += "|short_above=adverse_add_higher";
+   payload += "|short_below=favorable_add_lower";
    payload += "|with_trend_states_rejected";
    payload += "|grid_setup_locked_at_birth";
    payload += "|separate_system_no_external_trade_trigger";
@@ -168,6 +171,46 @@ string LP_RevmaAnchorRelationName(const int anchor_relation)
    if(anchor_relation < 0)
       return "BELOW";
    return "AT_OR_UNKNOWN";
+}
+
+string LP_RevmaAnchorBucketName(const int direction, const int anchor_relation)
+{
+   if(direction > 0 && anchor_relation > 0)
+      return "LONG_ABOVE_Q_ANCHOR";
+   if(direction > 0 && anchor_relation < 0)
+      return "LONG_BELOW_Q_ANCHOR";
+   if(direction < 0 && anchor_relation > 0)
+      return "SHORT_ABOVE_Q_ANCHOR";
+   if(direction < 0 && anchor_relation < 0)
+      return "SHORT_BELOW_Q_ANCHOR";
+   return "UNKNOWN_Q_ANCHOR_LOCATION";
+}
+
+string LP_RevmaStochasticBucketName(const double stoch)
+{
+   if(stoch == EMPTY_VALUE || !MathIsValidNumber(stoch))
+      return "STOCH_UNKNOWN";
+   if(stoch <= 0.0)
+      return "STOCH_0";
+   if(stoch < 5.0)
+      return "STOCH_0_5";
+   if(stoch < 10.0)
+      return "STOCH_5_10";
+   if(stoch < 20.0)
+      return "STOCH_10_20";
+   if(stoch < 40.0)
+      return "STOCH_20_40";
+   if(stoch < 60.0)
+      return "STOCH_40_60";
+   if(stoch < 80.0)
+      return "STOCH_60_80";
+   if(stoch < 90.0)
+      return "STOCH_80_90";
+   if(stoch < 95.0)
+      return "STOCH_90_95";
+   if(stoch < 100.0)
+      return "STOCH_95_100";
+   return "STOCH_100";
 }
 
 bool LP_RevmaSymbolActive(
@@ -300,14 +343,6 @@ bool LP_RevmaClassifySleeve(
       anchor_relation = -1;
    else
       anchor_relation = 0;
-
-   if(anchor_relation == 0)
-      return false;
-
-   bool mean_reversion = (direction > 0 && anchor_relation < 0) ||
-      (direction < 0 && anchor_relation > 0);
-   if(!mean_reversion)
-      return false;
 
    sleeve = LP_REVMA_SLEEVE_REVERSION;
    return true;
