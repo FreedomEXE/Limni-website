@@ -67,9 +67,9 @@ account-close evaluation, broker TP sync, and receipt flush. There are no
 per-tick timing rows or lifecycle CSV writes.
 
 `SourceRevision` is an explicit run-identity input. The fast/smoke preset is
-pinned to the Gate 107C source commit in the follow-up metadata commit so the
-compiled EA source and research evidence can be joined without relying on a
-machine-local Git checkout.
+pinned to Gate 107C implementation commit
+`7b5b407c02ec4f20c075d659f13a32bc1cc317c8`, so the compiled EA source and
+research evidence can be joined without relying on a machine-local Git checkout.
 
 ## Module ownership
 

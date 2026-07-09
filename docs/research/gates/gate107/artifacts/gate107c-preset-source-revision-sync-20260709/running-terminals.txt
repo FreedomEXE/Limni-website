@@ -1,0 +1,1 @@
+pid=4860|status=known:14275|exe=C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5 - alt\terminal64.exe|cmd="C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5 - alt\terminal64.exe" 
