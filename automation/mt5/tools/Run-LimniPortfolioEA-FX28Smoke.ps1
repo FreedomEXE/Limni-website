@@ -14,8 +14,16 @@ param(
     [string]$TesterModel = "OpenPrices",
     [double]$TakeProfit = 0.001,
     [double]$StopLoss = 0.0,
-    [ValidateSet("Full", "CompactLongRun")]
-    [string]$ReceiptMode = "Full",
+    [ValidateSet("Off", "Full", "CompactLongRun")]
+    [string]$ReceiptMode = "CompactLongRun",
+    [ValidateSet("MultiCurrencyPercentAfterFees", "MultiCurrencyHwmTrailAfterFees")]
+    [string]$StopTakeProfitMode = "MultiCurrencyPercentAfterFees",
+    [double]$HwmTrailArmPct = 0.010,
+    [double]$HwmTrailMinLockPct = 0.005,
+    [double]$HwmTrailGivebackPct = 0.010,
+    [ValidateSet("true", "false")]
+    [string]$HwmTrailBlockNewEntriesWhenArmed = "true",
+    [double]$HwmTrailHardStopLossPct = 0.000,
     [int]$TimeoutSeconds = 240,
     [int]$PostExitReceiptWaitSeconds = 45,
     [string]$Login = "",
@@ -24,7 +32,13 @@ param(
     [string]$OutputFolderName = "",
     [string]$ShardId = "",
     [switch]$SkipReceiptHistogram,
-    [switch]$LeaveRunProfile
+    [switch]$LeaveRunProfile,
+    [switch]$PreserveRawReceipts,
+    [switch]$CompressRawReceipts,
+    [bool]$DeleteRawReceiptsAfterExtract = $true,
+    [double]$MinFreeDiskGB = 25.0,
+    [long]$MaxReceiptBytes = 1073741824,
+    [switch]$ForceFullReceipts
 )
 
 Set-StrictMode -Version Latest
@@ -75,17 +89,39 @@ function Format-OutputDecimalPart([double]$value, [int]$digits) {
 }
 
 function Get-ReceiptModeInputValue([string]$mode) {
-    if ($mode -eq "CompactLongRun") {
+    if ($mode -eq "Off") {
+        return 0
+    }
+    if ($mode -eq "Full") {
         return 1
+    }
+    if ($mode -eq "CompactLongRun") {
+        return 2
     }
     return 0
 }
 
 function Get-ReceiptModeOutputPart([string]$mode) {
+    if ($mode -eq "Off") {
+        return "RO"
+    }
+    if ($mode -eq "Full") {
+        return "RF"
+    }
     if ($mode -eq "CompactLongRun") {
         return "RC"
     }
-    return "RF"
+    return "RO"
+}
+
+function Get-StopTakeProfitModeInputValue([string]$mode) {
+    if ($mode -eq "MultiCurrencyHwmTrailAfterFees") { return 3 }
+    return 2
+}
+
+function Get-StopTakeProfitModeOutputPart([string]$mode) {
+    if ($mode -eq "MultiCurrencyHwmTrailAfterFees") { return "AHwm" }
+    return "APct"
 }
 
 function Get-QProfileOutputPart([string]$profile) {
@@ -101,6 +137,18 @@ function Get-FileSha256([string]$path) {
         return ""
     }
     return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+}
+
+function Get-FreeDiskGB([string]$path) {
+    $root = [System.IO.Path]::GetPathRoot((Resolve-Path -LiteralPath $path).Path)
+    $drive = Get-PSDrive -Name $root.Substring(0, 1)
+    return [Math]::Round($drive.Free / 1GB, 3)
+}
+
+function Test-LongWindow([string]$fromDate, [string]$toDate) {
+    $from = [datetime]::ParseExact($fromDate, "yyyy.MM.dd", [System.Globalization.CultureInfo]::InvariantCulture)
+    $to = [datetime]::ParseExact($toDate, "yyyy.MM.dd", [System.Globalization.CultureInfo]::InvariantCulture)
+    return (($to - $from).TotalDays -gt 14)
 }
 
 function Write-ReceiptHistogram([string]$receiptCsv, [string]$artifactDir) {
@@ -139,6 +187,32 @@ function Write-ReceiptHistogram([string]$receiptCsv, [string]$artifactDir) {
         TypeHistogram = $byTypePath
         TypeStatusHistogram = $byStatusPath
     }
+}
+
+function Export-ReceiptEvidenceExtracts([string]$receiptCsv, [string]$artifactDir) {
+    $header = Get-Content -LiteralPath $receiptCsv -TotalCount 1
+    $headPath = Join-Path $artifactDir "receipt-head-sample.csv"
+    $tailPath = Join-Path $artifactDir "receipt-tail-sample.csv"
+    $keyPath = Join-Path $artifactDir "receipt-key-rows.csv"
+    Get-Content -LiteralPath $receiptCsv -TotalCount 250 | Set-Content -LiteralPath $headPath -Encoding ASCII
+    @($header) + @(Get-Content -LiteralPath $receiptCsv -Tail 250) | Set-Content -LiteralPath $tailPath -Encoding ASCII
+
+    $keyRows = New-Object System.Collections.Generic.List[object]
+    Import-Csv -LiteralPath $receiptCsv | ForEach-Object {
+        $message = $_.message
+        if ($_.receipt_type -in @("stop_take_profit_guard", "currency_exposure", "order_request", "order_result", "error") -or
+            $message -like "*hwm_*" -or
+            $message -like "*close_scope=account_all_ea*" -or
+            $message -like "*block_new_entries=true*" -or
+            $message -like "*reject*" -or
+            $message -like "*fail*") {
+            if ($keyRows.Count -lt 5000) {
+                $keyRows.Add($_)
+            }
+        }
+    }
+    $keyRows | Export-Csv -LiteralPath $keyPath -NoTypeInformation
+    return [pscustomobject]@{ Head = $headPath; Tail = $tailPath; KeyRows = $keyPath; KeyRowCount = $keyRows.Count }
 }
 
 function Write-BenchmarkNoReceipt(
@@ -322,10 +396,20 @@ $terminalDataRoot = Split-Path -Parent $terminalRoot
 $terminalBaseRoot = Split-Path -Parent $terminalDataRoot
 $commonFiles = Join-Path $terminalBaseRoot "Common\Files"
 
+$freeDiskGB = Get-FreeDiskGB $commonFiles
+if ($freeDiskGB -lt $MinFreeDiskGB) {
+    throw "Free disk space is ${freeDiskGB}GB, below MinFreeDiskGB=${MinFreeDiskGB}GB. Refusing MT5 run before launch."
+}
+if ($ReceiptMode -eq "Full" -and (Test-LongWindow $FromDate $ToDate) -and !$ForceFullReceipts) {
+    throw "Refusing Full receipts for long window $FromDate..$ToDate. Use CompactLongRun or pass -ForceFullReceipts."
+}
+
 $tpPart = Format-OutputDecimalPart $TakeProfit 3
 $slPart = Format-OutputDecimalPart $StopLoss 3
 $receiptModeInput = Get-ReceiptModeInputValue $ReceiptMode
 $receiptModePart = Get-ReceiptModeOutputPart $ReceiptMode
+$stopModeInput = Get-StopTakeProfitModeInputValue $StopTakeProfitMode
+$stopModePart = Get-StopTakeProfitModeOutputPart $StopTakeProfitMode
 $qProfileInput = Get-QProfileInputValue $QProfile
 $qProfileCustomBars = Get-QProfileCustomBars $QProfile
 $testerModelValue = Get-TesterModelValue $TesterModel
@@ -334,18 +418,23 @@ if ($OutputFolderName -ne "") {
     $outputFolder = $OutputFolderName
 } elseif ($BenchmarkMode) {
     $shardPart = if ($ShardId -ne "") { "_$($ShardId)" } else { "" }
-    $outputFolder = "LPEA_Rv_FX28_${qProfilePart}_${TesterModel}_${receiptModePart}_TP${tpPart}_SL${slPart}${shardPart}_$stamp"
+    $outputFolder = "LPEA_Rv_FX28_${qProfilePart}_${TesterModel}_${stopModePart}_${receiptModePart}_TP${tpPart}_SL${slPart}${shardPart}_$stamp"
 } else {
     $outputFolder = "AUTO"
 }
 $outputFolderPrefix = if ($outputFolder -eq "AUTO") {
-    "LimniPortfolioEA_Rv_FX28_${QProfile}_APct_TP${tpPart}_SL${slPart}_L0p010_G0p10Q_${receiptModePart}_NCG_NEG_AC_"
+    "LimniPortfolioEA_Rv_FX28_${QProfile}_${stopModePart}_TP${tpPart}_SL${slPart}_L0p010_G0p10Q_${receiptModePart}_NCG_NEG_AC_"
 } else {
     $outputFolder
 }
 $runProfile = Join-Path $ArtifactDir $TesterProfileName
 $tpText = Format-InvariantDouble $TakeProfit 3
 $slText = Format-InvariantDouble $StopLoss 3
+$hwmArmText = Format-InvariantDouble $HwmTrailArmPct 3
+$hwmMinLockText = Format-InvariantDouble $HwmTrailMinLockPct 3
+$hwmGivebackText = Format-InvariantDouble $HwmTrailGivebackPct 3
+$hwmHardStopText = Format-InvariantDouble $HwmTrailHardStopLossPct 3
+$hwmBlockText = $HwmTrailBlockNewEntriesWhenArmed.ToLowerInvariant()
 $profileLines = Get-Content -LiteralPath $TesterProfileSource
 $profileLines = Set-TesterInputLine $profileLines "ExecutionMode" "ExecutionMode=2||0||0||3||N"
 $profileLines = Set-TesterInputLine $profileLines "EnableTrading" "EnableTrading=true||false||0||true||N"
@@ -358,12 +447,17 @@ $profileLines = Set-TesterInputLine $profileLines "RevmaUniverseMode" "RevmaUniv
 $profileLines = Set-TesterInputLine $profileLines "RevmaQProfile" "RevmaQProfile=$qProfileInput||0||0||4||N"
 $profileLines = Set-TesterInputLine $profileLines "RevmaCustomMaxM1Bars" "RevmaCustomMaxM1Bars=$qProfileCustomBars||5000||1000||250000||N"
 $profileLines = Set-TesterInputLine $profileLines "RevmaShowVisualDashboard" "RevmaShowVisualDashboard=false||false||0||true||N"
-$profileLines = Set-TesterInputLine $profileLines "StopTakeProfitMode" "StopTakeProfitMode=2||0||0||2||N"
+$profileLines = Set-TesterInputLine $profileLines "StopTakeProfitMode" "StopTakeProfitMode=$stopModeInput||0||0||3||N"
 $profileLines = Set-TesterInputLine $profileLines "TakeProfit" "TakeProfit=$tpText||$tpText||0.000000||10.000000||N"
 $profileLines = Set-TesterInputLine $profileLines "StopLoss" "StopLoss=$slText||$slText||0.000000||10.000000||N"
+$profileLines = Set-TesterInputLine $profileLines "HwmTrailArmPct" "HwmTrailArmPct=$hwmArmText||$hwmArmText||0.000000||10.000000||N"
+$profileLines = Set-TesterInputLine $profileLines "HwmTrailMinLockPct" "HwmTrailMinLockPct=$hwmMinLockText||$hwmMinLockText||0.000000||10.000000||N"
+$profileLines = Set-TesterInputLine $profileLines "HwmTrailGivebackPct" "HwmTrailGivebackPct=$hwmGivebackText||$hwmGivebackText||0.000000||10.000000||N"
+$profileLines = Set-TesterInputLine $profileLines "HwmTrailBlockNewEntriesWhenArmed" "HwmTrailBlockNewEntriesWhenArmed=$hwmBlockText||false||0||true||N"
+$profileLines = Set-TesterInputLine $profileLines "HwmTrailHardStopLossPct" "HwmTrailHardStopLossPct=$hwmHardStopText||$hwmHardStopText||0.000000||10.000000||N"
 $profileLines = Set-TesterInputLine $profileLines "MaxClosePositionsPerStep" "MaxClosePositionsPerStep=50||10||1||100||N"
 $profileLines = Set-TesterInputLine $profileLines "ExportToCommonFiles" "ExportToCommonFiles=true||false||0||true||N"
-$profileLines = Set-TesterInputLine $profileLines "ReceiptMode" "ReceiptMode=$receiptModeInput||0||0||1||N"
+$profileLines = Set-TesterInputLine $profileLines "ReceiptMode" "ReceiptMode=$receiptModeInput||0||0||2||N"
 $profileLines = Set-TesterInputLine $profileLines "OutputFolder" "OutputFolder=$outputFolder"
 Set-Content -LiteralPath $runProfile -Value $profileLines -Encoding ASCII
 
@@ -414,14 +508,26 @@ $runManifest = [ordered]@{
     q_profile = $QProfile
     tester_model = $TesterModel
     tester_model_value = $testerModelValue
+    stop_take_profit_mode = $StopTakeProfitMode
     take_profit = $tpText
     stop_loss = $slText
+    hwm_trail_arm_pct = $hwmArmText
+    hwm_trail_min_lock_pct = $hwmMinLockText
+    hwm_trail_giveback_pct = $hwmGivebackText
+    hwm_trail_block_new_entries_when_armed = $hwmBlockText
+    hwm_trail_hard_stop_loss_pct = $hwmHardStopText
     receipt_mode = $ReceiptMode
     benchmark_mode = [bool]$BenchmarkMode
     timeout_seconds = $TimeoutSeconds
     post_exit_receipt_wait_seconds = $PostExitReceiptWaitSeconds
     output_folder = $outputFolder
     output_folder_prefix = $outputFolderPrefix
+    preserve_raw_receipts = [bool]$PreserveRawReceipts
+    compress_raw_receipts = [bool]$CompressRawReceipts
+    delete_raw_receipts_after_extract = [bool]$DeleteRawReceiptsAfterExtract
+    min_free_disk_gb = $MinFreeDiskGB
+    max_receipt_bytes = $MaxReceiptBytes
+    free_disk_gb_before_launch = $freeDiskGB
     shard_id = $ShardId
     tester_profile_name = $TesterProfileName
     tester_profile_source = $TesterProfileSource
@@ -547,6 +653,47 @@ if ($BenchmarkMode) {
     if (!$SkipReceiptHistogram) {
         $histogram = Write-ReceiptHistogram $receiptPath.FullName $ArtifactDir
     }
+    $extracts = Export-ReceiptEvidenceExtracts $receiptPath.FullName $ArtifactDir
+    $rawReceiptAction = "preserved"
+    $rawReceiptDeleted = $false
+    $rawReceiptCompressed = $false
+    $zipPath = ""
+    if ($receiptPath.Length -gt $MaxReceiptBytes -and !$PreserveRawReceipts) {
+        if ($CompressRawReceipts) {
+            $zipPath = "$($receiptPath.FullName).zip"
+            Compress-Archive -LiteralPath $receiptPath.FullName -DestinationPath $zipPath -Force
+            $rawReceiptCompressed = $true
+            $rawReceiptAction = "compressed"
+        }
+        if ($DeleteRawReceiptsAfterExtract) {
+            Remove-Item -LiteralPath $receiptPath.FullName -Force
+            $rawReceiptDeleted = $true
+            $rawReceiptAction = if ($rawReceiptCompressed) { "compressed_then_deleted" } else { "deleted" }
+        }
+    }
+
+    $runLedgerPath = Join-Path $ArtifactDir "mt5-run-retention-ledger.csv"
+    [pscustomobject]@{
+        generated_at = (Get-Date).ToString("o")
+        receipt_path = $receiptPath.FullName
+        receipt_bytes = $receiptPath.Length
+        deleted_raw_receipts = $rawReceiptDeleted
+        compressed_raw_receipts = $rawReceiptCompressed
+        compressed_path = $zipPath
+        raw_receipt_action = $rawReceiptAction
+        config_hash = $metrics["config_hash"]
+        generated_profile_sha256 = $processSummary.RunProfileSha256
+        tester_config_sha256 = $processSummary.TesterConfigSha256
+        final_balance = $metrics["balance"]
+        final_open_position_count = $metrics["open_position_count"]
+        final_managed_position_count = $metrics["managed_position_count"]
+        max_managed_position_count_observed = $metrics["max_managed_position_count_observed"]
+        worst_stop_take_profit_net_open_pct_after_fees_observed = $metrics["worst_stop_take_profit_net_open_pct_after_fees_observed"]
+        head_sample = $extracts.Head
+        tail_sample = $extracts.Tail
+        key_rows = $extracts.KeyRows
+        key_row_count = $extracts.KeyRowCount
+    } | Export-Csv -LiteralPath $runLedgerPath -NoTypeInformation
 
     $benchmarkLines = New-Object System.Collections.Generic.List[string]
     $benchmarkLines.Add("Gate104 FX28 tester speed benchmark - $(Get-Date -Format o)")
@@ -577,6 +724,12 @@ if ($BenchmarkMode) {
         $benchmarkLines.Add("receipt_type_histogram=$($histogram.TypeHistogram)")
         $benchmarkLines.Add("receipt_type_status_histogram=$($histogram.TypeStatusHistogram)")
     }
+    $benchmarkLines.Add("receipt_head_sample=$($extracts.Head)")
+    $benchmarkLines.Add("receipt_tail_sample=$($extracts.Tail)")
+    $benchmarkLines.Add("receipt_key_rows=$($extracts.KeyRows)")
+    $benchmarkLines.Add("retention_ledger=$runLedgerPath")
+    $benchmarkLines.Add("raw_receipt_action=$rawReceiptAction")
+    $benchmarkLines.Add("deleted_raw_receipts=$rawReceiptDeleted")
     foreach ($key in @("receipt_mode", "compact_receipt_rows_skipped", "balance", "equity", "open_position_count", "managed_position_count", "max_open_position_count_observed", "max_managed_position_count_observed", "max_open_grid_count_observed", "stop_take_profit_metric_observations", "worst_stop_take_profit_net_open_pct_after_fees_observed", "best_stop_take_profit_net_open_pct_after_fees_observed", "worst_stop_take_profit_net_open_money_after_fees_observed", "best_stop_take_profit_net_open_money_after_fees_observed", "revma_q_profile", "revma_q_profile_id")) {
         if ($metrics.ContainsKey($key)) {
             $benchmarkLines.Add("$key=$($metrics[$key])")

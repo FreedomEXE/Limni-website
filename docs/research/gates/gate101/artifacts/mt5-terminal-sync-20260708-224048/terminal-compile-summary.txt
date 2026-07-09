@@ -1,0 +1,4 @@
+MT5 compile summary - 2026-07-08T22:42:12.3145493-04:00
+repo|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 24938 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\mt5-terminal-sync-20260708-224048\repo-LimniPortfolioEA-compile-log.txt
+terminal-14275|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 27363 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\mt5-terminal-sync-20260708-224048\terminal-14275-LimniPortfolioEA-compile-log.txt
+terminal-94497|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 24798 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate101\artifacts\mt5-terminal-sync-20260708-224048\terminal-94497-LimniPortfolioEA-compile-log.txt

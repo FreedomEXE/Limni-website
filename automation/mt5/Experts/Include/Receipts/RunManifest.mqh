@@ -50,7 +50,12 @@ void LP_WriteRunManifest(
          "|sltp_mode=" + LP_StopTakeProfitModeName(config.stop_take_profit_mode) +
          "|take_profit_value=" + DoubleToString(config.take_profit_value, 4) +
          "|stop_loss_value=" + DoubleToString(config.stop_loss_value, 4) +
-         "|sltp_close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2),
+         "|sltp_close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) +
+         "|hwm_trail_arm_pct=" + DoubleToString(config.hwm_trail_arm_pct, 4) +
+         "|hwm_trail_min_lock_pct=" + DoubleToString(config.hwm_trail_min_lock_pct, 4) +
+         "|hwm_trail_giveback_pct=" + DoubleToString(config.hwm_trail_giveback_pct, 4) +
+         "|hwm_trail_block_new_entries_when_armed=" + LP_BoolText(config.hwm_trail_block_new_entries_when_armed) +
+         "|hwm_trail_hard_stop_loss_pct=" + DoubleToString(config.hwm_trail_hard_stop_loss_pct, 4),
       0,
       0,
       0,
@@ -107,6 +112,11 @@ void LP_WriteRunManifest(
    receipts.Summary("take_profit_value", DoubleToString(config.take_profit_value, 4));
    receipts.Summary("stop_loss_value", DoubleToString(config.stop_loss_value, 4));
    receipts.Summary("stop_take_profit_close_commission_per_lot", DoubleToString(config.stop_take_profit_close_commission_per_lot, 2));
+   receipts.Summary("hwm_trail_arm_pct", DoubleToString(config.hwm_trail_arm_pct, 4));
+   receipts.Summary("hwm_trail_min_lock_pct", DoubleToString(config.hwm_trail_min_lock_pct, 4));
+   receipts.Summary("hwm_trail_giveback_pct", DoubleToString(config.hwm_trail_giveback_pct, 4));
+   receipts.Summary("hwm_trail_block_new_entries_when_armed", LP_BoolText(config.hwm_trail_block_new_entries_when_armed));
+   receipts.Summary("hwm_trail_hard_stop_loss_pct", DoubleToString(config.hwm_trail_hard_stop_loss_pct, 4));
    receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
    receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));
    receipts.Summary("max_same_direction_grids_per_currency", IntegerToString(config.max_same_direction_grids_per_currency));

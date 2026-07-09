@@ -1,0 +1,19 @@
+Gate104 FX28 tester speed benchmark - 2026-07-08T22:22:19.2429101-04:00
+artifact_dir=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate105\artifacts\hwm-mechanics-smoke-20260708
+terminal_id=14275
+q_profile=FAST_5000
+tester_model=OpenPrices
+tester_model_value=2
+receipt_mode=CompactLongRun
+process_exit_code=0
+timed_out=False
+from_date=2026.01.01
+to_date=2026.01.03
+take_profit=0.750
+stop_loss=0.000
+wall_seconds=2.226
+output_folder=LPEA_Rv_FX28_F5K_OpenPrices_AHwm_RC_TP0p750_SL0p000_20260708-222145
+run_manifest=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate105\artifacts\hwm-mechanics-smoke-20260708\fx28-run-manifest.json
+status=MISSING_RECEIPTS_BENCHMARK
+reason=receipt folder missing for prefix: LPEA_Rv_FX28_F5K_OpenPrices_AHwm_RC_TP0p750_SL0p000_20260708-222145
+strategy_evidence=false

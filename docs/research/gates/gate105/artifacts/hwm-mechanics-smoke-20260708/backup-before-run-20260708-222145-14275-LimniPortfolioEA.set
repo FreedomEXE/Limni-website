@@ -37,5 +37,5 @@ StopLoss=0.1||0.0||0.000000||10.000000||N
 StopTakeProfitCloseCommissionPerLot=0.00||0.00||0.000000||20.000000||N
 UseTimerWatchdog=false||false||0||true||N
 ExportToCommonFiles=true||false||0||true||N
-ReceiptMode=2||0||0||2||N
+ReceiptMode=0||0||0||1||N
 OutputFolder=AUTO

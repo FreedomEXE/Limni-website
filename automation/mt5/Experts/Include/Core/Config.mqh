@@ -49,13 +49,15 @@ enum StopTakeProfitModeInput
 {
    StopTakeProfitDisabled = 0,       // Disabled
    SinglePairQAfterFees = 1,         // Single Pair Grid Q After Fees
-   MultiCurrencyPercentAfterFees = 2 // Multi Currency Percent After Fees
+   MultiCurrencyPercentAfterFees = 2, // Multi Currency Percent After Fees
+   MultiCurrencyHwmTrailAfterFees = 3 // Multi Currency HWM Trail After Fees
 };
 
 enum ReceiptModeInput
 {
-   ReceiptFull = 0,          // Full
-   ReceiptCompactLongRun = 1 // Compact Long Run
+   ReceiptOff = 0,           // Off
+   ReceiptFull = 1,          // Full
+   ReceiptCompactLongRun = 2 // Compact Long Run
 };
 
 input group "Execution"
@@ -106,12 +108,17 @@ input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
 input double TakeProfit = 0.1;
 input double StopLoss = 0.0;
 input double StopTakeProfitCloseCommissionPerLot = 0.00;
+input double HwmTrailArmPct = 0.010;
+input double HwmTrailMinLockPct = 0.005;
+input double HwmTrailGivebackPct = 0.010;
+input bool HwmTrailBlockNewEntriesWhenArmed = true;
+input double HwmTrailHardStopLossPct = 0.000;
 
 input group "Diagnostics"
 input bool UseTimerWatchdog = false;
 input bool ExportToCommonFiles = true;
-input ReceiptModeInput ReceiptMode = ReceiptFull;
-input string OutputFolder = "AUTO";
+input ReceiptModeInput ReceiptMode = ReceiptOff;
+input string OutputFolder = "OFF";
 
 string LP_OutputFolderNumberPart(const double value, const int digits)
 {
@@ -123,6 +130,8 @@ string LP_OutputFolderNumberPart(const double value, const int digits)
 
 string LP_OutputFolderStopModePart(const LP_StopTakeProfitMode mode)
 {
+   if(mode == LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES)
+      return "AHwm";
    if(mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
       return "APct";
    if(mode == LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES)
@@ -145,8 +154,24 @@ bool LP_OutputFolderAutoRequested(const string requested_folder)
       requested_folder == "Auto";
 }
 
+bool LP_OutputFolderDisabled(const string requested_folder)
+{
+   return requested_folder == "" ||
+      requested_folder == "OFF" ||
+      requested_folder == "off" ||
+      requested_folder == "Off" ||
+      requested_folder == "NONE" ||
+      requested_folder == "none" ||
+      requested_folder == "None" ||
+      requested_folder == "DISABLED" ||
+      requested_folder == "disabled" ||
+      requested_folder == "Disabled";
+}
+
 string LP_ResolveOutputFolder(const LP_Config &config, const string requested_folder)
 {
+   if(LP_OutputFolderDisabled(requested_folder))
+      return "OFF";
    if(!LP_OutputFolderAutoRequested(requested_folder))
       return requested_folder;
 
@@ -191,6 +216,11 @@ void LP_LoadConfig(LP_Config &config)
    config.news_calendar_file = NewsCalendarFile;
    config.export_to_common_files = ExportToCommonFiles;
    config.receipt_mode = (LP_ReceiptMode)ReceiptMode;
+   if(LP_OutputFolderAutoRequested(OutputFolder))
+   {
+      config.export_to_common_files = true;
+      config.receipt_mode = LP_RECEIPT_MODE_COMPACT_LONG_RUN;
+   }
    config.enable_portfolio_harvest_governor = false;
    config.harvest_initial_target_money = 0.0;
    config.harvest_trail_money = 0.0;
@@ -213,6 +243,11 @@ void LP_LoadConfig(LP_Config &config)
    config.take_profit_value = MathMax(0.0, TakeProfit);
    config.stop_loss_value = MathMax(0.0, StopLoss);
    config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
+   config.hwm_trail_arm_pct = MathMax(0.0, HwmTrailArmPct);
+   config.hwm_trail_min_lock_pct = MathMax(0.0, HwmTrailMinLockPct);
+   config.hwm_trail_giveback_pct = MathMax(0.0, HwmTrailGivebackPct);
+   config.hwm_trail_block_new_entries_when_armed = HwmTrailBlockNewEntriesWhenArmed;
+   config.hwm_trail_hard_stop_loss_pct = MathMax(0.0, HwmTrailHardStopLossPct);
    config.max_currency_signed_lots = MaxCurrencySignedLots;
    config.max_currency_gross_lots = MaxCurrencyGrossLots;
    config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
@@ -266,6 +301,11 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.take_profit_value, 4) + "|" +
       DoubleToString(config.stop_loss_value, 4) + "|" +
       DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) + "|" +
+      DoubleToString(config.hwm_trail_arm_pct, 4) + "|" +
+      DoubleToString(config.hwm_trail_min_lock_pct, 4) + "|" +
+      DoubleToString(config.hwm_trail_giveback_pct, 4) + "|" +
+      LP_BoolText(config.hwm_trail_block_new_entries_when_armed) + "|" +
+      DoubleToString(config.hwm_trail_hard_stop_loss_pct, 4) + "|" +
       DoubleToString(config.max_currency_signed_lots, 2) + "|" +
       DoubleToString(config.max_currency_gross_lots, 2) + "|" +
       IntegerToString(config.max_same_direction_grids_per_currency) + "|" +

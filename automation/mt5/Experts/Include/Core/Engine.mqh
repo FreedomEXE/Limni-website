@@ -606,7 +606,8 @@ public:
          stop_take_profit
       );
       if(
-         m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES &&
+         (m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES ||
+          m_config.stop_take_profit_mode == LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES) &&
          m_config.revma_universe_mode == LP_UNIVERSE_FX28 &&
          portfolio.managed_position_count > 0 &&
          portfolio.balance > 0.0
@@ -620,10 +621,21 @@ public:
       }
       if(stop_take_profit_block_new_entries)
       {
-         if(harvest_close_required)
+         if(!stop_take_profit.close_required)
+            m_stop_take_profit_guard.WriteReceipt(m_config, m_receipts, portfolio, stop_take_profit.reason, stop_take_profit);
+         else if(harvest_close_required)
             m_stop_take_profit_guard.WriteReceipt(m_config, m_receipts, portfolio, "triggered_harvest_close_already_queued", stop_take_profit);
          else
             m_stop_take_profit_guard.AddCloseIntent(m_config, m_config_hash, NextSystemIntentId(), portfolio, stop_take_profit, m_intent_bus, m_receipts);
+      }
+      else if(stop_take_profit.hwm_cycle_reset_flat)
+      {
+         m_stop_take_profit_guard.WriteReceipt(m_config, m_receipts, portfolio, "hwm_cycle_reset_flat", stop_take_profit);
+      }
+      else if(stop_take_profit.hwm_mode &&
+         (stop_take_profit.newly_triggered || stop_take_profit.hwm_floor_raised))
+      {
+         m_stop_take_profit_guard.WriteReceipt(m_config, m_receipts, portfolio, stop_take_profit.reason, stop_take_profit);
       }
       else
       {

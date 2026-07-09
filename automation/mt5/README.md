@@ -194,6 +194,11 @@ strategy grid-exit logic without a named architecture gate.
 
 ## Terminal Sync Gate
 
+Codex may compile/sync MT5 code so Freedom can run tests, but must not run
+Strategy Tester, shard runners, FX28 smoke runners, benchmarks, optimization,
+or any automation that executes a backtest/test run. Freedom owns MT5 test
+execution. Codex may edit code and review outputs that Freedom produced.
+
 A repo compile is not sufficient proof that Freedom's MT5 terminals are running
 the updated EA. Before calling an MT5 EA gate done, run the terminal sync gate:
 
@@ -287,11 +292,19 @@ example:
 LimniPortfolioEA_Rv_FX28_MEDIUM_50000_APct_TP1p000_SL0p000_L0p010_G0p10Q_RC_NCG_NEG_AC_...
 ```
 
-After source or profile changes, run the terminal sync gate with
-`-SyncTesterProfile -FailOnTesterProfileDrift` so the saved MT5 tester profile
-uses the canonical `OutputFolder=AUTO` setting.
+By default the EA uses `ReceiptMode=Off` and `OutputFolder=OFF`, so it writes
+no receipt or summary files. Select `OutputFolder=AUTO` only for runs you want
+Codex or Freedom to review. AUTO forces `ReceiptMode=CompactLongRun` so normal
+review runs cannot create giant Full receipt files accidentally.
 
 Receipt mode is part of the evidence contract:
+
+```text
+ReceiptMode=Off
+```
+
+Use `Off` for normal speed-focused manual backtests where Freedom does not need
+Codex to review receipts. This writes no receipt or summary files.
 
 ```text
 ReceiptMode=Full
@@ -312,6 +325,48 @@ spacing-skip, monitoring, trade-plan, request, and transaction rows that make
 multi-year tester receipts grow into multi-gigabyte files. It must not be used
 to prove a new receipt schema until a short `Full` vs `CompactLongRun` parity
 fixture confirms identical trade behavior.
+
+### Revma Account HWM Trail Mode
+
+`StopTakeProfitMode=MultiCurrencyHwmTrailAfterFees` is an account-level Revma
+exit-mechanics mode. It uses the same after-fee account net-open calculation as
+multi-currency account TP, but separates risk blocking from liquidation:
+
+- a cycle starts when managed Revma positions go from flat to non-flat;
+- once `HwmTrailArmPct` is reached, HWM trail arms and can block new births/adds;
+- the floor trails `cycle_hwm_pct - HwmTrailGivebackPct`, never below
+  `HwmTrailMinLockPct`;
+- close-all liquidation is queued only after net-open after fees breaches the
+  floor, or after `HwmTrailHardStopLossPct` if enabled;
+- fixed `MultiCurrencyPercentAfterFees` behavior remains a separate mode.
+
+Use tiny HWM values only for mechanics proof. Do not treat a mechanics smoke as
+promotion or live-readiness evidence.
+
+### MT5 Raw Receipt Retention
+
+Every run needs a ledger row, not every raw receipt forever. Exploratory and
+benchmark runs should preserve summary CSVs, generated run manifests, profile
+hashes, benchmark/proof text, receipt histograms, receipt head/tail samples, and
+key HWM/currency/close/rejection/failure rows.
+
+Giant raw `*_receipts.csv` files are disposable unless a run is promoted,
+forensic, anomalous, or explicitly launched with raw preservation enabled.
+The FX28 runner supports:
+
+```powershell
+-PreserveRawReceipts
+-CompressRawReceipts
+-DeleteRawReceiptsAfterExtract
+-MinFreeDiskGB 25
+-MaxReceiptBytes 1073741824
+-ForceFullReceipts
+```
+
+The runner refuses long-window `Full` receipts unless `-ForceFullReceipts` is
+passed, checks free disk space before launch, extracts evidence after benchmark
+runs, writes `mt5-run-retention-ledger.csv`, and deletes oversized raw receipts
+when preservation is not requested.
 
 ## Revma FX28 Fast Smoke
 
@@ -340,12 +395,18 @@ UI's remembered input grid:
 powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Run-LimniPortfolioEA-FX28Smoke.ps1
 ```
 
+Operator boundary: this runner is available for Freedom only. Codex must not
+launch it.
+
 For Gate 104 long-window speed work, split broad windows into deterministic
 date shards and run one worker per configured terminal:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File automation\mt5\tools\Run-LimniPortfolioEA-Gate104Shards.ps1 -FromDate 2026.01.01 -ToDate 2026.02.01 -ShardDays 16 -QProfile MEDIUM_50000 -TesterModel OpenPrices -ReceiptMode CompactLongRun -MaxParallel 1
 ```
+
+Operator boundary: this runner is available for Freedom only. Codex must not
+launch it.
 
 The shard runner writes a `gate104-shard-ledger.csv` and per-shard benchmark
 summaries. Shard runs are speed evidence unless a separate gate explicitly

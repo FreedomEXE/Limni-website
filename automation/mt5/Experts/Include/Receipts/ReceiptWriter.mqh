@@ -22,6 +22,7 @@ private:
    ulong m_symbol_universe_hash;
    bool m_receipts_dirty;
    bool m_summary_dirty;
+   bool m_output_enabled;
    ulong m_compact_skipped_rows;
    int m_compact_engine_step_attempts;
    bool m_compact_stop_tp_seen;
@@ -38,6 +39,14 @@ private:
    double m_best_stop_tp_net_open_pct_observed;
    double m_worst_stop_tp_net_open_money_observed;
    double m_best_stop_tp_net_open_money_observed;
+   int m_hwm_cycle_count;
+   int m_hwm_armed_count;
+   int m_hwm_floor_breach_close_count;
+   int m_hwm_block_new_entries_observations;
+   bool m_hwm_metrics_seen;
+   double m_best_hwm_trail_cycle_hwm_pct;
+   double m_max_hwm_trail_floor_pct;
+   bool m_final_hwm_armed_state;
 
    void ResetCompactState()
    {
@@ -61,6 +70,14 @@ private:
       m_best_stop_tp_net_open_pct_observed = 0.0;
       m_worst_stop_tp_net_open_money_observed = 0.0;
       m_best_stop_tp_net_open_money_observed = 0.0;
+      m_hwm_cycle_count = 0;
+      m_hwm_armed_count = 0;
+      m_hwm_floor_breach_close_count = 0;
+      m_hwm_block_new_entries_observations = 0;
+      m_hwm_metrics_seen = false;
+      m_best_hwm_trail_cycle_hwm_pct = 0.0;
+      m_max_hwm_trail_floor_pct = 0.0;
+      m_final_hwm_armed_state = false;
    }
 
    bool Contains(const string haystack, const string needle)
@@ -117,7 +134,7 @@ private:
 
    bool CompactStopTakeProfitShouldWrite(const string status, const string message)
    {
-      if(status != "monitoring")
+      if(status != "monitoring" && status != "hwm_monitoring")
          return true;
 
       bool pct_ok = false;
@@ -155,6 +172,38 @@ private:
          write = true;
       }
       return write;
+   }
+
+   void ObserveHwmReceipt(const string status, const string message)
+   {
+      if(!Contains(message, "scope=multi_currency_hwm_trail_after_fees"))
+         return;
+      if(status == "hwm_cycle_started")
+         m_hwm_cycle_count++;
+      if(status == "hwm_armed")
+         m_hwm_armed_count++;
+      if(status == "account_exit_intent" && Contains(message, "reason=hwm_trail_floor_breach"))
+         m_hwm_floor_breach_close_count++;
+      if(Contains(message, "block_new_entries=true"))
+         m_hwm_block_new_entries_observations++;
+
+      bool hwm_ok = false;
+      bool floor_ok = false;
+      double hwm_pct = FieldDouble(message, "hwm_cycle_hwm_pct", hwm_ok);
+      double floor_pct = FieldDouble(message, "hwm_cycle_floor_pct", floor_ok);
+      if(!m_hwm_metrics_seen)
+      {
+         m_hwm_metrics_seen = true;
+         if(hwm_ok)
+            m_best_hwm_trail_cycle_hwm_pct = hwm_pct;
+         if(floor_ok)
+            m_max_hwm_trail_floor_pct = floor_pct;
+      }
+      if(hwm_ok && hwm_pct > m_best_hwm_trail_cycle_hwm_pct)
+         m_best_hwm_trail_cycle_hwm_pct = hwm_pct;
+      if(floor_ok && floor_pct > m_max_hwm_trail_floor_pct)
+         m_max_hwm_trail_floor_pct = floor_pct;
+      m_final_hwm_armed_state = Contains(message, "hwm_armed=true");
    }
 
    bool CompactEngineStepShouldWrite(const string message)
@@ -281,7 +330,7 @@ public:
       m_handle = INVALID_HANDLE;
       m_summary_handle = INVALID_HANDLE;
       m_file_scope = 0;
-      m_receipt_mode = LP_RECEIPT_MODE_FULL;
+      m_receipt_mode = LP_RECEIPT_MODE_OFF;
       m_folder = "";
       m_run_id = "";
       m_event_seq = 0;
@@ -289,6 +338,7 @@ public:
       m_symbol_universe_hash = 0;
       m_receipts_dirty = false;
       m_summary_dirty = false;
+      m_output_enabled = false;
       ResetCompactState();
       ResetObservedMetrics();
    }
@@ -306,6 +356,12 @@ public:
       m_file_scope = config.export_to_common_files ? FILE_COMMON : 0;
       m_receipt_mode = config.receipt_mode;
       m_folder = config.output_folder;
+      m_output_enabled = m_folder != "OFF" && m_receipt_mode != LP_RECEIPT_MODE_OFF;
+      if(!m_output_enabled)
+      {
+         m_run_id = "LPEA_RECEIPTS_OFF";
+         return true;
+      }
       FolderCreate(m_folder, m_file_scope);
       string run_stamp = LP_SafePart(LP_Stamp(TimeLocal()) + "_R" + IntegerToString((long)GetTickCount()));
       m_run_id = "LPEA_" + run_stamp;
@@ -348,7 +404,23 @@ public:
          m_summary_dirty = true;
       }
 
-      return m_handle != INVALID_HANDLE && m_summary_handle != INVALID_HANDLE;
+      if(m_handle == INVALID_HANDLE || m_summary_handle == INVALID_HANDLE)
+      {
+         if(m_handle != INVALID_HANDLE)
+         {
+            FileClose(m_handle);
+            m_handle = INVALID_HANDLE;
+         }
+         if(m_summary_handle != INVALID_HANDLE)
+         {
+            FileClose(m_summary_handle);
+            m_summary_handle = INVALID_HANDLE;
+         }
+         m_output_enabled = false;
+         Print(LP_EA_NAME, " receipt output disabled: failed to open receipt files in folder=", m_folder);
+      }
+
+      return true;
    }
 
    void ObservePortfolioState(const LP_PortfolioState &state)
@@ -415,6 +487,8 @@ public:
    {
       if(m_handle == INVALID_HANDLE)
          return;
+      if(kind == LP_RECEIPT_STOP_TAKE_PROFIT_GUARD)
+         ObserveHwmReceipt(status, message);
       if(!ShouldWrite(kind, status, message))
       {
          m_compact_skipped_rows++;
@@ -486,6 +560,17 @@ public:
             FileWrite(m_summary_handle, "worst_stop_take_profit_net_open_money_after_fees_observed", DoubleToString(m_worst_stop_tp_net_open_money_observed, 2));
             FileWrite(m_summary_handle, "best_stop_take_profit_net_open_money_after_fees_observed", DoubleToString(m_best_stop_tp_net_open_money_observed, 2));
          }
+         FileWrite(m_summary_handle, "hwm_trail_mode", m_hwm_metrics_seen ? "true" : "false");
+         FileWrite(m_summary_handle, "hwm_cycle_count", IntegerToString(m_hwm_cycle_count));
+         FileWrite(m_summary_handle, "hwm_armed_count", IntegerToString(m_hwm_armed_count));
+         FileWrite(m_summary_handle, "hwm_floor_breach_close_count", IntegerToString(m_hwm_floor_breach_close_count));
+         FileWrite(m_summary_handle, "hwm_trail_block_new_entries_observations", IntegerToString(m_hwm_block_new_entries_observations));
+         if(m_hwm_metrics_seen)
+         {
+            FileWrite(m_summary_handle, "best_hwm_trail_cycle_hwm_pct", DoubleToString(m_best_hwm_trail_cycle_hwm_pct, 6));
+            FileWrite(m_summary_handle, "max_hwm_trail_floor_pct", DoubleToString(m_max_hwm_trail_floor_pct, 6));
+         }
+         FileWrite(m_summary_handle, "final_hwm_armed_state", LP_BoolText(m_final_hwm_armed_state));
          FileWrite(m_summary_handle, "compact_receipt_rows_skipped", (string)m_compact_skipped_rows);
          m_summary_dirty = true;
       }

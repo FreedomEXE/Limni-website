@@ -49,6 +49,10 @@ send a silent final answer.
 - Do not delete files without explicit human approval.
 - Do not stage, regenerate, move, or rewrite release canon JSON without explicit
   human approval.
+- MT5 boundary: Codex may compile/sync MT5 code so Freedom can run tests, but
+  must not run Strategy Tester, shard runners, FX28 smoke runners, benchmarks,
+  optimization, or any automation that executes a backtest/test run. Freedom
+  owns all MT5 test execution and Codex reviews Freedom-produced outputs.
 - Do not treat old docs, handoffs, prompts, or agent memory as current truth.
 - Versioning uses `liveVersion` and `devVersion` only.
 - `pendingRelease` must not be runtime UI truth.

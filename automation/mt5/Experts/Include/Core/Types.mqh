@@ -85,13 +85,15 @@ enum LP_StopTakeProfitMode
 {
    LP_SLTP_DISABLED = 0,
    LP_SLTP_SINGLE_PAIR_Q_AFTER_FEES = 1,
-   LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES = 2
+   LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES = 2,
+   LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES = 3
 };
 
 enum LP_ReceiptMode
 {
-   LP_RECEIPT_MODE_FULL = 0,
-   LP_RECEIPT_MODE_COMPACT_LONG_RUN = 1
+   LP_RECEIPT_MODE_OFF = 0,
+   LP_RECEIPT_MODE_FULL = 1,
+   LP_RECEIPT_MODE_COMPACT_LONG_RUN = 2
 };
 
 enum LP_MarketMode
@@ -279,6 +281,11 @@ struct LP_Config
    double take_profit_value;
    double stop_loss_value;
    double stop_take_profit_close_commission_per_lot;
+   double hwm_trail_arm_pct;
+   double hwm_trail_min_lock_pct;
+   double hwm_trail_giveback_pct;
+   bool hwm_trail_block_new_entries_when_armed;
+   double hwm_trail_hard_stop_loss_pct;
    double max_currency_signed_lots;
    double max_currency_gross_lots;
    int max_same_direction_grids_per_currency;
@@ -583,11 +590,15 @@ string LP_StopTakeProfitModeName(const LP_StopTakeProfitMode mode)
       return "SINGLE_PAIR_Q_AFTER_FEES";
    if(mode == LP_SLTP_MULTI_CURRENCY_PERCENT_AFTER_FEES)
       return "MULTI_CURRENCY_PERCENT_AFTER_FEES";
+   if(mode == LP_SLTP_MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES)
+      return "MULTI_CURRENCY_HWM_TRAIL_AFTER_FEES";
    return "DISABLED";
 }
 
 string LP_ReceiptModeName(const LP_ReceiptMode mode)
 {
+   if(mode == LP_RECEIPT_MODE_OFF)
+      return "OFF";
    if(mode == LP_RECEIPT_MODE_COMPACT_LONG_RUN)
       return "COMPACT_LONG_RUN";
    return "FULL";
