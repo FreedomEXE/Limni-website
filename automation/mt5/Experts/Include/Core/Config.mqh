@@ -99,7 +99,7 @@ input int RevmaCustomMaxM1Bars = 50000;
 input double RevmaFixedLots = 0.01;
 input double RevmaGridSpacingQ = 0.1;
 input int RevmaIntentExpiryMinutes = 10;
-input bool RevmaShowVisualDashboard = true;
+input bool RevmaShowVisualDashboard = false;
 input int RevmaDashboardRefreshSeconds = 1;
 input bool RevmaDashboardScreenshotOnDivergentAdd = false;
 

@@ -44,14 +44,29 @@ private:
    ulong m_symbol_universe_hash;
    bool m_initialized;
    int m_step_count;
+   int m_tick_count;
+   int m_timer_count;
    int m_total_new_bars;
+   int m_total_closed_m1_cycles;
    int m_total_intents;
+   int m_total_position_grid_refreshes;
+   int m_total_grid_exit_scans;
+   int m_total_tp_sync_scans;
    ulong m_next_system_intent_id;
+   uint m_started_tick_count;
    ulong m_last_attribution_hash;
    ulong m_last_currency_exposure_hash;
    ulong m_last_grid_inventory_hash;
+   ulong m_last_revma_tp_sync_scan_hash;
+   int m_closed_m1_cycles_since_tp_sync;
    datetime m_last_portfolio_qstate_asof;
    ulong m_last_portfolio_qstate_hash;
+   bool m_cached_portfolio_valid;
+   bool m_portfolio_dirty;
+   bool m_stop_take_profit_liquidation_active;
+   int m_cached_positions_total;
+   datetime m_last_tester_chart_closed_m1_time;
+   LP_PortfolioState m_cached_portfolio;
    LP_SignalSnapshot m_latest_signals[LP_SYMBOL_COUNT];
    bool m_signal_available[LP_SYMBOL_COUNT];
 
@@ -104,6 +119,70 @@ private:
    {
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
          m_signal_available[i] = false;
+   }
+
+   bool TesterRuntime()
+   {
+      return (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
+   }
+
+   bool TesterClosedM1ScanDue()
+   {
+      if(!TesterRuntime())
+         return true;
+
+      datetime closed_m1_time = iTime(_Symbol, PERIOD_M1, 1);
+      if(closed_m1_time <= 0)
+         return true;
+
+      if(m_last_tester_chart_closed_m1_time == 0)
+      {
+         m_last_tester_chart_closed_m1_time = closed_m1_time;
+         return true;
+      }
+
+      if(closed_m1_time == m_last_tester_chart_closed_m1_time)
+         return false;
+
+      m_last_tester_chart_closed_m1_time = closed_m1_time;
+      return true;
+   }
+
+   void RefreshPortfolioAndGrid(LP_PortfolioState &portfolio)
+   {
+      m_position_commission_cache.BeginRefresh();
+      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache);
+      if(m_config.enable_currency_exposure_guard)
+         m_currency_guard.Refresh();
+      m_position_commission_cache.EndRefresh();
+      m_total_position_grid_refreshes++;
+      m_cached_portfolio = portfolio;
+      m_cached_portfolio_valid = true;
+      m_portfolio_dirty = false;
+      m_cached_positions_total = PositionsTotal();
+      m_receipts.ObservePortfolioState(portfolio);
+   }
+
+   void WriteRuntimeProfileSummary()
+   {
+      double elapsed_seconds = 0.0;
+      if(m_started_tick_count > 0)
+         elapsed_seconds = (double)(GetTickCount() - m_started_tick_count) / 1000.0;
+
+      m_receipts.Summary("runtime_profile_total_engine_steps", IntegerToString(m_step_count));
+      m_receipts.Summary("runtime_profile_total_ticks", IntegerToString(m_tick_count));
+      m_receipts.Summary("runtime_profile_total_timers", IntegerToString(m_timer_count));
+      m_receipts.Summary("runtime_profile_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
+      m_receipts.Summary("runtime_profile_total_new_bars", IntegerToString(m_total_new_bars));
+      m_receipts.Summary("runtime_profile_position_grid_refreshes", IntegerToString(m_total_position_grid_refreshes));
+      m_receipts.Summary("runtime_profile_grid_exit_scans", IntegerToString(m_total_grid_exit_scans));
+      m_receipts.Summary("runtime_profile_tp_sync_scans", IntegerToString(m_total_tp_sync_scans));
+      m_receipts.Summary("runtime_profile_receipt_writes", (string)m_receipts.ReceiptWriteCount());
+      m_receipts.Summary("runtime_profile_summary_writes", (string)m_receipts.SummaryWriteCount());
+      m_receipts.Summary("runtime_profile_flushes", (string)m_receipts.FlushCount());
+      m_receipts.Summary("runtime_profile_compact_rows_skipped", (string)m_receipts.CompactSkippedRows());
+      m_receipts.Summary("runtime_profile_elapsed_wall_seconds", DoubleToString(elapsed_seconds, 3));
+      m_receipts.Summary("runtime_profile_tester_fast_cadence", LP_BoolText(TesterRuntime()));
    }
 
    void WritePortfolioQStateReceipt(
@@ -370,14 +449,28 @@ public:
       m_symbol_universe_hash = 0;
       m_initialized = false;
       m_step_count = 0;
+      m_tick_count = 0;
+      m_timer_count = 0;
       m_total_new_bars = 0;
+      m_total_closed_m1_cycles = 0;
       m_total_intents = 0;
+      m_total_position_grid_refreshes = 0;
+      m_total_grid_exit_scans = 0;
+      m_total_tp_sync_scans = 0;
       m_next_system_intent_id = 990900000001;
+      m_started_tick_count = 0;
       m_last_attribution_hash = 0;
       m_last_currency_exposure_hash = 0;
       m_last_grid_inventory_hash = 0;
+      m_last_revma_tp_sync_scan_hash = 0;
+      m_closed_m1_cycles_since_tp_sync = 0;
       m_last_portfolio_qstate_asof = 0;
       m_last_portfolio_qstate_hash = 0;
+      m_cached_portfolio_valid = false;
+      m_portfolio_dirty = true;
+      m_stop_take_profit_liquidation_active = false;
+      m_cached_positions_total = -1;
+      m_last_tester_chart_closed_m1_time = 0;
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
       {
          LP_ResetSignalSnapshot(m_latest_signals[i]);
@@ -407,6 +500,7 @@ public:
    int OnInit()
    {
       Reset();
+      m_started_tick_count = GetTickCount();
       LP_LoadConfig(m_config);
       m_config_hash = LP_ConfigHash(m_config);
       m_symbol_universe_hash = LP_SymbolUniverseHash(m_config.broker_symbol_suffix);
@@ -452,15 +546,11 @@ public:
       m_account_guard.Configure(m_config);
       m_currency_guard.Configure(m_config);
       m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
-      m_strategy_registry.Configure(m_config_hash);
+      m_strategy_registry.Configure(m_config_hash, m_config);
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
-      m_position_commission_cache.BeginRefresh();
-      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, state, m_grid_book, m_position_commission_cache);
-      if(m_config.enable_currency_exposure_guard)
-         m_currency_guard.Refresh();
-      m_position_commission_cache.EndRefresh();
+      RefreshPortfolioAndGrid(state);
       LP_WritePortfolioSummary(m_receipts, state);
       LP_WritePositionAttribution(m_receipts, state);
       m_last_attribution_hash = state.position_snapshot_hash;
@@ -504,16 +594,17 @@ public:
          EventKillTimer();
 
       LP_PortfolioState state;
-      m_position_commission_cache.BeginRefresh();
-      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, state, m_grid_book, m_position_commission_cache);
-      m_position_commission_cache.EndRefresh();
+      RefreshPortfolioAndGrid(state);
       LP_WritePortfolioSummary(m_receipts, state);
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
       m_receipts.Summary("engine_steps", IntegerToString(m_step_count));
+      m_receipts.Summary("total_ticks", IntegerToString(m_tick_count));
       m_receipts.Summary("total_new_bars", IntegerToString(m_total_new_bars));
+      m_receipts.Summary("total_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
       m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
       m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit", "reason=" + IntegerToString(reason), 0, 0, 0, 0, 0, 0);
+      WriteRuntimeProfileSummary();
       m_receipts.Close();
       m_initialized = false;
    }
@@ -538,6 +629,7 @@ public:
          return;
       m_position_commission_cache.Reset();
       m_position_index.MarkDirty();
+      m_portfolio_dirty = true;
       m_receipts.Write(
          LP_RECEIPT_TRADE_TRANSACTION,
          trans.symbol,
@@ -563,16 +655,82 @@ public:
          return;
 
       m_step_count++;
+      if(source == "tick")
+         m_tick_count++;
+      else if(source == "timer")
+         m_timer_count++;
       m_intent_bus.Clear();
 
-      LP_PortfolioState portfolio;
-      m_position_commission_cache.BeginRefresh();
-      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache);
-      if(m_config.enable_currency_exposure_guard)
-         m_currency_guard.Refresh();
-      m_position_commission_cache.EndRefresh();
-      m_receipts.ObservePortfolioState(portfolio);
+      int cycle_new_bars = 0;
+      int active_symbols_scanned = 0;
+      int clock_ready_symbols = 0;
+      int forced_initial_symbols = 0;
+      int new_symbol_ids[LP_SYMBOL_COUNT];
+      MqlRates new_symbol_bars[LP_SYMBOL_COUNT];
+      int new_symbol_count = 0;
+      bool tester_fast_cadence = TesterRuntime();
+      bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
+      bool scan_symbol_clocks = !tester_fast_cadence || force_initial_fx28_scan || TesterClosedM1ScanDue();
+      if(scan_symbol_clocks)
+      {
+         for(int i = 0; i < m_symbol_cache.Count(); i++)
+         {
+            LP_SymbolMeta meta;
+            if(!m_symbol_cache.Get(i, meta))
+               continue;
+            if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
+               continue;
+            active_symbols_scanned++;
 
+            LP_BarClockState clock_state;
+            if(!m_clock.RefreshSymbol(meta, clock_state))
+               continue;
+            clock_ready_symbols++;
+
+            bool evaluate_symbol = clock_state.new_bar;
+            if(!evaluate_symbol && force_initial_fx28_scan)
+            {
+               evaluate_symbol = true;
+               forced_initial_symbols++;
+            }
+
+            if(!evaluate_symbol)
+               continue;
+
+            cycle_new_bars++;
+            if(new_symbol_count < LP_SYMBOL_COUNT)
+            {
+               new_symbol_ids[new_symbol_count] = meta.symbol_id;
+               new_symbol_bars[new_symbol_count].time = clock_state.last_bar_time;
+               new_symbol_bars[new_symbol_count].close = clock_state.close;
+               new_symbol_count++;
+            }
+         }
+      }
+      if(cycle_new_bars > 0)
+      {
+         m_total_closed_m1_cycles++;
+         m_closed_m1_cycles_since_tp_sync++;
+      }
+
+      bool positions_total_changed = m_cached_portfolio_valid && PositionsTotal() != m_cached_positions_total;
+      if(positions_total_changed)
+         m_portfolio_dirty = true;
+
+      bool dirty_before_refresh = m_portfolio_dirty || positions_total_changed;
+      bool refresh_required = !tester_fast_cadence ||
+         !m_cached_portfolio_valid ||
+         dirty_before_refresh ||
+         cycle_new_bars > 0 ||
+         m_stop_take_profit_liquidation_active;
+
+      if(!refresh_required)
+         return;
+
+      LP_PortfolioState portfolio;
+      RefreshPortfolioAndGrid(portfolio);
+
+      bool grid_inventory_changed = m_step_count == 1 || m_grid_book.SnapshotHash() != m_last_grid_inventory_hash;
       if(m_step_count == 1 || portfolio.position_snapshot_hash != m_last_attribution_hash)
       {
          LP_WritePositionAttribution(m_receipts, portfolio);
@@ -583,7 +741,7 @@ public:
          m_currency_guard.WriteReceipt(m_receipts);
          m_last_currency_exposure_hash = m_currency_guard.SnapshotHash();
       }
-      if(m_step_count == 1 || m_grid_book.SnapshotHash() != m_last_grid_inventory_hash)
+      if(grid_inventory_changed)
       {
          m_grid_book.WriteReceipt(m_receipts);
          m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
@@ -644,72 +802,48 @@ public:
       {
          m_stop_take_profit_guard.WriteMonitoringReceipt(m_config, m_receipts, portfolio, stop_take_profit);
       }
+      m_stop_take_profit_liquidation_active = stop_take_profit.liquidation_active || harvest_close_required;
 
       int revma_grid_exit_intents = 0;
-      revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
-         m_config,
-         m_grid_book,
-         m_receipts,
-         m_intent_bus
-      );
+      bool should_scan_grid_exits = portfolio.open_grid_count > 0 &&
+         (!tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
+      if(should_scan_grid_exits)
+      {
+         m_total_grid_exit_scans++;
+         revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
+            m_config,
+            m_grid_book,
+            m_receipts,
+            m_intent_bus
+         );
+      }
       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
 
       int revma_grid_tp_sync_intents = 0;
-      if(revma_grid_exit_intents <= 0)
+      bool tp_sync_periodic_due = tester_fast_cadence && m_closed_m1_cycles_since_tp_sync >= 15;
+      bool should_scan_tp_sync = portfolio.open_grid_count > 0 &&
+         revma_grid_exit_intents <= 0 &&
+         (!tester_fast_cadence ||
+          grid_inventory_changed ||
+          dirty_before_refresh ||
+          m_last_revma_tp_sync_scan_hash != m_grid_book.SnapshotHash() ||
+          tp_sync_periodic_due);
+      if(should_scan_tp_sync)
       {
+         m_total_tp_sync_scans++;
          revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
             m_config,
             m_grid_book,
             m_receipts,
             m_intent_bus
          );
+         m_last_revma_tp_sync_scan_hash = m_grid_book.SnapshotHash();
+         m_closed_m1_cycles_since_tp_sync = 0;
          if(revma_grid_tp_sync_intents > 0)
             m_total_intents += revma_grid_tp_sync_intents;
-      }
-
-      int cycle_new_bars = 0;
-      int active_symbols_scanned = 0;
-      int clock_ready_symbols = 0;
-      int forced_initial_symbols = 0;
-      int new_symbol_ids[LP_SYMBOL_COUNT];
-      MqlRates new_symbol_bars[LP_SYMBOL_COUNT];
-      int new_symbol_count = 0;
-      bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
-      for(int i = 0; i < m_symbol_cache.Count(); i++)
-      {
-         LP_SymbolMeta meta;
-         if(!m_symbol_cache.Get(i, meta))
-            continue;
-         if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
-            continue;
-         active_symbols_scanned++;
-
-         LP_BarClockState clock_state;
-         if(!m_clock.RefreshSymbol(meta, clock_state))
-            continue;
-         clock_ready_symbols++;
-
-         bool evaluate_symbol = clock_state.new_bar;
-         if(!evaluate_symbol && force_initial_fx28_scan)
-         {
-            evaluate_symbol = true;
-            forced_initial_symbols++;
-         }
-
-         if(!evaluate_symbol)
-            continue;
-
-         cycle_new_bars++;
-         if(new_symbol_count < LP_SYMBOL_COUNT)
-         {
-            new_symbol_ids[new_symbol_count] = meta.symbol_id;
-            new_symbol_bars[new_symbol_count].time = clock_state.last_bar_time;
-            new_symbol_bars[new_symbol_count].close = clock_state.close;
-            new_symbol_count++;
-         }
       }
 
       if(cycle_new_bars > 0)
@@ -742,10 +876,13 @@ public:
          if(plan.executable)
             LP_LogTradePlan(m_receipts, plan);
          if(plan.executable)
+         {
             m_trade_router.Execute(plan, m_receipts);
+            m_portfolio_dirty = true;
+         }
       }
 
-      if(m_step_count == 1 || cycle_new_bars > 0)
+      if(m_step_count == 1 || cycle_new_bars > 0 || m_intent_bus.Count() > 0 || dirty_before_refresh)
       {
          m_receipts.Write(
             LP_RECEIPT_ENGINE_STEP,

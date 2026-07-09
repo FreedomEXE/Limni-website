@@ -62,6 +62,69 @@ private:
       return 0.0;
    }
 
+   bool TakeProfitAlreadySynced(
+      const string symbol,
+      const double current_take_profit,
+      const double target_take_profit
+   )
+   {
+      if(current_take_profit <= 0.0 || target_take_profit <= 0.0)
+         return false;
+      double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+      double tolerance = point > 0.0 ? point * 0.5 : 0.00000001;
+      return MathAbs(current_take_profit - target_take_profit) <= tolerance;
+   }
+
+   bool PositionDirectionMatchesGrid(const long position_type, const int direction)
+   {
+      if(direction > 0)
+         return position_type == POSITION_TYPE_BUY;
+      if(direction < 0)
+         return position_type == POSITION_TYPE_SELL;
+      return false;
+   }
+
+   bool GridTakeProfitNeedsSync(
+      const string symbol,
+      const LP_GridInventoryRow &grid,
+      const double target_take_profit_price
+   )
+   {
+      if(target_take_profit_price <= 0.0)
+         return false;
+
+      long grid_magic = LP_BuildMagic(
+         grid.symbol_id,
+         grid.lane_id,
+         grid.variant_id,
+         grid.direction,
+         grid.grid_family
+      );
+
+      int matched = 0;
+      int unsynced = 0;
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0)
+            continue;
+         if(!PositionSelectByTicket(ticket))
+            continue;
+         if(PositionGetString(POSITION_SYMBOL) != symbol)
+            continue;
+         if((long)PositionGetInteger(POSITION_MAGIC) != grid_magic)
+            continue;
+         if(!PositionDirectionMatchesGrid((long)PositionGetInteger(POSITION_TYPE), grid.direction))
+            continue;
+
+         matched++;
+         double current_take_profit = PositionGetDouble(POSITION_TP);
+         if(!TakeProfitAlreadySynced(symbol, current_take_profit, target_take_profit_price))
+            unsynced++;
+      }
+      return matched > 0 && unsynced > 0;
+   }
+
    bool MoneyPerPriceDistance(
       const string symbol,
       const double lots,
@@ -244,6 +307,9 @@ public:
       int digits = 5;
       if(SymbolInfoInteger(symbol, SYMBOL_EXIST))
          digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+      if(!GridTakeProfitNeedsSync(symbol, grid, target_take_profit_price))
+         return false;
 
       string metadata = "scope=single_pair_grid_broker_tp" +
          "|reason=sync_grid_take_profit" +

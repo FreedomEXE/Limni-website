@@ -100,6 +100,7 @@ private:
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
    bool m_state_loaded;
+   bool m_state_persistence_enabled;
    ulong m_last_blocked_birth_hash;
 
    string StateFolder()
@@ -110,6 +111,11 @@ private:
    string StateFileName()
    {
       return StateFolder() + "\\revma_grid_birth_state.csv";
+   }
+
+   bool TesterRuntime()
+   {
+      return (bool)MQLInfoInteger(MQL_TESTER) || (bool)MQLInfoInteger(MQL_OPTIMIZATION);
    }
 
    int AnchorRelationFromPrice(const double price, const double anchor)
@@ -134,14 +140,26 @@ private:
          "|" + prefix + "_q_stochastic_bucket=" + LP_RevmaStochasticBucketName(stoch);
    }
 
-   ulong BlockedBirthHash(const LP_RevmaSignal &signal, const LP_GridInventoryRow &grid)
+   ulong BlockedBirthHash(
+      const LP_RevmaSignal &signal,
+      const LP_GridInventoryRow &grid,
+      const LP_RevmaGridBirthSnapshot &birth
+   )
    {
+      int active_age_minutes = 0;
+      if(birth.valid && birth.birth_time > 0)
+         active_age_minutes = (int)MathMax(0, ((long)TimeCurrent() - (long)birth.birth_time) / 60);
+      int active_age_bucket = active_age_minutes < 60 ? active_age_minutes / 15 : 4 + active_age_minutes / 60;
+      int active_pnl_bucket = (int)MathFloor(grid.floating_pnl / 25.0);
       ulong hash = 1469598103934665603;
       LP_HashMixInt(hash, signal.symbol_id);
       LP_HashMixInt(hash, signal.direction);
       LP_HashMixULong(hash, grid.grid_key);
       LP_HashMixInt(hash, grid.direction);
-      LP_HashMixInt(hash, (int)signal.source_m1_time);
+      LP_HashMixInt(hash, signal.anchor_relation);
+      LP_HashMixULong(hash, LP_HashString(LP_RevmaStochasticBucketName(signal.stoch)));
+      LP_HashMixInt(hash, active_age_bucket);
+      LP_HashMixInt(hash, active_pnl_bucket);
       return hash;
    }
 
@@ -252,6 +270,9 @@ private:
 
    void PersistBirths()
    {
+      if(!m_state_persistence_enabled)
+         return;
+
       FolderCreate(StateFolder(), FILE_COMMON);
       int handle = FileOpen(StateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle == INVALID_HANDLE)
@@ -488,6 +509,9 @@ private:
    int LoadPersistedBirthsInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
    {
       m_state_loaded = true;
+      if(!m_state_persistence_enabled)
+         return 0;
+
       int handle = FileOpen(StateFileName(), FILE_READ | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle == INVALID_HANDLE)
          return 0;
@@ -1491,14 +1515,18 @@ public:
       m_last_divergent_add_text = "";
       m_dashboard_screenshot_requested = false;
       m_state_loaded = false;
+      m_state_persistence_enabled = true;
       m_last_blocked_birth_hash = 0;
       m_protection_manager.Reset();
       ArrayResize(m_births, 0);
    }
 
-   void Configure(const ulong config_hash)
+   void Configure(const ulong config_hash, const LP_Config &config)
    {
       m_config_hash = config_hash;
+      m_state_persistence_enabled = !(TesterRuntime() &&
+         config.output_folder == "OFF" &&
+         config.receipt_mode == LP_RECEIPT_MODE_OFF);
    }
 
    int LoadPersistedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
@@ -1639,7 +1667,7 @@ public:
 
          if(signal.direction != LP_SIDE_NONE && signal.direction != active_grid.direction)
          {
-            ulong blocked_hash = BlockedBirthHash(signal, active_grid);
+            ulong blocked_hash = BlockedBirthHash(signal, active_grid, birth_snapshot);
             if(blocked_hash != m_last_blocked_birth_hash)
             {
                m_last_blocked_birth_hash = blocked_hash;

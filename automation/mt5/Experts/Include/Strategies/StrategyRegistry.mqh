@@ -32,10 +32,10 @@ public:
       m_enabled = enabled;
    }
 
-   void Configure(const ulong config_hash)
+   void Configure(const ulong config_hash, const LP_Config &config)
    {
       m_trend_follow.Configure(config_hash);
-      m_revma.Configure(config_hash);
+      m_revma.Configure(config_hash, config);
    }
 
    int LoadRevmaGridState(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)

@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.022"
-#property description "LimniPortfolioEA 0.1.22-gate107a-tpsep Revma TP layer separation repair"
+#property version   "1.023"
+#property description "LimniPortfolioEA 0.1.23-gate107b-speed Revma tester speed cadence profiling"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"

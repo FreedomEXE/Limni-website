@@ -24,6 +24,9 @@ private:
    bool m_summary_dirty;
    bool m_output_enabled;
    ulong m_compact_skipped_rows;
+   ulong m_receipt_write_count;
+   ulong m_summary_write_count;
+   ulong m_flush_count;
    int m_compact_engine_step_attempts;
    bool m_compact_stop_tp_seen;
    double m_compact_logged_worst_net_open_pct;
@@ -341,11 +344,39 @@ public:
       m_output_enabled = false;
       ResetCompactState();
       ResetObservedMetrics();
+      m_receipt_write_count = 0;
+      m_summary_write_count = 0;
+      m_flush_count = 0;
    }
 
    string RunId()
    {
       return m_run_id;
+   }
+
+   bool OutputEnabled()
+   {
+      return m_output_enabled;
+   }
+
+   ulong ReceiptWriteCount()
+   {
+      return m_receipt_write_count;
+   }
+
+   ulong SummaryWriteCount()
+   {
+      return m_summary_write_count;
+   }
+
+   ulong FlushCount()
+   {
+      return m_flush_count;
+   }
+
+   ulong CompactSkippedRows()
+   {
+      return m_compact_skipped_rows;
    }
 
    bool Open(const LP_Config &config, const ulong config_hash, const ulong symbol_universe_hash)
@@ -517,6 +548,7 @@ public:
          status,
          message
       );
+      m_receipt_write_count++;
       m_receipts_dirty = true;
    }
 
@@ -525,21 +557,27 @@ public:
       if(m_summary_handle == INVALID_HANDLE)
          return;
       FileWrite(m_summary_handle, metric, value);
+      m_summary_write_count++;
       m_summary_dirty = true;
    }
 
    void Flush()
    {
+      bool flushed = false;
       if(m_handle != INVALID_HANDLE && m_receipts_dirty)
       {
          FileFlush(m_handle);
          m_receipts_dirty = false;
+         flushed = true;
       }
       if(m_summary_handle != INVALID_HANDLE && m_summary_dirty)
       {
          FileFlush(m_summary_handle);
          m_summary_dirty = false;
+         flushed = true;
       }
+      if(flushed)
+         m_flush_count++;
    }
 
    void Close()
