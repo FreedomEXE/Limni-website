@@ -68,6 +68,13 @@ Stop line: no optimization, no promotion, no stochastic filter, no q-anchor
 filter, no quarantine, no recovery-only mode, no Candidate B/HWM work, no
 pair-level TP, and no Strategy Tester execution by Codex.
 
+Implementation source `c88bb16a682aebd078669a8b820c4b76ab8f0a16` is pinned by
+the FX28 preset in `cc93094c5bcffa08f743daffaa30f3656eed2433`. Static review,
+repository plus both-terminal compilation, and terminal source/profile sync
+proof are complete. The remaining Gate 107C-R evidence is Freedom-owned
+controlled telemetry validation; see
+`docs/research/gates/gate107/GATE107CR_REVMA_RESEARCH_INTEGRITY_CORRECTION_2026-07-09.md`.
+
 ### Current Override - 2026-07-07
 
 Active lane: Gate 99ZZE `revma-grid-basket-tp-repair`.

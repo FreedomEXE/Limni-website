@@ -1,7 +1,7 @@
 # Gate 107C-R - Revma Research-Integrity Correction
 
-Status: implementation complete pending final terminal sync and Freedom-owned
-controlled telemetry validation.
+Status: implementation, static review, compile, and terminal-sync proof
+complete. Freedom-owned controlled telemetry validation remains open.
 
 ## Boundary
 
@@ -71,13 +71,32 @@ accepted as attribution or formula-clean evidence.
 
 The old preset value `7b5b407c02ec4f20c075d659f13a32bc1cc317c8` is not a Git
 object and must not identify a controlled run. The implementation source commit
-is `c88bb16a682aebd078669a8b820c4b76ab8f0a16`; the FX28 preset now pins that
-exact source tree. The follow-up metadata/preset commit, final branch head, and
-terminal-sync artifact are recorded after the pin commit is created and pushed.
+is `c88bb16a682aebd078669a8b820c4b76ab8f0a16`; metadata/preset commit
+`cc93094c5bcffa08f743daffaa30f3656eed2433` pins that exact source tree in the
+FX28 preset.
 
 Preflight repository compile artifact:
 `docs/research/gates/gate107/artifacts/gate107cr-repo-compile-preflight-20260709/`.
 
-Result: `0 errors, 0 warnings` after the correction source compiled. Final
-terminal compile/hash/profile-drift proof is still required before the gate can
-be handed to Freedom for runtime validation.
+Result: `0 errors, 0 warnings` after the correction source compiled.
+
+Final compile receipts:
+
+- repository: `0 errors, 0 warnings` in `212231 ms`;
+- terminal `14275`: `0 errors, 0 warnings` in `273066 ms`;
+- terminal `94497`: `0 errors, 0 warnings` in `235036 ms`.
+
+Those logs are retained in
+`docs/research/gates/gate107/artifacts/gate107cr-final-terminal-sync-20260709/`.
+The first post-sync audit found one stale tester-profile copy on terminal
+`94497` while all source hashes already matched. It is retained as a negative
+receipt in
+`docs/research/gates/gate107/artifacts/gate107cr-postsync-verification-20260709/`.
+The controlled re-sync audit then passed with `0` source hash mismatches, `0`
+tester-profile mismatches, `0` active-expert stale-input matches, `0`
+tester-profile stale-input matches, and `0` unknown running terminals:
+`docs/research/gates/gate107/artifacts/gate107cr-profile-resync-verification-20260709/`.
+
+This proof is compile/sync-only. No Strategy Tester, smoke runner, benchmark,
+optimization, or long test was run by Codex. The next gate is Freedom-owned
+controlled telemetry validation using `CompactLongRun + AUTO`.
