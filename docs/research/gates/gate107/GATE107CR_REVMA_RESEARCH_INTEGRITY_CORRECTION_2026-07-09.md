@@ -1,7 +1,8 @@
 # Gate 107C-R - Revma Research-Integrity Correction
 
-Status: implementation, static review, compile, and terminal-sync proof
-complete. Freedom-owned controlled telemetry validation remains open.
+Status: runtime repair, independent review, exact-source compile, canonical
+tester-profile pin, and two-terminal sync proof complete. One Freedom-owned
+controlled telemetry rerun remains open.
 
 ## Boundary
 
@@ -67,11 +68,11 @@ OutputFolder=AUTO
 `ReceiptMode=Off` / `OutputFolder=OFF` is speed/survival-only and cannot be
 accepted as attribution or formula-clean evidence.
 
-## Source identity and proof
+## Initial Gate 107C-R source identity and proof
 
 The old preset value `7b5b407c02ec4f20c075d659f13a32bc1cc317c8` is not a Git
-object and must not identify a controlled run. The implementation source commit
-is `c88bb16a682aebd078669a8b820c4b76ab8f0a16`; metadata/preset commit
+object and must not identify a controlled run. The initial correction source
+commit was `c88bb16a682aebd078669a8b820c4b76ab8f0a16`; metadata/preset commit
 `cc93094c5bcffa08f743daffaa30f3656eed2433` pins that exact source tree in the
 FX28 preset.
 
@@ -100,3 +101,78 @@ tester-profile stale-input matches, and `0` unknown running terminals:
 This proof is compile/sync-only. No Strategy Tester, smoke runner, benchmark,
 optimization, or long test was run by Codex. The next gate is Freedom-owned
 controlled telemetry validation using `CompactLongRun + AUTO`.
+
+## `R90662359` negative runtime evidence
+
+Freedom's controlled run `R90662359`, on source
+`c88bb16a682aebd078669a8b820c4b76ab8f0a16`, proved that the broader
+lifecycle packet worked but failed the acceptance boundary in two exact ways:
+
+- all `1365` grids ended flat, all `19096` monetary deals matched recorded
+  position identifiers, and unmatched counts were zero;
+- managed-account PnL was `6712.06`, grid-outcome PnL was `7968.25`, and the
+  `-1256.19` difference exactly equalled the complete `account_tp` net
+  component omitted by magic-`0` account close deals;
+- `173` submissions reached the broker while its symbol session was closed:
+  `128` opens/adds and `45` closes, all between `23:58:00` and `00:03:30`
+  server time.
+
+The run is rejected as controlled evidence and cannot support profitability or
+Gate 108 interpretation. Its immutable packet audit is retained at
+`docs/research/gates/gate107/artifacts/GATE107CR_R90662359_NEGATIVE_EVIDENCE_AUDIT_2026-07-10.md`.
+
+## Narrow runtime repair
+
+Source commit `42d2b15b5e1255657328e5bf844c65b107ebf9f9` repairs the
+two runtime-integrity defects without changing Revma economics:
+
+- account/grid close requests inherit the selected position's exact managed
+  magic immediately before submission;
+- reconciliation independently checks position identity and exact expected
+  grid magic, so another valid Revma magic cannot mask an attribution defect;
+- exact broker-symbol trade sessions are enumerated and checked before opens,
+  closes, and broker TP modifications;
+- closed-session work is deferred locally, retains its close latch, and remains
+  retryable without consuming a close-attempt slot or a broker rejection;
+- genuine admitted broker failures, including modification failures, still
+  contaminate `formula_clean`;
+- final summaries expose session block/defer/metadata-failure counts and first
+  and last timestamps.
+
+The repaired build identity is `0.1.26-gate107cr-runtime-integrity`, gate
+`Gate107C-R`, scope `revma-account-close-ownership-session-admission`.
+
+Exact committed-source repository compile receipt:
+`docs/research/gates/gate107/artifacts/gate107cr-runtime-repair-committed-preflight-20260710/`.
+
+Result: `0 errors, 0 warnings` in `183924 ms`. The generated repository EX5
+SHA-256 is
+`CE50BF001B178307BAE9BC5F37A2B909F851B9313C06F7F1245D11F8FC51D947`.
+
+Canonical repaired compile/sync receipts:
+`docs/research/gates/gate107/artifacts/gate107cr-runtime-repair-compile-sync-20260710/`.
+
+The canonical gate passed:
+
+- repository compile: `0 errors, 0 warnings` in `34826 ms`;
+- terminal `14275`: `0 errors, 0 warnings` in `36778 ms`;
+- terminal `94497`: `0 errors, 0 warnings` in `35432 ms`;
+- source hash mismatches: `0`;
+- tester-profile hash mismatches: `0`;
+- active-Experts stale-input matches: `0`;
+- tester-profile stale-input matches: `0`;
+- unknown running terminals: `0`.
+
+The synced tester-profile SHA-256 is
+`31F06F23A18CE150C87AD1087175374B703D750BC506EFEF7830DD5EE6BF8A61`
+on both terminals and pins source commit
+`42d2b15b5e1255657328e5bf844c65b107ebf9f9`. The final repository EX5
+from this sync compile has SHA-256
+`59490830E02F8F66268E6FD6516421D44F8170CEF0B5BA2E352BB6ED67ED586F`.
+
+The earlier runtime-repair preflight folders are retained as intermediate
+compiler receipts; only the exact committed-source preflight and canonical
+compile/sync directory above are acceptance proof.
+
+Codex did not run Strategy Tester. Freedom must now run one controlled
+validation packet before Gate 107C-R can close.
