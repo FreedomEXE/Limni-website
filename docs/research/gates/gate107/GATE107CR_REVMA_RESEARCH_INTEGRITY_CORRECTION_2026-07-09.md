@@ -176,3 +176,35 @@ compile/sync directory above are acceptance proof.
 
 Codex did not run Strategy Tester. Freedom must now run one controlled
 validation packet before Gate 107C-R can close.
+
+## Freedom validation profile
+
+The generic FX28 fast-smoke preset remains a base profile and is not the exact
+`R90662359` configuration. The stopped-run MT5 agent log preserved the full
+input list. Its controlled inputs were recovered into:
+
+`automation/mt5/tester-presets/limni-portfolio-revma-gate107cr-validation.set`.
+
+The dedicated profile changes only the source pin from the rejected run. It
+retains the same material validation settings:
+
+- FX28, `MEDIUM_50000`, `0.01` fixed lots, and `0.10 q` grid spacing;
+- `GridTakeProfitQ=1.0`;
+- `AccountTakeProfitPct=0.01` and account stop loss off;
+- currency exposure guard on and `MaxClosePositionsPerStep=300`;
+- broker grid-TP sync off in the tester;
+- `CompactLongRun`, `AUTO`, and source revision
+  `42d2b15b5e1255657328e5bf844c65b107ebf9f9`.
+
+Freedom should load the terminal profile
+`LimniPortfolioEA-Gate107CR-Validation.set` and rerun the same tester envelope:
+EURUSD.i/M1, Open prices, `2025.01.01` through `2026.01.01`, USD `10000`,
+leverage `1:100`. This is a formula-integrity validation only, not a
+profitability rerun.
+
+The dedicated profile was synced to terminals `14275` and `94497` with SHA-256
+`D5F1B06BFC69A96C7F5AA3D6259B76BE0A23BF8E2B4DA161B8291F21F615C8B2`.
+The profile-sync receipt reports `0` source mismatches, `0` profile mismatches,
+`0` stale-input matches, and `0` unknown running terminals:
+
+`docs/research/gates/gate107/artifacts/gate107cr-validation-profile-sync-20260710/`.
