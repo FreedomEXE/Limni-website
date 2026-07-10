@@ -70,10 +70,10 @@ accepted as attribution or formula-clean evidence.
 ## Source identity and proof
 
 The old preset value `7b5b407c02ec4f20c075d659f13a32bc1cc317c8` is not a Git
-object and must not identify a controlled run. The implementation source commit,
-metadata/preset pin commit, final branch head, and terminal-sync artifact are
-recorded in the follow-up metadata receipt after this implementation commit is
-created and pushed.
+object and must not identify a controlled run. The implementation source commit
+is `c88bb16a682aebd078669a8b820c4b76ab8f0a16`; the FX28 preset now pins that
+exact source tree. The follow-up metadata/preset commit, final branch head, and
+terminal-sync artifact are recorded after the pin commit is created and pushed.
 
 Preflight repository compile artifact:
 `docs/research/gates/gate107/artifacts/gate107cr-repo-compile-preflight-20260709/`.
