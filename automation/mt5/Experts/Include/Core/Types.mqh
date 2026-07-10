@@ -554,10 +554,16 @@ struct LP_BrokerExecutionIntegrity
    int broker_rejection_count;
    int no_money_count;
    int market_closed_count;
+   int session_blocked_open_count;
+   int session_deferred_close_count;
+   int session_blocked_modify_count;
+   int session_metadata_failure_count;
    datetime first_no_money_time;
    datetime last_no_money_time;
    datetime first_broker_rejection_time;
    datetime last_broker_rejection_time;
+   datetime first_session_block_time;
+   datetime last_session_block_time;
 };
 
 void LP_ResetBrokerExecutionIntegrity(LP_BrokerExecutionIntegrity &integrity)
@@ -567,10 +573,16 @@ void LP_ResetBrokerExecutionIntegrity(LP_BrokerExecutionIntegrity &integrity)
    integrity.broker_rejection_count = 0;
    integrity.no_money_count = 0;
    integrity.market_closed_count = 0;
+   integrity.session_blocked_open_count = 0;
+   integrity.session_deferred_close_count = 0;
+   integrity.session_blocked_modify_count = 0;
+   integrity.session_metadata_failure_count = 0;
    integrity.first_no_money_time = 0;
    integrity.last_no_money_time = 0;
    integrity.first_broker_rejection_time = 0;
    integrity.last_broker_rejection_time = 0;
+   integrity.first_session_block_time = 0;
+   integrity.last_session_block_time = 0;
 }
 
 struct LP_PortfolioState

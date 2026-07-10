@@ -132,6 +132,8 @@ struct LP_RevmaTelemetryReconciliation
    int matched_deal_count;
    int unmatched_deal_count;
    int unmatched_position_count;
+   int ownership_mismatch_deal_count;
+   int ownership_mismatch_position_count;
    bool formula_clean_pnl_reconciled;
 };
 
@@ -143,6 +145,8 @@ void LP_ResetRevmaTelemetryReconciliation(LP_RevmaTelemetryReconciliation &recon
    reconciliation.matched_deal_count = 0;
    reconciliation.unmatched_deal_count = 0;
    reconciliation.unmatched_position_count = 0;
+   reconciliation.ownership_mismatch_deal_count = 0;
+   reconciliation.ownership_mismatch_position_count = 0;
    reconciliation.formula_clean_pnl_reconciled = false;
 }
 
@@ -305,14 +309,19 @@ private:
       return ArraySize(identifiers);
    }
 
-   bool ContainsTicket(const ulong &tickets[], const ulong ticket)
+   int FindTicketIndex(const ulong &tickets[], const ulong ticket)
    {
       for(int i = 0; i < ArraySize(tickets); i++)
       {
          if(tickets[i] == ticket)
-            return true;
+            return i;
       }
-      return false;
+      return -1;
+   }
+
+   bool ContainsTicket(const ulong &tickets[], const ulong ticket)
+   {
+      return FindTicketIndex(tickets, ticket) >= 0;
    }
 
    void AppendTicket(ulong &tickets[], const ulong ticket)
@@ -388,9 +397,13 @@ private:
       unmatched_write_failed = false;
       unmatched_write_error = 0;
       ulong matched_deal_tickets[];
+      long matched_deal_expected_magics[];
       ulong unmatched_position_identifiers[];
+      ulong ownership_mismatch_position_identifiers[];
       ArrayResize(matched_deal_tickets, 0);
+      ArrayResize(matched_deal_expected_magics, 0);
       ArrayResize(unmatched_position_identifiers, 0);
+      ArrayResize(ownership_mismatch_position_identifiers, 0);
 
       for(int row_index = 0; row_index < m_count; row_index++)
       {
@@ -399,6 +412,13 @@ private:
          m_rows[row_index].realized_profit = 0.0;
          m_rows[row_index].realized_swap = 0.0;
          m_rows[row_index].realized_commission = 0.0;
+         long expected_magic = LP_BuildMagic(
+            m_rows[row_index].symbol_id,
+            LP_LANE_REVMA,
+            m_rows[row_index].variant_id,
+            m_rows[row_index].direction,
+            (int)(m_rows[row_index].grid_key % 10000)
+         );
          ulong identifiers[];
          int identifier_count = ParsePositionIdentifiers(m_rows[row_index].position_identifiers, identifiers);
          for(int identifier_index = 0; identifier_index < identifier_count; identifier_index++)
@@ -418,7 +438,14 @@ private:
                m_rows[row_index].realized_profit += HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
                m_rows[row_index].realized_swap += HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
                m_rows[row_index].realized_commission += HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
-               AppendTicket(matched_deal_tickets, deal_ticket);
+               if(FindTicketIndex(matched_deal_tickets, deal_ticket) < 0)
+               {
+                  int matched_count = ArraySize(matched_deal_tickets);
+                  ArrayResize(matched_deal_tickets, matched_count + 1, matched_count + 1);
+                  ArrayResize(matched_deal_expected_magics, matched_count + 1, matched_count + 1);
+                  matched_deal_tickets[matched_count] = deal_ticket;
+                  matched_deal_expected_magics[matched_count] = expected_magic;
+               }
             }
          }
       }
@@ -446,14 +473,50 @@ private:
             continue;
          long magic = HistoryDealGetInteger(deal_ticket, DEAL_MAGIC);
          LP_MagicParts parts;
-         if(!LP_DecodeMagic(magic, parts) || parts.lane_id != LP_LANE_REVMA)
-            continue;
-
+         int matched_deal_index = FindTicketIndex(matched_deal_tickets, deal_ticket);
+         bool matched_position_deal = matched_deal_index >= 0;
+         long expected_magic = matched_position_deal ? matched_deal_expected_magics[matched_deal_index] : 0;
+         bool valid_revma_owner = LP_DecodeMagic(magic, parts) && parts.lane_id == LP_LANE_REVMA;
+         bool exact_grid_owner = !matched_position_deal || (valid_revma_owner && magic == expected_magic);
          double pnl = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT) +
             HistoryDealGetDouble(deal_ticket, DEAL_SWAP) +
             HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
+         if(!valid_revma_owner || !exact_grid_owner)
+         {
+            if(!matched_position_deal)
+               continue;
+            reconciliation.ownership_mismatch_deal_count++;
+            ulong position_identifier = (ulong)HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
+            if(!ContainsTicket(ownership_mismatch_position_identifiers, position_identifier))
+            {
+               AppendTicket(ownership_mismatch_position_identifiers, position_identifier);
+               reconciliation.ownership_mismatch_position_count++;
+            }
+            string expected_grid_key = "0";
+            LP_MagicParts expected_parts;
+            if(matched_position_deal && LP_DecodeMagic(expected_magic, expected_parts))
+               expected_grid_key = (string)LP_BuildGridKeyFromParts(expected_parts);
+            unmatched_attempted_rows++;
+            if(unmatched_handle != INVALID_HANDLE &&
+               FileWrite(
+                  unmatched_handle,
+                  (string)deal_ticket,
+                  (string)position_identifier,
+                  (string)magic,
+                  HistoryDealGetString(deal_ticket, DEAL_SYMBOL),
+                  expected_grid_key,
+                  DoubleToString(pnl, 2),
+                  "matched_position_identifier_deal_magic_mismatch|expected_magic=" + (string)expected_magic
+               ) == 0)
+            {
+               unmatched_write_failed = true;
+               unmatched_write_error = GetLastError();
+            }
+            continue;
+         }
+
          reconciliation.managed_account_realized_pnl += pnl;
-         if(ContainsTicket(matched_deal_tickets, deal_ticket))
+         if(matched_position_deal)
          {
             reconciliation.matched_deal_count++;
             continue;
@@ -485,6 +548,8 @@ private:
       reconciliation.difference = reconciliation.managed_account_realized_pnl - reconciliation.grid_outcome_realized_pnl;
       reconciliation.formula_clean_pnl_reconciled = reconciliation.unmatched_deal_count == 0 &&
          reconciliation.unmatched_position_count == 0 &&
+         reconciliation.ownership_mismatch_deal_count == 0 &&
+         reconciliation.ownership_mismatch_position_count == 0 &&
          MathAbs(reconciliation.difference) <= 0.01;
    }
 
@@ -717,10 +782,22 @@ public:
          WriteArtifactFailure(receipts, config, "reconciliation_unmatched", unmatched_path, unmatched_write_error, unmatched_attempted_rows, "write_row");
 
       bool formula_clean = reconciliation.formula_clean_pnl_reconciled &&
-         broker_integrity.no_money_count == 0 && broker_integrity.broker_rejection_count == 0;
-      string formula_clean_reason = formula_clean ? "clean" :
-         (broker_integrity.no_money_count > 0 ? "broker_rejection_capacity_contamination" :
-         (broker_integrity.broker_rejection_count > 0 ? "broker_rejection_contamination" : "pnl_reconciliation_unresolved"));
+         broker_integrity.no_money_count == 0 &&
+         broker_integrity.broker_rejection_count == 0 &&
+         broker_integrity.session_metadata_failure_count == 0;
+      string formula_clean_reason = "";
+      if(!reconciliation.formula_clean_pnl_reconciled)
+         formula_clean_reason = "pnl_reconciliation_unresolved";
+      if(reconciliation.ownership_mismatch_deal_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "deal_ownership_mismatch";
+      if(broker_integrity.no_money_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "broker_rejection_capacity_contamination";
+      if(broker_integrity.broker_rejection_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "broker_rejection_contamination";
+      if(broker_integrity.session_metadata_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "trade_session_metadata_unavailable";
+      if(formula_clean_reason == "")
+         formula_clean_reason = formula_clean ? "clean" : "unknown_formula_integrity_failure";
 
       LP_RevmaTelemetryBucket buckets[];
       ArrayResize(buckets, 0);
@@ -898,7 +975,7 @@ public:
       {
          WriteArtifactFailure(receipts, config, "reconciliation_summary", reconciliation_path, GetLastError(), 0, "open");
       }
-      else if(FileWrite(reconciliation_handle, "managed_account_realized_pnl", "grid_outcome_realized_pnl", "difference", "matched_deal_count", "unmatched_deal_count", "unmatched_position_count", "formula_clean_pnl_reconciled", "formula_clean", "formula_clean_reason") == 0)
+      else if(FileWrite(reconciliation_handle, "managed_account_realized_pnl", "grid_outcome_realized_pnl", "difference", "matched_deal_count", "unmatched_deal_count", "unmatched_position_count", "ownership_mismatch_deal_count", "ownership_mismatch_position_count", "formula_clean_pnl_reconciled", "formula_clean", "formula_clean_reason") == 0)
       {
          int error = GetLastError();
          FileClose(reconciliation_handle);
@@ -906,7 +983,7 @@ public:
       }
       else
       {
-         bool write_failed = FileWrite(reconciliation_handle, DoubleToString(reconciliation.managed_account_realized_pnl, 2), DoubleToString(reconciliation.grid_outcome_realized_pnl, 2), DoubleToString(reconciliation.difference, 2), IntegerToString(reconciliation.matched_deal_count), IntegerToString(reconciliation.unmatched_deal_count), IntegerToString(reconciliation.unmatched_position_count), LP_BoolText(reconciliation.formula_clean_pnl_reconciled), LP_BoolText(formula_clean), formula_clean_reason) == 0;
+         bool write_failed = FileWrite(reconciliation_handle, DoubleToString(reconciliation.managed_account_realized_pnl, 2), DoubleToString(reconciliation.grid_outcome_realized_pnl, 2), DoubleToString(reconciliation.difference, 2), IntegerToString(reconciliation.matched_deal_count), IntegerToString(reconciliation.unmatched_deal_count), IntegerToString(reconciliation.unmatched_position_count), IntegerToString(reconciliation.ownership_mismatch_deal_count), IntegerToString(reconciliation.ownership_mismatch_position_count), LP_BoolText(reconciliation.formula_clean_pnl_reconciled), LP_BoolText(formula_clean), formula_clean_reason) == 0;
          int error = write_failed ? GetLastError() : 0;
          FileClose(reconciliation_handle);
          if(write_failed)
@@ -960,16 +1037,24 @@ public:
       receipts.Summary("matched_deal_count", IntegerToString(reconciliation.matched_deal_count));
       receipts.Summary("unmatched_deal_count", IntegerToString(reconciliation.unmatched_deal_count));
       receipts.Summary("unmatched_position_count", IntegerToString(reconciliation.unmatched_position_count));
+      receipts.Summary("ownership_mismatch_deal_count", IntegerToString(reconciliation.ownership_mismatch_deal_count));
+      receipts.Summary("ownership_mismatch_position_count", IntegerToString(reconciliation.ownership_mismatch_position_count));
       receipts.Summary("formula_clean_pnl_reconciled", LP_BoolText(reconciliation.formula_clean_pnl_reconciled));
       receipts.Summary("successful_order_results", IntegerToString(broker_integrity.successful_order_results));
       receipts.Summary("failed_order_results", IntegerToString(broker_integrity.failed_order_results));
       receipts.Summary("broker_rejection_count", IntegerToString(broker_integrity.broker_rejection_count));
       receipts.Summary("no_money_count", IntegerToString(broker_integrity.no_money_count));
       receipts.Summary("market_closed_count", IntegerToString(broker_integrity.market_closed_count));
+      receipts.Summary("session_blocked_open_count", IntegerToString(broker_integrity.session_blocked_open_count));
+      receipts.Summary("session_deferred_close_count", IntegerToString(broker_integrity.session_deferred_close_count));
+      receipts.Summary("session_blocked_modify_count", IntegerToString(broker_integrity.session_blocked_modify_count));
+      receipts.Summary("session_metadata_failure_count", IntegerToString(broker_integrity.session_metadata_failure_count));
       receipts.Summary("first_no_money_timestamp", LP_Stamp(broker_integrity.first_no_money_time));
       receipts.Summary("last_no_money_timestamp", LP_Stamp(broker_integrity.last_no_money_time));
       receipts.Summary("first_broker_rejection_timestamp", LP_Stamp(broker_integrity.first_broker_rejection_time));
       receipts.Summary("last_broker_rejection_timestamp", LP_Stamp(broker_integrity.last_broker_rejection_time));
+      receipts.Summary("first_session_block_timestamp", LP_Stamp(broker_integrity.first_session_block_time));
+      receipts.Summary("last_session_block_timestamp", LP_Stamp(broker_integrity.last_session_block_time));
       receipts.Summary("formula_clean", LP_BoolText(formula_clean));
       receipts.Summary("formula_clean_reason", formula_clean_reason);
    }

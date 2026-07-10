@@ -9,6 +9,7 @@
 #include "..\\Receipts\\ReceiptWriter.mqh"
 #include "MagicCodec.mqh"
 #include "RetcodeClassifier.mqh"
+#include "TradeSessionAdmission.mqh"
 
 class LP_TradeRouter
 {
@@ -44,6 +45,46 @@ private:
       return retcode == TRADE_RETCODE_DONE || retcode == TRADE_RETCODE_DONE_PARTIAL;
    }
 
+   void ObserveSessionAdmissionBlock(
+      const int action,
+      const datetime server_now,
+      const bool metadata_unavailable
+   )
+   {
+      if(IsOpenAction(action))
+         m_execution_integrity.session_blocked_open_count++;
+      else if(IsCloseAction(action))
+         m_execution_integrity.session_deferred_close_count++;
+      else if(IsProtectionModifyAction(action))
+         m_execution_integrity.session_blocked_modify_count++;
+      if(metadata_unavailable)
+         m_execution_integrity.session_metadata_failure_count++;
+      if(m_execution_integrity.first_session_block_time <= 0)
+         m_execution_integrity.first_session_block_time = server_now;
+      m_execution_integrity.last_session_block_time = server_now;
+   }
+
+   void BindPlanToPosition(
+      const LP_TradePlan &plan,
+      const string position_symbol,
+      const long position_magic,
+      LP_TradePlan &position_plan
+   )
+   {
+      position_plan = plan;
+      position_plan.symbol = position_symbol;
+      position_plan.magic = position_magic;
+      LP_MagicParts parts;
+      if(LP_DecodeMagic(position_magic, parts))
+      {
+         position_plan.symbol_id = parts.symbol_id;
+         position_plan.lane_id = parts.lane_id;
+         position_plan.variant_id = parts.variant_id;
+         position_plan.direction = parts.direction;
+         position_plan.grid_key = LP_BuildGridKeyFromParts(parts);
+      }
+   }
+
    void ObserveBrokerExecutionResult(const LP_TradeExecutionResult &execution)
    {
       if(execution.accepted)
@@ -73,6 +114,16 @@ private:
       {
          m_execution_integrity.market_closed_count++;
       }
+   }
+
+   void ObserveBrokerModifyResult(const bool accepted, const MqlTradeResult &result)
+   {
+      LP_TradeExecutionResult execution;
+      LP_ResetTradeExecutionResult(execution);
+      execution.accepted = accepted;
+      execution.retcode = result.retcode;
+      execution.broker_rejected = !accepted && result.retcode != TRADE_RETCODE_PLACED;
+      ObserveBrokerExecutionResult(execution);
    }
 
    void CaptureExecutionResult(
@@ -280,7 +331,7 @@ private:
              "|" + message,
          plan.lane_id,
          plan.variant_id,
-         0,
+         plan.grid_key,
          plan.intent_id,
          plan.decision_id,
          plan.magic
@@ -315,7 +366,7 @@ private:
              "|reservation_reason=" + plan.reservation_reason,
          plan.lane_id,
          plan.variant_id,
-         0,
+         plan.grid_key,
          plan.intent_id,
          plan.decision_id,
          plan.magic
@@ -347,7 +398,7 @@ private:
             "|target_take_profit_price=" + DoubleToString(plan.target_take_profit_price, digits),
          plan.lane_id,
          plan.variant_id,
-         0,
+         plan.grid_key,
          plan.intent_id,
          plan.decision_id,
          plan.magic
@@ -444,6 +495,23 @@ private:
          return false;
       }
 
+      datetime server_now = TimeTradeServer();
+      string session_reason = "";
+      string session_detail = "";
+      bool session_metadata_unavailable = false;
+      if(!LP_IsTradeSessionOpen(plan.symbol, server_now, session_reason, session_detail, session_metadata_unavailable))
+      {
+         ObserveSessionAdmissionBlock(plan.action, server_now, session_metadata_unavailable);
+         WriteOrderRequest(
+            receipts,
+            plan,
+            "grid_tp_sync_session_blocked",
+            "reason=" + session_reason +
+               "|order_send_attempted=false|" + session_detail
+         );
+         return false;
+      }
+
       string target_reason = "";
       if(!TargetTakeProfitTradable(plan, target_reason))
       {
@@ -530,6 +598,7 @@ private:
             m_broker_tp_modify_attempts++;
             bool ok = OrderSend(request, result);
             bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+            ObserveBrokerModifyResult(accepted, result);
             if(accepted)
                modified++;
             else
@@ -594,6 +663,7 @@ private:
             m_broker_tp_modify_attempts++;
             bool ok = OrderSend(request, result);
             bool accepted = ok && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+            ObserveBrokerModifyResult(accepted, result);
             if(accepted)
                modified++;
             else
@@ -632,6 +702,11 @@ private:
          return false;
 
       string symbol = PositionGetString(POSITION_SYMBOL);
+      long position_magic = (long)PositionGetInteger(POSITION_MAGIC);
+      if(!LP_IsManagedMagic(position_magic))
+         return false;
+      LP_TradePlan position_plan;
+      BindPlanToPosition(plan, symbol, position_magic, position_plan);
       double position_lots = PositionGetDouble(POSITION_VOLUME);
       double close_lots = position_lots;
       bool partial = plan.action == LP_INTENT_REDUCE_GRID;
@@ -644,17 +719,20 @@ private:
 
       WriteOrderRequest(
          receipts,
-         plan,
+         position_plan,
          partial ? "reduce_request" : "close_request",
           "ticket=" + (string)ticket +
              "|close_scope=" + (plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" : (partial ? "grid_reduce" : "grid_close")) +
              "|position_lots=" + DoubleToString(position_lots, 2) +
              "|close_lots=" + DoubleToString(close_lots, 2) +
-              "|grid_magic=" + (string)plan.magic +
+              "|plan_magic=" + (string)plan.magic +
+              "|position_magic=" + (string)position_magic +
+              "|request_magic=" + (string)position_magic +
               "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason)
       );
 
       bool ok = false;
+      m_trade.SetExpertMagicNumber((ulong)position_magic);
       m_order_close_attempts++;
       if(partial && close_lots < position_lots)
          ok = m_trade.PositionClosePartial(ticket, close_lots, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
@@ -663,7 +741,7 @@ private:
 
       LP_TradeExecutionResult ticket_execution;
       LP_ResetTradeExecutionResult(ticket_execution);
-      CaptureExecutionResult(plan, ok, ticket_execution);
+      CaptureExecutionResult(position_plan, ok, ticket_execution);
       ObserveBrokerExecutionResult(ticket_execution);
       execution.retcode = ticket_execution.retcode;
       execution.order_ticket = ticket_execution.order_ticket;
@@ -686,7 +764,7 @@ private:
       else
          execution.failed_positions++;
 
-      WriteOrderResult(receipts, plan, ticket_execution.accepted, close_lots, symbol);
+      WriteOrderResult(receipts, position_plan, ticket_execution.accepted, close_lots, symbol);
       return ticket_flat;
    }
 
@@ -718,7 +796,6 @@ private:
          return false;
       }
 
-      m_trade.SetExpertMagicNumber(plan.magic);
       m_trade.SetDeviationInPoints((ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
 
       string close_scope = plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" :
@@ -727,9 +804,11 @@ private:
       int attempted = 0;
       int closed = 0;
       int skipped_due_to_close_limit = 0;
+      int session_deferred = 0;
       double remaining_lots = plan.lots;
       bool reduce_done = false;
       execution.close_limit = m_config.max_close_positions_per_step;
+      datetime server_now = TimeTradeServer();
 
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
@@ -753,6 +832,26 @@ private:
 
          matched++;
          execution.matched_positions++;
+         string position_symbol = PositionGetString(POSITION_SYMBOL);
+         string session_reason = "";
+         string session_detail = "";
+         bool session_metadata_unavailable = false;
+         if(!LP_IsTradeSessionOpen(position_symbol, server_now, session_reason, session_detail, session_metadata_unavailable))
+         {
+            session_deferred++;
+            ObserveSessionAdmissionBlock(plan.action, server_now, session_metadata_unavailable);
+            LP_TradePlan position_plan;
+            BindPlanToPosition(plan, position_symbol, magic, position_plan);
+            WriteOrderRequest(
+               receipts,
+               position_plan,
+               "close_session_deferred",
+               "ticket=" + (string)ticket +
+                  "|reason=" + session_reason +
+                  "|order_send_attempted=false|" + session_detail
+            );
+            continue;
+         }
          if(attempted >= m_config.max_close_positions_per_step)
          {
             skipped_due_to_close_limit++;
@@ -774,6 +873,9 @@ private:
          }
       }
 
+      bool close_work_pending = matched > closed;
+      bool close_all_pending = plan.action == LP_INTENT_CLOSE_ALL_EA && close_work_pending;
+
       WriteOrderRequest(
          receipts,
          plan,
@@ -783,8 +885,10 @@ private:
              "|attempted=" + IntegerToString(attempted) +
              "|closed=" + IntegerToString(closed) +
              "|skipped_due_to_close_limit=" + IntegerToString(skipped_due_to_close_limit) +
+             "|session_deferred=" + IntegerToString(session_deferred) +
              "|close_limit=" + IntegerToString(m_config.max_close_positions_per_step) +
-             "|close_all_pending=" + LP_BoolText(plan.action == LP_INTENT_CLOSE_ALL_EA && skipped_due_to_close_limit > 0) +
+             "|close_work_pending=" + LP_BoolText(close_work_pending) +
+             "|close_all_pending=" + LP_BoolText(close_all_pending) +
              "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
               "|reduce_done=" + LP_BoolText(reduce_done) +
               "|grid_magic=" + (string)plan.magic +
@@ -796,6 +900,7 @@ private:
          "|attempted=" + IntegerToString(execution.attempted_positions) +
          "|closed=" + IntegerToString(execution.closed_positions) +
          "|failed=" + IntegerToString(execution.failed_positions) +
+         "|session_deferred=" + IntegerToString(session_deferred) +
          "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason);
       return execution.accepted;
    }
@@ -887,6 +992,23 @@ public:
       if(!can_place || m_config.execution_mode == LP_EXECUTION_DRY_RUN)
       {
          WriteOrderRequest(receipts, plan, "dry_or_blocked", "reason=" + (barrier_reason == "" ? "dry_run" : barrier_reason));
+         return false;
+      }
+
+      datetime server_now = TimeTradeServer();
+      string session_reason = "";
+      string session_detail = "";
+      bool session_metadata_unavailable = false;
+      if(!LP_IsTradeSessionOpen(plan.symbol, server_now, session_reason, session_detail, session_metadata_unavailable))
+      {
+         ObserveSessionAdmissionBlock(plan.action, server_now, session_metadata_unavailable);
+         execution.detail = "order_send_attempted=false|reason=" + session_reason + "|" + session_detail;
+         WriteOrderRequest(
+            receipts,
+            plan,
+            "open_session_blocked",
+            execution.detail
+         );
          return false;
       }
 

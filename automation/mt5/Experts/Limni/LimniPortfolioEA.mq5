@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.025"
-#property description "LimniPortfolioEA 0.1.25-gate107c Revma research integrity telemetry"
+#property version   "1.026"
+#property description "LimniPortfolioEA 0.1.26-gate107cr runtime integrity repair"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"
