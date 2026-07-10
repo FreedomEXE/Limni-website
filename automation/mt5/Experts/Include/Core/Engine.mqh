@@ -186,6 +186,28 @@ private:
       m_receipts.Summary("runtime_profile_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
       m_receipts.Summary("runtime_profile_total_new_bars", IntegerToString(m_total_new_bars));
       m_receipts.Summary("runtime_profile_position_grid_refreshes", IntegerToString(m_total_position_grid_refreshes));
+      m_receipts.Summary("runtime_profile_inventory_exact_full_scans", (string)m_position_index.ExactFullScanCount());
+      m_receipts.Summary("runtime_profile_inventory_cached_market_reprices", (string)m_position_index.CachedMarketRepriceCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_active_at_end", LP_BoolText(m_position_index.TesterCacheActive()));
+      m_receipts.Summary("runtime_profile_inventory_cache_validations", (string)m_position_index.CacheValidationCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_validation_passes", (string)m_position_index.CacheValidationPassCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_validation_failures", (string)m_position_index.CacheValidationFailureCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_runtime_fallbacks", (string)m_position_index.CacheRuntimeFallbackCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_structural_checkpoints", (string)m_position_index.CacheStructuralCheckpointCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_daily_checkpoints", (string)m_position_index.CacheDailyCheckpointCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_invalidations", (string)m_position_index.CacheInvalidationCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_validation_tolerance", DoubleToString(m_position_index.CacheValidationTolerance(), 8));
+      m_receipts.Summary("runtime_profile_inventory_cache_max_validation_difference", DoubleToString(m_position_index.CacheMaxValidationDifference(), 8));
+      m_receipts.Summary("runtime_profile_inventory_cache_structure_mismatch_positions", IntegerToString(m_position_index.CacheStructureMismatchPositions()));
+      m_receipts.Summary("runtime_profile_inventory_leg_allocation_failures", (string)m_grid_book.LegAllocationFailureCount());
+      m_receipts.Summary("runtime_profile_inventory_leg_index_build_failures", (string)m_grid_book.LegIndexBuildFailureCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_last_reason", m_position_index.CacheLastReason());
+      m_receipts.Summary("runtime_profile_commission_cache_hits", (string)m_position_commission_cache.CacheHitCount());
+      m_receipts.Summary("runtime_profile_commission_cache_misses", (string)m_position_commission_cache.CacheMissCount());
+      m_receipts.Summary("runtime_profile_commission_history_reads", (string)m_position_commission_cache.HistoryReadCount());
+      m_receipts.Summary("runtime_profile_commission_targeted_invalidations", (string)m_position_commission_cache.TargetedInvalidationCount());
+      m_receipts.Summary("runtime_profile_commission_full_invalidations", (string)m_position_commission_cache.FullInvalidationCount());
+      m_receipts.Summary("runtime_profile_commission_cache_allocation_failures", (string)m_position_commission_cache.AllocationFailureCount());
       m_receipts.Summary("runtime_profile_fx28_symbol_evaluations", (string)m_total_revma_symbol_evaluations);
       m_receipts.Summary("runtime_profile_grid_exit_scans", IntegerToString(m_total_grid_exit_scans));
       m_receipts.Summary("runtime_profile_tp_sync_scans", IntegerToString(m_total_tp_sync_scans));
@@ -665,6 +687,7 @@ public:
          EventKillTimer();
 
        LP_PortfolioState state;
+       m_position_index.MarkDirty();
        RefreshPortfolioAndGrid(state);
        m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
        m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
@@ -709,7 +732,20 @@ public:
    {
       if(!m_initialized)
          return;
-      m_position_commission_cache.Reset();
+      bool commission_deal_transaction =
+         trans.type == TRADE_TRANSACTION_DEAL_ADD ||
+         trans.type == TRADE_TRANSACTION_DEAL_UPDATE ||
+         trans.type == TRADE_TRANSACTION_DEAL_DELETE;
+      if(commission_deal_transaction)
+      {
+         long position_identifier = 0;
+         if(trans.deal > 0 && HistoryDealSelect(trans.deal))
+            position_identifier = (long)HistoryDealGetInteger(trans.deal, DEAL_POSITION_ID);
+         if(position_identifier > 0)
+            m_position_commission_cache.Invalidate(position_identifier);
+         else
+            m_position_commission_cache.InvalidateAll();
+      }
       m_position_index.MarkDirty();
       m_portfolio_dirty = true;
       m_receipts.Write(
@@ -1008,6 +1044,7 @@ public:
             }
             m_strategy_registry.RecordRevmaExecutionOutcome(plan, execution, m_receipts);
             m_strategy_registry.RecordRevmaCloseExecution(plan, execution, m_receipts);
+            m_position_index.MarkDirty();
             m_portfolio_dirty = true;
          }
       }

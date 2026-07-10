@@ -160,6 +160,8 @@ private:
    LP_RevmaPendingLifecycle m_pending_lifecycle[];
    int m_pending_lifecycle_count;
    int m_pending_lifecycle_capacity;
+   int m_pending_lifecycle_max_active;
+   int m_pending_lifecycle_max_allocated;
    LP_RevmaGridCloseLatch m_close_latches[];
    int m_close_latch_count;
    int m_close_latch_capacity;
@@ -167,6 +169,20 @@ private:
    ulong m_persistence_failure_count;
    ulong m_persistence_total_microseconds;
    ulong m_persistence_max_microseconds;
+   ulong m_birth_persistence_write_count;
+   ulong m_birth_persistence_total_microseconds;
+   ulong m_birth_persistence_max_microseconds;
+   ulong m_close_latch_persistence_write_count;
+   ulong m_close_latch_persistence_total_microseconds;
+   ulong m_close_latch_persistence_max_microseconds;
+   ulong m_persistence_deferred_mutation_count;
+   ulong m_persistence_deferred_maintenance_total_microseconds;
+   ulong m_persistence_deferred_maintenance_max_microseconds;
+   ulong m_persistence_final_checkpoint_count;
+   bool m_birth_persistence_dirty;
+   bool m_close_latch_persistence_dirty;
+   bool m_birth_persistence_dirty_before_final_checkpoint;
+   bool m_close_latch_persistence_dirty_before_final_checkpoint;
 
    string StateFolder()
    {
@@ -190,6 +206,35 @@ private:
    bool TesterRuntime()
    {
       return LP_IsTesterRuntime();
+   }
+
+   string PersistencePolicyName()
+   {
+      if(!m_state_persistence_enabled)
+         return "disabled";
+      return TesterRuntime() ? "tester_deferred_final_checkpoint" : "live_immediate_snapshot";
+   }
+
+   void ObservePersistenceWrite(const bool birth_snapshot, const ulong elapsed)
+   {
+      m_persistence_write_count++;
+      m_persistence_total_microseconds += elapsed;
+      if(elapsed > m_persistence_max_microseconds)
+         m_persistence_max_microseconds = elapsed;
+
+      if(birth_snapshot)
+      {
+         m_birth_persistence_write_count++;
+         m_birth_persistence_total_microseconds += elapsed;
+         if(elapsed > m_birth_persistence_max_microseconds)
+            m_birth_persistence_max_microseconds = elapsed;
+         return;
+      }
+
+      m_close_latch_persistence_write_count++;
+      m_close_latch_persistence_total_microseconds += elapsed;
+      if(elapsed > m_close_latch_persistence_max_microseconds)
+         m_close_latch_persistence_max_microseconds = elapsed;
    }
 
    int AnchorRelationFromPrice(const double price, const double anchor)
@@ -400,9 +445,13 @@ private:
          {
             m_pending_lifecycle_capacity = m_pending_lifecycle_capacity <= 0 ? 32 : m_pending_lifecycle_capacity * 2;
             ArrayResize(m_pending_lifecycle, m_pending_lifecycle_capacity);
+            if(m_pending_lifecycle_capacity > m_pending_lifecycle_max_allocated)
+               m_pending_lifecycle_max_allocated = m_pending_lifecycle_capacity;
          }
          index = m_pending_lifecycle_count;
          m_pending_lifecycle_count++;
+         if(m_pending_lifecycle_count > m_pending_lifecycle_max_active)
+            m_pending_lifecycle_max_active = m_pending_lifecycle_count;
       }
 
       LP_ResetRevmaPendingLifecycle(m_pending_lifecycle[index]);
@@ -424,8 +473,13 @@ private:
       if(index < 0)
          return false;
       pending = m_pending_lifecycle[index];
-      m_pending_lifecycle[index].valid = false;
-      return pending.valid;
+      bool valid = pending.valid;
+      int last_index = m_pending_lifecycle_count - 1;
+      if(index != last_index)
+         m_pending_lifecycle[index] = m_pending_lifecycle[last_index];
+      LP_ResetRevmaPendingLifecycle(m_pending_lifecycle[last_index]);
+      m_pending_lifecycle_count--;
+      return valid;
    }
 
    string ExecutionTruthMetadata(
@@ -471,13 +525,23 @@ private:
          m_birth_capacity = m_birth_count;
    }
 
-   void PersistBirths(LP_ReceiptWriter &receipts, const string cause)
+   bool PersistBirths(LP_ReceiptWriter &receipts, const string cause, const bool force_write)
    {
       if(!m_state_persistence_enabled)
-         return;
+         return false;
 
       ulong started_at = GetMicrosecondCount();
+      m_birth_persistence_dirty = true;
       CompactBirths();
+      if(TesterRuntime() && !force_write)
+      {
+         ulong elapsed = GetMicrosecondCount() - started_at;
+         m_persistence_deferred_mutation_count++;
+         m_persistence_deferred_maintenance_total_microseconds += elapsed;
+         if(elapsed > m_persistence_deferred_maintenance_max_microseconds)
+            m_persistence_deferred_maintenance_max_microseconds = elapsed;
+         return true;
+      }
 
       FolderCreate(StateFolder(), FILE_COMMON);
       int handle = FileOpen(StateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
@@ -497,7 +561,7 @@ private:
             0
          );
          Print(LP_EA_NAME, " revma lifecycle persistence failed: ", StateFileName());
-         return;
+         return false;
       }
 
       if(FileWrite(
@@ -541,7 +605,7 @@ private:
          FileClose(handle);
          receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_header|state_file=" + StateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
          Print(LP_EA_NAME, " revma lifecycle persistence header write failed: ", StateFileName());
-         return;
+         return false;
       }
 
       for(int i = 0; i < m_birth_count; i++)
@@ -589,16 +653,20 @@ private:
             FileClose(handle);
             receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_row|grid_key=" + (string)m_births[i].grid_key + "|state_file=" + StateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, m_births[i].grid_key, 0, 0, 0);
             Print(LP_EA_NAME, " revma lifecycle persistence row write failed: ", StateFileName());
-            return;
+            return false;
          }
       }
 
       FileClose(handle);
       ulong elapsed = GetMicrosecondCount() - started_at;
-      m_persistence_write_count++;
-      m_persistence_total_microseconds += elapsed;
-      if(elapsed > m_persistence_max_microseconds)
-         m_persistence_max_microseconds = elapsed;
+      ObservePersistenceWrite(true, elapsed);
+      m_birth_persistence_dirty = false;
+      return true;
+   }
+
+   void PersistBirths(LP_ReceiptWriter &receipts, const string cause)
+   {
+      PersistBirths(receipts, cause, false);
    }
 
    void CompactCloseLatches()
@@ -617,19 +685,30 @@ private:
          m_close_latch_capacity = m_close_latch_count;
    }
 
-   void PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause)
+   bool PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause, const bool force_write)
    {
       if(!m_state_persistence_enabled)
-         return;
+         return false;
 
+      ulong started_at = GetMicrosecondCount();
+      m_close_latch_persistence_dirty = true;
       CompactCloseLatches();
+      if(TesterRuntime() && !force_write)
+      {
+         ulong elapsed = GetMicrosecondCount() - started_at;
+         m_persistence_deferred_mutation_count++;
+         m_persistence_deferred_maintenance_total_microseconds += elapsed;
+         if(elapsed > m_persistence_deferred_maintenance_max_microseconds)
+            m_persistence_deferred_maintenance_max_microseconds = elapsed;
+         return true;
+      }
       FolderCreate(StateFolder(), FILE_COMMON);
       int handle = FileOpen(CloseLatchStateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle == INVALID_HANDLE)
       {
          m_persistence_failure_count++;
          receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
-         return;
+         return false;
       }
 
       if(FileWrite(handle, "grid_key", "close_reason", "started_at", "original_ticket_count", "attempted_count", "closed_count", "remaining_ticket_count", "close_cap") == 0)
@@ -637,7 +716,7 @@ private:
          m_persistence_failure_count++;
          FileClose(handle);
          receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_close_latch_header|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
-         return;
+         return false;
       }
 
       for(int i = 0; i < m_close_latch_count; i++)
@@ -650,11 +729,19 @@ private:
             m_persistence_failure_count++;
             FileClose(handle);
             receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_close_latch_row|grid_key=" + (string)latch.grid_key + "|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, latch.grid_key, 0, 0, 0);
-            return;
+            return false;
          }
       }
       FileClose(handle);
-      m_persistence_write_count++;
+      ulong elapsed = GetMicrosecondCount() - started_at;
+      ObservePersistenceWrite(false, elapsed);
+      m_close_latch_persistence_dirty = false;
+      return true;
+   }
+
+   void PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause)
+   {
+      PersistCloseLatches(receipts, cause, false);
    }
 
    bool StartCloseLatch(
@@ -2058,12 +2145,28 @@ public:
       m_last_blocked_birth_hash = 0;
       m_pending_lifecycle_count = 0;
       m_pending_lifecycle_capacity = 0;
+      m_pending_lifecycle_max_active = 0;
+      m_pending_lifecycle_max_allocated = 0;
       m_close_latch_count = 0;
       m_close_latch_capacity = 0;
       m_persistence_write_count = 0;
       m_persistence_failure_count = 0;
       m_persistence_total_microseconds = 0;
       m_persistence_max_microseconds = 0;
+      m_birth_persistence_write_count = 0;
+      m_birth_persistence_total_microseconds = 0;
+      m_birth_persistence_max_microseconds = 0;
+      m_close_latch_persistence_write_count = 0;
+      m_close_latch_persistence_total_microseconds = 0;
+      m_close_latch_persistence_max_microseconds = 0;
+      m_persistence_deferred_mutation_count = 0;
+      m_persistence_deferred_maintenance_total_microseconds = 0;
+      m_persistence_deferred_maintenance_max_microseconds = 0;
+      m_persistence_final_checkpoint_count = 0;
+      m_birth_persistence_dirty = false;
+      m_close_latch_persistence_dirty = false;
+      m_birth_persistence_dirty_before_final_checkpoint = false;
+      m_close_latch_persistence_dirty_before_final_checkpoint = false;
       m_protection_manager.Reset();
       m_research_telemetry.Reset();
       ArrayResize(m_births, 0);
@@ -2229,7 +2332,33 @@ public:
       LP_ReceiptWriter &receipts
    )
    {
+      if(m_state_persistence_enabled && TesterRuntime())
+      {
+         m_birth_persistence_dirty_before_final_checkpoint = m_birth_persistence_dirty;
+         m_close_latch_persistence_dirty_before_final_checkpoint = m_close_latch_persistence_dirty;
+         PersistBirths(receipts, "tester_final_checkpoint", true);
+         PersistCloseLatches(receipts, "tester_final_checkpoint", true);
+         m_persistence_final_checkpoint_count++;
+      }
+
       m_research_telemetry.Finalize(config, broker_integrity, receipts);
+      receipts.Summary("revma_pending_lifecycle_max_active", IntegerToString(m_pending_lifecycle_max_active));
+      receipts.Summary("revma_pending_lifecycle_max_allocated", IntegerToString(m_pending_lifecycle_max_allocated));
+      receipts.Summary("revma_lifecycle_persistence_policy", PersistencePolicyName());
+      receipts.Summary("revma_lifecycle_persistence_deferred_mutations", (string)m_persistence_deferred_mutation_count);
+      receipts.Summary("revma_lifecycle_persistence_deferred_maintenance_total_microseconds", (string)m_persistence_deferred_maintenance_total_microseconds);
+      receipts.Summary("revma_lifecycle_persistence_deferred_maintenance_max_microseconds", (string)m_persistence_deferred_maintenance_max_microseconds);
+      receipts.Summary("revma_lifecycle_persistence_final_checkpoints", (string)m_persistence_final_checkpoint_count);
+      receipts.Summary("revma_lifecycle_birth_dirty_before_final_checkpoint", LP_BoolText(m_birth_persistence_dirty_before_final_checkpoint));
+      receipts.Summary("revma_lifecycle_close_latch_dirty_before_final_checkpoint", LP_BoolText(m_close_latch_persistence_dirty_before_final_checkpoint));
+      receipts.Summary("revma_lifecycle_birth_dirty_after_final_checkpoint", LP_BoolText(m_birth_persistence_dirty));
+      receipts.Summary("revma_lifecycle_close_latch_dirty_after_final_checkpoint", LP_BoolText(m_close_latch_persistence_dirty));
+      receipts.Summary("revma_lifecycle_birth_snapshot_writes", (string)m_birth_persistence_write_count);
+      receipts.Summary("revma_lifecycle_birth_snapshot_total_microseconds", (string)m_birth_persistence_total_microseconds);
+      receipts.Summary("revma_lifecycle_birth_snapshot_max_microseconds", (string)m_birth_persistence_max_microseconds);
+      receipts.Summary("revma_lifecycle_close_latch_snapshot_writes", (string)m_close_latch_persistence_write_count);
+      receipts.Summary("revma_lifecycle_close_latch_snapshot_total_microseconds", (string)m_close_latch_persistence_total_microseconds);
+      receipts.Summary("revma_lifecycle_close_latch_snapshot_max_microseconds", (string)m_close_latch_persistence_max_microseconds);
       receipts.Summary("revma_lifecycle_persistence_failures", (string)m_persistence_failure_count);
    }
 

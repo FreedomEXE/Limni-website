@@ -36,7 +36,6 @@ struct LP_RevmaTelemetryGrid
    double realized_profit;
    double realized_swap;
    double realized_commission;
-   string position_tickets;
    string position_identifiers;
    string last_add_type;
    string close_reason;
@@ -86,7 +85,6 @@ void LP_ResetRevmaTelemetryGrid(LP_RevmaTelemetryGrid &row)
    row.realized_profit = 0.0;
    row.realized_swap = 0.0;
    row.realized_commission = 0.0;
-   row.position_tickets = "";
    row.position_identifiers = "";
    row.last_add_type = "";
    row.close_reason = "";
@@ -134,6 +132,15 @@ struct LP_RevmaTelemetryReconciliation
    int unmatched_position_count;
    int ownership_mismatch_deal_count;
    int ownership_mismatch_position_count;
+   int owner_map_entry_count;
+   int owner_map_conflict_count;
+   int owner_map_allocation_failure_count;
+   int owner_map_insertion_failure_count;
+   ulong owner_map_lookup_count;
+   ulong owner_map_collision_count;
+   ulong owner_map_fallback_lookup_count;
+   int identifier_set_allocation_failure_count;
+   int identifier_set_insertion_failure_count;
    bool formula_clean_pnl_reconciled;
 };
 
@@ -147,6 +154,15 @@ void LP_ResetRevmaTelemetryReconciliation(LP_RevmaTelemetryReconciliation &recon
    reconciliation.unmatched_position_count = 0;
    reconciliation.ownership_mismatch_deal_count = 0;
    reconciliation.ownership_mismatch_position_count = 0;
+   reconciliation.owner_map_entry_count = 0;
+   reconciliation.owner_map_conflict_count = 0;
+   reconciliation.owner_map_allocation_failure_count = 0;
+   reconciliation.owner_map_insertion_failure_count = 0;
+   reconciliation.owner_map_lookup_count = 0;
+   reconciliation.owner_map_collision_count = 0;
+   reconciliation.owner_map_fallback_lookup_count = 0;
+   reconciliation.identifier_set_allocation_failure_count = 0;
+   reconciliation.identifier_set_insertion_failure_count = 0;
    reconciliation.formula_clean_pnl_reconciled = false;
 }
 
@@ -178,16 +194,169 @@ private:
    LP_RevmaTelemetryGrid m_rows[];
    int m_count;
    int m_capacity;
+   ulong m_grid_index_keys[];
+   int m_grid_index_rows[];
+   int m_grid_index_capacity;
+   int m_grid_index_count;
+   bool m_grid_index_degraded;
+   ulong m_grid_index_lookup_count;
+   ulong m_grid_index_collision_count;
+   ulong m_grid_index_rebuild_count;
+   ulong m_grid_index_allocation_failure_count;
+   ulong m_grid_index_insertion_failure_count;
+   ulong m_grid_index_fallback_lookup_count;
+   ulong m_grid_row_allocation_failure_count;
    datetime m_started_at;
+
+   int HashSlot(const ulong key, const int capacity)
+   {
+      if(capacity <= 0)
+         return 0;
+      ulong mixed = key;
+      mixed ^= mixed >> 33;
+      mixed ^= mixed >> 17;
+      mixed ^= mixed >> 9;
+      return (int)(mixed % (ulong)capacity);
+   }
+
+   int HashCapacityForEntries(const int expected_entries)
+   {
+      long target = (long)MathMax(1, expected_entries) * 2;
+      int capacity = 64;
+      while((long)capacity < target && capacity <= 536870912)
+         capacity *= 2;
+      return capacity;
+   }
+
+   bool InsertGridIndex(const ulong grid_key, const int row_index)
+   {
+      if(grid_key == 0 || m_grid_index_capacity <= 0)
+         return false;
+      int slot = HashSlot(grid_key, m_grid_index_capacity);
+      for(int probe = 0; probe < m_grid_index_capacity; probe++)
+      {
+         ulong indexed_key = m_grid_index_keys[slot];
+         if(indexed_key == 0)
+         {
+            m_grid_index_keys[slot] = grid_key;
+            m_grid_index_rows[slot] = row_index;
+            m_grid_index_count++;
+            return true;
+         }
+         if(indexed_key == grid_key)
+         {
+            m_grid_index_rows[slot] = row_index;
+            return true;
+         }
+         m_grid_index_collision_count++;
+         slot++;
+         if(slot >= m_grid_index_capacity)
+            slot = 0;
+      }
+      return false;
+   }
+
+   bool RebuildGridIndex(const int requested_capacity)
+   {
+      m_grid_index_rebuild_count++;
+      m_grid_index_count = 0;
+      int new_capacity = (int)MathMax(64, requested_capacity);
+      int key_size = ArrayResize(m_grid_index_keys, new_capacity);
+      if(key_size != new_capacity)
+      {
+         m_grid_index_allocation_failure_count++;
+         m_grid_index_capacity = 0;
+         m_grid_index_degraded = true;
+         return false;
+      }
+      int row_size = ArrayResize(m_grid_index_rows, new_capacity);
+      if(row_size != new_capacity)
+      {
+         m_grid_index_allocation_failure_count++;
+         m_grid_index_capacity = 0;
+         m_grid_index_degraded = true;
+         return false;
+      }
+      m_grid_index_capacity = new_capacity;
+      for(int i = 0; i < new_capacity; i++)
+      {
+         m_grid_index_keys[i] = 0;
+         m_grid_index_rows[i] = -1;
+      }
+      for(int row_index = 0; row_index < m_count; row_index++)
+      {
+         if(m_rows[row_index].valid && m_rows[row_index].grid_key > 0)
+         {
+            if(!InsertGridIndex(m_rows[row_index].grid_key, row_index))
+            {
+               m_grid_index_insertion_failure_count++;
+               m_grid_index_degraded = true;
+               return false;
+            }
+         }
+      }
+      m_grid_index_degraded = false;
+      return true;
+   }
+
+   bool EnsureGridIndexCapacity(const int desired_entries)
+   {
+      if(m_grid_index_degraded || m_grid_index_capacity <= 0)
+      {
+         int rebuild_entries = (int)MathMax(desired_entries, m_count);
+         return RebuildGridIndex(HashCapacityForEntries(rebuild_entries));
+      }
+      if((long)desired_entries * 10 >= (long)m_grid_index_capacity * 7)
+         return RebuildGridIndex(m_grid_index_capacity * 2);
+      return true;
+   }
+
+   int LinearFindIndex(const ulong grid_key)
+   {
+      for(int row_index = 0; row_index < m_count; row_index++)
+      {
+         if(m_rows[row_index].valid && m_rows[row_index].grid_key == grid_key)
+            return row_index;
+      }
+      return -1;
+   }
 
    int FindIndex(const ulong grid_key)
    {
-      for(int i = 0; i < m_count; i++)
+      m_grid_index_lookup_count++;
+      if(grid_key == 0)
+         return -1;
+      if(m_grid_index_capacity <= 0 && m_count <= 0)
+         return -1;
+      if(m_grid_index_degraded || m_grid_index_capacity <= 0)
       {
-         if(m_rows[i].valid && m_rows[i].grid_key == grid_key)
-            return i;
+         m_grid_index_fallback_lookup_count++;
+         return LinearFindIndex(grid_key);
       }
-      return -1;
+      int slot = HashSlot(grid_key, m_grid_index_capacity);
+      for(int probe = 0; probe < m_grid_index_capacity; probe++)
+      {
+         ulong indexed_key = m_grid_index_keys[slot];
+         if(indexed_key == 0)
+            return -1;
+         if(indexed_key == grid_key)
+         {
+            int row_index = m_grid_index_rows[slot];
+            if(row_index >= 0 && row_index < m_count &&
+               m_rows[row_index].valid && m_rows[row_index].grid_key == grid_key)
+               return row_index;
+            m_grid_index_degraded = true;
+            m_grid_index_fallback_lookup_count++;
+            return LinearFindIndex(grid_key);
+         }
+         m_grid_index_collision_count++;
+         slot++;
+         if(slot >= m_grid_index_capacity)
+            slot = 0;
+      }
+      m_grid_index_degraded = true;
+      m_grid_index_fallback_lookup_count++;
+      return LinearFindIndex(grid_key);
    }
 
    int EnsureIndex(const ulong grid_key)
@@ -197,20 +366,31 @@ private:
          return index;
       if(m_count >= m_capacity)
       {
-         m_capacity = m_capacity <= 0 ? 32 : m_capacity * 2;
-         ArrayResize(m_rows, m_capacity);
+         int new_capacity = m_capacity <= 0 ? 32 : m_capacity * 2;
+         int row_size = ArrayResize(m_rows, new_capacity);
+         if(row_size != new_capacity)
+         {
+            m_grid_row_allocation_failure_count++;
+            return -1;
+         }
+         m_capacity = new_capacity;
       }
       index = m_count;
-      m_count++;
       LP_ResetRevmaTelemetryGrid(m_rows[index]);
       m_rows[index].valid = true;
       m_rows[index].grid_key = grid_key;
+      m_count++;
+      bool grid_index_ready = EnsureGridIndexCapacity(m_grid_index_count + 1);
+      if(grid_index_ready && !InsertGridIndex(grid_key, index))
+      {
+         m_grid_index_insertion_failure_count++;
+         m_grid_index_degraded = true;
+      }
       return index;
    }
 
    void UpdatePath(LP_RevmaTelemetryGrid &row, const LP_GridInventoryRow &grid)
    {
-      row.position_tickets = grid.tickets;
       row.current_position_count = grid.position_count;
       row.last_floating_pnl = grid.floating_pnl;
       if(row.max_position_count <= 0 || grid.position_count > row.max_position_count)
@@ -286,9 +466,9 @@ private:
          bucket.best_floating_profit = row.best_floating_pnl;
    }
 
-   int ParsePositionIdentifiers(const string text, ulong &identifiers[])
+   int CountPositionIdentifiers(const string text)
    {
-      ArrayResize(identifiers, 0);
+      int count = 0;
       int start = 0;
       int length = StringLen(text);
       while(start < length)
@@ -296,41 +476,241 @@ private:
          int end = StringFind(text, "|", start);
          if(end < 0)
             end = length;
-         string part = StringSubstr(text, start, end - start);
-         ulong identifier = (ulong)StringToInteger(part);
+         if((ulong)StringToInteger(StringSubstr(text, start, end - start)) > 0)
+            count++;
+         start = end + 1;
+      }
+      return count;
+   }
+
+   bool InsertOwner(
+      const ulong position_identifier,
+      const int row_index,
+      const long expected_magic,
+      ulong &owner_keys[],
+      int &owner_rows[],
+      long &owner_expected_magics[],
+      int &owner_entry_count,
+      int &owner_conflict_count,
+      ulong &collision_count
+   )
+   {
+      int capacity = ArraySize(owner_keys);
+      if(position_identifier == 0 || capacity <= 0)
+         return false;
+      int slot = HashSlot(position_identifier, capacity);
+      for(int probe = 0; probe < capacity; probe++)
+      {
+         ulong indexed_identifier = owner_keys[slot];
+         if(indexed_identifier == 0)
+         {
+            owner_keys[slot] = position_identifier;
+            owner_rows[slot] = row_index;
+            owner_expected_magics[slot] = expected_magic;
+            owner_entry_count++;
+            return true;
+         }
+         if(indexed_identifier == position_identifier)
+         {
+            // Retain the first owner, matching prior deal-ticket dedup order,
+            // but make any cross-grid owner ambiguity formula-contaminating.
+            if(owner_rows[slot] != row_index || owner_expected_magics[slot] != expected_magic)
+               owner_conflict_count++;
+            return true;
+         }
+         collision_count++;
+         slot++;
+         if(slot >= capacity)
+            slot = 0;
+      }
+      return false;
+   }
+
+   bool IndexPositionOwners(
+      const string text,
+      const int row_index,
+      const long expected_magic,
+      ulong &owner_keys[],
+      int &owner_rows[],
+      long &owner_expected_magics[],
+      int &owner_entry_count,
+      int &owner_conflict_count,
+      ulong &collision_count
+   )
+   {
+      int start = 0;
+      int length = StringLen(text);
+      while(start < length)
+      {
+         int end = StringFind(text, "|", start);
+         if(end < 0)
+            end = length;
+         ulong identifier = (ulong)StringToInteger(StringSubstr(text, start, end - start));
          if(identifier > 0)
          {
-            int count = ArraySize(identifiers);
-            ArrayResize(identifiers, count + 1, count + 1);
-            identifiers[count] = identifier;
+            if(!InsertOwner(
+                  identifier,
+                  row_index,
+                  expected_magic,
+                  owner_keys,
+                  owner_rows,
+                  owner_expected_magics,
+                  owner_entry_count,
+                  owner_conflict_count,
+                  collision_count
+               ))
+               return false;
          }
          start = end + 1;
       }
-      return ArraySize(identifiers);
+      return true;
    }
 
-   int FindTicketIndex(const ulong &tickets[], const ulong ticket)
+   bool PositionIdentifierTextContains(const string text, const ulong position_identifier)
    {
-      for(int i = 0; i < ArraySize(tickets); i++)
+      if(position_identifier == 0)
+         return false;
+      int start = 0;
+      int length = StringLen(text);
+      while(start < length)
       {
-         if(tickets[i] == ticket)
-            return i;
+         int end = StringFind(text, "|", start);
+         if(end < 0)
+            end = length;
+         ulong identifier = (ulong)StringToInteger(StringSubstr(text, start, end - start));
+         if(identifier == position_identifier)
+            return true;
+         start = end + 1;
+      }
+      return false;
+   }
+
+   bool FindOwnerLinear(
+      const ulong position_identifier,
+      int &row_index,
+      long &expected_magic
+   )
+   {
+      row_index = -1;
+      expected_magic = 0;
+      for(int candidate = 0; candidate < m_count; candidate++)
+      {
+         if(!m_rows[candidate].valid ||
+            !PositionIdentifierTextContains(m_rows[candidate].position_identifiers, position_identifier))
+            continue;
+         row_index = candidate;
+         expected_magic = LP_BuildMagic(
+            m_rows[candidate].symbol_id,
+            LP_LANE_REVMA,
+            m_rows[candidate].variant_id,
+            m_rows[candidate].direction,
+            (int)(m_rows[candidate].grid_key % 10000)
+         );
+         return true;
+      }
+      return false;
+   }
+
+   bool FindOwner(
+      const ulong position_identifier,
+      const ulong &owner_keys[],
+      const int &owner_rows[],
+      const long &owner_expected_magics[],
+      int &row_index,
+      long &expected_magic,
+      bool &owner_map_degraded,
+      int &owner_map_insertion_failure_count,
+      ulong &lookup_count,
+      ulong &collision_count,
+      ulong &fallback_lookup_count
+   )
+   {
+      row_index = -1;
+      expected_magic = 0;
+      lookup_count++;
+      if(position_identifier == 0)
+         return false;
+      if(owner_map_degraded)
+      {
+         fallback_lookup_count++;
+         return FindOwnerLinear(position_identifier, row_index, expected_magic);
+      }
+      int capacity = ArraySize(owner_keys);
+      if(capacity <= 0)
+      {
+         owner_map_insertion_failure_count++;
+         owner_map_degraded = true;
+         fallback_lookup_count++;
+         return FindOwnerLinear(position_identifier, row_index, expected_magic);
+      }
+      int slot = HashSlot(position_identifier, capacity);
+      for(int probe = 0; probe < capacity; probe++)
+      {
+         ulong indexed_identifier = owner_keys[slot];
+         if(indexed_identifier == 0)
+            return false;
+         if(indexed_identifier == position_identifier)
+         {
+            row_index = owner_rows[slot];
+            expected_magic = owner_expected_magics[slot];
+            if(row_index >= 0 && row_index < m_count && m_rows[row_index].valid)
+               return true;
+            owner_map_insertion_failure_count++;
+            owner_map_degraded = true;
+            fallback_lookup_count++;
+            return FindOwnerLinear(position_identifier, row_index, expected_magic);
+         }
+         collision_count++;
+         slot++;
+         if(slot >= capacity)
+            slot = 0;
+      }
+      owner_map_insertion_failure_count++;
+      owner_map_degraded = true;
+      fallback_lookup_count++;
+      return FindOwnerLinear(position_identifier, row_index, expected_magic);
+   }
+
+   int InsertIdentifierSet(const ulong identifier, ulong &keys[])
+   {
+      int capacity = ArraySize(keys);
+      if(identifier == 0 || capacity <= 0)
+         return -1;
+      int slot = HashSlot(identifier, capacity);
+      for(int probe = 0; probe < capacity; probe++)
+      {
+         ulong indexed_identifier = keys[slot];
+         if(indexed_identifier == 0)
+         {
+            keys[slot] = identifier;
+            return 1;
+         }
+         if(indexed_identifier == identifier)
+            return 0;
+         slot++;
+         if(slot >= capacity)
+            slot = 0;
       }
       return -1;
    }
 
-   bool ContainsTicket(const ulong &tickets[], const ulong ticket)
+   bool RegisterUniqueIdentifier(
+      const ulong identifier,
+      ulong &keys[],
+      bool &identifier_sets_degraded,
+      int &insertion_failure_count
+   )
    {
-      return FindTicketIndex(tickets, ticket) >= 0;
-   }
-
-   void AppendTicket(ulong &tickets[], const ulong ticket)
-   {
-      if(ticket == 0 || ContainsTicket(tickets, ticket))
-         return;
-      int count = ArraySize(tickets);
-      ArrayResize(tickets, count + 1, count + 1);
-      tickets[count] = ticket;
+      if(identifier == 0 || identifier_sets_degraded)
+         return true;
+      int insert_status = InsertIdentifierSet(identifier, keys);
+      if(insert_status > 0)
+         return true;
+      if(insert_status == 0)
+         return false;
+      insertion_failure_count++;
+      identifier_sets_degraded = true;
+      return true;
    }
 
    string ArtifactRelativeBase(const LP_Config &config, LP_ReceiptWriter &receipts)
@@ -396,15 +776,8 @@ private:
       unmatched_attempted_rows = 0;
       unmatched_write_failed = false;
       unmatched_write_error = 0;
-      ulong matched_deal_tickets[];
-      long matched_deal_expected_magics[];
-      ulong unmatched_position_identifiers[];
-      ulong ownership_mismatch_position_identifiers[];
-      ArrayResize(matched_deal_tickets, 0);
-      ArrayResize(matched_deal_expected_magics, 0);
-      ArrayResize(unmatched_position_identifiers, 0);
-      ArrayResize(ownership_mismatch_position_identifiers, 0);
 
+      int expected_owner_entries = 0;
       for(int row_index = 0; row_index < m_count; row_index++)
       {
          if(!m_rows[row_index].valid)
@@ -412,6 +785,52 @@ private:
          m_rows[row_index].realized_profit = 0.0;
          m_rows[row_index].realized_swap = 0.0;
          m_rows[row_index].realized_commission = 0.0;
+         expected_owner_entries += CountPositionIdentifiers(m_rows[row_index].position_identifiers);
+      }
+
+      // Position identifiers are the independent grid-outcome ledger. Index
+      // them once, then attribute every deal during one global history pass.
+      int owner_capacity = HashCapacityForEntries(expected_owner_entries);
+      ulong owner_keys[];
+      int owner_rows[];
+      long owner_expected_magics[];
+      bool owner_map_degraded = false;
+      int owner_key_size = ArrayResize(owner_keys, owner_capacity);
+      if(owner_key_size != owner_capacity)
+      {
+         reconciliation.owner_map_allocation_failure_count++;
+         owner_map_degraded = true;
+      }
+      int owner_row_size = -1;
+      if(!owner_map_degraded)
+         owner_row_size = ArrayResize(owner_rows, owner_capacity);
+      if(!owner_map_degraded && owner_row_size != owner_capacity)
+      {
+         reconciliation.owner_map_allocation_failure_count++;
+         owner_map_degraded = true;
+      }
+      int owner_magic_size = -1;
+      if(!owner_map_degraded)
+         owner_magic_size = ArrayResize(owner_expected_magics, owner_capacity);
+      if(!owner_map_degraded && owner_magic_size != owner_capacity)
+      {
+         reconciliation.owner_map_allocation_failure_count++;
+         owner_map_degraded = true;
+      }
+      if(!owner_map_degraded)
+      {
+         for(int i = 0; i < owner_capacity; i++)
+         {
+            owner_keys[i] = 0;
+            owner_rows[i] = -1;
+            owner_expected_magics[i] = 0;
+         }
+      }
+
+      for(int row_index = 0; !owner_map_degraded && row_index < m_count; row_index++)
+      {
+         if(!m_rows[row_index].valid)
+            continue;
          long expected_magic = LP_BuildMagic(
             m_rows[row_index].symbol_id,
             LP_LANE_REVMA,
@@ -419,41 +838,30 @@ private:
             m_rows[row_index].direction,
             (int)(m_rows[row_index].grid_key % 10000)
          );
-         ulong identifiers[];
-         int identifier_count = ParsePositionIdentifiers(m_rows[row_index].position_identifiers, identifiers);
-         for(int identifier_index = 0; identifier_index < identifier_count; identifier_index++)
+         if(!IndexPositionOwners(
+               m_rows[row_index].position_identifiers,
+               row_index,
+               expected_magic,
+               owner_keys,
+               owner_rows,
+               owner_expected_magics,
+               reconciliation.owner_map_entry_count,
+               reconciliation.owner_map_conflict_count,
+               reconciliation.owner_map_collision_count
+            ))
          {
-            if(!HistorySelectByPosition((long)identifiers[identifier_index]))
-               continue;
-            int deal_count = HistoryDealsTotal();
-            for(int deal_index = 0; deal_index < deal_count; deal_index++)
-            {
-               ulong deal_ticket = HistoryDealGetTicket(deal_index);
-               if(deal_ticket == 0 || ContainsTicket(matched_deal_tickets, deal_ticket))
-                  continue;
-               long entry = HistoryDealGetInteger(deal_ticket, DEAL_ENTRY);
-               if(entry != DEAL_ENTRY_IN && entry != DEAL_ENTRY_OUT &&
-                  entry != DEAL_ENTRY_INOUT && entry != DEAL_ENTRY_OUT_BY)
-                  continue;
-               m_rows[row_index].realized_profit += HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
-               m_rows[row_index].realized_swap += HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
-               m_rows[row_index].realized_commission += HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
-               if(FindTicketIndex(matched_deal_tickets, deal_ticket) < 0)
-               {
-                  int matched_count = ArraySize(matched_deal_tickets);
-                  ArrayResize(matched_deal_tickets, matched_count + 1, matched_count + 1);
-                  ArrayResize(matched_deal_expected_magics, matched_count + 1, matched_count + 1);
-                  matched_deal_tickets[matched_count] = deal_ticket;
-                  matched_deal_expected_magics[matched_count] = expected_magic;
-               }
-            }
+            reconciliation.owner_map_insertion_failure_count++;
+            owner_map_degraded = true;
          }
       }
 
-      datetime from = m_started_at;
-      if(from <= 0)
-         from = TimeCurrent();
-      if(!HistorySelect(from, TimeCurrent()))
+      // Preserve the two original reconciliation windows in one pass:
+      // mapped position outcomes own their complete deal history, while the
+      // managed-account/unmatched ownership ledger starts at this run.
+      datetime account_from = m_started_at;
+      if(account_from <= 0)
+         account_from = TimeCurrent();
+      if(!HistorySelect(0, TimeCurrent()))
       {
          reconciliation.unmatched_deal_count = 1;
          reconciliation.unmatched_position_count = 1;
@@ -462,6 +870,33 @@ private:
       }
 
       int history_deal_count = HistoryDealsTotal();
+      int identifier_set_capacity = HashCapacityForEntries(history_deal_count);
+      ulong unmatched_position_identifiers[];
+      ulong ownership_mismatch_position_identifiers[];
+      bool identifier_sets_degraded = false;
+      int unmatched_identifier_size = ArrayResize(unmatched_position_identifiers, identifier_set_capacity);
+      if(unmatched_identifier_size != identifier_set_capacity)
+      {
+         reconciliation.identifier_set_allocation_failure_count++;
+         identifier_sets_degraded = true;
+      }
+      int mismatch_identifier_size = -1;
+      if(!identifier_sets_degraded)
+         mismatch_identifier_size = ArrayResize(ownership_mismatch_position_identifiers, identifier_set_capacity);
+      if(!identifier_sets_degraded && mismatch_identifier_size != identifier_set_capacity)
+      {
+         reconciliation.identifier_set_allocation_failure_count++;
+         identifier_sets_degraded = true;
+      }
+      if(!identifier_sets_degraded)
+      {
+         for(int i = 0; i < identifier_set_capacity; i++)
+         {
+            unmatched_position_identifiers[i] = 0;
+            ownership_mismatch_position_identifiers[i] = 0;
+         }
+      }
+
       for(int deal_index = 0; deal_index < history_deal_count; deal_index++)
       {
          ulong deal_ticket = HistoryDealGetTicket(deal_index);
@@ -471,30 +906,58 @@ private:
          if(entry != DEAL_ENTRY_IN && entry != DEAL_ENTRY_OUT &&
             entry != DEAL_ENTRY_INOUT && entry != DEAL_ENTRY_OUT_BY)
             continue;
+
+         ulong position_identifier = (ulong)HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
+         int row_index = -1;
+         long expected_magic = 0;
+         bool matched_position_deal = FindOwner(
+            position_identifier,
+            owner_keys,
+            owner_rows,
+            owner_expected_magics,
+            row_index,
+            expected_magic,
+            owner_map_degraded,
+            reconciliation.owner_map_insertion_failure_count,
+            reconciliation.owner_map_lookup_count,
+            reconciliation.owner_map_collision_count,
+            reconciliation.owner_map_fallback_lookup_count
+         );
+
+         double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
+         double swap = HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
+         double commission = HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
+         double pnl = profit + swap + commission;
+         if(matched_position_deal)
+         {
+            m_rows[row_index].realized_profit += profit;
+            m_rows[row_index].realized_swap += swap;
+            m_rows[row_index].realized_commission += commission;
+         }
+
+         datetime deal_time = (datetime)HistoryDealGetInteger(deal_ticket, DEAL_TIME);
+         if(deal_time < account_from)
+            continue;
+
          long magic = HistoryDealGetInteger(deal_ticket, DEAL_MAGIC);
          LP_MagicParts parts;
-         int matched_deal_index = FindTicketIndex(matched_deal_tickets, deal_ticket);
-         bool matched_position_deal = matched_deal_index >= 0;
-         long expected_magic = matched_position_deal ? matched_deal_expected_magics[matched_deal_index] : 0;
          bool valid_revma_owner = LP_DecodeMagic(magic, parts) && parts.lane_id == LP_LANE_REVMA;
          bool exact_grid_owner = !matched_position_deal || (valid_revma_owner && magic == expected_magic);
-         double pnl = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT) +
-            HistoryDealGetDouble(deal_ticket, DEAL_SWAP) +
-            HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
          if(!valid_revma_owner || !exact_grid_owner)
          {
             if(!matched_position_deal)
                continue;
             reconciliation.ownership_mismatch_deal_count++;
-            ulong position_identifier = (ulong)HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
-            if(!ContainsTicket(ownership_mismatch_position_identifiers, position_identifier))
-            {
-               AppendTicket(ownership_mismatch_position_identifiers, position_identifier);
+            if(RegisterUniqueIdentifier(
+                  position_identifier,
+                  ownership_mismatch_position_identifiers,
+                  identifier_sets_degraded,
+                  reconciliation.identifier_set_insertion_failure_count
+               ))
                reconciliation.ownership_mismatch_position_count++;
-            }
             string expected_grid_key = "0";
             LP_MagicParts expected_parts;
-            if(matched_position_deal && LP_DecodeMagic(expected_magic, expected_parts))
+            if(LP_DecodeMagic(expected_magic, expected_parts))
                expected_grid_key = (string)LP_BuildGridKeyFromParts(expected_parts);
             unmatched_attempted_rows++;
             if(unmatched_handle != INVALID_HANDLE &&
@@ -523,12 +986,13 @@ private:
          }
 
          reconciliation.unmatched_deal_count++;
-         ulong position_identifier = (ulong)HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
-         if(!ContainsTicket(unmatched_position_identifiers, position_identifier))
-         {
-            AppendTicket(unmatched_position_identifiers, position_identifier);
+         if(RegisterUniqueIdentifier(
+               position_identifier,
+               unmatched_position_identifiers,
+               identifier_sets_degraded,
+               reconciliation.identifier_set_insertion_failure_count
+            ))
             reconciliation.unmatched_position_count++;
-         }
          unmatched_attempted_rows++;
          if(unmatched_handle != INVALID_HANDLE &&
             FileWrite(unmatched_handle, (string)deal_ticket, (string)position_identifier, (string)magic, LP_CanonicalSymbol(parts.symbol_id), (string)LP_BuildGridKeyFromParts(parts), DoubleToString(pnl, 2), "no_executed_birth_or_add_position_identifier_match") == 0)
@@ -550,6 +1014,11 @@ private:
          reconciliation.unmatched_position_count == 0 &&
          reconciliation.ownership_mismatch_deal_count == 0 &&
          reconciliation.ownership_mismatch_position_count == 0 &&
+         reconciliation.owner_map_conflict_count == 0 &&
+         reconciliation.owner_map_allocation_failure_count == 0 &&
+         reconciliation.owner_map_insertion_failure_count == 0 &&
+         reconciliation.identifier_set_allocation_failure_count == 0 &&
+         reconciliation.identifier_set_insertion_failure_count == 0 &&
          MathAbs(reconciliation.difference) <= 0.01;
    }
 
@@ -611,8 +1080,20 @@ public:
    void Reset()
    {
       ArrayResize(m_rows, 0);
+      ArrayFree(m_grid_index_keys);
+      ArrayFree(m_grid_index_rows);
       m_count = 0;
       m_capacity = 0;
+      m_grid_index_capacity = 0;
+      m_grid_index_count = 0;
+      m_grid_index_degraded = false;
+      m_grid_index_lookup_count = 0;
+      m_grid_index_collision_count = 0;
+      m_grid_index_rebuild_count = 0;
+      m_grid_index_allocation_failure_count = 0;
+      m_grid_index_insertion_failure_count = 0;
+      m_grid_index_fallback_lookup_count = 0;
+      m_grid_row_allocation_failure_count = 0;
       m_started_at = TimeCurrent();
    }
 
@@ -621,6 +1102,8 @@ public:
       if(!birth.valid || birth.grid_key <= 0)
          return;
       int index = EnsureIndex(birth.grid_key);
+      if(index < 0)
+         return;
       LP_RevmaTelemetryGrid row = m_rows[index];
       row.closed = false;
       row.symbol_id = birth.symbol_id;
@@ -680,9 +1163,7 @@ public:
       int index = FindIndex(grid.grid_key);
       if(index < 0)
          return;
-      LP_RevmaTelemetryGrid row = m_rows[index];
-      UpdatePath(row, grid);
-      m_rows[index] = row;
+      UpdatePath(m_rows[index], grid);
    }
 
    void ObserveGridSignal(const ulong grid_key, const LP_RevmaSignal &signal)
@@ -782,6 +1263,7 @@ public:
          WriteArtifactFailure(receipts, config, "reconciliation_unmatched", unmatched_path, unmatched_write_error, unmatched_attempted_rows, "write_row");
 
       bool formula_clean = reconciliation.formula_clean_pnl_reconciled &&
+         m_grid_row_allocation_failure_count == 0 &&
          broker_integrity.no_money_count == 0 &&
          broker_integrity.broker_rejection_count == 0 &&
          broker_integrity.session_metadata_failure_count == 0;
@@ -790,6 +1272,18 @@ public:
          formula_clean_reason = "pnl_reconciliation_unresolved";
       if(reconciliation.ownership_mismatch_deal_count > 0)
          formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "deal_ownership_mismatch";
+      if(reconciliation.owner_map_conflict_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "position_identifier_owner_map_conflict";
+      if(reconciliation.owner_map_allocation_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "reconciliation_owner_map_allocation_failure";
+      if(reconciliation.owner_map_insertion_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "reconciliation_owner_map_insertion_failure";
+      if(reconciliation.identifier_set_allocation_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "reconciliation_identifier_set_allocation_failure";
+      if(reconciliation.identifier_set_insertion_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "reconciliation_identifier_set_insertion_failure";
+      if(m_grid_row_allocation_failure_count > 0)
+         formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "telemetry_grid_row_allocation_failure";
       if(broker_integrity.no_money_count > 0)
          formula_clean_reason += (formula_clean_reason == "" ? "" : "+") + "broker_rejection_capacity_contamination";
       if(broker_integrity.broker_rejection_count > 0)
@@ -1039,6 +1533,24 @@ public:
       receipts.Summary("unmatched_position_count", IntegerToString(reconciliation.unmatched_position_count));
       receipts.Summary("ownership_mismatch_deal_count", IntegerToString(reconciliation.ownership_mismatch_deal_count));
       receipts.Summary("ownership_mismatch_position_count", IntegerToString(reconciliation.ownership_mismatch_position_count));
+      receipts.Summary("revma_grid_index_entries", IntegerToString(m_grid_index_count));
+      receipts.Summary("revma_grid_index_lookups", (string)m_grid_index_lookup_count);
+      receipts.Summary("revma_grid_index_collisions", (string)m_grid_index_collision_count);
+      receipts.Summary("revma_grid_index_rebuilds", (string)m_grid_index_rebuild_count);
+      receipts.Summary("revma_grid_index_allocation_failures", (string)m_grid_index_allocation_failure_count);
+      receipts.Summary("revma_grid_index_insertion_failures", (string)m_grid_index_insertion_failure_count);
+      receipts.Summary("revma_grid_index_fallback_lookups", (string)m_grid_index_fallback_lookup_count);
+      receipts.Summary("revma_grid_index_degraded", LP_BoolText(m_grid_index_degraded));
+      receipts.Summary("revma_grid_row_allocation_failures", (string)m_grid_row_allocation_failure_count);
+      receipts.Summary("reconciliation_owner_map_entries", IntegerToString(reconciliation.owner_map_entry_count));
+      receipts.Summary("reconciliation_owner_map_conflicts", IntegerToString(reconciliation.owner_map_conflict_count));
+      receipts.Summary("reconciliation_owner_map_allocation_failures", IntegerToString(reconciliation.owner_map_allocation_failure_count));
+      receipts.Summary("reconciliation_owner_map_insertion_failures", IntegerToString(reconciliation.owner_map_insertion_failure_count));
+      receipts.Summary("reconciliation_owner_map_lookups", (string)reconciliation.owner_map_lookup_count);
+      receipts.Summary("reconciliation_owner_map_collisions", (string)reconciliation.owner_map_collision_count);
+      receipts.Summary("reconciliation_owner_map_fallback_lookups", (string)reconciliation.owner_map_fallback_lookup_count);
+      receipts.Summary("reconciliation_identifier_set_allocation_failures", IntegerToString(reconciliation.identifier_set_allocation_failure_count));
+      receipts.Summary("reconciliation_identifier_set_insertion_failures", IntegerToString(reconciliation.identifier_set_insertion_failure_count));
       receipts.Summary("formula_clean_pnl_reconciled", LP_BoolText(reconciliation.formula_clean_pnl_reconciled));
       receipts.Summary("successful_order_results", IntegerToString(broker_integrity.successful_order_results));
       receipts.Summary("failed_order_results", IntegerToString(broker_integrity.failed_order_results));

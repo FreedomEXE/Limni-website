@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.026"
-#property description "LimniPortfolioEA 0.1.26-gate107cr runtime integrity repair"
+#property version   "1.027"
+#property description "LimniPortfolioEA 0.1.27-gate107crs inventory speed integrity"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"
