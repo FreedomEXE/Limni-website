@@ -179,14 +179,18 @@ validation packet before Gate 107C-R can close.
 
 ## Freedom validation profile
 
-The generic FX28 fast-smoke preset remains a base profile and is not the exact
-`R90662359` configuration. The stopped-run MT5 agent log preserved the full
-input list. Its controlled inputs were recovered into:
+MT5's GUI-loadable saved-test format is a UTF-16LE `.ini` containing both
+`[Tester]` and inline `[TesterInputs]`. A `.set` is an EA-input profile only and
+must not be presented to Freedom as the complete Strategy Tester profile.
 
-`automation/mt5/tester-presets/limni-portfolio-revma-gate107cr-validation.set`.
+The exact auto-saved `.ini` from rejected run `R90662359` was recovered from
+terminal `94497`. The repaired profile is byte-for-byte identical except for
+`SourceRevision`, which now pins
+`42d2b15b5e1255657328e5bf844c65b107ebf9f9`:
 
-The dedicated profile changes only the source pin from the rejected run. It
-retains the same material validation settings:
+`automation/mt5/tester-presets/limni-portfolio-revma-gate107cr-validation-20250101-20260101.ini`.
+
+It retains the same tester envelope and material inputs:
 
 - FX28, `MEDIUM_50000`, `0.01` fixed lots, and `0.10 q` grid spacing;
 - `GridTakeProfitQ=1.0`;
@@ -196,15 +200,22 @@ retains the same material validation settings:
 - `CompactLongRun`, `AUTO`, and source revision
   `42d2b15b5e1255657328e5bf844c65b107ebf9f9`.
 
-Freedom should load the terminal profile
-`LimniPortfolioEA-Gate107CR-Validation.set` and rerun the same tester envelope:
-EURUSD.i/M1, Open prices, `2025.01.01` through `2026.01.01`, USD `10000`,
-leverage `1:100`. This is a formula-integrity validation only, not a
-profitability rerun.
+The `.ini` was installed in `MQL5/Profiles/Tester` on terminals `14275` and
+`94497` as:
 
-The dedicated profile was synced to terminals `14275` and `94497` with SHA-256
-`D5F1B06BFC69A96C7F5AA3D6259B76BE0A23BF8E2B4DA161B8291F21F615C8B2`.
-The profile-sync receipt reports `0` source mismatches, `0` profile mismatches,
+`LimniPortfolioEA.EURUSD.i.M1.20250101_20260101.200.ini`.
+
+Both installed files are UTF-16LE, `5752` bytes, and have SHA-256
+`F4813520E9E71966304E03A6B55DB8C292D3347727723CC8A9707E07224DB9DD`.
+The rejected original profile is retained in the sync artifact with SHA-256
+`7C5A0D829479F48C9A97EE8FE2EA5D5CCB6AD7020F9AD3B51DE48BC37F8FDFEC`.
+
+Freedom should load that `.ini` in Strategy Tester and run it once. It already
+contains EURUSD.i/M1, Open prices, `2025.01.01` through `2026.01.01`, USD
+`10000`, leverage `1:100`, and every EA input. This is a formula-integrity
+validation only, not a profitability rerun.
+
+The `.ini` sync receipt reports `0` source mismatches, `0` profile mismatches,
 `0` stale-input matches, and `0` unknown running terminals:
 
-`docs/research/gates/gate107/artifacts/gate107cr-validation-profile-sync-20260710/`.
+`docs/research/gates/gate107/artifacts/gate107cr-validation-ini-sync-20260710/`.

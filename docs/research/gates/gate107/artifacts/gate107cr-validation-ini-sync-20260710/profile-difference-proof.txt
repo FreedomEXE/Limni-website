@@ -1,0 +1,25 @@
+Gate 107C-R GUI validation profile difference proof
+Date: 2026-07-10
+
+Original profile:
+  source: terminal 94497 auto-saved R90662359 profile
+  file: rejected-R90662359-original-profile.ini
+  bytes: 5752
+  encoding: UTF-16LE with BOM
+  sha256: 7C5A0D829479F48C9A97EE8FE2EA5D5CCB6AD7020F9AD3B51DE48BC37F8FDFEC
+  SourceRevision: c88bb16a682aebd078669a8b820c4b76ab8f0a16
+
+Repaired profile:
+  repo: automation/mt5/tester-presets/limni-portfolio-revma-gate107cr-validation-20250101-20260101.ini
+  terminal name: LimniPortfolioEA.EURUSD.i.M1.20250101_20260101.200.ini
+  bytes: 5752
+  encoding: UTF-16LE with BOM
+  sha256: F4813520E9E71966304E03A6B55DB8C292D3347727723CC8A9707E07224DB9DD
+  SourceRevision: 42d2b15b5e1255657328e5bf844c65b107ebf9f9
+
+Parsed entry count, original: 67
+Parsed entry count, repaired: 67
+Non-SourceRevision differences: 0
+Exact byte clone after substituting only SourceRevision: true
+
+No Strategy Tester run was executed by Codex.
