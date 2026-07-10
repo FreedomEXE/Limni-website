@@ -485,10 +485,12 @@ private:
    string ExecutionTruthMetadata(
       const LP_RevmaPendingLifecycle &pending,
       const LP_TradeExecutionResult &execution,
-      const string outcome
+      const string outcome,
+      const string payload_contract,
+      const string reservation_metadata
    )
    {
-      return "lifecycle_event=" + LP_ResearchLifecycleEventName(pending.event_type) +
+      string metadata = "lifecycle_event=" + LP_ResearchLifecycleEventName(pending.event_type) +
          "|execution_outcome=" + outcome +
          "|grid_key=" + (string)pending.grid_key +
          "|symbol=" + pending.signal.symbol +
@@ -506,7 +508,20 @@ private:
          "|lots_before=" + DoubleToString(pending.lots_before, 2) +
          "|grid_floating_pnl_before=" + DoubleToString(pending.grid_floating_pnl_before, 2) +
          "|execution_detail=" + execution.detail +
-         "|" + BirthMetadata(pending.signal);
+         reservation_metadata;
+      if(payload_contract != "inline_v1")
+      {
+         int candidate_receipt_kind = pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+            LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
+         metadata += "|payload_contract=" + payload_contract +
+            "|candidate_payload_role=reference" +
+            "|candidate_payload_ref_receipt_type=" + LP_ReceiptKindName(candidate_receipt_kind) +
+            "|candidate_payload_ref_status=intent_created" +
+            "|candidate_payload_ref_intent_id=" + (string)pending.intent_id;
+      }
+      else
+         metadata += "|" + BirthMetadata(pending.signal);
+      return metadata;
    }
 
    void CompactBirths()
@@ -2204,7 +2219,13 @@ public:
          receipt_kind,
          pending.signal.symbol,
          "risk_rejected",
-         ExecutionTruthMetadata(pending, execution, "risk_rejected"),
+         ExecutionTruthMetadata(
+            pending,
+            execution,
+            "risk_rejected",
+            receipts.PayloadContract(),
+            ""
+         ),
          LP_LANE_REVMA,
          pending.signal.variant_id,
          pending.grid_key,
@@ -2236,7 +2257,14 @@ public:
             receipt_kind,
             pending.signal.symbol,
             rejection_outcome,
-            ExecutionTruthMetadata(pending, execution, rejection_outcome),
+            ExecutionTruthMetadata(
+               pending,
+               execution,
+               rejection_outcome,
+               receipts.PayloadContract(),
+               "|risk_reservation_status=" + plan.reservation_status +
+                  "|reservation_reason=" + plan.reservation_reason
+            ),
             LP_LANE_REVMA,
             pending.signal.variant_id,
             pending.grid_key,
@@ -2271,7 +2299,14 @@ public:
          receipt_kind,
          pending.signal.symbol,
          outcome,
-         ExecutionTruthMetadata(pending, execution, outcome),
+         ExecutionTruthMetadata(
+            pending,
+            execution,
+            outcome,
+            receipts.PayloadContract(),
+            "|risk_reservation_status=" + plan.reservation_status +
+               "|reservation_reason=" + plan.reservation_reason
+         ),
          LP_LANE_REVMA,
          pending.signal.variant_id,
          pending.grid_key,
@@ -2728,11 +2763,15 @@ public:
             m_dashboard_screenshot_requested = true;
           }
           UpdateVisualText(signal, true, active_grid, birth_snapshot, frozen_variant_id, frozen_direction, frozen_sleeve, frozen_add_policy, next_add_level, "add intent emitted", config);
+         string add_candidate_payload = metadata;
+         if(receipts.CompactLongRunMode())
+            add_candidate_payload += "|payload_contract=" + receipts.PayloadContract() +
+               "|candidate_payload_role=canonical";
          receipts.Write(
              LP_RECEIPT_REVMA_GRID_ADD,
              signal.symbol,
             "intent_created",
-            metadata,
+            add_candidate_payload,
             LP_LANE_REVMA,
             frozen_variant_id,
             active_grid.grid_key,
@@ -2808,11 +2847,15 @@ public:
       RememberPendingLifecycle(open_intent, signal, "", 0, 0.0, 0.0);
       bus.Add(open_intent);
       UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted", config);
+      string birth_candidate_payload = birth;
+      if(receipts.CompactLongRunMode())
+         birth_candidate_payload += "|payload_contract=" + receipts.PayloadContract() +
+            "|candidate_payload_role=canonical";
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_BIRTH,
          signal.symbol,
          "intent_created",
-         birth,
+         birth_candidate_payload,
          LP_LANE_REVMA,
          signal.variant_id,
          open_intent.grid_key,

@@ -304,6 +304,16 @@ private:
    }
 
 public:
+   bool CompactLongRunMode()
+   {
+      return m_receipt_mode == LP_RECEIPT_MODE_COMPACT_LONG_RUN;
+   }
+
+   string PayloadContract()
+   {
+      return CompactLongRunMode() ? "revma_lifecycle_join_v1" : "inline_v1";
+   }
+
    bool ShouldBuildKnownCompactReceipt(const int kind, const string status)
    {
       if(m_receipt_mode == LP_RECEIPT_MODE_FULL)

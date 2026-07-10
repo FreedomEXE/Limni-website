@@ -52,21 +52,15 @@ private:
       return trade_mode != SYMBOL_TRADE_MODE_DISABLED;
    }
 
-   int GridFamilyForIntent(const LP_TradeIntent &intent)
+   bool ValidateIntent(
+      const LP_TradeIntent &intent,
+      ulong &resolved_grid_key,
+      int &resolved_grid_family,
+      string &reason
+   )
    {
-      if(intent.grid_key > 0)
-      {
-         int family = (int)(intent.grid_key % 10000);
-         if(family > 0)
-            return family;
-      }
-      if(IsOpenAction(intent.action))
-         return (int)(intent.intent_id % 9000) + 1;
-      return 0;
-   }
-
-   bool ValidateIntent(const LP_TradeIntent &intent, string &reason)
-   {
+      resolved_grid_key = 0;
+      resolved_grid_family = 0;
       reason = "";
       if(!IsKnownAction(intent.action))
       {
@@ -87,11 +81,28 @@ private:
             reason = "symbol_missing";
             return false;
          }
+         if(LP_SymbolIdFromBrokerSymbol(intent.symbol) != intent.symbol_id)
+         {
+            reason = "intent_symbol_identity_mismatch";
+            return false;
+         }
          if(!SymbolTradable(intent.symbol))
          {
             reason = "symbol_not_tradable";
             return false;
          }
+      }
+
+      string grid_identity_reason = "";
+      if(!LP_ResolveIntentGridIdentity(
+            intent,
+            resolved_grid_key,
+            resolved_grid_family,
+            grid_identity_reason
+         ))
+      {
+         reason = grid_identity_reason;
+         return false;
       }
 
       if(IsOpenAction(intent.action))
@@ -144,7 +155,13 @@ private:
       return true;
    }
 
-   void BuildPlanFromIntent(const LP_TradeIntent &intent, const ulong decision_id, LP_TradePlan &plan)
+   void BuildPlanFromIntent(
+      const LP_TradeIntent &intent,
+      const ulong decision_id,
+      const ulong resolved_grid_key,
+      const int resolved_grid_family,
+      LP_TradePlan &plan
+   )
    {
       plan.plan_id = m_next_plan_id++;
       plan.decision_id = decision_id;
@@ -162,7 +179,7 @@ private:
       plan.target_take_profit_price = intent.target_take_profit_price;
       plan.target_stop_loss_price = intent.target_stop_loss_price;
       plan.stop_take_profit_basis = intent.stop_take_profit_basis;
-      plan.grid_key = intent.grid_key;
+      plan.grid_key = resolved_grid_key;
       plan.grid_tickets = intent.grid_tickets;
       plan.expected_grid_ticket_count = intent.expected_grid_ticket_count;
       plan.research_lifecycle_event = intent.research_lifecycle_event;
@@ -171,7 +188,6 @@ private:
       plan.reason = intent.human_reason;
       plan.executable = true;
 
-      int grid_family = GridFamilyForIntent(intent);
       if(intent.action == LP_INTENT_CLOSE_ALL_EA)
       {
          plan.magic = 0;
@@ -179,7 +195,7 @@ private:
       }
       else
       {
-         plan.magic = LP_BuildMagic(intent.symbol_id, intent.lane_id, intent.variant_id, intent.direction, grid_family);
+         plan.magic = LP_BuildMagic(intent.symbol_id, intent.lane_id, intent.variant_id, intent.direction, resolved_grid_family);
          plan.comment = LP_BuildComment(LP_CanonicalSymbol(intent.symbol_id), intent.lane_id, intent.variant_id, intent.direction, intent.config_hash);
       }
    }
@@ -215,7 +231,14 @@ public:
       plan.intent_id = intent.intent_id;
 
       string invalid_reason = "";
-      if(!ValidateIntent(intent, invalid_reason))
+      ulong resolved_grid_key = 0;
+      int resolved_grid_family = 0;
+      if(!ValidateIntent(
+            intent,
+            resolved_grid_key,
+            resolved_grid_family,
+            invalid_reason
+         ))
       {
          decision.decision = LP_RISK_REJECT;
          decision.reason = invalid_reason == "symbol_not_tradable" ? LP_RISK_REASON_SYMBOL_NOT_TRADABLE : LP_RISK_REASON_INVALID_INTENT;
@@ -232,7 +255,8 @@ public:
       }
 
       string guard_reason = "";
-      if(IsOpenAction(intent.action) && !currency_guard.ReserveCandidate(intent, guard_reason))
+      if(IsOpenAction(intent.action) &&
+         !currency_guard.ReserveCandidate(intent, resolved_grid_key, guard_reason))
       {
          decision.decision = LP_RISK_REJECT;
          decision.reason = LP_RISK_REASON_CURRENCY_EXPOSURE;
@@ -248,10 +272,16 @@ public:
       decision.allow_new_order = IsOpenAction(intent.action);
       decision.allow_reduce = IsReduceAction(intent.action);
       decision.allow_close = IsCloseAction(intent.action);
-      BuildPlanFromIntent(intent, decision.decision_id, plan);
+      BuildPlanFromIntent(
+         intent,
+         decision.decision_id,
+         resolved_grid_key,
+         resolved_grid_family,
+         plan
+      );
       if(IsOpenAction(intent.action))
       {
-         plan.reservation_status = guard_reason == "currency_guard_reserved" ?
+         plan.reservation_status = StringFind(guard_reason, "currency_guard_reserved") == 0 ?
             "approved_reserved" : "not_required_guard_disabled";
          plan.reservation_reason = guard_reason;
          decision.explanation = "approved_strategy_agnostic_plan" +

@@ -161,7 +161,14 @@ private:
    {
       ulong started_at = m_runtime_telemetry.Start();
       m_position_commission_cache.BeginRefresh();
-      m_position_index.BuildPortfolioStateAndGridBook(m_config_hash, portfolio, m_grid_book, m_position_commission_cache, m_currency_guard);
+      m_position_index.BuildPortfolioStateAndGridBook(
+         m_config_hash,
+         portfolio,
+         m_grid_book,
+         m_position_commission_cache,
+         m_currency_guard,
+         m_receipts
+      );
       m_position_commission_cache.EndRefresh();
       m_total_position_grid_refreshes++;
       m_cached_portfolio = portfolio;
@@ -188,6 +195,10 @@ private:
       m_receipts.Summary("runtime_profile_position_grid_refreshes", IntegerToString(m_total_position_grid_refreshes));
       m_receipts.Summary("runtime_profile_inventory_exact_full_scans", (string)m_position_index.ExactFullScanCount());
       m_receipts.Summary("runtime_profile_inventory_cached_market_reprices", (string)m_position_index.CachedMarketRepriceCount());
+      m_receipts.Summary("runtime_profile_inventory_cached_position_profit_reprices", (string)m_position_index.CachedMarketRepriceCount());
+      m_receipts.Summary("runtime_profile_inventory_cache_valuation_basis", "authoritative_POSITION_PROFIT_by_cached_position_order");
+      m_receipts.Summary("runtime_profile_inventory_position_profit_reads", (string)m_grid_book.PositionProfitReadCount());
+      m_receipts.Summary("runtime_profile_inventory_position_profit_read_failures", (string)m_grid_book.PositionProfitReadFailureCount());
       m_receipts.Summary("runtime_profile_inventory_cache_active_at_end", LP_BoolText(m_position_index.TesterCacheActive()));
       m_receipts.Summary("runtime_profile_inventory_cache_validations", (string)m_position_index.CacheValidationCount());
       m_receipts.Summary("runtime_profile_inventory_cache_validation_passes", (string)m_position_index.CacheValidationPassCount());

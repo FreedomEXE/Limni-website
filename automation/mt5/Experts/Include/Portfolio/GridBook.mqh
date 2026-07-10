@@ -44,6 +44,9 @@ private:
    double m_grid_floating_pnl;
    ulong m_snapshot_hash;
    bool m_structure_consistent;
+   ulong m_scan_tickets[];
+   int m_scan_row_indices[];
+   double m_reprice_scratch[];
    int m_leg_row_indices[];
    double m_leg_open_prices[];
    double m_leg_lots[];
@@ -53,6 +56,8 @@ private:
    int m_leg_capacity;
    ulong m_leg_allocation_failure_count;
    ulong m_leg_index_build_failure_count;
+   ulong m_position_profit_read_count;
+   ulong m_position_profit_read_failure_count;
    bool m_build_market_reprice_cache;
 
    void ResetRow(LP_GridInventoryRow &row)
@@ -230,6 +235,12 @@ private:
             m_leg_prefix_lots[leg] = cumulative_lots;
             m_leg_prefix_open_lots[leg] = cumulative_open_lots;
          }
+      }
+
+      if(ArrayResize(m_reprice_scratch, m_open_grid_count, m_open_grid_count) != m_open_grid_count)
+      {
+         m_structure_consistent = false;
+         m_leg_allocation_failure_count++;
       }
    }
 
@@ -414,10 +425,115 @@ private:
       return true;
    }
 
+   bool ReadCachedPositionProfits(string &reason)
+   {
+      reason = "";
+      if(!m_structure_consistent || m_leg_count != m_grid_position_count ||
+         PositionsTotal() != m_leg_count ||
+         ArraySize(m_reprice_scratch) < m_open_grid_count)
+      {
+         m_position_profit_read_failure_count++;
+         reason = "grid_position_profit_topology_invalid" +
+            "|positions_total=" + IntegerToString(PositionsTotal()) +
+            "|cached_positions=" + IntegerToString(m_leg_count) +
+            "|grid_positions=" + IntegerToString(m_grid_position_count) +
+            "|open_grids=" + IntegerToString(m_open_grid_count);
+         return false;
+      }
+
+      for(int row = 0; row < m_open_grid_count; row++)
+         m_reprice_scratch[row] = 0.0;
+
+      for(int position_index = 0; position_index < m_leg_count; position_index++)
+      {
+         ulong expected_ticket = m_scan_tickets[position_index];
+         ulong actual_ticket = PositionGetTicket(position_index);
+         if(expected_ticket == 0 || actual_ticket == 0 || actual_ticket != expected_ticket)
+         {
+            m_position_profit_read_failure_count++;
+            reason = "grid_position_profit_order_changed" +
+               "|position_index=" + IntegerToString(position_index) +
+               "|expected_ticket=" + (string)expected_ticket +
+               "|actual_ticket=" + (string)actual_ticket;
+            return false;
+         }
+
+         int row_index = m_scan_row_indices[position_index];
+         if(row_index < 0 || row_index >= m_open_grid_count)
+         {
+            m_position_profit_read_failure_count++;
+            reason = "grid_position_profit_row_index_invalid" +
+               "|position_index=" + IntegerToString(position_index) +
+               "|row_index=" + IntegerToString(row_index) +
+               "|ticket=" + (string)actual_ticket;
+            return false;
+         }
+
+         double position_profit = PositionGetDouble(POSITION_PROFIT);
+         if(!MathIsValidNumber(position_profit))
+         {
+            m_position_profit_read_failure_count++;
+            reason = "grid_position_profit_value_invalid" +
+               "|position_index=" + IntegerToString(position_index) +
+               "|grid_key=" + (string)m_rows[row_index].grid_key +
+               "|ticket=" + (string)actual_ticket;
+            return false;
+         }
+         m_reprice_scratch[row_index] += position_profit;
+         m_position_profit_read_count++;
+      }
+      reason = "grid_position_profit_read_pass";
+      return true;
+   }
+
+   void BuildCachedPositionIndex()
+   {
+      if(m_leg_count != m_grid_position_count)
+      {
+         m_structure_consistent = false;
+         m_leg_index_build_failure_count++;
+         return;
+      }
+
+      int row_position_counts[];
+      if(ArrayResize(row_position_counts, m_open_grid_count) != m_open_grid_count ||
+         ArrayResize(m_reprice_scratch, m_open_grid_count, m_open_grid_count) != m_open_grid_count)
+      {
+         m_structure_consistent = false;
+         m_leg_allocation_failure_count++;
+         return;
+      }
+      for(int row = 0; row < m_open_grid_count; row++)
+         row_position_counts[row] = 0;
+      for(int position_index = 0; position_index < m_leg_count; position_index++)
+      {
+         int row_index = m_scan_row_indices[position_index];
+         if(m_scan_tickets[position_index] == 0 || row_index < 0 || row_index >= m_open_grid_count)
+         {
+            m_structure_consistent = false;
+            m_leg_index_build_failure_count++;
+            return;
+         }
+         row_position_counts[row_index]++;
+      }
+      for(int row = 0; row < m_open_grid_count; row++)
+      {
+         if(row_position_counts[row] != m_rows[row].position_count)
+         {
+            m_structure_consistent = false;
+            m_leg_index_build_failure_count++;
+            return;
+         }
+      }
+   }
+
 public:
    void Reset()
    {
       ArrayResize(m_rows, 0);
+      ArrayResize(m_scan_tickets, 0);
+      ArrayResize(m_scan_row_indices, 0);
+      ArrayResize(m_reprice_scratch, 0);
       ArrayResize(m_leg_row_indices, 0);
       ArrayResize(m_leg_open_prices, 0);
       ArrayResize(m_leg_lots, 0);
@@ -433,6 +549,8 @@ public:
       m_leg_capacity = 0;
       m_leg_allocation_failure_count = 0;
       m_leg_index_build_failure_count = 0;
+      m_position_profit_read_count = 0;
+      m_position_profit_read_failure_count = 0;
       m_build_market_reprice_cache = false;
    }
 
@@ -455,7 +573,6 @@ public:
    void AccumulateSelectedPosition(
       const LP_MagicParts &parts,
       const ulong ticket,
-      const string broker_symbol,
       const double lots,
       const double open_price,
       const double price_pnl,
@@ -480,33 +597,19 @@ public:
          m_rows[row_index].variant_id = parts.variant_id;
          m_rows[row_index].direction = parts.direction;
          m_rows[row_index].grid_family = parts.grid_family;
-         if(m_build_market_reprice_cache)
-         {
-            m_rows[row_index].broker_symbol = broker_symbol;
-            long trade_calc_mode = -1;
-            if(SymbolInfoInteger(broker_symbol, SYMBOL_TRADE_CALC_MODE, trade_calc_mode))
-               m_rows[row_index].trade_calc_mode = (int)trade_calc_mode;
-            else
-               m_structure_consistent = false;
-         }
       }
-      else if(m_build_market_reprice_cache && m_rows[row_index].broker_symbol == "")
-         m_rows[row_index].broker_symbol = broker_symbol;
-      else if(m_build_market_reprice_cache && m_rows[row_index].broker_symbol != broker_symbol)
-         m_structure_consistent = false;
 
       bool valid_leg = true;
       if(m_build_market_reprice_cache)
-         valid_leg = lots > 0.0 && open_price > 0.0 &&
+         valid_leg = ticket > 0 && lots > 0.0 && open_price > 0.0 &&
             MathIsValidNumber(lots) && MathIsValidNumber(open_price);
       if(m_build_market_reprice_cache && !valid_leg)
          m_structure_consistent = false;
       if(m_build_market_reprice_cache && valid_leg && m_leg_count >= m_leg_capacity)
       {
          int requested_capacity = m_leg_capacity <= 0 ? 64 : m_leg_capacity * 2;
-         if(ArrayResize(m_leg_row_indices, requested_capacity, requested_capacity) != requested_capacity ||
-            ArrayResize(m_leg_open_prices, requested_capacity, requested_capacity) != requested_capacity ||
-            ArrayResize(m_leg_lots, requested_capacity, requested_capacity) != requested_capacity)
+         if(ArrayResize(m_scan_tickets, requested_capacity, requested_capacity) != requested_capacity ||
+            ArrayResize(m_scan_row_indices, requested_capacity, requested_capacity) != requested_capacity)
          {
             m_structure_consistent = false;
             m_leg_allocation_failure_count++;
@@ -516,9 +619,8 @@ public:
       }
       if(m_build_market_reprice_cache && valid_leg && m_leg_count < m_leg_capacity)
       {
-         m_leg_row_indices[m_leg_count] = row_index;
-         m_leg_open_prices[m_leg_count] = open_price;
-         m_leg_lots[m_leg_count] = lots;
+         m_scan_tickets[m_leg_count] = ticket;
+         m_scan_row_indices[m_leg_count] = row_index;
          m_leg_count++;
       }
 
@@ -549,7 +651,7 @@ public:
    void EndRefresh()
    {
       if(m_build_market_reprice_cache)
-         BuildLegIndex();
+         BuildCachedPositionIndex();
       ulong snapshot_hash = 1469598103934665603;
       for(int row = 0; row < m_open_grid_count; row++)
       {
@@ -571,8 +673,6 @@ public:
          ulong ticket = PositionGetTicket(i);
          if(ticket == 0)
             continue;
-         if(!PositionSelectByTicket(ticket))
-            continue;
 
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
          LP_MagicParts parts;
@@ -583,8 +683,7 @@ public:
          double price_pnl = PositionGetDouble(POSITION_PROFIT);
          double swap = PositionGetDouble(POSITION_SWAP);
          double commission = commission_cache.CommissionForSelectedPosition();
-          string broker_symbol = PositionGetString(POSITION_SYMBOL);
-          AccumulateSelectedPosition(parts, ticket, broker_symbol, lots, open_price, price_pnl, swap, commission);
+         AccumulateSelectedPosition(parts, ticket, lots, open_price, price_pnl, swap, commission);
       }
 
       EndRefresh();
@@ -625,6 +724,16 @@ public:
       return m_leg_index_build_failure_count;
    }
 
+   ulong PositionProfitReadCount()
+   {
+      return m_position_profit_read_count;
+   }
+
+   ulong PositionProfitReadFailureCount()
+   {
+      return m_position_profit_read_failure_count;
+   }
+
    bool ValidateMarketReprice(
       const double tolerance,
       double &max_difference,
@@ -632,18 +741,18 @@ public:
    )
    {
       max_difference = 0.0;
-      reason = "grid_market_reprice_validation_pass";
+      reason = "grid_position_profit_validation_pass";
+      string read_reason = "";
+      if(!ReadCachedPositionProfits(read_reason))
+      {
+         reason = read_reason;
+         return false;
+      }
       double exact_total = 0.0;
       double calculated_total = 0.0;
       for(int i = 0; i < m_open_grid_count; i++)
       {
-         double calculated_price_pnl = 0.0;
-         string row_reason = "";
-         if(!CalculateRowMarketPricePnl(m_rows[i], calculated_price_pnl, row_reason))
-         {
-            reason = row_reason + "|grid_key=" + (string)m_rows[i].grid_key;
-            return false;
-         }
+         double calculated_price_pnl = m_reprice_scratch[i];
          double difference = MathAbs(calculated_price_pnl - m_rows[i].price_pnl);
          exact_total += m_rows[i].price_pnl;
          calculated_total += calculated_price_pnl;
@@ -651,7 +760,7 @@ public:
             max_difference = difference;
          if(difference > tolerance)
          {
-            reason = "grid_market_reprice_parity_mismatch|grid_key=" +
+            reason = "grid_position_profit_parity_mismatch|grid_key=" +
                (string)m_rows[i].grid_key +
                "|exact_price_pnl=" + DoubleToString(m_rows[i].price_pnl, 8) +
                "|calculated_price_pnl=" + DoubleToString(calculated_price_pnl, 8) +
@@ -665,7 +774,7 @@ public:
          max_difference = total_difference;
       if(total_difference > tolerance)
       {
-         reason = "grid_market_reprice_account_parity_mismatch" +
+         reason = "grid_position_profit_account_parity_mismatch" +
             "|exact_price_pnl=" + DoubleToString(exact_total, 8) +
             "|calculated_price_pnl=" + DoubleToString(calculated_total, 8) +
             "|difference=" + DoubleToString(total_difference, 8) +
@@ -677,23 +786,19 @@ public:
 
    bool RepriceFromMarket(string &reason)
    {
-      reason = "grid_market_reprice_pass";
+      if(!ReadCachedPositionProfits(reason))
+         return false;
       double grid_floating_pnl = 0.0;
       for(int i = 0; i < m_open_grid_count; i++)
       {
-         double calculated_price_pnl = 0.0;
-         string row_reason = "";
-         if(!CalculateRowMarketPricePnl(m_rows[i], calculated_price_pnl, row_reason))
-         {
-            reason = row_reason + "|grid_key=" + (string)m_rows[i].grid_key;
-            return false;
-         }
+         double calculated_price_pnl = m_reprice_scratch[i];
          m_rows[i].price_pnl = calculated_price_pnl;
          m_rows[i].floating_pnl = calculated_price_pnl +
             m_rows[i].swap + m_rows[i].commission;
          grid_floating_pnl += m_rows[i].floating_pnl;
       }
       m_grid_floating_pnl = grid_floating_pnl;
+      reason = "grid_position_profit_reprice_pass";
       return true;
    }
 

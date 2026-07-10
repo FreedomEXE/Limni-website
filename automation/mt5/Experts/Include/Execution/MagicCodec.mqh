@@ -126,6 +126,72 @@ ulong LP_BuildGridKeyFromParts(const LP_MagicParts &parts)
    return LP_BuildGridKey(parts.symbol_id, parts.lane_id, parts.variant_id, parts.direction, parts.grid_family);
 }
 
+bool LP_ResolveIntentGridIdentity(
+   const LP_TradeIntent &intent,
+   ulong &resolved_grid_key,
+   int &resolved_grid_family,
+   string &reason
+)
+{
+   resolved_grid_key = 0;
+   resolved_grid_family = 0;
+   reason = "";
+
+   if(intent.action == LP_INTENT_CLOSE_ALL_EA)
+   {
+      reason = "grid_identity_not_applicable";
+      return true;
+   }
+
+   bool grid_action = intent.action == LP_INTENT_OPEN_GRID ||
+      intent.action == LP_INTENT_ADD_GRID_LEG ||
+      intent.action == LP_INTENT_REDUCE_GRID ||
+      intent.action == LP_INTENT_CLOSE_GRID ||
+      intent.action == LP_INTENT_SYNC_GRID_TP;
+   if(!grid_action)
+   {
+      reason = "grid_identity_action_unsupported";
+      return false;
+   }
+
+   if(intent.grid_key > 0)
+      resolved_grid_family = (int)(intent.grid_key % 10000);
+   else if(intent.action == LP_INTENT_OPEN_GRID && intent.intent_id > 0)
+      resolved_grid_family = (int)(intent.intent_id % 9000) + 1;
+   else
+   {
+      reason = "grid_identity_missing";
+      return false;
+   }
+
+   if(resolved_grid_family <= 0 || resolved_grid_family > 9999)
+   {
+      reason = "grid_family_out_of_range";
+      return false;
+   }
+
+   resolved_grid_key = LP_BuildGridKey(
+      intent.symbol_id,
+      intent.lane_id,
+      intent.variant_id,
+      intent.direction,
+      resolved_grid_family
+   );
+   if(intent.grid_key > 0 && intent.grid_key != resolved_grid_key)
+   {
+      reason = "grid_identity_fields_mismatch|supplied_grid_key=" +
+         (string)intent.grid_key +
+         "|resolved_grid_key=" + (string)resolved_grid_key;
+      resolved_grid_key = 0;
+      resolved_grid_family = 0;
+      return false;
+   }
+
+   reason = intent.grid_key > 0 ? "grid_identity_supplied_valid" :
+      "grid_identity_derived_for_open";
+   return true;
+}
+
 string LP_StrategyCommentName(const int lane_id, const int variant_id)
 {
    if(lane_id == LP_LANE_REVMA)

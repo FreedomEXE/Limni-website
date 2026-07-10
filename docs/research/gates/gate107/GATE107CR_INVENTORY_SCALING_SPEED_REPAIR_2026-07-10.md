@@ -2,9 +2,9 @@
 
 Date: 2026-07-10
 
-Status: **SOURCE REPAIR, INDEPENDENT REVIEW, COMPILE, PROFILE PIN, AND
-TWO-TERMINAL SYNC COMPLETE. FREEDOM-OWNED RUNTIME VALIDATION OPEN. GATE 108
-REMAINS CLOSED.**
+Status: **FIRST SHORT RUNTIME REJECTED. ECONOMIC LEDGERS RECONCILED, BUT CACHE
+PARITY AND DISTINCT-GRID ADMISSION FAILED. THE GATE 107C-R-S2 REPAIR IS THE
+ACTIVE IMPLEMENTATION LANE. GATE 108 REMAINS CLOSED.**
 
 ## Decision
 
@@ -294,6 +294,12 @@ Both installed copies match their repository source on terminals `14275` and
 
 ## Stop line
 
-Gate 108 implementation remains closed until this speed subgate compiles,
-syncs, and passes Freedom's runtime validation together with the original Gate
-107C-R integrity boundary.
+The first short run and its two blocking defects are pinned in:
+
+- `GATE107CRS_SHORT_RUN_NEGATIVE_VALIDATION_2026-07-10.md`;
+- `GATE107CRS2_DISTINCT_GRID_EXACT_CACHE_REPAIR_2026-07-10.md`.
+
+Gate 108 implementation remains closed until the S2 source compiles, syncs,
+and passes Freedom's 14-day runtime validation together with the original Gate
+107C-R integrity boundary. The one-year profile must not be run before that
+short packet is clean.

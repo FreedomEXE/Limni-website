@@ -22,6 +22,7 @@ void LP_WriteRunManifest(
       "",
       "started",
       "scope=" + LP_BUILD_SCOPE +
+         "|receipt_payload_contract=" + receipts.PayloadContract() +
          "|execution_mode=" + LP_ExecutionModeName(config.execution_mode) +
          "|enable_trading=" + LP_BoolText(config.enable_trading) +
          "|allow_live_trading=" + LP_BoolText(config.allow_live_trading) +
@@ -94,6 +95,7 @@ void LP_WriteRunManifest(
    receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
    receipts.Summary("news_calendar_file", config.news_calendar_file);
    receipts.Summary("receipt_mode", LP_ReceiptModeName(config.receipt_mode));
+   receipts.Summary("receipt_payload_contract", receipts.PayloadContract());
    receipts.Summary("week_boundary_description", LP_WeekBoundaryDescription());
    receipts.Summary("portfolio_harvest_governor_enabled", LP_BoolText(config.enable_portfolio_harvest_governor));
    receipts.Summary("harvest_initial_target_money", DoubleToString(config.harvest_initial_target_money, 2));

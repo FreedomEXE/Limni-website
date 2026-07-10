@@ -30,6 +30,34 @@ string LP_StopTakeProfitReceiptFields(
 
 void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
 {
+   string reason = intent.human_reason;
+   string payload_reference = "";
+   if(receipts.CompactLongRunMode() &&
+      (intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ||
+       intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_ADD))
+   {
+      int candidate_receipt_kind = intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+         LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
+      string expected_reason = intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+         "revma_grid_birth" : "revma_grid_add";
+      int reason_separator = StringFind(intent.human_reason, "|");
+      string actual_reason = reason_separator >= 0 ?
+         StringSubstr(intent.human_reason, 0, reason_separator) : intent.human_reason;
+      if(actual_reason == expected_reason)
+      {
+         reason = actual_reason;
+         payload_reference =
+            "|payload_contract=" + receipts.PayloadContract() +
+            "|candidate_payload_role=reference" +
+            "|candidate_payload_ref_receipt_type=" + LP_ReceiptKindName(candidate_receipt_kind) +
+            "|candidate_payload_ref_status=intent_created" +
+            "|candidate_payload_ref_intent_id=" + (string)intent.intent_id;
+      }
+      else
+         payload_reference = "|payload_contract=inline_fallback_reason_mismatch" +
+            "|expected_lifecycle_reason=" + expected_reason;
+   }
+
    receipts.Write(
       LP_RECEIPT_INTENT,
       intent.symbol,
@@ -51,7 +79,7 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
              intent.target_take_profit_price,
              intent.target_stop_loss_price
           ) +
-          "|reason=" + intent.human_reason,
+          "|reason=" + reason + payload_reference,
       intent.lane_id,
       intent.variant_id,
       intent.grid_key,
@@ -104,7 +132,7 @@ void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
          "|comment=" + plan.comment,
       plan.lane_id,
       plan.variant_id,
-      0,
+      plan.grid_key,
       plan.intent_id,
       plan.decision_id,
       plan.magic

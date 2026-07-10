@@ -141,8 +141,8 @@ private:
          return false;
       }
 
-      // Repricing may differ only by floating-point noise. Any economically
-      // visible fraction of the account-money quantum forces exact scans.
+      // Both sides now read MT5 POSITION_PROFIT. Any difference is therefore
+      // an identity/topology defect, not a broker-calculation tolerance.
       double tolerance = MathMax(0.00000001, AccountMoneyQuantum() * 0.0001);
       m_cache_validation_tolerance = tolerance;
       double max_difference = 0.0;
@@ -152,7 +152,7 @@ private:
       if(valid)
       {
          m_cache_validation_pass_count++;
-         reason = "tester_grid_market_reprice_validated|max_difference=" +
+         reason = "tester_grid_position_profit_validated|max_difference=" +
             DoubleToString(max_difference, 8) +
             "|tolerance=" + DoubleToString(tolerance, 8);
          return true;
@@ -221,12 +221,12 @@ public:
       m_cache_structure_mismatch_positions = 0;
       ulong snapshot_hash = 1469598103934665603;
 
+      // PositionGetTicket(index) selects that position for the property reads
+      // below; a second PositionSelectByTicket call only repeats the lookup.
       for(int i = 0; i < m_total_positions; i++)
       {
          ulong ticket = PositionGetTicket(i);
          if(ticket == 0)
-            continue;
-         if(!PositionSelectByTicket(ticket))
             continue;
 
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
@@ -298,12 +298,11 @@ public:
       grid_book.BeginRefresh(build_tester_cache);
       currency_guard.BeginRefresh();
 
+      // PositionGetTicket(index) also owns the selected-position context.
       for(int i = 0; i < m_total_positions; i++)
       {
          ulong ticket = PositionGetTicket(i);
          if(ticket == 0)
-            continue;
-         if(!PositionSelectByTicket(ticket))
             continue;
 
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
@@ -351,18 +350,18 @@ public:
 
          if(decoded_magic)
          {
-            if(build_tester_cache)
+            int actual_direction = position_type == POSITION_TYPE_BUY ? 1 :
+               (position_type == POSITION_TYPE_SELL ? -1 : 0);
+            int actual_symbol_id = LP_SymbolIdFromBrokerSymbol(position_symbol);
+            if(actual_direction != parts.direction || actual_symbol_id != parts.symbol_id)
             {
-               int actual_direction = position_type == POSITION_TYPE_BUY ? 1 :
-                  (position_type == POSITION_TYPE_SELL ? -1 : 0);
-               int actual_symbol_id = LP_SymbolIdFromBrokerSymbol(position_symbol);
-               if(actual_direction != parts.direction || actual_symbol_id != parts.symbol_id)
+               if(build_tester_cache)
                   m_cache_structure_mismatch_positions++;
+               currency_guard.MarkGridIdentityMismatch();
             }
             grid_book.AccumulateSelectedPosition(
                parts,
                ticket,
-               position_symbol,
                lots,
                open_price,
                price_pnl,
@@ -375,9 +374,11 @@ public:
          {
             int direction = position_type == POSITION_TYPE_BUY ? 1 :
                (position_type == POSITION_TYPE_SELL ? -1 : 0);
-            int symbol_id = decoded_magic ? parts.symbol_id : LP_SymbolIdFromBrokerSymbol(position_symbol);
-            bool grid_position = decoded_magic && parts.grid_family > 0;
-            currency_guard.AccumulateManagedPosition(ticket, magic, symbol_id, direction, lots, grid_position);
+            int actual_symbol_id = LP_SymbolIdFromBrokerSymbol(position_symbol);
+            int symbol_id = actual_symbol_id >= 0 ? actual_symbol_id :
+               (decoded_magic ? parts.symbol_id : actual_symbol_id);
+            ulong grid_key = decoded_magic && parts.grid_family > 0 ? LP_BuildGridKeyFromParts(parts) : 0;
+            currency_guard.AccumulateManagedPosition(ticket, magic, symbol_id, direction, lots, grid_key);
          }
 
          LP_HashMixULong(snapshot_hash, ticket);
@@ -408,7 +409,8 @@ public:
       LP_PortfolioState &state,
       LP_GridBook &grid_book,
       LP_PositionCommissionCache &commission_cache,
-      LP_CurrencyExposureGuard &currency_guard
+      LP_CurrencyExposureGuard &currency_guard,
+      LP_ReceiptWriter &receipts
    )
    {
       bool tester_runtime = LP_IsTesterRuntime();
@@ -421,11 +423,11 @@ public:
       bool structural_checkpoint_due = m_dirty || positions_total_changed;
       bool runtime_reprice_failed = false;
 
-      // Live runtime retains the exact per-position scan on every refresh.
-      // In Strategy Tester only, a validated all-grid topology can be valued
-      // from at most two broker profit calculations per grid (separate
-      // winner/loser conversion sides) until structure or the server day
-      // changes. Any ambiguity falls through to the exact scan.
+      // Live runtime retains the full exact ownership scan on every refresh.
+      // In Strategy Tester only, a validated all-grid topology reuses cached
+      // ticket-to-grid ownership and reads authoritative POSITION_PROFIT for
+      // each ticket. This remains exact while avoiding repeated history,
+      // commission, currency, sorting, and ticket-string reconstruction.
       if(tester_runtime && m_tester_cache_active &&
          !daily_checkpoint_due && !structural_checkpoint_due)
       {
@@ -448,7 +450,23 @@ public:
          m_tester_cache_blocked_until_checkpoint = true;
          m_cache_runtime_fallback_count++;
          m_cache_last_reason = reprice_reason == "" ?
-            "grid_market_reprice_topology_mismatch" : reprice_reason;
+            "grid_position_profit_topology_mismatch" : reprice_reason;
+         receipts.Write(
+            LP_RECEIPT_ERROR,
+            "",
+            "tester_inventory_cache_runtime_fallback",
+            m_cache_last_reason +
+               "|positions_total=" + IntegerToString(PositionsTotal()) +
+               "|cached_managed_positions=" + IntegerToString(m_managed_positions) +
+               "|cached_grid_positions=" + IntegerToString(m_grid_group_positions) +
+               "|cached_open_grids=" + IntegerToString(grid_book.OpenGridCount()),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+         );
       }
 
       if(tester_runtime && !m_tester_cache_active &&
@@ -469,6 +487,7 @@ public:
 
          bool validation_checkpoint = structural_checkpoint_due ||
             daily_checkpoint_due ||
+            runtime_reprice_failed ||
             (!m_tester_cache_blocked_until_checkpoint && !runtime_reprice_failed);
          if(validation_checkpoint)
          {
@@ -477,6 +496,27 @@ public:
             m_tester_cache_active = validation_ok;
             m_tester_cache_blocked_until_checkpoint = !validation_ok;
             m_cache_last_reason = validation_reason;
+            if(!validation_ok)
+            {
+               receipts.Write(
+                  LP_RECEIPT_ERROR,
+                  "",
+                  "tester_inventory_cache_validation_failed",
+                  validation_reason +
+                     "|max_difference=" + DoubleToString(m_cache_max_validation_difference, 8) +
+                     "|tolerance=" + DoubleToString(m_cache_validation_tolerance, 8) +
+                     "|positions_total=" + IntegerToString(m_total_positions) +
+                     "|managed_positions=" + IntegerToString(m_managed_positions) +
+                     "|grid_positions=" + IntegerToString(m_grid_group_positions) +
+                     "|open_grids=" + IntegerToString(grid_book.OpenGridCount()),
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+               );
+            }
          }
       }
       FillPortfolioState(config_hash, state, grid_book.OpenGridCount());
