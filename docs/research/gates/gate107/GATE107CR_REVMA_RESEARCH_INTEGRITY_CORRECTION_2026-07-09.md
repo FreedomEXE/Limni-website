@@ -1,8 +1,15 @@
 # Gate 107C-R - Revma Research-Integrity Correction
 
 Status: runtime repair, independent review, exact-source compile, canonical
-tester-profile pin, and two-terminal sync proof complete. One Freedom-owned
-controlled telemetry rerun remains open.
+tester-profile pin, inventory-scaling speed repair, and two-terminal sync proof
+complete. Freedom-owned speed/integrity runtime validation remains open.
+
+> 2026-07-10 speed supersession: source commit
+> `03e7be3443709518df79b1ce790200cdf0044bff`, build
+> `0.1.27-gate107crs-speed-integrity`, and the newly pinned `.ini` profiles
+> supersede `42d2b15b...` for all new Gate 107C-R runtime validation. The older
+> source/compile sections below remain historical receipts for the preceding
+> runtime-integrity repair.
 
 ## Boundary
 
@@ -219,3 +226,50 @@ The `.ini` sync receipt reports `0` source mismatches, `0` profile mismatches,
 `0` stale-input matches, and `0` unknown running terminals:
 
 `docs/research/gates/gate107/artifacts/gate107cr-validation-ini-sync-20260710/`.
+
+## Inventory-scaling speed supersession
+
+Freedom stopped the first repaired rerun after observing progressive slowdown
+as open inventory accumulated. Profiling the rejected `R90662359` packet
+showed `738.359 s` wall time, including `339.381019 s` in repeated lifecycle
+snapshot persistence, `105.415572 s` in `372156` full inventory refreshes, and
+`72.809920 s` in RevMA symbol evaluation. Static inspection also found
+historical linear telemetry lookup, growing pending lifecycle lookup, and
+quadratic final reconciliation.
+
+Gate 107C-R-S removes those scaling defects without changing RevMA economics or
+dropping any receipt family:
+
+- tester lifecycle state mutates exactly in memory and writes final exact
+  birth/close-latch snapshots once; live persistence stays immediate;
+- pending lifecycle records are swap-removed when consumed;
+- historical grid lookup and final owner reconciliation are indexed with
+  checked linear correctness fallbacks;
+- reconciliation uses one global history pass while preserving the original
+  full mapped-position ledger and run-window managed account ledger;
+- Strategy Tester uses exact structural checkpoints plus sorted per-grid leg
+  caches and separate winner/loser Forex repricing partitions;
+- live inventory remains exact-scan-only and every ambiguity/failure disables
+  the tester fast path;
+- commission history uses targeted `DEAL_POSITION_ID` invalidation.
+
+Exact source commit:
+`03e7be3443709518df79b1ce790200cdf0044bff`.
+
+Canonical compile/sync proof:
+`docs/research/gates/gate107/artifacts/gate107crs-speed-repair-compile-sync-20260710/`.
+
+All three compiles passed with `0 errors, 0 warnings`; source/profile mismatch,
+stale-input, and unknown-terminal counts were zero.
+
+The full GUI profile is now SHA-256
+`D367EE761532E258471D1936AFDE0C2FB046F4F4F7C568514F5A5AEABDA02CE2`.
+A short `2025.01.01` through `2025.01.15` mechanics/timing `.ini`, SHA-256
+`84F1D3047B711E401565FA82444DACEAE65609B87FC0398A888A1C0F510AAA49`,
+is also installed on both terminals. Exact paths, acceptance counters, and the
+two-test stop line are recorded in
+`docs/research/gates/gate107/GATE107CR_INVENTORY_SCALING_SPEED_REPAIR_2026-07-10.md`.
+
+Codex ran no Strategy Tester or other MT5 runtime test. Gate 108 remains closed
+until Freedom's short packet is mechanically clean and the one-year packet
+passes both the original integrity boundary and the `<60 s` speed target.
