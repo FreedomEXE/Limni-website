@@ -189,21 +189,15 @@ string LP_ResolveOutputFolder(const LP_Config &config, const string requested_fo
       return requested_folder;
 
    string stamp = LP_SafePart(LP_Stamp(TimeLocal()) + "_R" + IntegerToString((long)GetTickCount()));
-   string folder = "LimniPortfolioEA_Rv_" +
+   // Keep AUTO deliberately short. Receipt and telemetry files add their own
+   // run/artifact suffixes below the terminal Common Files root; descriptive
+   // parameter strings here can exceed MQL5's filename/path limit (5003).
+   // The complete configuration remains in the run manifest and summary.
+   string folder = "LPEA_" +
       LP_UniverseModeName(config.revma_universe_mode) + "_" +
       LP_RevmaConfigQProfileId(config) + "_" +
       LP_OutputFolderStopModePart(config.stop_take_profit_mode) +
-      "_GTP" + LP_OutputFolderNumberPart(config.grid_take_profit_q, 3) +
-      "_GSL" + LP_OutputFolderNumberPart(config.grid_stop_loss_q, 3) +
-      "_ATP" + LP_OutputFolderNumberPart(config.account_take_profit_pct, 3) +
-      "_ASL" + LP_OutputFolderNumberPart(config.account_stop_loss_pct, 3) +
-      "_L" + LP_OutputFolderNumberPart(config.revma_fixed_lots, 3) +
-      "_G" + LP_OutputFolderNumberPart(config.revma_grid_spacing_q, 2) + "Q_" +
-      LP_OutputFolderReceiptModePart(config.receipt_mode) + "_" +
-      (config.enable_currency_exposure_guard ? "CG" : "NCG") + "_" +
-      (config.enable_portfolio_harvest_governor ? "EG" : "NEG") + "_" +
-      (config.enable_account_close_execution ? "AC" : "NAC") + "_" +
-      stamp;
+      "_" + LP_OutputFolderReceiptModePart(config.receipt_mode) + "_" + stamp;
    return folder;
 }
 

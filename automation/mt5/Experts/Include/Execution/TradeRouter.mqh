@@ -20,6 +20,7 @@ private:
    ulong m_broker_tp_modify_attempts;
    ulong m_order_open_attempts;
    ulong m_order_close_attempts;
+   LP_BrokerExecutionIntegrity m_execution_integrity;
 
    bool IsOpenAction(const int action)
    {
@@ -41,6 +42,37 @@ private:
    bool IsExecutedFillRetcode(const uint retcode)
    {
       return retcode == TRADE_RETCODE_DONE || retcode == TRADE_RETCODE_DONE_PARTIAL;
+   }
+
+   void ObserveBrokerExecutionResult(const LP_TradeExecutionResult &execution)
+   {
+      if(execution.accepted)
+      {
+         m_execution_integrity.successful_order_results++;
+         return;
+      }
+
+      m_execution_integrity.failed_order_results++;
+      if(!execution.broker_rejected)
+         return;
+
+      datetime now = TimeCurrent();
+      m_execution_integrity.broker_rejection_count++;
+      if(m_execution_integrity.first_broker_rejection_time <= 0)
+         m_execution_integrity.first_broker_rejection_time = now;
+      m_execution_integrity.last_broker_rejection_time = now;
+
+      if(execution.retcode == TRADE_RETCODE_NO_MONEY)
+      {
+         m_execution_integrity.no_money_count++;
+         if(m_execution_integrity.first_no_money_time <= 0)
+            m_execution_integrity.first_no_money_time = now;
+         m_execution_integrity.last_no_money_time = now;
+      }
+      else if(execution.retcode == TRADE_RETCODE_MARKET_CLOSED)
+      {
+         m_execution_integrity.market_closed_count++;
+      }
    }
 
    void CaptureExecutionResult(
@@ -238,11 +270,13 @@ private:
          LP_RECEIPT_ORDER_REQUEST,
          plan.symbol,
          status,
-         "plan_id=" + (string)plan.plan_id +
+          "plan_id=" + (string)plan.plan_id +
              "|action=" + IntegerToString(plan.action) +
              "|direction=" + IntegerToString(plan.direction) +
              "|lots=" + DoubleToString(plan.lots, 2) +
              "|close_reason=" + (plan.close_reason == "" ? "none" : plan.close_reason) +
+             "|reservation_status=" + plan.reservation_status +
+             "|reservation_reason=" + plan.reservation_reason +
              "|" + message,
          plan.lane_id,
          plan.variant_id,
@@ -274,9 +308,11 @@ private:
             "|retcode=" + IntegerToString((int)retcode) +
             "|retcode_name=" + LP_RetcodeName(retcode) +
             "|order=" + (string)m_trade.ResultOrder() +
-            "|deal=" + (string)m_trade.ResultDeal() +
-            "|volume=" + DoubleToString(normalized_lots, 2) +
-            "|price=" + DoubleToString(m_trade.ResultPrice(), digits),
+             "|deal=" + (string)m_trade.ResultDeal() +
+             "|volume=" + DoubleToString(normalized_lots, 2) +
+             "|price=" + DoubleToString(m_trade.ResultPrice(), digits) +
+             "|reservation_status=" + plan.reservation_status +
+             "|reservation_reason=" + plan.reservation_reason,
          plan.lane_id,
          plan.variant_id,
          0,
@@ -628,6 +664,7 @@ private:
       LP_TradeExecutionResult ticket_execution;
       LP_ResetTradeExecutionResult(ticket_execution);
       CaptureExecutionResult(plan, ok, ticket_execution);
+      ObserveBrokerExecutionResult(ticket_execution);
       execution.retcode = ticket_execution.retcode;
       execution.order_ticket = ticket_execution.order_ticket;
       execution.deal_ticket = ticket_execution.deal_ticket;
@@ -637,17 +674,20 @@ private:
       execution.realized_swap += ticket_execution.realized_swap;
       execution.realized_commission += ticket_execution.realized_commission;
       execution.partial_fill = execution.partial_fill || ticket_execution.partial_fill;
+      bool ticket_flat = false;
       if(ticket_execution.accepted)
       {
-         execution.closed_positions++;
          if(partial)
-            remaining_lots -= close_lots;
+            remaining_lots -= MathMin(close_lots, ticket_execution.executed_lots > 0.0 ? ticket_execution.executed_lots : close_lots);
+         ticket_flat = !PositionSelectByTicket(ticket) || PositionGetDouble(POSITION_VOLUME) <= 0.0;
+         if(ticket_flat)
+            execution.closed_positions++;
       }
       else
          execution.failed_positions++;
 
       WriteOrderResult(receipts, plan, ticket_execution.accepted, close_lots, symbol);
-      return ticket_execution.accepted;
+      return ticket_flat;
    }
 
    bool CloseMatchingPositions(const LP_TradePlan &plan, LP_ReceiptWriter &receipts, LP_TradeExecutionResult &execution)
@@ -689,6 +729,7 @@ private:
       int skipped_due_to_close_limit = 0;
       double remaining_lots = plan.lots;
       bool reduce_done = false;
+      execution.close_limit = m_config.max_close_positions_per_step;
 
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
@@ -749,8 +790,8 @@ private:
               "|grid_magic=" + (string)plan.magic +
               "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason)
       );
-      execution.accepted = closed > 0 && execution.failed_positions == 0;
-      execution.broker_rejected = closed == 0 && execution.attempted_positions > 0;
+      execution.accepted = (closed > 0 || execution.partial_fill) && execution.failed_positions == 0;
+      execution.broker_rejected = closed == 0 && !execution.partial_fill && execution.attempted_positions > 0;
       execution.detail = "matched=" + IntegerToString(execution.matched_positions) +
          "|attempted=" + IntegerToString(execution.attempted_positions) +
          "|closed=" + IntegerToString(execution.closed_positions) +
@@ -767,6 +808,7 @@ public:
       m_broker_tp_modify_attempts = 0;
       m_order_open_attempts = 0;
       m_order_close_attempts = 0;
+      LP_ResetBrokerExecutionIntegrity(m_execution_integrity);
    }
 
    void Configure(const LP_Config &config)
@@ -880,6 +922,7 @@ public:
       }
 
       CaptureExecutionResult(plan, ok, execution);
+      ObserveBrokerExecutionResult(execution);
       WriteOrderResult(receipts, plan, execution.accepted, normalized_lots, plan.symbol);
       return execution.accepted;
    }
@@ -902,6 +945,11 @@ public:
    ulong OrderCloseAttemptCount()
    {
       return m_order_close_attempts;
+   }
+
+   void GetBrokerExecutionIntegrity(LP_BrokerExecutionIntegrity &integrity)
+   {
+      integrity = m_execution_integrity;
    }
 };
 

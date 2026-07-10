@@ -113,6 +113,32 @@ void LP_ResetRevmaPendingLifecycle(LP_RevmaPendingLifecycle &pending)
    pending.grid_floating_pnl_before = 0.0;
 }
 
+struct LP_RevmaGridCloseLatch
+{
+   bool valid;
+   ulong grid_key;
+   string close_reason;
+   datetime started_at;
+   int original_ticket_count;
+   int attempted_count;
+   int closed_count;
+   int remaining_ticket_count;
+   int close_cap;
+};
+
+void LP_ResetRevmaGridCloseLatch(LP_RevmaGridCloseLatch &latch)
+{
+   latch.valid = false;
+   latch.grid_key = 0;
+   latch.close_reason = "";
+   latch.started_at = 0;
+   latch.original_ticket_count = 0;
+   latch.attempted_count = 0;
+   latch.closed_count = 0;
+   latch.remaining_ticket_count = 0;
+   latch.close_cap = 0;
+}
+
 class LP_RevmaGridSleeve
 {
 private:
@@ -134,6 +160,9 @@ private:
    LP_RevmaPendingLifecycle m_pending_lifecycle[];
    int m_pending_lifecycle_count;
    int m_pending_lifecycle_capacity;
+   LP_RevmaGridCloseLatch m_close_latches[];
+   int m_close_latch_count;
+   int m_close_latch_capacity;
    ulong m_persistence_write_count;
    ulong m_persistence_failure_count;
    ulong m_persistence_total_microseconds;
@@ -147,6 +176,13 @@ private:
    string StateFileName()
    {
       return StateFolder() + "\\revma_grid_birth_state_A" +
+         (string)AccountInfoInteger(ACCOUNT_LOGIN) +
+          "_C" + (string)m_config_hash + ".csv";
+   }
+
+   string CloseLatchStateFileName()
+   {
+      return StateFolder() + "\\revma_grid_close_latch_A" +
          (string)AccountInfoInteger(ACCOUNT_LOGIN) +
          "_C" + (string)m_config_hash + ".csv";
    }
@@ -244,6 +280,33 @@ private:
             return i;
       }
       return -1;
+   }
+
+   int FindCloseLatchIndex(const ulong grid_key)
+   {
+      if(grid_key <= 0)
+         return -1;
+      for(int i = 0; i < m_close_latch_count; i++)
+      {
+         if(m_close_latches[i].valid && m_close_latches[i].grid_key == grid_key)
+            return i;
+      }
+      return -1;
+   }
+
+   bool FindCloseLatch(const ulong grid_key, LP_RevmaGridCloseLatch &latch)
+   {
+      LP_ResetRevmaGridCloseLatch(latch);
+      int index = FindCloseLatchIndex(grid_key);
+      if(index < 0)
+         return false;
+      latch = m_close_latches[index];
+      return latch.valid;
+   }
+
+   bool HasCloseLatch(const ulong grid_key)
+   {
+      return FindCloseLatchIndex(grid_key) >= 0;
    }
 
    void RememberBirth(const ulong grid_key, const LP_RevmaSignal &signal, const string add_policy)
@@ -538,6 +601,167 @@ private:
          m_persistence_max_microseconds = elapsed;
    }
 
+   void CompactCloseLatches()
+   {
+      int write_index = 0;
+      for(int read_index = 0; read_index < m_close_latch_count; read_index++)
+      {
+         if(!m_close_latches[read_index].valid || m_close_latches[read_index].grid_key <= 0)
+            continue;
+         if(write_index != read_index)
+            m_close_latches[write_index] = m_close_latches[read_index];
+         write_index++;
+      }
+      m_close_latch_count = write_index;
+      if(m_close_latch_capacity < m_close_latch_count)
+         m_close_latch_capacity = m_close_latch_count;
+   }
+
+   void PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause)
+   {
+      if(!m_state_persistence_enabled)
+         return;
+
+      CompactCloseLatches();
+      FolderCreate(StateFolder(), FILE_COMMON);
+      int handle = FileOpen(CloseLatchStateFileName(), FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
+      if(handle == INVALID_HANDLE)
+      {
+         m_persistence_failure_count++;
+         receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
+         return;
+      }
+
+      if(FileWrite(handle, "grid_key", "close_reason", "started_at", "original_ticket_count", "attempted_count", "closed_count", "remaining_ticket_count", "close_cap") == 0)
+      {
+         m_persistence_failure_count++;
+         FileClose(handle);
+         receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_close_latch_header|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, 0, 0, 0, 0);
+         return;
+      }
+
+      for(int i = 0; i < m_close_latch_count; i++)
+      {
+         LP_RevmaGridCloseLatch latch = m_close_latches[i];
+         if(!latch.valid || latch.grid_key <= 0)
+            continue;
+         if(FileWrite(handle, (string)latch.grid_key, latch.close_reason, LP_Stamp(latch.started_at), IntegerToString(latch.original_ticket_count), IntegerToString(latch.attempted_count), IntegerToString(latch.closed_count), IntegerToString(latch.remaining_ticket_count), IntegerToString(latch.close_cap)) == 0)
+         {
+            m_persistence_failure_count++;
+            FileClose(handle);
+            receipts.Write(LP_RECEIPT_ERROR, "", "revma_lifecycle_persistence_failed", "cause=" + cause + "|stage=write_close_latch_row|grid_key=" + (string)latch.grid_key + "|state_file=" + CloseLatchStateFileName() + "|error=" + IntegerToString(GetLastError()), LP_LANE_REVMA, 0, latch.grid_key, 0, 0, 0);
+            return;
+         }
+      }
+      FileClose(handle);
+      m_persistence_write_count++;
+   }
+
+   bool StartCloseLatch(
+      const LP_GridInventoryRow &grid,
+      const string close_reason,
+      const LP_Config &config,
+      LP_ReceiptWriter &receipts,
+      LP_RevmaGridCloseLatch &latch
+   )
+   {
+      LP_ResetRevmaGridCloseLatch(latch);
+      if(grid.grid_key <= 0 || (close_reason != "grid_tp" && close_reason != "grid_sl"))
+         return false;
+
+      int index = FindCloseLatchIndex(grid.grid_key);
+      bool started = index < 0;
+      if(index < 0)
+      {
+         if(m_close_latch_count >= m_close_latch_capacity)
+         {
+            m_close_latch_capacity = m_close_latch_capacity <= 0 ? 16 : m_close_latch_capacity * 2;
+            ArrayResize(m_close_latches, m_close_latch_capacity);
+         }
+         index = m_close_latch_count;
+         m_close_latch_count++;
+         LP_ResetRevmaGridCloseLatch(m_close_latches[index]);
+         m_close_latches[index].valid = true;
+         m_close_latches[index].grid_key = grid.grid_key;
+         m_close_latches[index].close_reason = close_reason;
+         m_close_latches[index].started_at = TimeCurrent();
+         m_close_latches[index].original_ticket_count = grid.position_count;
+      }
+
+      m_close_latches[index].remaining_ticket_count = grid.position_count;
+      m_close_latches[index].close_cap = config.max_close_positions_per_step;
+      latch = m_close_latches[index];
+      if(started)
+         PersistCloseLatches(receipts, "grid_close_latched");
+      return started;
+   }
+
+   int CountLiveGridTickets(const LP_TradePlan &plan)
+   {
+      int remaining = 0;
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0 || !PositionSelectByTicket(ticket))
+            continue;
+         if((long)PositionGetInteger(POSITION_MAGIC) != plan.magic)
+            continue;
+         if(StringLen(plan.symbol) > 0 && PositionGetString(POSITION_SYMBOL) != plan.symbol)
+            continue;
+         remaining++;
+      }
+      return remaining;
+   }
+
+   void UpdateCloseLatchProgress(
+      const LP_TradePlan &plan,
+      const LP_TradeExecutionResult &execution,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      if(plan.action != LP_INTENT_CLOSE_GRID || plan.grid_key <= 0)
+         return;
+      int index = FindCloseLatchIndex(plan.grid_key);
+      if(index < 0)
+         return;
+
+      LP_RevmaGridCloseLatch latch = m_close_latches[index];
+      latch.attempted_count += execution.attempted_positions;
+      latch.closed_count += execution.closed_positions;
+      latch.remaining_ticket_count = CountLiveGridTickets(plan);
+      if(execution.close_limit > 0)
+         latch.close_cap = execution.close_limit;
+      m_close_latches[index] = latch;
+      PersistCloseLatches(receipts, "grid_close_progress");
+      receipts.Write(
+         LP_RECEIPT_REVMA_GRID_EXIT,
+         plan.symbol,
+         "revma_grid_close_progress",
+         "grid_key=" + (string)latch.grid_key +
+            "|close_reason=" + latch.close_reason +
+            "|original_ticket_count=" + IntegerToString(latch.original_ticket_count) +
+            "|attempted_count=" + IntegerToString(latch.attempted_count) +
+            "|closed_count=" + IntegerToString(latch.closed_count) +
+            "|remaining_ticket_count=" + IntegerToString(latch.remaining_ticket_count) +
+            "|close_cap=" + IntegerToString(latch.close_cap),
+         LP_LANE_REVMA,
+         plan.variant_id,
+         latch.grid_key,
+         plan.intent_id,
+         plan.decision_id,
+         plan.magic
+      );
+   }
+
+   void ClearCloseLatch(const ulong grid_key, LP_ReceiptWriter &receipts, const string cause)
+   {
+      int index = FindCloseLatchIndex(grid_key);
+      if(index < 0)
+         return;
+      m_close_latches[index].valid = false;
+      PersistCloseLatches(receipts, cause);
+   }
+
    void UpsertBirthSnapshot(const LP_RevmaGridBirthSnapshot &birth)
    {
       if(!birth.valid || birth.grid_key <= 0)
@@ -684,6 +908,84 @@ private:
       return true;
    }
 
+   int LoadPersistedCloseLatchesInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
+   {
+      if(!m_state_persistence_enabled)
+         return 0;
+
+      int handle = FileOpen(CloseLatchStateFileName(), FILE_READ | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
+      if(handle == INVALID_HANDLE)
+         return 0;
+
+      int loaded = 0;
+      bool header = true;
+      while(!FileIsEnding(handle))
+      {
+         string grid_key_text = FileReadString(handle);
+         if(grid_key_text == "" && FileIsEnding(handle))
+            break;
+         string close_reason = FileReadString(handle);
+         string started_at_text = FileReadString(handle);
+         string original_ticket_count_text = FileReadString(handle);
+         string attempted_count_text = FileReadString(handle);
+         string closed_count_text = FileReadString(handle);
+         string remaining_ticket_count_text = FileReadString(handle);
+         string close_cap_text = FileReadString(handle);
+         if(header)
+         {
+            header = false;
+            if(grid_key_text == "grid_key")
+               continue;
+         }
+
+         ulong grid_key = (ulong)StringToInteger(grid_key_text);
+         LP_GridInventoryRow grid;
+         if(grid_key <= 0 ||
+            (close_reason != "grid_tp" && close_reason != "grid_sl") ||
+            !grid_book.FindGridKey(grid_key, grid))
+            continue;
+
+         if(m_close_latch_count >= m_close_latch_capacity)
+         {
+            m_close_latch_capacity = m_close_latch_capacity <= 0 ? 16 : m_close_latch_capacity * 2;
+            ArrayResize(m_close_latches, m_close_latch_capacity);
+         }
+         LP_RevmaGridCloseLatch latch;
+         LP_ResetRevmaGridCloseLatch(latch);
+         latch.valid = true;
+         latch.grid_key = grid_key;
+         latch.close_reason = close_reason;
+         latch.started_at = StringToTime(started_at_text);
+         latch.original_ticket_count = (int)StringToInteger(original_ticket_count_text);
+         latch.attempted_count = (int)StringToInteger(attempted_count_text);
+         latch.closed_count = (int)StringToInteger(closed_count_text);
+         latch.remaining_ticket_count = grid.position_count;
+         latch.close_cap = (int)StringToInteger(close_cap_text);
+         m_close_latches[m_close_latch_count] = latch;
+         m_close_latch_count++;
+         loaded++;
+      }
+      FileClose(handle);
+
+      if(loaded > 0)
+      {
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_EXIT,
+            "",
+            "revma_grid_close_latch_loaded",
+            "source=common_file|loaded_latches=" + IntegerToString(loaded) +
+               "|state_file=" + CloseLatchStateFileName(),
+            LP_LANE_REVMA,
+            0,
+            0,
+            0,
+            0,
+            0
+         );
+      }
+      return loaded;
+   }
+
    int LoadPersistedBirthsInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
    {
       m_state_loaded = true;
@@ -692,7 +994,7 @@ private:
 
       int handle = FileOpen(StateFileName(), FILE_READ | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle == INVALID_HANDLE)
-         return 0;
+         return LoadPersistedCloseLatchesInternal(grid_book, receipts);
 
       int loaded = 0;
       bool header = true;
@@ -800,6 +1102,7 @@ private:
             0
          );
       }
+      LoadPersistedCloseLatchesInternal(grid_book, receipts);
       return loaded;
    }
 
@@ -813,8 +1116,12 @@ private:
          if(grid_book.HasGridKey(m_births[i].grid_key))
             continue;
          ulong removed_key = m_births[i].grid_key;
-         m_research_telemetry.RecordGridClosed(m_births[i], "manual_or_external");
+         LP_RevmaGridCloseLatch close_latch;
+         string terminal_reason = FindCloseLatch(removed_key, close_latch) ?
+            close_latch.close_reason : "manual_or_external";
+         m_research_telemetry.RecordGridClosed(m_births[i], terminal_reason);
          m_births[i].valid = false;
+         ClearCloseLatch(removed_key, receipts, "grid_close_flat");
          removed++;
          receipts.Write(
             LP_RECEIPT_REVMA_GRID_EXIT,
@@ -1453,7 +1760,7 @@ private:
    void BuildGridCloseIntent(
       const string symbol,
       const LP_GridInventoryRow &grid,
-      const string reason,
+      const string terminal_close_reason,
       const string metadata,
       const double score,
       LP_TradeIntent &intent
@@ -1483,8 +1790,7 @@ private:
       intent.expected_grid_ticket_count = grid.position_count;
       intent.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
       intent.research_add_type = "";
-      intent.close_reason = reason == "take_profit_grid_q_after_fees" ? "grid_tp" :
-         (reason == "stop_loss_grid_q_after_fees" ? "grid_sl" : "unknown_error");
+      intent.close_reason = terminal_close_reason;
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = LP_HashString("gate99zze_revma_grid_summed_sltp");
       intent.human_reason = "revma_grid_basket_exit|" + metadata;
@@ -1507,6 +1813,39 @@ private:
          return false;
 
       string symbol = LP_ResolveBrokerSymbol(LP_CanonicalSymbol(grid.symbol_id), config.broker_symbol_suffix);
+      LP_RevmaGridCloseLatch existing_latch;
+      if(FindCloseLatch(grid.grid_key, existing_latch))
+      {
+         string latch_metadata =
+            "scope=revma_grid_close_latch" +
+            "|grid_key=" + (string)grid.grid_key +
+            "|grid_positions=" + IntegerToString(grid.position_count) +
+            "|grid_tickets=" + grid.tickets +
+            "|close_reason=" + existing_latch.close_reason +
+            "|close_latched=true" +
+            "|original_ticket_count=" + IntegerToString(existing_latch.original_ticket_count) +
+            "|attempted_count=" + IntegerToString(existing_latch.attempted_count) +
+            "|closed_count=" + IntegerToString(existing_latch.closed_count) +
+            "|remaining_ticket_count=" + IntegerToString(grid.position_count) +
+            "|close_cap=" + IntegerToString(existing_latch.close_cap);
+         LP_TradeIntent latched_close_intent;
+         BuildGridCloseIntent(symbol, grid, existing_latch.close_reason, latch_metadata, grid.floating_pnl, latched_close_intent);
+         bus.Add(latched_close_intent);
+         receipts.Write(
+            LP_RECEIPT_REVMA_GRID_EXIT,
+            symbol,
+            "revma_grid_close_latched",
+            latch_metadata + "|intent_id=" + (string)latched_close_intent.intent_id,
+            LP_LANE_REVMA,
+            grid.variant_id,
+            grid.grid_key,
+            latched_close_intent.intent_id,
+            0,
+            0
+         );
+         return true;
+      }
+
       double money_per_price = 0.0;
       string money_note = "";
       if(!MoneyPerPriceDistance(symbol, grid.lots, money_per_price, money_note))
@@ -1557,6 +1896,10 @@ private:
       if(reason == "")
          return false;
 
+      string terminal_close_reason = reason == "take_profit_grid_q_after_fees" ? "grid_tp" : "grid_sl";
+      LP_RevmaGridCloseLatch started_latch;
+      StartCloseLatch(grid, terminal_close_reason, config, receipts, started_latch);
+
       string metadata = BasketExitMetadata(
          symbol,
          grid,
@@ -1574,10 +1917,16 @@ private:
          stop_loss_q,
          take_profit_money,
          stop_loss_money
-      );
+       );
+      metadata += "|close_latched=true" +
+         "|original_ticket_count=" + IntegerToString(started_latch.original_ticket_count) +
+         "|attempted_count=" + IntegerToString(started_latch.attempted_count) +
+         "|closed_count=" + IntegerToString(started_latch.closed_count) +
+         "|remaining_ticket_count=" + IntegerToString(started_latch.remaining_ticket_count) +
+         "|close_cap=" + IntegerToString(started_latch.close_cap);
 
       LP_TradeIntent close_intent;
-      BuildGridCloseIntent(symbol, grid, reason, metadata, net_open_money, close_intent);
+      BuildGridCloseIntent(symbol, grid, terminal_close_reason, metadata, net_open_money, close_intent);
       bus.Add(close_intent);
 
       receipts.Write(
@@ -1709,6 +2058,8 @@ public:
       m_last_blocked_birth_hash = 0;
       m_pending_lifecycle_count = 0;
       m_pending_lifecycle_capacity = 0;
+      m_close_latch_count = 0;
+      m_close_latch_capacity = 0;
       m_persistence_write_count = 0;
       m_persistence_failure_count = 0;
       m_persistence_total_microseconds = 0;
@@ -1717,6 +2068,7 @@ public:
       m_research_telemetry.Reset();
       ArrayResize(m_births, 0);
       ArrayResize(m_pending_lifecycle, 0);
+      ArrayResize(m_close_latches, 0);
    }
 
    void Configure(const ulong config_hash, const LP_Config &config)
@@ -1850,15 +2202,34 @@ public:
       }
    }
 
-   void RecordCloseExecution(const LP_TradePlan &plan, const LP_TradeExecutionResult &execution)
+   void RecordCloseExecution(
+      const LP_TradePlan &plan,
+      const LP_TradeExecutionResult &execution,
+      LP_ReceiptWriter &receipts
+   )
    {
       m_research_telemetry.RecordCloseExecution(plan, execution);
       m_research_telemetry.RecordAccountCloseExecution(plan, execution);
+      UpdateCloseLatchProgress(plan, execution, receipts);
    }
 
-   void FinalizeResearchTelemetry(const LP_Config &config, LP_ReceiptWriter &receipts)
+   bool HasLatchedGridClose()
    {
-      m_research_telemetry.Finalize(config, receipts);
+      for(int i = 0; i < m_close_latch_count; i++)
+      {
+         if(m_close_latches[i].valid && m_close_latches[i].grid_key > 0)
+            return true;
+      }
+      return false;
+   }
+
+   void FinalizeResearchTelemetry(
+      const LP_Config &config,
+      const LP_BrokerExecutionIntegrity &broker_integrity,
+      LP_ReceiptWriter &receipts
+   )
+   {
+      m_research_telemetry.Finalize(config, broker_integrity, receipts);
       receipts.Summary("revma_lifecycle_persistence_failures", (string)m_persistence_failure_count);
    }
 
@@ -1995,12 +2366,19 @@ public:
       LP_RevmaGridBirthSnapshot birth_snapshot;
       LP_ResetRevmaGridBirthSnapshot(birth_snapshot);
 
-       if(has_active_grid)
-       {
-          FindBirth(active_grid.grid_key, birth_snapshot);
-          m_research_telemetry.ObserveGridSignal(active_grid.grid_key, signal);
+        if(has_active_grid)
+        {
+           FindBirth(active_grid.grid_key, birth_snapshot);
+           m_research_telemetry.ObserveGridSignal(active_grid.grid_key, signal);
 
-         int frozen_variant_id = birth_snapshot.valid ? birth_snapshot.variant_id : active_grid.variant_id;
+          LP_RevmaGridCloseLatch close_latch;
+          if(FindCloseLatch(active_grid.grid_key, close_latch))
+          {
+             UpdateVisualText(signal, true, active_grid, birth_snapshot, active_grid.variant_id, active_grid.direction, SleeveFromVariant(active_grid.variant_id), "none", 0.0, "add blocked: " + close_latch.close_reason, config);
+             return 0;
+          }
+
+          int frozen_variant_id = birth_snapshot.valid ? birth_snapshot.variant_id : active_grid.variant_id;
          int frozen_direction = birth_snapshot.valid ? birth_snapshot.direction : active_grid.direction;
          int frozen_sleeve = birth_snapshot.valid ? birth_snapshot.sleeve : SleeveFromVariant(active_grid.variant_id);
          string frozen_add_policy = birth_snapshot.valid ? birth_snapshot.add_policy : AddPolicyNameFromFrozen(frozen_sleeve, frozen_direction);

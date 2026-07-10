@@ -664,19 +664,22 @@ public:
       if(m_config.use_timer_watchdog)
          EventKillTimer();
 
-      LP_PortfolioState state;
-      RefreshPortfolioAndGrid(state);
-      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
-      LP_WritePortfolioSummary(m_receipts, state);
+       LP_PortfolioState state;
+       RefreshPortfolioAndGrid(state);
+       m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
+       m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
+       LP_WritePortfolioSummary(m_receipts, state);
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
       m_receipts.Summary("engine_steps", IntegerToString(m_step_count));
       m_receipts.Summary("total_ticks", IntegerToString(m_tick_count));
       m_receipts.Summary("total_new_bars", IntegerToString(m_total_new_bars));
-      m_receipts.Summary("total_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
-      m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
-      m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit", "reason=" + IntegerToString(reason), 0, 0, 0, 0, 0, 0);
-      m_strategy_registry.FinalizeRevmaResearchTelemetry(m_config, m_receipts);
+       m_receipts.Summary("total_closed_m1_evaluation_cycles", IntegerToString(m_total_closed_m1_cycles));
+       m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
+       m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit", "reason=" + IntegerToString(reason), 0, 0, 0, 0, 0, 0);
+       LP_BrokerExecutionIntegrity broker_integrity;
+       m_trade_router.GetBrokerExecutionIntegrity(broker_integrity);
+       m_strategy_registry.FinalizeRevmaResearchTelemetry(m_config, broker_integrity, m_receipts);
       m_runtime_telemetry.ObserveAggregate(
          LP_RUNTIME_LIFECYCLE_PERSISTENCE,
          m_strategy_registry.RevmaLifecyclePersistenceWriteCount(),
@@ -893,8 +896,9 @@ public:
 
       int revma_grid_exit_intents = 0;
       bool account_liquidation_owns_closes = m_stop_take_profit_liquidation_active;
-      bool should_scan_grid_exits = !account_liquidation_owns_closes && portfolio.open_grid_count > 0 &&
-         (!tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
+       bool revma_grid_close_latched = m_strategy_registry.HasLatchedRevmaGridClose();
+       bool should_scan_grid_exits = !account_liquidation_owns_closes && portfolio.open_grid_count > 0 &&
+          (revma_grid_close_latched || !tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
       if(should_scan_grid_exits)
       {
          ulong grid_close_started_at = m_runtime_telemetry.Start();
@@ -907,7 +911,7 @@ public:
          );
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_GRID_CLOSE_EVALUATION, grid_close_started_at);
       }
-      bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0;
+       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0 || revma_grid_close_latched;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
@@ -976,8 +980,34 @@ public:
          {
             LP_TradeExecutionResult execution;
             m_trade_router.Execute(plan, m_receipts, execution);
+            if(plan.reservation_status == "approved_reserved" && !execution.accepted)
+            {
+               // Reservations intentionally remain conservative for this
+               // batch after a zero-fill router/broker failure. Releasing
+               // partial or placed outcomes would weaken the stale-snapshot
+               // safety invariant.
+               m_receipts.Write(
+                  LP_RECEIPT_ERROR,
+                  plan.symbol,
+                  "reservation_retained_after_router_failure",
+                  "intent_id=" + (string)plan.intent_id +
+                     "|reservation_status=approved_reserved" +
+                     "|reservation_reason=" + plan.reservation_reason +
+                     "|execution_outcome=" + (execution.broker_rejected ? "broker_rejected" : "router_rejected") +
+                     "|retcode=" + IntegerToString((int)execution.retcode) +
+                     "|retcode_name=" + LP_RetcodeName(execution.retcode) +
+                     "|executed_lots=" + DoubleToString(execution.executed_lots, 2) +
+                     "|reservation_release=not_attempted_conservative_batch",
+                  plan.lane_id,
+                  plan.variant_id,
+                  plan.grid_key,
+                  plan.intent_id,
+                  plan.decision_id,
+                  plan.magic
+               );
+            }
             m_strategy_registry.RecordRevmaExecutionOutcome(plan, execution, m_receipts);
-            m_strategy_registry.RecordRevmaCloseExecution(plan, execution);
+            m_strategy_registry.RecordRevmaCloseExecution(plan, execution, m_receipts);
             m_portfolio_dirty = true;
          }
       }

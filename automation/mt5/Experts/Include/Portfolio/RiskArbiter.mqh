@@ -76,6 +76,12 @@ private:
 
       if(intent.action != LP_INTENT_CLOSE_ALL_EA)
       {
+         if(!LP_IsSupportedMagicLaneVariant(intent.lane_id, intent.variant_id) ||
+            (intent.direction != LP_SIDE_LONG && intent.direction != LP_SIDE_SHORT))
+         {
+            reason = "unsupported_managed_lane_variant_or_direction";
+            return false;
+         }
          if(intent.symbol_id < 0 || intent.symbol_id >= LP_SYMBOL_COUNT || StringLen(intent.symbol) <= 0)
          {
             reason = "symbol_missing";
@@ -230,7 +236,8 @@ public:
       {
          decision.decision = LP_RISK_REJECT;
          decision.reason = LP_RISK_REASON_CURRENCY_EXPOSURE;
-         decision.explanation = guard_reason;
+         decision.explanation = "risk_reservation_status=rejected_by_reservation" +
+            "|reservation_reason=" + guard_reason;
          return false;
       }
 
@@ -241,11 +248,23 @@ public:
       decision.allow_new_order = IsOpenAction(intent.action);
       decision.allow_reduce = IsReduceAction(intent.action);
       decision.allow_close = IsCloseAction(intent.action);
-      decision.explanation = IsOpenAction(intent.action) ?
-         "approved_strategy_agnostic_plan|risk_reservation=" + guard_reason :
-         "approved_strategy_agnostic_plan";
-
       BuildPlanFromIntent(intent, decision.decision_id, plan);
+      if(IsOpenAction(intent.action))
+      {
+         plan.reservation_status = guard_reason == "currency_guard_reserved" ?
+            "approved_reserved" : "not_required_guard_disabled";
+         plan.reservation_reason = guard_reason;
+         decision.explanation = "approved_strategy_agnostic_plan" +
+            "|risk_reservation_status=" + plan.reservation_status +
+            "|reservation_reason=" + guard_reason;
+      }
+      else
+      {
+         plan.reservation_status = "not_applicable";
+         plan.reservation_reason = "action_not_open_or_add";
+         decision.explanation = "approved_strategy_agnostic_plan" +
+            "|risk_reservation_status=not_applicable";
+      }
       return true;
    }
 };

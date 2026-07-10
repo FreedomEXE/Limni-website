@@ -53,9 +53,13 @@ public:
       m_revma.ObserveGridPath(grid_book);
    }
 
-   void FinalizeRevmaResearchTelemetry(const LP_Config &config, LP_ReceiptWriter &receipts)
+   void FinalizeRevmaResearchTelemetry(
+      const LP_Config &config,
+      const LP_BrokerExecutionIntegrity &broker_integrity,
+      LP_ReceiptWriter &receipts
+   )
    {
-      m_revma.FinalizeResearchTelemetry(config, receipts);
+      m_revma.FinalizeResearchTelemetry(config, broker_integrity, receipts);
    }
 
    ulong RevmaLifecyclePersistenceWriteCount()
@@ -149,9 +153,18 @@ public:
       m_revma.RecordExecutionOutcome(plan, execution, receipts);
    }
 
-   void RecordRevmaCloseExecution(const LP_TradePlan &plan, const LP_TradeExecutionResult &execution)
+   void RecordRevmaCloseExecution(
+      const LP_TradePlan &plan,
+      const LP_TradeExecutionResult &execution,
+      LP_ReceiptWriter &receipts
+   )
    {
-      m_revma.RecordCloseExecution(plan, execution);
+      m_revma.RecordCloseExecution(plan, execution, receipts);
+   }
+
+   bool HasLatchedRevmaGridClose()
+   {
+      return m_revma.HasLatchedGridClose();
    }
 
    int EvaluateAll(

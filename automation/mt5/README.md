@@ -283,13 +283,13 @@ The working rule is:
 - if multiple user-run folders appear between Codex sessions, classify them
   first instead of assuming Codex knows the run order.
 
-New tests should use `OutputFolder=AUTO`. AUTO output names include the Revma
-system, universe, q profile, stop/take-profit mode, TP, SL, lot size, grid
-spacing, receipt mode, guard states, account-close state, and a run stamp, for
+New tests should use `OutputFolder=AUTO`. AUTO uses a deliberately short folder
+name so final telemetry artifacts remain under the MQL5/Common Files path limit;
+the complete configuration identity lives in the run manifest and summary. For
 example:
 
 ```text
-LimniPortfolioEA_Rv_FX28_MEDIUM_50000_APct_TP1p000_SL0p000_L0p010_G0p10Q_RC_NCG_NEG_AC_...
+LPEA_FX28_MEDIUM_50000_APct_RC_...
 ```
 
 By default the EA uses `ReceiptMode=Off` and `OutputFolder=OFF`, so it writes
@@ -304,7 +304,9 @@ ReceiptMode=Off
 ```
 
 Use `Off` for normal speed-focused manual backtests where Freedom does not need
-Codex to review receipts. This writes no receipt or summary files.
+Codex to review receipts. This writes no receipt or summary files. `Off` with
+`OutputFolder=OFF` is survival/speed evidence only: it cannot support telemetry,
+attribution, reconciliation, or formula-clean acceptance.
 
 ```text
 ReceiptMode=Full
@@ -325,6 +327,20 @@ spacing-skip, monitoring, trade-plan, request, and transaction rows that make
 multi-year tester receipts grow into multi-gigabyte files. It must not be used
 to prove a new receipt schema until a short `Full` vs `CompactLongRun` parity
 fixture confirms identical trade behavior.
+
+### Controlled telemetry validation
+
+`TelemetryOnly` is a validation label, not a separate receipt enum. The current
+controlled attribution mode is:
+
+```text
+ReceiptMode=CompactLongRun
+OutputFolder=AUTO
+```
+
+This produces compact lifecycle receipts plus final grid, bucket, add-type,
+reconciliation, and capacity-pathology summaries in Common Files. Do not accept
+an `Off` / `OFF` run as Revma telemetry evidence even if it survives or is fast.
 
 ### Revma Account HWM Trail Mode
 

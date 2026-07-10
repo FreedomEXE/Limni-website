@@ -36,6 +36,8 @@ private:
    int m_max_open_position_count_observed;
    int m_max_managed_position_count_observed;
    int m_max_open_grid_count_observed;
+   double m_worst_managed_floating_pnl_observed;
+   double m_worst_managed_floating_pct_observed;
    bool m_stop_tp_metrics_seen;
    int m_stop_tp_metric_observation_count;
    double m_worst_stop_tp_net_open_pct_observed;
@@ -67,6 +69,8 @@ private:
       m_max_open_position_count_observed = 0;
       m_max_managed_position_count_observed = 0;
       m_max_open_grid_count_observed = 0;
+      m_worst_managed_floating_pnl_observed = 0.0;
+      m_worst_managed_floating_pct_observed = 0.0;
       m_stop_tp_metrics_seen = false;
       m_stop_tp_metric_observation_count = 0;
       m_worst_stop_tp_net_open_pct_observed = 0.0;
@@ -462,6 +466,9 @@ public:
          m_max_open_position_count_observed = state.open_position_count;
          m_max_managed_position_count_observed = state.managed_position_count;
          m_max_open_grid_count_observed = state.open_grid_count;
+         m_worst_managed_floating_pnl_observed = state.ea_floating_pnl;
+         m_worst_managed_floating_pct_observed = state.balance > 0.0 ?
+            100.0 * state.ea_floating_pnl / state.balance : 0.0;
          return;
       }
 
@@ -471,6 +478,12 @@ public:
          m_max_managed_position_count_observed = state.managed_position_count;
       if(state.open_grid_count > m_max_open_grid_count_observed)
          m_max_open_grid_count_observed = state.open_grid_count;
+      if(state.ea_floating_pnl < m_worst_managed_floating_pnl_observed)
+         m_worst_managed_floating_pnl_observed = state.ea_floating_pnl;
+      double managed_floating_pct = state.balance > 0.0 ?
+         100.0 * state.ea_floating_pnl / state.balance : 0.0;
+      if(managed_floating_pct < m_worst_managed_floating_pct_observed)
+         m_worst_managed_floating_pct_observed = managed_floating_pct;
    }
 
    void ObserveStopTakeProfitMetrics(
@@ -589,6 +602,10 @@ public:
             FileWrite(m_summary_handle, "max_open_position_count_observed", IntegerToString(m_max_open_position_count_observed));
             FileWrite(m_summary_handle, "max_managed_position_count_observed", IntegerToString(m_max_managed_position_count_observed));
             FileWrite(m_summary_handle, "max_open_grid_count_observed", IntegerToString(m_max_open_grid_count_observed));
+            FileWrite(m_summary_handle, "max_managed_positions", IntegerToString(m_max_managed_position_count_observed));
+            FileWrite(m_summary_handle, "max_open_grids", IntegerToString(m_max_open_grid_count_observed));
+            FileWrite(m_summary_handle, "worst_floating_pnl_account", DoubleToString(m_worst_managed_floating_pnl_observed, 2));
+            FileWrite(m_summary_handle, "worst_floating_pnl_account_pct", DoubleToString(m_worst_managed_floating_pct_observed, 6));
          }
          FileWrite(m_summary_handle, "stop_take_profit_metric_observations", IntegerToString(m_stop_tp_metric_observation_count));
          if(m_stop_tp_metrics_seen)

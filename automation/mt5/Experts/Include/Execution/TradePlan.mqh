@@ -31,6 +31,8 @@ void LP_ResetTradePlan(LP_TradePlan &plan)
    plan.research_lifecycle_event = LP_RESEARCH_LIFECYCLE_NONE;
    plan.research_add_type = "";
    plan.close_reason = "";
+   plan.reservation_status = "not_applicable";
+   plan.reservation_reason = "";
    plan.comment = "";
    plan.reason = "";
    plan.executable = false;

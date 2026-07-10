@@ -48,6 +48,15 @@ bool LP_IsLimniMagicNamespace(const long magic)
    return magic >= minimum_magic && magic < maximum_magic;
 }
 
+bool LP_IsSupportedMagicLaneVariant(const int lane_id, const int variant_id)
+{
+   // Only identities emitted by the active portfolio executor are owned.
+   // Enum-range acceptance is deliberately not enough: a future or malformed
+   // lane must stay external until its concrete contract is implemented.
+   return (lane_id == LP_LANE_REVMA && variant_id == LP_VARIANT_REVMA_REVERSION) ||
+      (lane_id == LP_LANE_TREND_FOLLOW && variant_id == LP_VARIANT_STRICT);
+}
+
 bool LP_DecodeMagic(const long magic, LP_MagicParts &parts)
 {
    LP_ResetMagicParts(parts);
@@ -80,11 +89,13 @@ bool LP_DecodeMagic(const long magic, LP_MagicParts &parts)
    else
       parts.direction = LP_SIDE_NONE;
 
-   parts.valid = parts.major_version == LP_MAGIC_MAJOR_VERSION &&
-      parts.symbol_id >= 0 &&
-      parts.symbol_id < LP_SYMBOL_COUNT &&
-      direction_code >= 0 &&
-      direction_code <= 2;
+    parts.valid = parts.major_version == LP_MAGIC_MAJOR_VERSION &&
+       parts.symbol_id >= 0 &&
+       parts.symbol_id < LP_SYMBOL_COUNT &&
+       LP_IsSupportedMagicLaneVariant(parts.lane_id, parts.variant_id) &&
+       direction_code >= 1 &&
+       direction_code <= 2 &&
+       parts.grid_family > 0;
    return parts.valid;
 }
 

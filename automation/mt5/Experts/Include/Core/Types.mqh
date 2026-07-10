@@ -492,6 +492,8 @@ struct LP_TradePlan
    int research_lifecycle_event;
    string research_add_type;
    string close_reason;
+   string reservation_status;
+   string reservation_reason;
    string comment;
    string reason;
    bool executable;
@@ -517,6 +519,7 @@ struct LP_TradeExecutionResult
    int attempted_positions;
    int closed_positions;
    int failed_positions;
+   int close_limit;
    string detail;
 };
 
@@ -540,7 +543,34 @@ void LP_ResetTradeExecutionResult(LP_TradeExecutionResult &result)
    result.attempted_positions = 0;
    result.closed_positions = 0;
    result.failed_positions = 0;
+   result.close_limit = 0;
    result.detail = "";
+}
+
+struct LP_BrokerExecutionIntegrity
+{
+   int successful_order_results;
+   int failed_order_results;
+   int broker_rejection_count;
+   int no_money_count;
+   int market_closed_count;
+   datetime first_no_money_time;
+   datetime last_no_money_time;
+   datetime first_broker_rejection_time;
+   datetime last_broker_rejection_time;
+};
+
+void LP_ResetBrokerExecutionIntegrity(LP_BrokerExecutionIntegrity &integrity)
+{
+   integrity.successful_order_results = 0;
+   integrity.failed_order_results = 0;
+   integrity.broker_rejection_count = 0;
+   integrity.no_money_count = 0;
+   integrity.market_closed_count = 0;
+   integrity.first_no_money_time = 0;
+   integrity.last_no_money_time = 0;
+   integrity.first_broker_rejection_time = 0;
+   integrity.last_broker_rejection_time = 0;
 }
 
 struct LP_PortfolioState
