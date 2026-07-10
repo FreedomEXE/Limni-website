@@ -2,9 +2,9 @@
 
 Date: 2026-07-10
 
-Status: **SOURCE REPAIR AND REPOSITORY PREFLIGHT COMPILE COMPLETE. INDEPENDENT
-STATIC REVIEW IN PROGRESS. FREEDOM-OWNED 14-DAY RERUN REQUIRED. THE ONE-YEAR
-RUN AND GATE 108 REMAIN CLOSED.**
+Status: **SOURCE REPAIR, INDEPENDENT STATIC REVIEW, THREE CLEAN COMPILES, AND
+TWO-TERMINAL SOURCE/PROFILE SYNC COMPLETE. FREEDOM-OWNED 14-DAY RERUN
+REQUIRED. THE ONE-YEAR RUN AND GATE 108 REMAIN CLOSED.**
 
 ## Why this repair exists
 
@@ -160,8 +160,20 @@ LP_BUILD_GATE=Gate107C-R-S2
 LP_BUILD_SCOPE=revma-distinct-grid-exact-cache-receipt-integrity
 ```
 
-The exact source commit and pinned profile hashes will be added after the
-reviewed source checkpoint is created.
+Exact reviewed source commit:
+
+```text
+ead31a79a76f3fe7a1871234191ea960c35fc0e0
+```
+
+Pinned repository profile identities:
+
+| Profile | SHA-256 |
+|---|---|
+| `limni-portfolio-revma-gate107crs-speed-smoke-20250101-20250115.ini` | `B72BA8072BC3664FED316229022C7C6FB94DA3AD900088FBC6E2A3092AB52903` |
+| `limni-portfolio-revma-gate107cr-validation-20250101-20260101.ini` | `82E8C7E2E55F0D49A9B24850D9766F7EECDD08CFF0354220B654FE12878110AB` |
+| `limni-portfolio-revma-fx28-fast-smoke.set` | `3AB3224D471BD704E76B5EDF5909C86263A6D5BF5DE0890DC180A6019610FB04` |
+| `limni-portfolio-revma-gate107cr-validation.set` | `F93B0A96FBD9662192842905188F7443A1C9CE1AA05509465B8F23C2F491D276` |
 
 ## Compile proof
 
@@ -176,6 +188,37 @@ Result: 0 errors, 0 warnings, 197706 ms elapsed, cpu='X64 Regular'
 
 MetaEditor returned the known local exit code `1`; the clean result line is the
 compile gate signal. Codex did not run Strategy Tester or any backtest tool.
+
+Final compile-and-sync artifact:
+`docs/research/gates/gate107/artifacts/gate107crs2-compile-sync-20260710/`.
+
+```text
+repository:     0 errors, 0 warnings, 216348 ms
+terminal 14275: 0 errors, 0 warnings, 229844 ms
+terminal 94497: 0 errors, 0 warnings, 193350 ms
+EX5 SHA-256:    810A9E6FC7B9101DA4925BC8007B83702B064CD29067FA20FF212AD84E824D8D
+```
+
+The repository EX5 and both installed terminal EX5 files have that same hash.
+The sync gate recorded zero source-hash mismatches, zero short-profile hash
+mismatches, zero compile failures, zero active/stored stale-input matches, and
+zero unknown running terminals.
+
+Profile-only sync artifacts:
+
+- `gate107crs2-one-year-profile-sync-20260710/`: both terminals match the
+  pinned one-year INI hash;
+- `gate107crs2-canonical-set-sync-20260710/`: both terminals match the pinned
+  canonical `.set` hash.
+
+Both profile-only passes used `SkipCompile`; their empty compile summaries are
+therefore expected. They did not start Strategy Tester.
+
+Independent static reviews found no remaining blocker in the distinct-grid
+guard, exact tester cache, or CompactLongRun join contract. The cache remains
+inventory-scaled `O(N)`, and dormant aggregate-estimator helpers remain
+maintenance debt to remove only after runtime acceptance. Neither point is a
+claim that the short-run or sub-60-second target has passed.
 
 ## Short-rerun acceptance
 

@@ -2,9 +2,10 @@
 
 Date: 2026-07-10
 
-Status: **FIRST SHORT RUNTIME REJECTED. ECONOMIC LEDGERS RECONCILED, BUT CACHE
-PARITY AND DISTINCT-GRID ADMISSION FAILED. THE GATE 107C-R-S2 REPAIR IS THE
-ACTIVE IMPLEMENTATION LANE. GATE 108 REMAINS CLOSED.**
+Status: **FIRST SHORT RUNTIME REJECTED. THE GATE 107C-R-S2 SOURCE REPAIR,
+STATIC REVIEW, COMPILE, AND TWO-TERMINAL SYNC ARE COMPLETE. FREEDOM'S REPEAT
+14-DAY GUI RUN IS THE ACTIVE GATE. THE ONE-YEAR RUN AND GATE 108 REMAIN
+CLOSED.**
 
 ## Decision
 
@@ -21,6 +22,9 @@ gate target, not a forecast or a reason to weaken the evidence contract.
 Codex must not run Strategy Tester, smoke runners, shard runners, benchmarks,
 optimization, or any other MT5 backtest automation. Freedom owns every runtime
 test.
+
+The current repair contract and proof are pinned in
+`GATE107CRS2_DISTINCT_GRID_EXACT_CACHE_REPAIR_2026-07-10.md`.
 
 ## Frozen economic boundary
 
