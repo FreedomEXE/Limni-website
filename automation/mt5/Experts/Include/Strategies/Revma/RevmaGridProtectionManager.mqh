@@ -365,6 +365,7 @@ public:
          birth_metadata;
 
       LP_TradeIntent intent;
+      LP_ResetTradeIntent(intent);
       intent.intent_id = intent_id;
       intent.symbol_id = grid.symbol_id;
       intent.symbol = symbol;

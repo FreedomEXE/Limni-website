@@ -358,6 +358,7 @@ struct LP_TickSnapshot
 
 struct LP_BarClockState
 {
+   int symbol_id;
    string symbol;
    datetime last_bar_time;
    double close;
@@ -420,6 +421,16 @@ struct LP_PortfolioQStateSnapshot
 
 struct LP_TradeIntent
 {
+   bool gate108;
+   int discovery_branch;
+   ulong discovery_branch_grid_id;
+   ulong discovery_candidate_identity;
+   ulong discovery_shared_snapshot_hash;
+   ulong discovery_matched_snapshot_hash;
+   ulong discovery_pre_candidate_state_hash;
+   datetime discovery_source_m1_time;
+   int discovery_close_owner;
+   string discovery_origin_terminal_reason;
    ulong intent_id;
    int symbol_id;
    string symbol;
@@ -450,6 +461,19 @@ struct LP_TradeIntent
    string human_reason;
 };
 
+void LP_ResetTradeIntent(LP_TradeIntent &intent)
+{
+   ZeroMemory(intent);
+   intent.gate108 = false;
+   intent.discovery_branch = -1;
+   intent.discovery_close_owner = 0;
+   intent.symbol_id = -1;
+   intent.lane_id = LP_LANE_NONE;
+   intent.variant_id = LP_VARIANT_NONE;
+   intent.action = LP_INTENT_NONE;
+   intent.direction = LP_SIDE_NONE;
+}
+
 struct LP_RiskDecision
 {
    ulong decision_id;
@@ -469,6 +493,16 @@ struct LP_RiskDecision
 
 struct LP_TradePlan
 {
+   bool gate108;
+   int discovery_branch;
+   ulong discovery_branch_grid_id;
+   ulong discovery_candidate_identity;
+   ulong discovery_shared_snapshot_hash;
+   ulong discovery_matched_snapshot_hash;
+   ulong discovery_pre_candidate_state_hash;
+   datetime discovery_source_m1_time;
+   int discovery_close_owner;
+   string discovery_origin_terminal_reason;
    ulong plan_id;
    ulong decision_id;
    ulong intent_id;
@@ -499,22 +533,35 @@ struct LP_TradePlan
    bool executable;
 };
 
+#define LP_MAX_EXECUTION_DEAL_TICKETS 32
+
 struct LP_TradeExecutionResult
 {
    bool accepted;
    bool partial_fill;
    bool broker_rejected;
+   bool order_send_attempted;
+   bool session_open;
+   string session_outcome;
    int action;
    uint retcode;
    ulong order_ticket;
    ulong deal_ticket;
    ulong position_ticket;
+   bool deal_set_complete;
+   bool deal_linkage_clean;
+   int deal_count;
+   ulong deal_set_hash;
+   ulong first_deal_ticket;
+   ulong last_deal_ticket;
+   ulong canonical_deal_tickets[LP_MAX_EXECUTION_DEAL_TICKETS];
    double requested_lots;
    double executed_lots;
    double executed_price;
    double realized_profit;
    double realized_swap;
    double realized_commission;
+   double realized_fee;
    int matched_positions;
    int attempted_positions;
    int closed_positions;
@@ -528,17 +575,27 @@ void LP_ResetTradeExecutionResult(LP_TradeExecutionResult &result)
    result.accepted = false;
    result.partial_fill = false;
    result.broker_rejected = false;
+   result.order_send_attempted = false;
+   result.session_open = false;
+   result.session_outcome = "not_evaluated";
    result.action = LP_INTENT_NONE;
    result.retcode = 0;
    result.order_ticket = 0;
    result.deal_ticket = 0;
    result.position_ticket = 0;
+   result.deal_set_complete = false;
+   result.deal_linkage_clean = false;
+   result.deal_count = 0;
+   result.deal_set_hash = 0;
+   result.first_deal_ticket = 0;
+   result.last_deal_ticket = 0;
    result.requested_lots = 0.0;
    result.executed_lots = 0.0;
    result.executed_price = 0.0;
    result.realized_profit = 0.0;
    result.realized_swap = 0.0;
    result.realized_commission = 0.0;
+   result.realized_fee = 0.0;
    result.matched_positions = 0;
    result.attempted_positions = 0;
    result.closed_positions = 0;

@@ -241,12 +241,14 @@ double LP_RevmaPipSize(const LP_SymbolMeta &meta)
 struct LP_RevmaSignal
 {
    bool valid;
+   bool birth_eligible;
    int symbol_id;
    string symbol;
    datetime source_m1_time;
    int closed_m1_bars;
    int q_days;
    int q_event_count;
+   datetime initial_history_boundary;
    ulong reconstruction_epoch;
    int q_profile;
    int max_m1_bars;
@@ -286,12 +288,14 @@ struct LP_RevmaSignal
 void LP_ResetRevmaSignal(LP_RevmaSignal &signal)
 {
    signal.valid = false;
+   signal.birth_eligible = false;
    signal.symbol_id = -1;
    signal.symbol = "";
    signal.source_m1_time = 0;
    signal.closed_m1_bars = 0;
    signal.q_days = 0;
    signal.q_event_count = 0;
+   signal.initial_history_boundary = 0;
    signal.reconstruction_epoch = 0;
    signal.q_profile = LP_REVMA_Q_PROFILE_MEDIUM;
    signal.max_m1_bars = 50000;

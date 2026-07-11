@@ -149,6 +149,7 @@ public:
             return 0;
 
          LP_TradeIntent add_intent;
+         LP_ResetTradeIntent(add_intent);
          BuildIntent(
             snapshot,
             config,
@@ -165,6 +166,7 @@ public:
          return 0;
 
       LP_TradeIntent open_intent;
+      LP_ResetTradeIntent(open_intent);
       BuildIntent(
          snapshot,
          config,

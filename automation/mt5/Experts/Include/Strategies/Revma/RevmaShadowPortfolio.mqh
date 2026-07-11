@@ -6,6 +6,7 @@
 
 #include "RevmaDiscoveryTypes.mqh"
 #include "RevmaCenterSupportPolicy.mqh"
+#include "..\\..\\Core\\SymbolUniverse.mqh"
 
 #define LP_REVMA_MINOR_ABS_LIMIT 9000000000000000000
 
@@ -83,9 +84,12 @@ struct LP_RevmaShadowGrid
    ulong shared_origin_id;
    ulong birth_pre_candidate_state_hash;
    ulong birth_matched_snapshot_hash;
+   ulong birth_shared_observation_snapshot_hash;
    ulong formula_hash;
    ulong strategy_identity_hash;
+   ulong strategy_state_identity_hash;
    datetime birth_m1_time;
+   datetime initial_history_boundary;
    datetime last_admission_m1_time;
    ulong last_admission_identity;
    int atom_count;
@@ -132,8 +136,10 @@ struct LP_RevmaShadowGrid
    datetime close_trigger_m1_time;
    datetime last_mark_m1_time;
    datetime last_local_harvest_evaluation_m1_time;
+   datetime last_positive_liquidation_opportunity_m1;
    datetime last_flat_m1_time;
    ulong terminal_event_hash;
+   ulong terminal_projection_hash;
    ulong terminal_internal_state_hash;
    datetime terminal_evidence_m1_time;
    bool reentry_requires_identity_transition;
@@ -160,9 +166,12 @@ void LP_ResetRevmaShadowGrid(LP_RevmaShadowGrid &grid, const int branch, const i
    grid.shared_origin_id = 0;
    grid.birth_pre_candidate_state_hash = 0;
    grid.birth_matched_snapshot_hash = 0;
+   grid.birth_shared_observation_snapshot_hash = 0;
    grid.formula_hash = LP_RevmaDiscoveryFormulaHash();
    grid.strategy_identity_hash = 0;
+   grid.strategy_state_identity_hash = 0;
    grid.birth_m1_time = 0;
+   grid.initial_history_boundary = 0;
    grid.last_admission_m1_time = 0;
    grid.last_admission_identity = 0;
    grid.atom_count = 0;
@@ -209,8 +218,10 @@ void LP_ResetRevmaShadowGrid(LP_RevmaShadowGrid &grid, const int branch, const i
    grid.close_trigger_m1_time = 0;
    grid.last_mark_m1_time = 0;
    grid.last_local_harvest_evaluation_m1_time = 0;
+   grid.last_positive_liquidation_opportunity_m1 = 0;
    grid.last_flat_m1_time = 0;
    grid.terminal_event_hash = 0;
+   grid.terminal_projection_hash = 0;
    grid.terminal_internal_state_hash = 0;
    grid.terminal_evidence_m1_time = 0;
    grid.reentry_requires_identity_transition = false;
@@ -253,6 +264,48 @@ struct LP_RevmaShadowPortfolioState
    long capacity_overrun_minor;
    long margin_minor;
    long peak_margin_minor;
+   long q_cash_minor;
+   int atom_count;
+   int active_grid_count;
+   long currency_q_cash_minor[LP_CCY_COUNT];
+   long concentration_q_cash_minor;
+   int concentration_currency_id;
+   long liquidation_liability_minor;
+   long equity_high_water_minor;
+   long branch_drawdown_minor;
+   long peak_reservation_minor;
+   long peak_q_cash_minor;
+   int peak_atom_count;
+   int peak_active_grid_count;
+   long peak_concentration_q_cash_minor;
+   int peak_concentration_currency_id;
+   long peak_liquidation_liability_minor;
+   long maximum_branch_drawdown_minor;
+   long run_peak_reservation_minor;
+   long run_peak_margin_minor;
+   long run_peak_q_cash_minor;
+   int run_peak_atom_count;
+   int run_peak_active_grid_count;
+   long run_peak_concentration_q_cash_minor;
+   int run_peak_concentration_currency_id;
+   long run_peak_liquidation_liability_minor;
+   long run_equity_high_water_minor;
+   long run_maximum_branch_drawdown_minor;
+   ulong cycle_risk_snapshot_count;
+   ulong cycle_risk_snapshot_hash;
+   ulong run_risk_snapshot_count;
+   ulong run_risk_snapshot_hash;
+   datetime last_risk_snapshot_m1_time;
+   ulong cycle_candidate_built_count;
+   ulong cycle_candidate_decision_count;
+   ulong cycle_candidate_admitted_count;
+   ulong cycle_candidate_rejected_count;
+   ulong cycle_inventory_transition_count;
+   ulong run_candidate_built_count;
+   ulong run_candidate_decision_count;
+   ulong run_candidate_admitted_count;
+   ulong run_candidate_rejected_count;
+   ulong run_inventory_transition_count;
    string first_infeasibility;
    string latest_infeasibility;
    datetime first_infeasibility_m1_time;
@@ -298,6 +351,49 @@ void LP_ResetRevmaShadowPortfolioState(LP_RevmaShadowPortfolioState &portfolio, 
    portfolio.capacity_overrun_minor = 0;
    portfolio.margin_minor = 0;
    portfolio.peak_margin_minor = 0;
+   portfolio.q_cash_minor = 0;
+   portfolio.atom_count = 0;
+   portfolio.active_grid_count = 0;
+   for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+      portfolio.currency_q_cash_minor[ccy] = 0;
+   portfolio.concentration_q_cash_minor = 0;
+   portfolio.concentration_currency_id = -1;
+   portfolio.liquidation_liability_minor = 0;
+   portfolio.equity_high_water_minor = 0;
+   portfolio.branch_drawdown_minor = 0;
+   portfolio.peak_reservation_minor = 0;
+   portfolio.peak_q_cash_minor = 0;
+   portfolio.peak_atom_count = 0;
+   portfolio.peak_active_grid_count = 0;
+   portfolio.peak_concentration_q_cash_minor = 0;
+   portfolio.peak_concentration_currency_id = -1;
+   portfolio.peak_liquidation_liability_minor = 0;
+   portfolio.maximum_branch_drawdown_minor = 0;
+   portfolio.run_peak_reservation_minor = 0;
+   portfolio.run_peak_margin_minor = 0;
+   portfolio.run_peak_q_cash_minor = 0;
+   portfolio.run_peak_atom_count = 0;
+   portfolio.run_peak_active_grid_count = 0;
+   portfolio.run_peak_concentration_q_cash_minor = 0;
+   portfolio.run_peak_concentration_currency_id = -1;
+   portfolio.run_peak_liquidation_liability_minor = 0;
+   portfolio.run_equity_high_water_minor = 0;
+   portfolio.run_maximum_branch_drawdown_minor = 0;
+   portfolio.cycle_risk_snapshot_count = 0;
+   portfolio.cycle_risk_snapshot_hash = LP_RevmaDiscoveryFormulaHash();
+   portfolio.run_risk_snapshot_count = 0;
+   portfolio.run_risk_snapshot_hash = LP_RevmaDiscoveryFormulaHash();
+   portfolio.last_risk_snapshot_m1_time = 0;
+   portfolio.cycle_candidate_built_count = 0;
+   portfolio.cycle_candidate_decision_count = 0;
+   portfolio.cycle_candidate_admitted_count = 0;
+   portfolio.cycle_candidate_rejected_count = 0;
+   portfolio.cycle_inventory_transition_count = 0;
+   portfolio.run_candidate_built_count = 0;
+   portfolio.run_candidate_decision_count = 0;
+   portfolio.run_candidate_admitted_count = 0;
+   portfolio.run_candidate_rejected_count = 0;
+   portfolio.run_inventory_transition_count = 0;
    portfolio.first_infeasibility = "";
    portfolio.latest_infeasibility = "";
    portfolio.first_infeasibility_m1_time = 0;
@@ -343,15 +439,19 @@ struct LP_RevmaShadowCandidate
    long incremental_liquidation_minor;
    long incremental_close_cost_minor;
    long concentration_q_cash_minor;
+   int concentration_currency_id;
    int candidate_type;
    ulong shared_origin_id;
    ulong opportunity_id;
    ulong matched_snapshot_hash;
+   ulong shared_observation_snapshot_hash;
    ulong pre_candidate_state_hash;
    ulong strategy_identity_hash;
+   ulong strategy_state_identity_hash;
    double p0;
    double c0;
    double broker_tick_size;
+   datetime initial_history_boundary;
    bool center_policy_checked;
    bool center_policy_applies;
    bool center_add_authorized;
@@ -389,15 +489,19 @@ void LP_ResetRevmaShadowCandidate(LP_RevmaShadowCandidate &candidate)
    candidate.incremental_liquidation_minor = 0;
    candidate.incremental_close_cost_minor = 0;
    candidate.concentration_q_cash_minor = 0;
+   candidate.concentration_currency_id = -1;
    candidate.candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_NONE;
    candidate.shared_origin_id = 0;
    candidate.opportunity_id = 0;
    candidate.matched_snapshot_hash = 0;
+   candidate.shared_observation_snapshot_hash = 0;
    candidate.pre_candidate_state_hash = 0;
    candidate.strategy_identity_hash = 0;
+   candidate.strategy_state_identity_hash = 0;
    candidate.p0 = 0.0;
    candidate.c0 = 0.0;
    candidate.broker_tick_size = 0.0;
+   candidate.initial_history_boundary = 0;
    candidate.center_policy_checked = false;
    candidate.center_policy_applies = false;
    candidate.center_add_authorized = false;
@@ -444,6 +548,12 @@ private:
    {
       LP_RevmaShadowPortfolioState u = m_portfolios[0];
       LP_RevmaShadowPortfolioState c = m_portfolios[1];
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+      {
+         if(u.currency_q_cash_minor[ccy] !=
+            c.currency_q_cash_minor[ccy])
+            return false;
+      }
       return u.valid == c.valid && u.initialized == c.initialized &&
          u.batch_open == c.batch_open &&
          u.allocation_complete == c.allocation_complete &&
@@ -469,6 +579,66 @@ private:
          u.capacity_overrun_minor == c.capacity_overrun_minor &&
          u.margin_minor == c.margin_minor &&
          u.peak_margin_minor == c.peak_margin_minor &&
+         u.q_cash_minor == c.q_cash_minor &&
+         u.atom_count == c.atom_count &&
+         u.active_grid_count == c.active_grid_count &&
+         u.concentration_q_cash_minor ==
+            c.concentration_q_cash_minor &&
+         u.concentration_currency_id == c.concentration_currency_id &&
+         u.liquidation_liability_minor ==
+            c.liquidation_liability_minor &&
+         u.equity_high_water_minor == c.equity_high_water_minor &&
+         u.branch_drawdown_minor == c.branch_drawdown_minor &&
+         u.peak_reservation_minor == c.peak_reservation_minor &&
+         u.peak_q_cash_minor == c.peak_q_cash_minor &&
+         u.peak_atom_count == c.peak_atom_count &&
+         u.peak_active_grid_count == c.peak_active_grid_count &&
+         u.peak_concentration_q_cash_minor ==
+            c.peak_concentration_q_cash_minor &&
+         u.peak_concentration_currency_id ==
+            c.peak_concentration_currency_id &&
+         u.peak_liquidation_liability_minor ==
+            c.peak_liquidation_liability_minor &&
+         u.maximum_branch_drawdown_minor ==
+            c.maximum_branch_drawdown_minor &&
+         u.run_peak_reservation_minor == c.run_peak_reservation_minor &&
+         u.run_peak_margin_minor == c.run_peak_margin_minor &&
+         u.run_peak_q_cash_minor == c.run_peak_q_cash_minor &&
+         u.run_peak_atom_count == c.run_peak_atom_count &&
+         u.run_peak_active_grid_count == c.run_peak_active_grid_count &&
+         u.run_peak_concentration_q_cash_minor ==
+            c.run_peak_concentration_q_cash_minor &&
+         u.run_peak_concentration_currency_id ==
+            c.run_peak_concentration_currency_id &&
+         u.run_peak_liquidation_liability_minor ==
+            c.run_peak_liquidation_liability_minor &&
+         u.run_equity_high_water_minor == c.run_equity_high_water_minor &&
+         u.run_maximum_branch_drawdown_minor ==
+            c.run_maximum_branch_drawdown_minor &&
+         u.cycle_risk_snapshot_count == c.cycle_risk_snapshot_count &&
+         u.cycle_risk_snapshot_hash == c.cycle_risk_snapshot_hash &&
+         u.run_risk_snapshot_count == c.run_risk_snapshot_count &&
+         u.run_risk_snapshot_hash == c.run_risk_snapshot_hash &&
+         u.last_risk_snapshot_m1_time == c.last_risk_snapshot_m1_time &&
+         u.cycle_candidate_built_count ==
+            c.cycle_candidate_built_count &&
+         u.cycle_candidate_decision_count ==
+            c.cycle_candidate_decision_count &&
+         u.cycle_candidate_admitted_count ==
+            c.cycle_candidate_admitted_count &&
+         u.cycle_candidate_rejected_count ==
+            c.cycle_candidate_rejected_count &&
+         u.cycle_inventory_transition_count ==
+            c.cycle_inventory_transition_count &&
+         u.run_candidate_built_count == c.run_candidate_built_count &&
+         u.run_candidate_decision_count ==
+            c.run_candidate_decision_count &&
+         u.run_candidate_admitted_count ==
+            c.run_candidate_admitted_count &&
+         u.run_candidate_rejected_count ==
+            c.run_candidate_rejected_count &&
+         u.run_inventory_transition_count ==
+            c.run_inventory_transition_count &&
          u.first_infeasibility == c.first_infeasibility &&
          u.latest_infeasibility == c.latest_infeasibility &&
          u.first_infeasibility_m1_time == c.first_infeasibility_m1_time &&
@@ -497,8 +667,12 @@ private:
          u.shared_origin_id == c.shared_origin_id &&
          u.birth_pre_candidate_state_hash == c.birth_pre_candidate_state_hash &&
          u.birth_matched_snapshot_hash == c.birth_matched_snapshot_hash &&
+         u.birth_shared_observation_snapshot_hash ==
+            c.birth_shared_observation_snapshot_hash &&
          u.formula_hash == c.formula_hash &&
          u.strategy_identity_hash == c.strategy_identity_hash &&
+         u.strategy_state_identity_hash ==
+            c.strategy_state_identity_hash &&
          u.birth_m1_time == c.birth_m1_time &&
          u.last_admission_m1_time == c.last_admission_m1_time &&
          u.atom_count == c.atom_count &&
@@ -550,6 +724,8 @@ private:
          u.last_flat_m1_time == c.last_flat_m1_time &&
           ((u.terminal_event_hash != 0) ==
              (c.terminal_event_hash != 0)) &&
+          ((u.terminal_projection_hash != 0) ==
+             (c.terminal_projection_hash != 0)) &&
           ((u.terminal_internal_state_hash != 0) ==
              (c.terminal_internal_state_hash != 0)) &&
           u.terminal_evidence_m1_time == c.terminal_evidence_m1_time &&
@@ -905,6 +1081,315 @@ private:
       return true;
    }
 
+   bool IncrementEvidenceCounter(ulong &counter)
+   {
+      if(counter >= (ulong)LP_REVMA_MINOR_ABS_LIMIT)
+         return false;
+      counter++;
+      return true;
+   }
+
+   bool RecordCandidateBuilt(const int shadow_index)
+   {
+      if(!IncrementEvidenceCounter(
+            m_portfolios[shadow_index].cycle_candidate_built_count) ||
+         !IncrementEvidenceCounter(
+            m_portfolios[shadow_index].run_candidate_built_count))
+      {
+         Invalidate(shadow_index, "candidate_built_count_overflow");
+         return false;
+      }
+      return true;
+   }
+
+   bool RecordCandidateDecisions(const int shadow_index)
+   {
+      ulong admitted = 0;
+      ulong rejected = 0;
+      for(int i = 0; i < m_candidate_count[shadow_index]; i++)
+      {
+         if(m_candidates[shadow_index][i].decision ==
+            LP_REVMA_DISCOVERY_DECISION_ADMIT)
+            admitted++;
+         else if(m_candidates[shadow_index][i].decision ==
+            LP_REVMA_DISCOVERY_DECISION_REJECT)
+            rejected++;
+         else
+         {
+            Invalidate(shadow_index,
+               "candidate_without_terminal_allocation_decision");
+            return false;
+         }
+      }
+      ulong decisions = admitted + rejected;
+      if(decisions != (ulong)m_candidate_count[shadow_index] ||
+         m_portfolios[shadow_index].cycle_candidate_decision_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - decisions ||
+         m_portfolios[shadow_index].run_candidate_decision_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - decisions ||
+         m_portfolios[shadow_index].cycle_candidate_admitted_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - admitted ||
+         m_portfolios[shadow_index].run_candidate_admitted_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - admitted ||
+         m_portfolios[shadow_index].cycle_candidate_rejected_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - rejected ||
+         m_portfolios[shadow_index].run_candidate_rejected_count >
+            (ulong)LP_REVMA_MINOR_ABS_LIMIT - rejected)
+      {
+         Invalidate(shadow_index, "candidate_decision_count_overflow");
+         return false;
+      }
+      m_portfolios[shadow_index].cycle_candidate_decision_count += decisions;
+      m_portfolios[shadow_index].run_candidate_decision_count += decisions;
+      m_portfolios[shadow_index].cycle_candidate_admitted_count += admitted;
+      m_portfolios[shadow_index].run_candidate_admitted_count += admitted;
+      m_portfolios[shadow_index].cycle_candidate_rejected_count += rejected;
+      m_portfolios[shadow_index].run_candidate_rejected_count += rejected;
+      return true;
+   }
+
+   bool RecordInventoryTransition(const int shadow_index)
+   {
+      if(!IncrementEvidenceCounter(
+            m_portfolios[shadow_index].cycle_inventory_transition_count) ||
+         !IncrementEvidenceCounter(
+            m_portfolios[shadow_index].run_inventory_transition_count))
+      {
+         Invalidate(shadow_index, "inventory_transition_count_overflow");
+         return false;
+      }
+      return true;
+   }
+
+   bool ReconcileAndObserveConcurrentRisk(
+      const int shadow_index,
+      const datetime source_m1_time,
+      const string boundary_class)
+   {
+      if(shadow_index < 0 || shadow_index >= LP_REVMA_SHADOW_BRANCH_COUNT ||
+         !m_portfolios[shadow_index].valid || source_m1_time <= 0 ||
+         ((long)source_m1_time % 60) != 0 || boundary_class == "" ||
+         !ReconcileReservation(shadow_index) ||
+         !ReconcileMargin(shadow_index) ||
+         !ReconcileGridInventory(shadow_index) ||
+         !ReconcileMarkAndCost(shadow_index) ||
+         !ReconcileEquity(shadow_index))
+      {
+         if(shadow_index >= 0 &&
+            shadow_index < LP_REVMA_SHADOW_BRANCH_COUNT)
+            Invalidate(shadow_index,
+               "concurrent_risk_preflight_reconciliation_failed");
+         return false;
+      }
+      long q_cash = 0;
+      long reservation = 0;
+      long margin = 0;
+      long mark = 0;
+      long cost = 0;
+      int atoms = 0;
+      int active_grids = 0;
+      long currency_q_cash[LP_CCY_COUNT];
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         currency_q_cash[ccy] = 0;
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
+         if(!grid.active)
+            continue;
+         if(grid.last_mark_m1_time != source_m1_time ||
+            !grid.path_geometry.valid ||
+            grid.path_geometry.last_observation_m1 != source_m1_time ||
+            (grid.branch == LP_REVMA_BRANCH_C &&
+             (!grid.center_support.valid ||
+              grid.center_support.last_observation_m1 != source_m1_time)) ||
+            grid.q_cash_minor <= 0 || grid.atom_count <= 0 ||
+            active_grids >= LP_SYMBOL_COUNT ||
+            atoms > 2147483647 - grid.atom_count ||
+            !LP_RevmaSafeMinorAdd(q_cash, grid.q_cash_minor, q_cash) ||
+            !LP_RevmaSafeMinorAdd(reservation, grid.reservation_minor,
+               reservation) ||
+            !LP_RevmaSafeMinorAdd(margin, grid.margin_minor, margin) ||
+            !LP_RevmaSafeMinorAdd(mark, grid.marked_liquidation_minor,
+               mark) ||
+            !LP_RevmaSafeMinorAdd(cost, grid.estimated_close_cost_minor,
+               cost))
+         {
+            Invalidate(shadow_index,
+               "concurrent_risk_grid_or_clock_inconsistent");
+            return false;
+         }
+         int base_ccy = -1;
+         int quote_ccy = -1;
+         LP_CanonicalBaseQuote(LP_CanonicalSymbol(symbol_id), base_ccy,
+            quote_ccy);
+         if(base_ccy < 0 || base_ccy >= LP_CCY_COUNT || quote_ccy < 0 ||
+            quote_ccy >= LP_CCY_COUNT || base_ccy == quote_ccy ||
+            !LP_RevmaSafeMinorAdd(currency_q_cash[base_ccy],
+               grid.q_cash_minor, currency_q_cash[base_ccy]) ||
+            !LP_RevmaSafeMinorAdd(currency_q_cash[quote_ccy],
+               grid.q_cash_minor, currency_q_cash[quote_ccy]))
+         {
+            Invalidate(shadow_index,
+               "concurrent_currency_concentration_reconciliation_failed");
+            return false;
+         }
+         atoms += grid.atom_count;
+         active_grids++;
+      }
+      if(reservation != m_portfolios[shadow_index].reservation_minor ||
+         margin != m_portfolios[shadow_index].margin_minor ||
+         mark != m_portfolios[shadow_index].marked_liquidation_minor ||
+         cost != m_portfolios[shadow_index].estimated_close_cost_minor)
+      {
+         Invalidate(shadow_index,
+            "concurrent_risk_live_ledger_mismatch");
+         return false;
+      }
+      long concentration = 0;
+      int concentration_ccy = -1;
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+      {
+         if(currency_q_cash[ccy] > concentration)
+         {
+            concentration = currency_q_cash[ccy];
+            concentration_ccy = ccy;
+         }
+      }
+      long liability = mark < 0 ? -mark : 0;
+      long equity = m_portfolios[shadow_index].branch_equity_minor;
+      if(m_portfolios[shadow_index].equity_high_water_minor < equity)
+         m_portfolios[shadow_index].equity_high_water_minor = equity;
+      if(m_portfolios[shadow_index].run_equity_high_water_minor < equity)
+         m_portfolios[shadow_index].run_equity_high_water_minor = equity;
+      long drawdown = 0;
+      long run_drawdown = 0;
+      if(!LP_RevmaSafeMinorAdd(
+            m_portfolios[shadow_index].equity_high_water_minor, -equity,
+            drawdown) || drawdown < 0 ||
+         !LP_RevmaSafeMinorAdd(
+            m_portfolios[shadow_index].run_equity_high_water_minor, -equity,
+            run_drawdown) || run_drawdown < 0)
+      {
+         Invalidate(shadow_index,
+            "concurrent_drawdown_arithmetic_failure");
+         return false;
+      }
+      m_portfolios[shadow_index].q_cash_minor = q_cash;
+      m_portfolios[shadow_index].atom_count = atoms;
+      m_portfolios[shadow_index].active_grid_count = active_grids;
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         m_portfolios[shadow_index].currency_q_cash_minor[ccy] =
+            currency_q_cash[ccy];
+      m_portfolios[shadow_index].concentration_q_cash_minor = concentration;
+      m_portfolios[shadow_index].concentration_currency_id =
+         concentration_ccy;
+      m_portfolios[shadow_index].liquidation_liability_minor = liability;
+      m_portfolios[shadow_index].branch_drawdown_minor = drawdown;
+
+      if(reservation > m_portfolios[shadow_index].peak_reservation_minor)
+         m_portfolios[shadow_index].peak_reservation_minor = reservation;
+      if(margin > m_portfolios[shadow_index].peak_margin_minor)
+         m_portfolios[shadow_index].peak_margin_minor = margin;
+      if(q_cash > m_portfolios[shadow_index].peak_q_cash_minor)
+         m_portfolios[shadow_index].peak_q_cash_minor = q_cash;
+      if(atoms > m_portfolios[shadow_index].peak_atom_count)
+         m_portfolios[shadow_index].peak_atom_count = atoms;
+      if(active_grids > m_portfolios[shadow_index].peak_active_grid_count)
+         m_portfolios[shadow_index].peak_active_grid_count = active_grids;
+      if(concentration >
+         m_portfolios[shadow_index].peak_concentration_q_cash_minor)
+      {
+         m_portfolios[shadow_index].peak_concentration_q_cash_minor =
+            concentration;
+         m_portfolios[shadow_index].peak_concentration_currency_id =
+            concentration_ccy;
+      }
+      if(liability >
+         m_portfolios[shadow_index].peak_liquidation_liability_minor)
+         m_portfolios[shadow_index].peak_liquidation_liability_minor =
+            liability;
+      if(drawdown >
+         m_portfolios[shadow_index].maximum_branch_drawdown_minor)
+         m_portfolios[shadow_index].maximum_branch_drawdown_minor = drawdown;
+
+      if(reservation > m_portfolios[shadow_index].run_peak_reservation_minor)
+         m_portfolios[shadow_index].run_peak_reservation_minor = reservation;
+      if(margin > m_portfolios[shadow_index].run_peak_margin_minor)
+         m_portfolios[shadow_index].run_peak_margin_minor = margin;
+      if(q_cash > m_portfolios[shadow_index].run_peak_q_cash_minor)
+         m_portfolios[shadow_index].run_peak_q_cash_minor = q_cash;
+      if(atoms > m_portfolios[shadow_index].run_peak_atom_count)
+         m_portfolios[shadow_index].run_peak_atom_count = atoms;
+      if(active_grids >
+         m_portfolios[shadow_index].run_peak_active_grid_count)
+         m_portfolios[shadow_index].run_peak_active_grid_count = active_grids;
+      if(concentration >
+         m_portfolios[shadow_index].run_peak_concentration_q_cash_minor)
+      {
+         m_portfolios[shadow_index].run_peak_concentration_q_cash_minor =
+            concentration;
+         m_portfolios[shadow_index].run_peak_concentration_currency_id =
+            concentration_ccy;
+      }
+      if(liability >
+         m_portfolios[shadow_index].run_peak_liquidation_liability_minor)
+         m_portfolios[shadow_index].run_peak_liquidation_liability_minor =
+            liability;
+      if(run_drawdown >
+         m_portfolios[shadow_index].run_maximum_branch_drawdown_minor)
+         m_portfolios[shadow_index].run_maximum_branch_drawdown_minor =
+            run_drawdown;
+
+      if(!IncrementEvidenceCounter(
+            m_portfolios[shadow_index].cycle_risk_snapshot_count) ||
+         !IncrementEvidenceCounter(
+            m_portfolios[shadow_index].run_risk_snapshot_count))
+      {
+         Invalidate(shadow_index, "risk_snapshot_count_overflow");
+         return false;
+      }
+      ulong cycle_hash = m_portfolios[shadow_index].cycle_risk_snapshot_hash;
+      ulong run_hash = m_portfolios[shadow_index].run_risk_snapshot_hash;
+      LP_HashMixULong(cycle_hash, LP_HashString(boundary_class));
+      LP_HashMixULong(run_hash, LP_HashString(boundary_class));
+      LP_HashMixLong(cycle_hash, (long)source_m1_time);
+      LP_HashMixLong(run_hash, (long)source_m1_time);
+      LP_HashMixLong(cycle_hash, reservation);
+      LP_HashMixLong(run_hash, reservation);
+      LP_HashMixLong(cycle_hash, margin);
+      LP_HashMixLong(run_hash, margin);
+      LP_HashMixLong(cycle_hash, q_cash);
+      LP_HashMixLong(run_hash, q_cash);
+      LP_HashMixInt(cycle_hash, atoms);
+      LP_HashMixInt(run_hash, atoms);
+      LP_HashMixInt(cycle_hash, active_grids);
+      LP_HashMixInt(run_hash, active_grids);
+      LP_HashMixLong(cycle_hash, concentration);
+      LP_HashMixLong(run_hash, concentration);
+      LP_HashMixInt(cycle_hash, concentration_ccy);
+      LP_HashMixInt(run_hash, concentration_ccy);
+      LP_HashMixLong(cycle_hash, liability);
+      LP_HashMixLong(run_hash, liability);
+      LP_HashMixLong(cycle_hash, drawdown);
+      LP_HashMixLong(run_hash, run_drawdown);
+      LP_HashMixLong(cycle_hash, equity);
+      LP_HashMixLong(run_hash, equity);
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+      {
+         LP_HashMixLong(cycle_hash, currency_q_cash[ccy]);
+         LP_HashMixLong(run_hash, currency_q_cash[ccy]);
+      }
+      if(cycle_hash == 0 || run_hash == 0)
+      {
+         Invalidate(shadow_index, "risk_snapshot_hash_zero");
+         return false;
+      }
+      m_portfolios[shadow_index].cycle_risk_snapshot_hash = cycle_hash;
+      m_portfolios[shadow_index].run_risk_snapshot_hash = run_hash;
+      m_portfolios[shadow_index].last_risk_snapshot_m1_time = source_m1_time;
+      return true;
+   }
+
    void RecordInfeasibility(
       const int shadow_index,
       const string reason,
@@ -1067,8 +1552,11 @@ private:
       for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
       {
          LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
-         if(grid.active && grid.terminal_reason != "" &&
-            grid.close_trigger_m1_time <= 0)
+         if(grid.active &&
+            (!LP_RevmaDiscoveryTerminalReasonOwnerConsistent(
+                grid.terminal_reason, grid.close_owner) ||
+             (grid.terminal_reason != "" &&
+              grid.close_trigger_m1_time <= 0)))
             return false;
       }
       m_portfolios[shadow_index].close_owner = close_owner;
@@ -1117,10 +1605,14 @@ private:
          left.p0 == right.p0 && left.c0 == right.c0 &&
          left.broker_tick_size == right.broker_tick_size &&
          left.matched_snapshot_hash == right.matched_snapshot_hash &&
+         left.shared_observation_snapshot_hash ==
+            right.shared_observation_snapshot_hash &&
          left.incremental_reservation_minor == right.incremental_reservation_minor &&
          left.a_g_candidate_minor == right.a_g_candidate_minor &&
          left.a_g_minor == right.a_g_minor &&
          left.strategy_identity_hash == right.strategy_identity_hash &&
+         left.strategy_state_identity_hash ==
+            right.strategy_state_identity_hash &&
          left.incremental_margin_minor == right.incremental_margin_minor &&
          left.incremental_liquidation_minor ==
             right.incremental_liquidation_minor &&
@@ -1193,7 +1685,9 @@ private:
       const datetime terminal_m1_time,
       const string boundary_class)
    {
-      if(terminal_m1_time <= 0 || boundary_class == "")
+      if(terminal_m1_time <= 0 || boundary_class == "" ||
+         !LP_RevmaDiscoveryTerminalReasonOwnerConsistent(
+            grid.terminal_reason, grid.close_owner))
          return 0;
       ulong hash = LP_HashString("gate108_shadow_grid_internal_terminal_state_v1");
       TerminalHashMixText(hash, boundary_class);
@@ -1210,8 +1704,10 @@ private:
       LP_HashMixULong(hash, grid.shared_origin_id);
       LP_HashMixULong(hash, grid.birth_pre_candidate_state_hash);
       LP_HashMixULong(hash, grid.birth_matched_snapshot_hash);
+      LP_HashMixULong(hash, grid.birth_shared_observation_snapshot_hash);
       LP_HashMixULong(hash, grid.formula_hash);
       LP_HashMixULong(hash, grid.strategy_identity_hash);
+      LP_HashMixULong(hash, grid.strategy_state_identity_hash);
       LP_HashMixLong(hash, (long)grid.birth_m1_time);
       LP_HashMixLong(hash, (long)grid.last_admission_m1_time);
       LP_HashMixULong(hash, grid.last_admission_identity);
@@ -1386,6 +1882,8 @@ private:
       payload += "|portfolio_H=" + (string)portfolio.realized_harvest_minor;
       payload += "|portfolio_R=" + (string)portfolio.realized_nonharvest_minor;
       payload += "|portfolio_L=" + (string)portfolio.marked_liquidation_minor;
+      payload += "|birth_shared_observation=" +
+         (string)grid.birth_shared_observation_snapshot_hash;
       payload += "|close_owner=" + IntegerToString(portfolio.close_owner);
       return LP_HashString(payload);
    }
@@ -1433,9 +1931,14 @@ private:
          grid.birth_pre_candidate_state_hash =
             candidate.pre_candidate_state_hash;
          grid.birth_matched_snapshot_hash = candidate.matched_snapshot_hash;
+         grid.birth_shared_observation_snapshot_hash =
+            candidate.shared_observation_snapshot_hash;
          grid.birth_m1_time = candidate.source_m1_time;
+         grid.initial_history_boundary = candidate.initial_history_boundary;
          grid.q0 = candidate.q0;
          grid.strategy_identity_hash = candidate.strategy_identity_hash;
+         grid.strategy_state_identity_hash =
+            candidate.strategy_state_identity_hash;
          if(!LP_RevmaBuildDiscoveryMesh(candidate.q0, candidate.broker_tick_size,
             grid.discovery_mesh) ||
             !LP_RevmaInitializePathGeometry(candidate.p0, grid.discovery_mesh,
@@ -1461,8 +1964,7 @@ private:
             return false;
          grid.a_g_candidate_minor = candidate.a_g_candidate_minor;
          grid.a_g_minor = candidate.a_g_minor;
-         if(candidate.branch == LP_REVMA_BRANCH_C)
-            grid.center_support = candidate.center_support_snapshot;
+         grid.center_support = candidate.center_support_snapshot;
       }
       else if(!grid.active || grid.branch_grid_id != candidate.branch_grid_id ||
          grid.direction != candidate.direction ||
@@ -1533,7 +2035,10 @@ private:
       if(grid.reservation_overrun_minor > grid.peak_reservation_overrun_minor)
          grid.peak_reservation_overrun_minor = grid.reservation_overrun_minor;
       grid.margin_minor = new_grid_margin;
-      grid.marked_liquidation_minor = new_grid_mark;
+         grid.marked_liquidation_minor = new_grid_mark;
+      if(new_grid_mark > 0)
+         grid.last_positive_liquidation_opportunity_m1 =
+            candidate.source_m1_time;
       if(new_grid_mark < 0 && -new_grid_mark >
          grid.maximum_adverse_excursion_minor)
          grid.maximum_adverse_excursion_minor = -new_grid_mark;
@@ -1657,6 +2162,10 @@ private:
       m_portfolios[shadow_index].equity_reference_minor = equity_reference_minor;
       m_portfolios[shadow_index].capital_budget_minor = budget;
       m_portfolios[shadow_index].branch_equity_minor = equity_reference_minor;
+      m_portfolios[shadow_index].equity_high_water_minor =
+         equity_reference_minor;
+      m_portfolios[shadow_index].run_equity_high_water_minor =
+         equity_reference_minor;
       m_portfolios[shadow_index].invalid_reason = "";
       m_candidate_count[shadow_index] = 0;
       for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
@@ -1815,10 +2324,28 @@ public:
       candidate.center_policy_checked = true;
       if(candidate.branch == LP_REVMA_BRANCH_U)
       {
+         if(candidate.birth)
+         {
+            if(!LP_RevmaInitializeCenterSupport(candidate.direction,
+                  candidate.p0, candidate.c0, candidate.q0,
+                  candidate.broker_tick_size, candidate.q_event_count,
+                  candidate.source_m1_time,
+                  candidate.center_support_snapshot))
+               return false;
+         }
+         else
+         {
+            LP_RevmaShadowGrid existing =
+               m_grids[shadow_index][candidate.symbol_id];
+            if(!existing.active || !existing.center_support.valid ||
+               existing.center_support.last_observation_m1 !=
+                  candidate.source_m1_time)
+               return false;
+            candidate.center_support_snapshot = existing.center_support;
+         }
          candidate.center_policy_applies = false;
          candidate.center_add_authorized = true;
          candidate.center_policy_reason = "U_CENTER_AUTHORITY_FORBIDDEN";
-         LP_ResetRevmaCenterSupportState(candidate.center_support_snapshot);
          return true;
       }
 
@@ -1881,6 +2408,74 @@ public:
       }
       m_grids[shadow_index][symbol_id].center_support = state;
       return true;
+   }
+
+   bool ObserveUGridCenter(
+      const int symbol_id,
+      const double current_center,
+      const double current_q,
+      const double broker_tick_size,
+      const int current_q_event_count,
+      const datetime source_m1_time)
+   {
+      int shadow_index = LP_RevmaShadowIndex(LP_REVMA_BRANCH_U);
+      if(!IndividualMutationAuthorized() || symbol_id < 0 ||
+         symbol_id >= LP_SYMBOL_COUNT ||
+         !m_portfolios[shadow_index].valid ||
+         m_portfolios[shadow_index].batch_open ||
+         !m_grids[shadow_index][symbol_id].active)
+         return false;
+      LP_RevmaCenterSupportState state =
+         m_grids[shadow_index][symbol_id].center_support;
+      if(!LP_RevmaObserveCenterSupport(current_center, current_q,
+            broker_tick_size, current_q_event_count, source_m1_time, state))
+         return false;
+      // U records policy-neutral center diagnostics only. The signed-center
+      // latch is trading authority exclusive to C.
+      state.adverse_adds_frozen = false;
+      state.latch_m1_time = 0;
+      state.adverse_adds_blocked_after_latch = 0;
+      state.last_blocked_candidate_identity = 0;
+      state.last_blocked_candidate_m1 = 0;
+      m_grids[shadow_index][symbol_id].center_support = state;
+      return true;
+   }
+
+   bool ObserveMatchedGridCenters(
+      const int symbol_id,
+      const double current_center,
+      const double current_q,
+      const double broker_tick_size,
+      const int current_q_event_count,
+      const datetime source_m1_time)
+   {
+      if(!BeginMatchedMutationScope())
+         return false;
+      bool u_ok = ObserveUGridCenter(symbol_id, current_center, current_q,
+         broker_tick_size, current_q_event_count, source_m1_time);
+      bool c_ok = u_ok && ObserveCGridCenter(symbol_id, current_center,
+         current_q, broker_tick_size, current_q_event_count,
+         source_m1_time);
+      return EndMatchedMutationScope(u_ok && c_ok, symbol_id, false);
+   }
+
+   bool ObserveMatchedCGridCenter(
+      const int symbol_id,
+      const double current_center,
+      const double current_q,
+      const double broker_tick_size,
+      const int current_q_event_count,
+      const datetime source_m1_time)
+   {
+      if(!m_causal_matching_open)
+         return ObserveCGridCenter(symbol_id, current_center, current_q,
+            broker_tick_size, current_q_event_count, source_m1_time);
+      if(!BeginMatchedMutationScope())
+         return false;
+      bool operation_ok = ObserveCGridCenter(symbol_id, current_center,
+         current_q, broker_tick_size, current_q_event_count,
+         source_m1_time);
+      return EndMatchedMutationScope(operation_ok, symbol_id, true);
    }
 
    bool AddCandidate(const LP_RevmaShadowCandidate &candidate)
@@ -1978,16 +2573,21 @@ public:
          candidate.a_g_candidate_minor <= 0 || candidate.a_g_minor <= 0 ||
          candidate.incremental_margin_minor <= 0 ||
          candidate.incremental_close_cost_minor < 0 ||
-         candidate.incremental_liquidation_minor >
-            -candidate.incremental_close_cost_minor ||
-         candidate.concentration_q_cash_minor != 0 ||
+          candidate.incremental_liquidation_minor >
+             -candidate.incremental_close_cost_minor ||
+          candidate.concentration_q_cash_minor != 0 ||
+          candidate.concentration_currency_id != -1 ||
+          candidate.initial_history_boundary <= 0 ||
+          candidate.initial_history_boundary > candidate.source_m1_time ||
          candidate.strategy_identity_hash == 0 ||
+         candidate.strategy_state_identity_hash == 0 ||
          !LP_RevmaDiscoveryCandidateTypeValid(candidate.candidate_type) ||
          !center_policy_identity_match ||
          candidate.pre_candidate_state_hash == 0 ||
          candidate.pre_candidate_state_hash != EconomicPreCandidateStateHash(shadow_index, candidate.symbol_id) ||
          candidate.matched_snapshot_hash == 0 ||
          candidate.matched_snapshot_hash != expected_snapshot ||
+         candidate.shared_observation_snapshot_hash == 0 ||
          (candidate.shared_origin_id != expected_origin) ||
          (m_causal_matching_open &&
           candidate.opportunity_id != expected_opportunity) ||
@@ -2074,9 +2674,10 @@ public:
          Invalidate(shadow_index, "candidate_added_after_batch_seal_or_close_authority");
          return false;
       }
-      if((candidate.birth && (existing.active ||
+         if((candidate.birth && (existing.active ||
             !ReentryEligibleInternal(shadow_index, candidate.symbol_id,
-               candidate.source_m1_time, candidate.strategy_identity_hash))) ||
+               candidate.source_m1_time,
+               candidate.strategy_state_identity_hash))) ||
          (!candidate.birth && (!existing.active || existing.flat ||
           existing.branch_grid_id != candidate.branch_grid_id ||
           existing.direction != candidate.direction ||
@@ -2095,7 +2696,7 @@ public:
       }
       m_candidates[shadow_index][m_candidate_count[shadow_index]] = normalized;
       m_candidate_count[shadow_index]++;
-      return true;
+      return RecordCandidateBuilt(shadow_index);
    }
 
    ulong PreCandidateStateHash(const int branch, const int symbol_id)
@@ -2239,6 +2840,10 @@ public:
       long projected_committed_reservation = m_portfolios[shadow_index].reservation_minor;
       long allocated_margin = m_portfolios[shadow_index].margin_minor;
       long projected_equity = m_portfolios[shadow_index].branch_equity_minor;
+      long projected_currency_q_cash[LP_CCY_COUNT];
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         projected_currency_q_cash[ccy] =
+            m_portfolios[shadow_index].currency_q_cash_minor[ccy];
       if(projected_committed_reservation < 0 || allocated_margin < 0 ||
          projected_equity > LP_REVMA_MINOR_ABS_LIMIT ||
          projected_equity < -LP_REVMA_MINOR_ABS_LIMIT)
@@ -2248,6 +2853,51 @@ public:
       }
       for(int i = 0; i < m_candidate_count[shadow_index]; i++)
       {
+         int candidate_base_ccy = -1;
+         int candidate_quote_ccy = -1;
+         LP_CanonicalBaseQuote(
+            LP_CanonicalSymbol(m_candidates[shadow_index][i].symbol_id),
+            candidate_base_ccy, candidate_quote_ccy);
+         long prospective_base = 0;
+         long prospective_quote = 0;
+         if(candidate_base_ccy < 0 || candidate_base_ccy >= LP_CCY_COUNT ||
+            candidate_quote_ccy < 0 ||
+            candidate_quote_ccy >= LP_CCY_COUNT ||
+            candidate_base_ccy == candidate_quote_ccy ||
+            !LP_RevmaSafeMinorAdd(
+               projected_currency_q_cash[candidate_base_ccy],
+               m_candidates[shadow_index][i].incremental_q_cash_minor,
+               prospective_base) ||
+            !LP_RevmaSafeMinorAdd(
+               projected_currency_q_cash[candidate_quote_ccy],
+               m_candidates[shadow_index][i].incremental_q_cash_minor,
+               prospective_quote))
+         {
+            Invalidate(shadow_index,
+               "candidate_concentration_projection_failed");
+            return false;
+         }
+         long prospective_concentration = 0;
+         int prospective_concentration_ccy = -1;
+         for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         {
+            long value = ccy == candidate_base_ccy ? prospective_base :
+               (ccy == candidate_quote_ccy ? prospective_quote :
+                projected_currency_q_cash[ccy]);
+            if(value > prospective_concentration)
+            {
+               prospective_concentration = value;
+               prospective_concentration_ccy = ccy;
+            }
+         }
+         m_candidates[shadow_index][i].concentration_q_cash_minor =
+            prospective_concentration;
+         m_candidates[shadow_index][i].concentration_currency_id =
+            prospective_concentration_ccy;
+         LP_HashMixLong(m_portfolios[shadow_index].batch_hash,
+            prospective_concentration);
+         LP_HashMixInt(m_portfolios[shadow_index].batch_hash,
+            prospective_concentration_ccy);
          if(m_portfolios[shadow_index].capacity_overrun ||
             projected_committed_reservation >
                m_portfolios[shadow_index].capital_budget_minor)
@@ -2325,6 +2975,10 @@ public:
             projected_committed_reservation = candidate_committed_total;
             allocated_margin = candidate_margin_total;
             projected_equity = candidate_projected_equity;
+            projected_currency_q_cash[candidate_base_ccy] =
+               prospective_base;
+            projected_currency_q_cash[candidate_quote_ccy] =
+               prospective_quote;
          }
          else
          {
@@ -2362,6 +3016,8 @@ public:
          LP_HashMixULong(m_portfolios[shadow_index].batch_hash,
             LP_HashString(decided.decision_reason));
       }
+      if(!RecordCandidateDecisions(shadow_index))
+         return false;
       m_portfolios[shadow_index].allocation_complete = true;
       return true;
    }
@@ -2401,9 +3057,51 @@ public:
             Invalidate(shadow_index, "shadow_commit_reconciliation_failure");
             return false;
          }
+         long actual_currency_q_cash[LP_CCY_COUNT];
+         for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+            actual_currency_q_cash[ccy] = 0;
+         for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         {
+            LP_RevmaShadowGrid concentration_grid =
+               m_grids[shadow_index][symbol_id];
+            if(!concentration_grid.active)
+               continue;
+            int base_ccy = -1;
+            int quote_ccy = -1;
+            LP_CanonicalBaseQuote(LP_CanonicalSymbol(symbol_id), base_ccy,
+               quote_ccy);
+            if(base_ccy < 0 || base_ccy >= LP_CCY_COUNT || quote_ccy < 0 ||
+               quote_ccy >= LP_CCY_COUNT || base_ccy == quote_ccy ||
+               !LP_RevmaSafeMinorAdd(actual_currency_q_cash[base_ccy],
+                  concentration_grid.q_cash_minor,
+                  actual_currency_q_cash[base_ccy]) ||
+               !LP_RevmaSafeMinorAdd(actual_currency_q_cash[quote_ccy],
+                  concentration_grid.q_cash_minor,
+                  actual_currency_q_cash[quote_ccy]))
+            {
+               Invalidate(shadow_index,
+                  "committed_concentration_reconciliation_failed");
+               return false;
+            }
+         }
+         long actual_concentration = 0;
+         for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         {
+            if(actual_currency_q_cash[ccy] > actual_concentration)
+               actual_concentration = actual_currency_q_cash[ccy];
+         }
+         if(actual_concentration !=
+            m_candidates[shadow_index][i].concentration_q_cash_minor)
+         {
+            Invalidate(shadow_index,
+               "projected_committed_concentration_mismatch");
+            return false;
+         }
          committed_reservation = next_reservation;
          committed_margin = next_margin;
          committed_projected_equity = next_equity;
+         if(!RecordInventoryTransition(shadow_index))
+            return false;
       }
       m_portfolios[shadow_index].reservation_minor = committed_reservation;
       m_portfolios[shadow_index].margin_minor = committed_margin;
@@ -2425,6 +3123,10 @@ public:
             "shadow_commit_projected_equity_reconciliation_failure");
          return false;
       }
+      if(!ReconcileAndObserveConcurrentRisk(shadow_index,
+         m_portfolios[shadow_index].batch_m1_time,
+         "candidate_batch_committed"))
+         return false;
       m_portfolios[shadow_index].transitions_committed = true;
       return true;
    }
@@ -2491,6 +3193,8 @@ public:
       if(grid.marked_liquidation_minor < 0)
          grid.time_underwater_minutes += elapsed_minutes;
       grid.marked_liquidation_minor = marked_liquidation_minor;
+      if(marked_liquidation_minor > 0)
+         grid.last_positive_liquidation_opportunity_m1 = source_m1_time;
       if(marked_liquidation_minor < 0 && -marked_liquidation_minor >
          grid.maximum_adverse_excursion_minor)
          grid.maximum_adverse_excursion_minor =
@@ -2619,6 +3323,9 @@ public:
             return false;
          }
       }
+      if(!ReconcileAndObserveConcurrentRisk(shadow_index, source_m1_time,
+         "completed_m1_mark_before_close_authority"))
+         return false;
       long harvest_plus_liability = 0;
       if(!LP_RevmaSafeMinorAdd(m_portfolios[shadow_index].realized_harvest_minor,
          m_portfolios[shadow_index].marked_liquidation_minor, harvest_plus_liability))
@@ -2627,7 +3334,10 @@ public:
          return false;
       }
       long risk_cycle_mark = harvest_plus_liability;
-      if(m_portfolios[shadow_index].close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP &&
+      if((m_portfolios[shadow_index].close_owner ==
+             LP_REVMA_DISCOVERY_CLOSE_CLEANUP ||
+          m_portfolios[shadow_index].close_owner ==
+             LP_REVMA_DISCOVERY_CLOSE_HARD_RISK) &&
          !LP_RevmaSafeMinorAdd(risk_cycle_mark,
          m_portfolios[shadow_index].realized_nonharvest_minor, risk_cycle_mark))
       {
@@ -2694,6 +3404,13 @@ public:
       LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
       if(grid.close_owner != close_owner || grid.terminal_reason == "" ||
          grid.terminal_reason != terminal_reason || grid.close_trigger_m1_time <= 0 ||
+         !LP_RevmaDiscoveryTerminalReasonOwnerConsistent(
+            grid.terminal_reason, grid.close_owner) ||
+         ((close_owner == LP_REVMA_DISCOVERY_CLOSE_LOCAL_HARVEST) !=
+          (m_portfolios[shadow_index].close_owner ==
+             LP_REVMA_DISCOVERY_CLOSE_NONE)) ||
+         (close_owner >= LP_REVMA_DISCOVERY_CLOSE_CLEANUP &&
+          m_portfolios[shadow_index].close_owner != close_owner) ||
          confirmed_flat_m1_time < grid.close_trigger_m1_time ||
          confirmed_flat_m1_time < grid.birth_m1_time ||
          confirmed_flat_m1_time < grid.last_admission_m1_time ||
@@ -2707,9 +3424,13 @@ public:
       }
       long next_reservation = 0;
       long next_margin = 0;
-      long next_realized = 0;
+      long next_harvest = m_portfolios[shadow_index].realized_harvest_minor;
+      long next_nonharvest =
+         m_portfolios[shadow_index].realized_nonharvest_minor;
       long next_realized_cost = 0;
-      long next_owner_realized = 0;
+      long next_cleanup = m_portfolios[shadow_index].realized_cleanup_minor;
+      long next_hard_risk =
+         m_portfolios[shadow_index].realized_hard_risk_minor;
       long expected_branch_mark = 0;
       long expected_estimated_cost = 0;
       long total_cost_before = 0;
@@ -2735,76 +3456,48 @@ public:
          Invalidate(shadow_index, "shadow_grid_close_arithmetic_overflow");
          return false;
       }
-      if(close_owner == LP_REVMA_DISCOVERY_CLOSE_LOCAL_HARVEST)
+      bool origin_harvest = grid.terminal_reason == "grid_harvest";
+      bool origin_cleanup = grid.terminal_reason == "account_cleanup";
+      bool origin_hard_risk = grid.terminal_reason == "account_risk";
+      if((origin_harvest && (!grid.excursion_completed ||
+            !LP_RevmaSafeMinorAdd(next_harvest,
+               realized_after_cost_minor, next_harvest))) ||
+         (!origin_harvest &&
+          !LP_RevmaSafeMinorAdd(next_nonharvest,
+             realized_after_cost_minor, next_nonharvest)) ||
+         (origin_cleanup &&
+          !LP_RevmaSafeMinorAdd(next_cleanup,
+             realized_after_cost_minor, next_cleanup)) ||
+         (origin_hard_risk &&
+          !LP_RevmaSafeMinorAdd(next_hard_risk,
+             realized_after_cost_minor, next_hard_risk)) ||
+         (origin_harvest &&
+          m_portfolios[shadow_index].local_harvest_close_count >= 2147483647) ||
+         (origin_cleanup &&
+          m_portfolios[shadow_index].cleanup_close_count >= 2147483647) ||
+         (origin_hard_risk &&
+          m_portfolios[shadow_index].hard_risk_close_count >= 2147483647))
       {
-         if(realized_after_cost_minor < 1 || !grid.excursion_completed ||
-            grid.marked_liquidation_minor < 1 ||
-            m_portfolios[shadow_index].close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
-         {
-            Invalidate(shadow_index, "local_harvest_authority_or_pnl_invalid");
-            return false;
-         }
-         if(!LP_RevmaSafeMinorAdd(m_portfolios[shadow_index].realized_harvest_minor,
-            realized_after_cost_minor, next_realized))
-         {
-            Invalidate(shadow_index, "harvest_realized_arithmetic_overflow");
-            return false;
-         }
-         m_portfolios[shadow_index].realized_harvest_minor = next_realized;
-         if(m_portfolios[shadow_index].local_harvest_close_count >= 2147483647)
-         {
-            Invalidate(shadow_index, "local_harvest_close_count_overflow");
-            return false;
-         }
+         Invalidate(shadow_index, "shadow_terminal_owner_ledger_invalid");
+         return false;
+      }
+      m_portfolios[shadow_index].realized_harvest_minor = next_harvest;
+      m_portfolios[shadow_index].realized_nonharvest_minor = next_nonharvest;
+      m_portfolios[shadow_index].realized_cleanup_minor = next_cleanup;
+      m_portfolios[shadow_index].realized_hard_risk_minor = next_hard_risk;
+      if(origin_harvest)
+      {
          m_portfolios[shadow_index].local_harvest_close_count++;
          grid.realized_harvest_minor = realized_after_cost_minor;
       }
       else
       {
-         if(m_portfolios[shadow_index].close_owner != close_owner ||
-            (close_owner != LP_REVMA_DISCOVERY_CLOSE_CLEANUP &&
-             close_owner != LP_REVMA_DISCOVERY_CLOSE_HARD_RISK))
-         {
-            Invalidate(shadow_index, "portfolio_close_owner_not_latched");
-            return false;
-         }
-         if(!LP_RevmaSafeMinorAdd(m_portfolios[shadow_index].realized_nonharvest_minor,
-            realized_after_cost_minor, next_realized))
-         {
-            Invalidate(shadow_index, "nonharvest_realized_arithmetic_overflow");
-            return false;
-         }
-         m_portfolios[shadow_index].realized_nonharvest_minor = next_realized;
-         if(close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP)
-         {
-            if(!LP_RevmaSafeMinorAdd(
-               m_portfolios[shadow_index].realized_cleanup_minor,
-               realized_after_cost_minor, next_owner_realized) ||
-               m_portfolios[shadow_index].cleanup_close_count >= 2147483647)
-            {
-               Invalidate(shadow_index, "cleanup_realized_or_count_overflow");
-               return false;
-            }
-            m_portfolios[shadow_index].realized_cleanup_minor =
-               next_owner_realized;
-            m_portfolios[shadow_index].cleanup_close_count++;
-         }
-         else
-         {
-            if(!LP_RevmaSafeMinorAdd(
-               m_portfolios[shadow_index].realized_hard_risk_minor,
-               realized_after_cost_minor, next_owner_realized) ||
-               m_portfolios[shadow_index].hard_risk_close_count >= 2147483647)
-            {
-               Invalidate(shadow_index, "hard_risk_realized_or_count_overflow");
-               return false;
-            }
-            m_portfolios[shadow_index].realized_hard_risk_minor =
-               next_owner_realized;
-            m_portfolios[shadow_index].hard_risk_close_count++;
-         }
          grid.realized_nonharvest_minor = realized_after_cost_minor;
       }
+      if(origin_cleanup)
+         m_portfolios[shadow_index].cleanup_close_count++;
+      else if(origin_hard_risk)
+         m_portfolios[shadow_index].hard_risk_close_count++;
       m_portfolios[shadow_index].reservation_minor = next_reservation;
       m_portfolios[shadow_index].margin_minor = next_margin;
       m_portfolios[shadow_index].realized_close_cost_minor = next_realized_cost;
@@ -2874,6 +3567,10 @@ public:
          Invalidate(shadow_index, "shadow_close_money_conservation_failure");
          return false;
       }
+      if(!RecordInventoryTransition(shadow_index) ||
+         !ReconcileAndObserveConcurrentRisk(shadow_index,
+            confirmed_flat_m1_time, "grid_close_confirmed"))
+         return false;
       return true;
    }
 
@@ -2960,6 +3657,34 @@ public:
       m_portfolios[shadow_index].estimated_close_cost_minor = 0;
       m_portfolios[shadow_index].realized_close_cost_minor = 0;
       m_portfolios[shadow_index].peak_margin_minor = 0;
+      m_portfolios[shadow_index].q_cash_minor = 0;
+      m_portfolios[shadow_index].atom_count = 0;
+      m_portfolios[shadow_index].active_grid_count = 0;
+      for(int ccy = 0; ccy < LP_CCY_COUNT; ccy++)
+         m_portfolios[shadow_index].currency_q_cash_minor[ccy] = 0;
+      m_portfolios[shadow_index].concentration_q_cash_minor = 0;
+      m_portfolios[shadow_index].concentration_currency_id = -1;
+      m_portfolios[shadow_index].liquidation_liability_minor = 0;
+      m_portfolios[shadow_index].equity_high_water_minor =
+         confirmed_equity_minor;
+      m_portfolios[shadow_index].branch_drawdown_minor = 0;
+      m_portfolios[shadow_index].peak_reservation_minor = 0;
+      m_portfolios[shadow_index].peak_q_cash_minor = 0;
+      m_portfolios[shadow_index].peak_atom_count = 0;
+      m_portfolios[shadow_index].peak_active_grid_count = 0;
+      m_portfolios[shadow_index].peak_concentration_q_cash_minor = 0;
+      m_portfolios[shadow_index].peak_concentration_currency_id = -1;
+      m_portfolios[shadow_index].peak_liquidation_liability_minor = 0;
+      m_portfolios[shadow_index].maximum_branch_drawdown_minor = 0;
+      m_portfolios[shadow_index].cycle_risk_snapshot_count = 0;
+      m_portfolios[shadow_index].cycle_risk_snapshot_hash =
+         LP_RevmaDiscoveryFormulaHash();
+      m_portfolios[shadow_index].last_risk_snapshot_m1_time = 0;
+      m_portfolios[shadow_index].cycle_candidate_built_count = 0;
+      m_portfolios[shadow_index].cycle_candidate_decision_count = 0;
+      m_portfolios[shadow_index].cycle_candidate_admitted_count = 0;
+      m_portfolios[shadow_index].cycle_candidate_rejected_count = 0;
+      m_portfolios[shadow_index].cycle_inventory_transition_count = 0;
       m_portfolios[shadow_index].reservation_overrun = false;
       m_portfolios[shadow_index].reservation_overrun_minor = 0;
       m_portfolios[shadow_index].capacity_overrun = false;
@@ -3168,11 +3893,78 @@ public:
       return terminal_internal_state_hash != 0;
    }
 
+   bool BuildTerminalGridProjection(
+      const int branch,
+      const int symbol_id,
+      const datetime terminal_event_m1_time,
+      LP_RevmaTerminalGridProjection &projection)
+   {
+      LP_ResetRevmaTerminalGridProjection(projection);
+      int shadow_index = LP_RevmaShadowIndex(branch);
+      if(shadow_index < 0 || symbol_id < 0 ||
+         symbol_id >= LP_SYMBOL_COUNT ||
+         !m_portfolios[shadow_index].valid || terminal_event_m1_time <= 0)
+         return false;
+      LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
+      if(grid.branch_grid_id == 0 || grid.branch_cycle_id == 0)
+         return false;
+      ulong internal_hash = 0;
+      if(!GetTerminalInternalStateHash(branch, symbol_id,
+            terminal_event_m1_time, internal_hash))
+         return false;
+      long age_seconds = (long)terminal_event_m1_time -
+         (long)grid.birth_m1_time;
+      if(age_seconds < 0 || age_seconds / 60 > 2147483647)
+         return false;
+      projection.branch = branch;
+      projection.symbol_id = symbol_id;
+      projection.branch_grid_id = grid.branch_grid_id;
+      projection.branch_cycle_id = grid.branch_cycle_id;
+      projection.grid_generation = grid.grid_generation;
+      projection.direction = grid.direction;
+      projection.terminal_source_m1_time = terminal_event_m1_time;
+      projection.boundary_class = grid.active ?
+         "run_boundary_unresolved" : "confirmed_flat_close";
+      projection.atoms_before = grid.active ?
+         grid.atom_count : grid.peak_atom_count;
+      projection.atoms_after = grid.active ? grid.atom_count : 0;
+      projection.lots_before = NormalizeDouble(
+         (double)projection.atoms_before *
+            LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      projection.lots_after = NormalizeDouble(
+         (double)projection.atoms_after *
+            LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      projection.reservation_minor = grid.active ?
+         grid.reservation_minor : grid.peak_reservation_minor;
+      projection.q_cash_minor = grid.active ?
+         grid.q_cash_minor : grid.peak_q_cash_minor;
+      projection.margin_minor = grid.active ?
+         grid.margin_minor : grid.peak_margin_minor;
+      projection.harvest_minor = grid.realized_harvest_minor;
+      projection.nonharvest_minor = grid.realized_nonharvest_minor;
+      projection.liability_minor = grid.active ?
+         grid.marked_liquidation_minor : 0;
+      projection.cost_minor = grid.active ?
+         grid.estimated_close_cost_minor : grid.realized_close_cost_minor;
+      projection.maximum_adverse_excursion_minor =
+         grid.maximum_adverse_excursion_minor;
+      projection.grid_age_minutes = (int)(age_seconds / 60);
+      projection.time_underwater_minutes = grid.time_underwater_minutes;
+      projection.close_owner = grid.close_owner;
+      projection.origin_terminal_reason = grid.terminal_reason;
+      projection.terminal_internal_state_hash = internal_hash;
+      projection.projection_hash =
+         LP_RevmaTerminalGridProjectionIdentity(projection);
+      projection.valid = projection.projection_hash != 0;
+      return LP_RevmaTerminalGridProjectionValid(projection);
+   }
+
    bool BindTerminalEvidenceEvent(
       const int branch,
       const int symbol_id,
       const ulong branch_grid_id,
       const datetime terminal_event_m1_time,
+      const ulong terminal_projection_hash,
       const ulong terminal_internal_state_hash,
       const ulong terminal_event_hash)
    {
@@ -3182,7 +3974,8 @@ public:
       if(shadow_index < 0 || symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT ||
          !m_portfolios[shadow_index].valid ||
          m_portfolios[shadow_index].batch_open || branch_grid_id == 0 ||
-         terminal_event_m1_time <= 0 || terminal_internal_state_hash == 0 ||
+         terminal_event_m1_time <= 0 || terminal_projection_hash == 0 ||
+         terminal_internal_state_hash == 0 ||
          terminal_event_hash == 0)
       {
          if(shadow_index >= 0)
@@ -3190,6 +3983,8 @@ public:
          return false;
       }
       LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
+      LP_RevmaTerminalGridProjection expected_projection;
+      LP_ResetRevmaTerminalGridProjection(expected_projection);
       ulong expected_internal_state_hash = 0;
       if(grid.active)
          expected_internal_state_hash = TerminalGridInternalStateHash(
@@ -3199,8 +3994,13 @@ public:
       if(grid.branch_grid_id != branch_grid_id ||
          grid.branch_cycle_id != m_portfolios[shadow_index].cycle_id ||
          grid.terminal_event_hash != 0 ||
+         grid.terminal_projection_hash != 0 ||
          expected_internal_state_hash == 0 ||
          terminal_internal_state_hash != expected_internal_state_hash ||
+         !BuildTerminalGridProjection(branch, symbol_id,
+            terminal_event_m1_time, expected_projection) ||
+         expected_projection.projection_hash !=
+            terminal_projection_hash ||
          grid.terminal_evidence_m1_time != 0 ||
          (grid.active &&
           (terminal_event_m1_time != grid.last_mark_m1_time ||
@@ -3216,6 +4016,7 @@ public:
          return false;
       }
       grid.terminal_event_hash = terminal_event_hash;
+      grid.terminal_projection_hash = terminal_projection_hash;
       grid.terminal_internal_state_hash = terminal_internal_state_hash;
       grid.terminal_evidence_m1_time = terminal_event_m1_time;
       m_grids[shadow_index][symbol_id] = grid;
@@ -3225,13 +4026,17 @@ public:
    bool BindMatchedTerminalEvidenceEvents(
       const int symbol_id,
       const datetime terminal_event_m1_time,
+      const ulong u_terminal_projection_hash,
       const ulong u_terminal_internal_state_hash,
       const ulong u_terminal_event_hash,
+      const ulong c_terminal_projection_hash,
       const ulong c_terminal_internal_state_hash,
       const ulong c_terminal_event_hash)
    {
       if(symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT ||
+         u_terminal_projection_hash == 0 ||
          u_terminal_internal_state_hash == 0 ||
+         c_terminal_projection_hash == 0 ||
          c_terminal_internal_state_hash == 0 ||
          u_terminal_event_hash == 0 || c_terminal_event_hash == 0 ||
          !BeginMatchedMutationScope())
@@ -3240,10 +4045,12 @@ public:
       ulong c_grid_id = m_grids[1][symbol_id].branch_grid_id;
       bool u_ok = BindTerminalEvidenceEvent(LP_REVMA_BRANCH_U, symbol_id,
          u_grid_id, terminal_event_m1_time,
-         u_terminal_internal_state_hash, u_terminal_event_hash);
+         u_terminal_projection_hash, u_terminal_internal_state_hash,
+         u_terminal_event_hash);
       bool c_ok = u_ok && BindTerminalEvidenceEvent(LP_REVMA_BRANCH_C,
          symbol_id, c_grid_id, terminal_event_m1_time,
-         c_terminal_internal_state_hash, c_terminal_event_hash);
+         c_terminal_projection_hash, c_terminal_internal_state_hash,
+         c_terminal_event_hash);
       return EndMatchedMutationScope(u_ok && c_ok, symbol_id, false);
    }
 
@@ -3263,6 +4070,83 @@ public:
          return false;
       portfolio = m_portfolios[shadow_index];
       return true;
+   }
+
+   bool GetConcurrentRiskState(
+      const int branch,
+      const datetime expected_source_m1_time,
+      LP_RevmaConcurrentBranchRiskState &state)
+   {
+      LP_ResetRevmaConcurrentBranchRiskState(state);
+      int shadow_index = LP_RevmaShadowIndex(branch);
+      if(shadow_index < 0 || !m_portfolios[shadow_index].valid ||
+         expected_source_m1_time <= 0 ||
+         m_portfolios[shadow_index].last_risk_snapshot_m1_time !=
+            expected_source_m1_time)
+         return false;
+      LP_RevmaShadowPortfolioState p = m_portfolios[shadow_index];
+      state.branch = branch;
+      state.source_m1_time = expected_source_m1_time;
+      state.reservation_minor = p.reservation_minor;
+      state.margin_minor = p.margin_minor;
+      state.q_cash_minor = p.q_cash_minor;
+      state.atom_count = p.atom_count;
+      state.active_grid_count = p.active_grid_count;
+      state.concentration_q_cash_minor = p.concentration_q_cash_minor;
+      state.concentration_currency_id = p.concentration_currency_id;
+      state.marked_liquidation_minor = p.marked_liquidation_minor;
+      state.liquidation_liability_minor = p.liquidation_liability_minor;
+      state.branch_equity_minor = p.branch_equity_minor;
+      state.equity_high_water_minor = p.equity_high_water_minor;
+      state.branch_drawdown_minor = p.branch_drawdown_minor;
+      state.cycle_peak_reservation_minor = p.peak_reservation_minor;
+      state.cycle_peak_margin_minor = p.peak_margin_minor;
+      state.cycle_peak_q_cash_minor = p.peak_q_cash_minor;
+      state.cycle_peak_atom_count = p.peak_atom_count;
+      state.cycle_peak_active_grid_count = p.peak_active_grid_count;
+      state.cycle_peak_concentration_q_cash_minor =
+         p.peak_concentration_q_cash_minor;
+      state.cycle_peak_concentration_currency_id =
+         p.peak_concentration_currency_id;
+      state.cycle_peak_liquidation_liability_minor =
+         p.peak_liquidation_liability_minor;
+      state.cycle_maximum_drawdown_minor =
+         p.maximum_branch_drawdown_minor;
+      state.run_peak_reservation_minor = p.run_peak_reservation_minor;
+      state.run_peak_margin_minor = p.run_peak_margin_minor;
+      state.run_peak_q_cash_minor = p.run_peak_q_cash_minor;
+      state.run_peak_atom_count = p.run_peak_atom_count;
+      state.run_peak_active_grid_count = p.run_peak_active_grid_count;
+      state.run_peak_concentration_q_cash_minor =
+         p.run_peak_concentration_q_cash_minor;
+      state.run_peak_concentration_currency_id =
+         p.run_peak_concentration_currency_id;
+      state.run_peak_liquidation_liability_minor =
+         p.run_peak_liquidation_liability_minor;
+      state.run_equity_high_water_minor = p.run_equity_high_water_minor;
+      state.run_maximum_drawdown_minor =
+         p.run_maximum_branch_drawdown_minor;
+      state.cycle_risk_snapshot_count = p.cycle_risk_snapshot_count;
+      state.cycle_risk_snapshot_hash = p.cycle_risk_snapshot_hash;
+      state.run_risk_snapshot_count = p.run_risk_snapshot_count;
+      state.run_risk_snapshot_hash = p.run_risk_snapshot_hash;
+      state.cycle_candidate_built_count = p.cycle_candidate_built_count;
+      state.cycle_candidate_decision_count =
+         p.cycle_candidate_decision_count;
+      state.cycle_candidate_admitted_count =
+         p.cycle_candidate_admitted_count;
+      state.cycle_candidate_rejected_count =
+         p.cycle_candidate_rejected_count;
+      state.cycle_inventory_transition_count =
+         p.cycle_inventory_transition_count;
+      state.run_candidate_built_count = p.run_candidate_built_count;
+      state.run_candidate_decision_count = p.run_candidate_decision_count;
+      state.run_candidate_admitted_count = p.run_candidate_admitted_count;
+      state.run_candidate_rejected_count = p.run_candidate_rejected_count;
+      state.run_inventory_transition_count = p.run_inventory_transition_count;
+      state.state_hash = LP_RevmaConcurrentBranchRiskIdentity(state);
+      state.valid = state.state_hash != 0;
+      return LP_RevmaConcurrentBranchRiskStateValid(state);
    }
 
    bool ReconcileBranch(const int branch)
@@ -3285,11 +4169,13 @@ public:
       const datetime expected_terminal_m1_time,
       bool &final_flat,
       ulong &terminal_grid_state_hash,
+      LP_RevmaConcurrentBranchRiskState &terminal_risk,
       ulong &terminal_book_hash)
    {
       final_flat = false;
       terminal_grid_state_hash = 0;
       terminal_book_hash = 0;
+      LP_ResetRevmaConcurrentBranchRiskState(terminal_risk);
       int shadow_index = LP_RevmaShadowIndex(branch);
       if(shadow_index < 0 || !m_portfolios[shadow_index].initialized ||
          !m_portfolios[shadow_index].valid ||
@@ -3298,6 +4184,11 @@ public:
          expected_terminal_m1_time <
             m_portfolios[shadow_index].batch_m1_time ||
          m_portfolios[shadow_index].batch_open || !ReconcileBranch(branch))
+         return false;
+      if(m_portfolios[shadow_index].last_risk_snapshot_m1_time !=
+            expected_terminal_m1_time &&
+         !ReconcileAndObserveConcurrentRisk(shadow_index,
+            expected_terminal_m1_time, "terminal_reconciliation"))
          return false;
       final_flat = AllGridsFlat(shadow_index);
       datetime terminal_mark_m1 = expected_terminal_m1_time;
@@ -3359,11 +4250,12 @@ public:
             evidence_grid.branch_cycle_id != portfolio.cycle_id)
          {
             if(!LP_RevmaTerminalGridEventSetMix(terminal_evidence_hash,
-               symbol_id, 0, 0, 0, 0))
+               symbol_id, 0, 0, 0, 0, 0))
                return false;
             continue;
          }
           if(evidence_grid.terminal_event_hash == 0 ||
+             evidence_grid.terminal_projection_hash == 0 ||
              evidence_grid.terminal_internal_state_hash == 0 ||
              evidence_grid.terminal_evidence_m1_time <= 0 ||
             evidence_grid.terminal_evidence_m1_time >
@@ -3379,6 +4271,7 @@ public:
              !LP_RevmaTerminalGridEventSetMix(terminal_evidence_hash,
                 symbol_id, evidence_grid.branch_grid_id,
                 evidence_grid.terminal_evidence_m1_time,
+                evidence_grid.terminal_projection_hash,
                 evidence_grid.terminal_internal_state_hash,
                 evidence_grid.terminal_event_hash))
             return false;
@@ -3389,6 +4282,8 @@ public:
       int current_atoms = 0;
       double current_lots = 0.0;
       if(terminal_grid_state_hash == 0 ||
+         !GetConcurrentRiskState(branch, expected_terminal_m1_time,
+            terminal_risk) ||
          !LP_RevmaSafeMinorAdd(portfolio.estimated_close_cost_minor,
             portfolio.realized_close_cost_minor, total_cost_minor))
          return false;
@@ -3413,7 +4308,8 @@ public:
          portfolio.marked_liquidation_minor, total_cost_minor,
          portfolio.reservation_minor, portfolio.margin_minor,
          portfolio.branch_equity_minor, portfolio.close_owner,
-         portfolio.cleanup_shortfall, terminal_grid_state_hash);
+         portfolio.cleanup_shortfall, portfolio.hard_risk_latched,
+         terminal_risk, terminal_grid_state_hash);
       return terminal_book_hash != 0;
    }
 
@@ -3421,9 +4317,11 @@ public:
       const datetime expected_terminal_m1_time,
       bool &u_final_flat,
       ulong &u_terminal_grid_state_hash,
+      LP_RevmaConcurrentBranchRiskState &u_terminal_risk,
       ulong &u_terminal_book_hash,
       bool &c_final_flat,
       ulong &c_terminal_grid_state_hash,
+      LP_RevmaConcurrentBranchRiskState &c_terminal_risk,
       ulong &c_terminal_book_hash)
    {
       u_final_flat = false;
@@ -3432,23 +4330,29 @@ public:
       c_terminal_grid_state_hash = 0;
       u_terminal_book_hash = 0;
       c_terminal_book_hash = 0;
+      LP_ResetRevmaConcurrentBranchRiskState(u_terminal_risk);
+      LP_ResetRevmaConcurrentBranchRiskState(c_terminal_risk);
       if(!m_causal_matching_open)
       {
          bool u_ok = BranchTerminalReconciled(LP_REVMA_BRANCH_U,
             expected_terminal_m1_time, u_final_flat,
-            u_terminal_grid_state_hash, u_terminal_book_hash);
+            u_terminal_grid_state_hash, u_terminal_risk,
+            u_terminal_book_hash);
          bool c_ok = u_ok && BranchTerminalReconciled(LP_REVMA_BRANCH_C,
             expected_terminal_m1_time, c_final_flat,
-            c_terminal_grid_state_hash, c_terminal_book_hash);
+            c_terminal_grid_state_hash, c_terminal_risk,
+            c_terminal_book_hash);
          return u_ok && c_ok;
       }
       if(!BeginMatchedMutationScope()) return false;
       bool u_ok = BranchTerminalReconciled(LP_REVMA_BRANCH_U,
          expected_terminal_m1_time, u_final_flat,
-         u_terminal_grid_state_hash, u_terminal_book_hash);
+         u_terminal_grid_state_hash, u_terminal_risk,
+         u_terminal_book_hash);
       bool c_ok = u_ok && BranchTerminalReconciled(LP_REVMA_BRANCH_C,
          expected_terminal_m1_time, c_final_flat,
-         c_terminal_grid_state_hash, c_terminal_book_hash);
+         c_terminal_grid_state_hash, c_terminal_risk,
+         c_terminal_book_hash);
       return EndMatchedMutationScope(u_ok && c_ok, -1, true);
    }
 

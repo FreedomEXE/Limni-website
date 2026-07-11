@@ -144,6 +144,7 @@ private:
          if(deal == 0)
             continue;
          commission += HistoryDealGetDouble(deal, DEAL_COMMISSION);
+         commission += HistoryDealGetDouble(deal, DEAL_FEE);
       }
       return commission;
    }

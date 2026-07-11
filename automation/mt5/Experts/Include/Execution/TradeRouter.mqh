@@ -126,6 +126,150 @@ private:
       ObserveBrokerExecutionResult(execution);
    }
 
+   bool CaptureCanonicalDealSet(
+      const LP_TradePlan &plan,
+      LP_TradeExecutionResult &execution)
+   {
+      execution.deal_set_complete = false;
+      execution.deal_linkage_clean = false;
+      execution.deal_count = 0;
+      execution.deal_set_hash = 0;
+      execution.first_deal_ticket = 0;
+      execution.last_deal_ticket = 0;
+      if(execution.deal_ticket == 0 ||
+         !HistoryDealSelect(execution.deal_ticket))
+         return false;
+
+      ulong position_id = (ulong)HistoryDealGetInteger(
+         execution.deal_ticket, DEAL_POSITION_ID);
+      ulong order_id = (ulong)HistoryDealGetInteger(
+         execution.deal_ticket, DEAL_ORDER);
+      if(position_id == 0 || order_id == 0 ||
+         (execution.order_ticket != 0 && execution.order_ticket != order_id))
+         return false;
+      execution.position_ticket = position_id;
+      execution.order_ticket = order_id;
+      if(!HistorySelectByPosition(position_id))
+         return false;
+
+      ulong tickets[];
+      int count = 0;
+      int total = HistoryDealsTotal();
+      for(int i = 0; i < total; i++)
+      {
+         ulong ticket = HistoryDealGetTicket(i);
+         if(ticket == 0 ||
+            (ulong)HistoryDealGetInteger(ticket, DEAL_ORDER) != order_id)
+            continue;
+         if(count >= 32 || ArrayResize(tickets, count + 1) != count + 1)
+            return false;
+         tickets[count++] = ticket;
+      }
+      if(count <= 0)
+         return false;
+      for(int i = 1; i < count; i++)
+      {
+         ulong value = tickets[i];
+         int j = i - 1;
+         while(j >= 0 && tickets[j] > value)
+         {
+            tickets[j + 1] = tickets[j];
+            j--;
+         }
+         tickets[j + 1] = value;
+      }
+
+      bool opening = IsOpenAction(plan.action);
+      bool closing = IsCloseAction(plan.action);
+      if(!opening && !closing)
+         return false;
+      double total_volume = 0.0;
+      double weighted_price = 0.0;
+      double realized_profit = 0.0;
+      double realized_swap = 0.0;
+      double realized_commission = 0.0;
+      double realized_fee = 0.0;
+      ulong hash = LP_HashString("canonical_order_deal_set_v1");
+      LP_HashMixULong(hash, order_id);
+      LP_HashMixULong(hash, position_id);
+      LP_HashMixLong(hash, plan.magic);
+      LP_HashMixInt(hash, plan.action);
+      LP_HashMixInt(hash, plan.direction);
+      for(int i = 0; i < count; i++)
+      {
+         ulong ticket = tickets[i];
+         long deal_order = HistoryDealGetInteger(ticket, DEAL_ORDER);
+         long deal_position = HistoryDealGetInteger(ticket, DEAL_POSITION_ID);
+         long deal_magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
+         int deal_entry = (int)HistoryDealGetInteger(ticket, DEAL_ENTRY);
+         int deal_type = (int)HistoryDealGetInteger(ticket, DEAL_TYPE);
+         string deal_symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
+         double volume = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+         double price = HistoryDealGetDouble(ticket, DEAL_PRICE);
+         bool entry_clean = opening ? deal_entry == DEAL_ENTRY_IN :
+            (deal_entry == DEAL_ENTRY_OUT || deal_entry == DEAL_ENTRY_OUT_BY);
+         int expected_type = opening ?
+            (plan.direction == LP_SIDE_LONG ? DEAL_TYPE_BUY : DEAL_TYPE_SELL) :
+            (plan.direction == LP_SIDE_LONG ? DEAL_TYPE_SELL : DEAL_TYPE_BUY);
+         if(deal_order != (long)order_id ||
+            deal_position != (long)position_id || deal_magic != plan.magic ||
+            deal_symbol != plan.symbol || !entry_clean ||
+            deal_type != expected_type || volume <= 0.0 || price <= 0.0 ||
+            !MathIsValidNumber(volume) || !MathIsValidNumber(price))
+            return false;
+         total_volume += volume;
+         weighted_price += volume * price;
+         realized_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
+         realized_swap += HistoryDealGetDouble(ticket, DEAL_SWAP);
+         realized_commission += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+         realized_fee += HistoryDealGetDouble(ticket, DEAL_FEE);
+         if(!MathIsValidNumber(total_volume) ||
+            !MathIsValidNumber(weighted_price) ||
+            !MathIsValidNumber(realized_profit) ||
+            !MathIsValidNumber(realized_swap) ||
+            !MathIsValidNumber(realized_commission) ||
+            !MathIsValidNumber(realized_fee))
+            return false;
+         LP_HashMixULong(hash, ticket);
+         LP_HashMixLong(hash, deal_order);
+         LP_HashMixLong(hash, deal_position);
+         LP_HashMixLong(hash, deal_magic);
+         LP_HashMixInt(hash, deal_entry);
+         LP_HashMixInt(hash, deal_type);
+         LP_HashMixULong(hash, LP_HashString(deal_symbol));
+         LP_HashMixULong(hash,
+            LP_HashString(DoubleToString(volume, 8)));
+         LP_HashMixULong(hash,
+            LP_HashString(DoubleToString(price, 12)));
+         LP_HashMixULong(hash, LP_HashString(DoubleToString(
+            HistoryDealGetDouble(ticket, DEAL_PROFIT), 8)));
+         LP_HashMixULong(hash, LP_HashString(DoubleToString(
+            HistoryDealGetDouble(ticket, DEAL_SWAP), 8)));
+         LP_HashMixULong(hash, LP_HashString(DoubleToString(
+            HistoryDealGetDouble(ticket, DEAL_COMMISSION), 8)));
+         LP_HashMixULong(hash, LP_HashString(DoubleToString(
+            HistoryDealGetDouble(ticket, DEAL_FEE), 8)));
+      }
+      if(total_volume <= 0.0 || weighted_price <= 0.0 || hash == 0)
+         return false;
+      execution.deal_count = count;
+      execution.first_deal_ticket = tickets[0];
+      execution.last_deal_ticket = tickets[count - 1];
+      for(int i = 0; i < count; i++)
+         execution.canonical_deal_tickets[i] = tickets[i];
+      execution.deal_ticket = execution.last_deal_ticket;
+      execution.executed_lots = NormalizeDouble(total_volume, 8);
+      execution.executed_price = weighted_price / total_volume;
+      execution.realized_profit = realized_profit;
+      execution.realized_swap = realized_swap;
+      execution.realized_commission = realized_commission;
+      execution.realized_fee = realized_fee;
+      execution.deal_set_hash = hash;
+      execution.deal_linkage_clean = true;
+      execution.deal_set_complete = true;
+      return true;
+   }
+
    void CaptureExecutionResult(
       const LP_TradePlan &plan,
       const bool request_ok,
@@ -140,18 +284,12 @@ private:
       execution.executed_lots = m_trade.ResultVolume();
       execution.executed_price = m_trade.ResultPrice();
       execution.partial_fill = execution.retcode == TRADE_RETCODE_DONE_PARTIAL;
-      execution.accepted = request_ok && IsExecutedFillRetcode(execution.retcode);
-      execution.broker_rejected = !execution.accepted && execution.retcode != TRADE_RETCODE_PLACED;
-
-      if(execution.deal_ticket > 0 && HistoryDealSelect(execution.deal_ticket))
-      {
-         execution.executed_lots = HistoryDealGetDouble(execution.deal_ticket, DEAL_VOLUME);
-         execution.executed_price = HistoryDealGetDouble(execution.deal_ticket, DEAL_PRICE);
-         execution.realized_profit += HistoryDealGetDouble(execution.deal_ticket, DEAL_PROFIT);
-         execution.realized_swap += HistoryDealGetDouble(execution.deal_ticket, DEAL_SWAP);
-         execution.realized_commission += HistoryDealGetDouble(execution.deal_ticket, DEAL_COMMISSION);
-         execution.position_ticket = (ulong)HistoryDealGetInteger(execution.deal_ticket, DEAL_POSITION_ID);
-      }
+      bool executed_retcode = IsExecutedFillRetcode(execution.retcode);
+      bool deal_proof = !executed_retcode ||
+         CaptureCanonicalDealSet(plan, execution);
+      execution.accepted = request_ok && executed_retcode && deal_proof;
+      execution.broker_rejected = !execution.accepted &&
+         !executed_retcode && execution.retcode != TRADE_RETCODE_PLACED;
 
       execution.detail = "request_ok=" + LP_BoolText(request_ok) +
          "|retcode=" + IntegerToString((int)execution.retcode) +
@@ -162,7 +300,11 @@ private:
          "|executed_lots=" + DoubleToString(execution.executed_lots, 2) +
          "|executed_price=" + DoubleToString(execution.executed_price, 8) +
          "|partial_fill=" + LP_BoolText(execution.partial_fill) +
-         "|executed_fill=" + LP_BoolText(execution.accepted);
+         "|executed_fill=" + LP_BoolText(execution.accepted) +
+         "|deal_set_complete=" + LP_BoolText(execution.deal_set_complete) +
+         "|deal_linkage_clean=" + LP_BoolText(execution.deal_linkage_clean) +
+         "|deal_count=" + IntegerToString(execution.deal_count) +
+         "|deal_set_hash=" + (string)execution.deal_set_hash;
    }
 
    int VolumePrecision(const double step)
@@ -705,6 +847,14 @@ private:
       long position_magic = (long)PositionGetInteger(POSITION_MAGIC);
       if(!LP_IsManagedMagic(position_magic))
          return false;
+      if(plan.gate108 && plan.action == LP_INTENT_CLOSE_ALL_EA)
+      {
+         LP_MagicParts quarantine_parts;
+         if(!LP_DecodeMagic(position_magic, quarantine_parts) ||
+            quarantine_parts.lane_id != LP_LANE_REVMA ||
+            quarantine_parts.variant_id != LP_VARIANT_REVMA_REVERSION)
+            return false;
+      }
       LP_TradePlan position_plan;
       BindPlanToPosition(plan, symbol, position_magic, position_plan);
       double position_lots = PositionGetDouble(POSITION_VOLUME);
@@ -733,6 +883,13 @@ private:
 
       bool ok = false;
       m_trade.SetExpertMagicNumber((ulong)position_magic);
+      if(!m_trade.SetTypeFillingBySymbol(symbol))
+      {
+         execution.failed_positions++;
+         execution.detail = "symbol_filling_policy_unavailable";
+         return false;
+      }
+      m_trade.SetTypeFilling(ORDER_FILLING_FOK);
       m_order_close_attempts++;
       if(partial && close_lots < position_lots)
          ok = m_trade.PositionClosePartial(ticket, close_lots, (ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
@@ -741,6 +898,9 @@ private:
 
       LP_TradeExecutionResult ticket_execution;
       LP_ResetTradeExecutionResult(ticket_execution);
+      ticket_execution.order_send_attempted = true;
+      ticket_execution.session_open = true;
+      ticket_execution.session_outcome = "broker_session_open";
       CaptureExecutionResult(position_plan, ok, ticket_execution);
       ObserveBrokerExecutionResult(ticket_execution);
       execution.retcode = ticket_execution.retcode;
@@ -751,6 +911,40 @@ private:
       execution.realized_profit += ticket_execution.realized_profit;
       execution.realized_swap += ticket_execution.realized_swap;
       execution.realized_commission += ticket_execution.realized_commission;
+      execution.realized_fee += ticket_execution.realized_fee;
+      if(execution.deal_set_hash == 0)
+         execution.deal_set_hash = LP_HashString(
+            "canonical_close_deal_set_batch_v1");
+      execution.deal_set_complete = execution.deal_set_complete &&
+         ticket_execution.deal_set_complete;
+      execution.deal_linkage_clean = execution.deal_linkage_clean &&
+         ticket_execution.deal_linkage_clean;
+      if(ticket_execution.deal_count > 0)
+      {
+         if(execution.deal_count >
+            LP_MAX_EXECUTION_DEAL_TICKETS - ticket_execution.deal_count)
+         {
+            execution.deal_set_complete = false;
+            execution.deal_linkage_clean = false;
+            execution.failed_positions++;
+            execution.detail = "canonical_close_deal_ticket_capacity_exhausted";
+            return false;
+         }
+         if(execution.deal_count == 0)
+            execution.first_deal_ticket =
+               ticket_execution.first_deal_ticket;
+         execution.last_deal_ticket = ticket_execution.last_deal_ticket;
+         for(int deal_index = 0;
+             deal_index < ticket_execution.deal_count; deal_index++)
+         {
+            execution.canonical_deal_tickets[execution.deal_count +
+               deal_index] = ticket_execution.canonical_deal_tickets[
+                  deal_index];
+         }
+         execution.deal_count += ticket_execution.deal_count;
+         LP_HashMixULong(execution.deal_set_hash,
+            ticket_execution.deal_set_hash);
+      }
       execution.partial_fill = execution.partial_fill || ticket_execution.partial_fill;
       bool ticket_flat = false;
       if(ticket_execution.accepted)
@@ -800,14 +994,21 @@ private:
 
       string close_scope = plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" :
          (plan.action == LP_INTENT_REDUCE_GRID ? "grid_reduce" : "grid_close");
+      int close_limit = plan.gate108 &&
+         (plan.action == LP_INTENT_CLOSE_GRID ||
+          plan.action == LP_INTENT_CLOSE_ALL_EA) ?
+         1 : m_config.max_close_positions_per_step;
       int matched = 0;
       int attempted = 0;
       int closed = 0;
       int skipped_due_to_close_limit = 0;
       int session_deferred = 0;
+      int session_metadata_unavailable_count = 0;
       double remaining_lots = plan.lots;
       bool reduce_done = false;
-      execution.close_limit = m_config.max_close_positions_per_step;
+      execution.close_limit = close_limit;
+      execution.deal_set_complete = true;
+      execution.deal_linkage_clean = true;
       datetime server_now = TimeTradeServer();
 
       for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -821,6 +1022,14 @@ private:
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
          if(!LP_IsManagedMagic(magic))
             continue;
+         if(plan.gate108 && plan.action == LP_INTENT_CLOSE_ALL_EA)
+         {
+            LP_MagicParts quarantine_parts;
+            if(!LP_DecodeMagic(magic, quarantine_parts) ||
+               quarantine_parts.lane_id != LP_LANE_REVMA ||
+               quarantine_parts.variant_id != LP_VARIANT_REVMA_REVERSION)
+               continue;
+         }
 
          if(plan.action != LP_INTENT_CLOSE_ALL_EA)
          {
@@ -839,6 +1048,8 @@ private:
          if(!LP_IsTradeSessionOpen(position_symbol, server_now, session_reason, session_detail, session_metadata_unavailable))
          {
             session_deferred++;
+            if(session_metadata_unavailable)
+               session_metadata_unavailable_count++;
             ObserveSessionAdmissionBlock(plan.action, server_now, session_metadata_unavailable);
             LP_TradePlan position_plan;
             BindPlanToPosition(plan, position_symbol, magic, position_plan);
@@ -852,7 +1063,7 @@ private:
             );
             continue;
          }
-         if(attempted >= m_config.max_close_positions_per_step)
+         if(attempted >= close_limit)
          {
             skipped_due_to_close_limit++;
             continue;
@@ -863,6 +1074,9 @@ private:
 
          attempted++;
          execution.attempted_positions++;
+         execution.order_send_attempted = true;
+         execution.session_open = true;
+         execution.session_outcome = "broker_session_open";
          if(CloseTicket(ticket, plan, receipts, remaining_lots, execution))
             closed++;
 
@@ -886,7 +1100,7 @@ private:
              "|closed=" + IntegerToString(closed) +
              "|skipped_due_to_close_limit=" + IntegerToString(skipped_due_to_close_limit) +
              "|session_deferred=" + IntegerToString(session_deferred) +
-             "|close_limit=" + IntegerToString(m_config.max_close_positions_per_step) +
+             "|close_limit=" + IntegerToString(close_limit) +
              "|close_work_pending=" + LP_BoolText(close_work_pending) +
              "|close_all_pending=" + LP_BoolText(close_all_pending) +
              "|remaining_lots=" + DoubleToString(MathMax(0.0, remaining_lots), 2) +
@@ -894,8 +1108,24 @@ private:
               "|grid_magic=" + (string)plan.magic +
               "|close_reason=" + (plan.close_reason == "" ? "unknown_error" : plan.close_reason)
       );
-      execution.accepted = (closed > 0 || execution.partial_fill) && execution.failed_positions == 0;
+      execution.accepted = (closed > 0 || execution.partial_fill) &&
+         execution.failed_positions == 0 && execution.deal_set_complete &&
+         execution.deal_linkage_clean && execution.deal_count > 0 &&
+         execution.deal_set_hash != 0;
       execution.broker_rejected = closed == 0 && !execution.partial_fill && execution.attempted_positions > 0;
+      if(attempted == 0 && session_deferred > 0)
+      {
+         execution.session_open = false;
+         execution.session_outcome =
+            session_metadata_unavailable_count > 0 ?
+               "trade_session_metadata_unavailable" :
+               "trade_session_closed_before_order_send";
+      }
+      else if(attempted == 0)
+      {
+         execution.session_open = false;
+         execution.session_outcome = "no_matching_position";
+      }
       execution.detail = "matched=" + IntegerToString(execution.matched_positions) +
          "|attempted=" + IntegerToString(execution.attempted_positions) +
          "|closed=" + IntegerToString(execution.closed_positions) +
@@ -920,6 +1150,72 @@ public:
    {
       m_config = config;
       m_ready = true;
+   }
+
+   bool CancelGate108ManagedPendingOrders(
+      LP_ReceiptWriter &receipts,
+      int &matched,
+      int &deleted,
+      int &failed,
+      int &foreign)
+   {
+      matched = 0;
+      deleted = 0;
+      failed = 0;
+      foreign = 0;
+      if(!m_ready)
+         return false;
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = OrderGetTicket(i);
+         if(ticket == 0)
+         {
+            failed++;
+            continue;
+         }
+         long magic = OrderGetInteger(ORDER_MAGIC);
+         string symbol = OrderGetString(ORDER_SYMBOL);
+         LP_MagicParts parts;
+         bool managed_revma = LP_IsManagedMagic(magic) &&
+            LP_DecodeMagic(magic, parts) &&
+            parts.lane_id == LP_LANE_REVMA &&
+            parts.variant_id == LP_VARIANT_REVMA_REVERSION;
+         if(!managed_revma)
+         {
+            foreign++;
+            receipts.Write(
+               LP_RECEIPT_ERROR,
+               symbol,
+               "gate108_quarantine_foreign_pending_order",
+               "ticket=" + (string)ticket + "|magic=" + (string)magic,
+               0, 0, 0, 0, 0, magic);
+            continue;
+         }
+         matched++;
+         ResetLastError();
+         m_trade.SetExpertMagicNumber((ulong)magic);
+         bool accepted = m_trade.OrderDelete(ticket);
+         uint retcode = m_trade.ResultRetcode();
+         if(accepted && retcode == TRADE_RETCODE_DONE)
+            deleted++;
+         else
+            failed++;
+         receipts.Write(
+            LP_RECEIPT_ORDER_RESULT,
+            symbol,
+            accepted ? "gate108_quarantine_order_cancelled" :
+               "gate108_quarantine_order_cancel_failed",
+            "ticket=" + (string)ticket +
+               "|magic=" + (string)magic +
+               "|retcode=" + IntegerToString((int)retcode) +
+               "|retcode_name=" + LP_RetcodeName(retcode) +
+               "|error=" + IntegerToString(GetLastError()),
+            parts.lane_id,
+            parts.variant_id,
+            LP_BuildGridKeyFromParts(parts),
+            0, 0, magic);
+      }
+      return failed == 0 && foreign == 0;
    }
 
    bool CanPlaceOrders(string &reason)
@@ -980,6 +1276,16 @@ public:
          WriteOrderRequest(receipts, plan, "lot_rejected", "reason=" + lot_reason);
          return false;
       }
+      if(plan.gate108 &&
+         NormalizeDouble(normalized_lots, 2) !=
+            NormalizeDouble(0.01, 2))
+      {
+         execution.detail =
+            "order_send_attempted=false|reason=gate108_atom_lot_mismatch";
+         execution.session_outcome = "not_reached_lot_invariant";
+         WriteOrderRequest(receipts, plan, "lot_rejected", execution.detail);
+         return false;
+      }
 
       string barrier_reason = "";
       bool can_place = CanPlaceOrders(barrier_reason);
@@ -1003,6 +1309,8 @@ public:
       {
          ObserveSessionAdmissionBlock(plan.action, server_now, session_metadata_unavailable);
          execution.detail = "order_send_attempted=false|reason=" + session_reason + "|" + session_detail;
+         execution.session_open = false;
+         execution.session_outcome = session_reason;
          WriteOrderRequest(
             receipts,
             plan,
@@ -1011,9 +1319,18 @@ public:
          );
          return false;
       }
+      execution.session_open = true;
+      execution.session_outcome = "broker_session_open";
 
       m_trade.SetExpertMagicNumber(plan.magic);
       m_trade.SetDeviationInPoints((ulong)MathMax(0, (int)MathRound(plan.max_slippage_points)));
+      if(!m_trade.SetTypeFillingBySymbol(plan.symbol))
+      {
+         execution.detail =
+            "order_send_attempted=false|reason=symbol_filling_policy_unavailable";
+         return false;
+      }
+      m_trade.SetTypeFilling(ORDER_FILLING_FOK);
       double stop_loss = 0.0;
       double take_profit = 0.0;
       double entry_reference = 0.0;
@@ -1030,11 +1347,13 @@ public:
       if(plan.direction > 0)
       {
          m_order_open_attempts++;
+         execution.order_send_attempted = true;
          ok = m_trade.Buy(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
       }
       else if(plan.direction < 0)
       {
          m_order_open_attempts++;
+         execution.order_send_attempted = true;
          ok = m_trade.Sell(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
       }
       else

@@ -68,6 +68,24 @@ private:
          return false;
       }
 
+      if(intent.gate108 &&
+         (intent.discovery_branch != 0 ||
+          intent.discovery_branch_grid_id == 0 ||
+          intent.discovery_shared_snapshot_hash == 0 ||
+          intent.discovery_source_m1_time <= 0 ||
+          ((long)intent.discovery_source_m1_time % 60) != 0 ||
+          (IsOpenAction(intent.action) &&
+           (intent.discovery_candidate_identity == 0 ||
+            intent.discovery_pre_candidate_state_hash == 0 ||
+            NormalizeDouble(intent.requested_lots, 2) != 0.01)) ||
+          (IsCloseAction(intent.action) &&
+           (intent.discovery_close_owner <= 0 ||
+            intent.discovery_origin_terminal_reason == ""))))
+      {
+         reason = "gate108_typed_intent_invariant_failure";
+         return false;
+      }
+
       if(intent.action != LP_INTENT_CLOSE_ALL_EA)
       {
          if(!LP_IsSupportedMagicLaneVariant(intent.lane_id, intent.variant_id) ||
@@ -164,6 +182,21 @@ private:
    )
    {
       plan.plan_id = m_next_plan_id++;
+      plan.gate108 = intent.gate108;
+      plan.discovery_branch = intent.discovery_branch;
+      plan.discovery_branch_grid_id = intent.discovery_branch_grid_id;
+      plan.discovery_candidate_identity =
+         intent.discovery_candidate_identity;
+      plan.discovery_shared_snapshot_hash =
+         intent.discovery_shared_snapshot_hash;
+      plan.discovery_matched_snapshot_hash =
+         intent.discovery_matched_snapshot_hash;
+      plan.discovery_pre_candidate_state_hash =
+         intent.discovery_pre_candidate_state_hash;
+      plan.discovery_source_m1_time = intent.discovery_source_m1_time;
+      plan.discovery_close_owner = intent.discovery_close_owner;
+      plan.discovery_origin_terminal_reason =
+         intent.discovery_origin_terminal_reason;
       plan.decision_id = decision_id;
       plan.intent_id = intent.intent_id;
       plan.symbol_id = intent.symbol_id;

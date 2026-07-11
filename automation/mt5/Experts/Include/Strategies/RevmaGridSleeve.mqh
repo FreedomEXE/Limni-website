@@ -12,7 +12,9 @@
 #include "Revma\\RevmaDiscoveryTypes.mqh"
 #include "Revma\\RevmaPathGeometry.mqh"
 #include "Revma\\RevmaShadowPortfolio.mqh"
+#include "Revma\\RevmaRealPortfolio.mqh"
 #include "Revma\\RevmaDiscoveryTelemetry.mqh"
+#include "Revma\\RevmaDiscoveryTelemetryBridge.mqh"
 #include "Revma\\RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot
@@ -157,6 +159,7 @@ private:
    string m_last_divergent_add_text;
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
+   LP_RevmaRealPortfolio m_discovery_real_portfolio;
    LP_RevmaShadowPortfolio m_discovery_shadow_portfolio;
    LP_RevmaDiscoveryTelemetry m_discovery_telemetry;
    bool m_discovery_reset_valid;
@@ -165,6 +168,24 @@ private:
    bool m_discovery_finalized;
    bool m_discovery_valid;
    string m_discovery_invalid_reason;
+   datetime m_discovery_last_completed_m1;
+   LP_RevmaCompletedM1Snapshot
+      m_discovery_last_cohort[LP_SYMBOL_COUNT];
+   bool m_discovery_last_cohort_valid;
+   ulong m_discovery_last_cohort_hash;
+   ulong m_discovery_last_cohort_signal_hash;
+   ulong m_discovery_last_cohort_strategy_hash;
+   ulong m_discovery_telemetry_cycle_started[
+      LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_discovery_telemetry_cycle_sealed[
+      LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_discovery_first_infeasibility_cycle[
+      LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   int m_discovery_telemetry_close_owner[
+      LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   bool m_discovery_telemetry_close_complete[
+      LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   bool m_discovery_first_divergence_emitted;
    LP_RevmaResearchTelemetry m_research_telemetry;
    bool m_state_loaded;
    bool m_state_persistence_enabled;
@@ -1571,7 +1592,8 @@ private:
       intent.source_bar_time = signal.source_m1_time;
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
-      intent.max_slippage_points = 10.0;
+      intent.max_slippage_points =
+         (double)LP_REVMA_DISCOVERY_MAX_SLIPPAGE_POINTS;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
       intent.target_take_profit_price = 0.0;
@@ -1925,7 +1947,8 @@ private:
       intent.source_bar_time = TimeCurrent();
       intent.expires_at = 0;
       intent.requested_lots = 0.0;
-      intent.max_slippage_points = 10.0;
+      intent.max_slippage_points =
+         (double)LP_REVMA_DISCOVERY_MAX_SLIPPAGE_POINTS;
       intent.take_profit_distance_price = 0.0;
       intent.stop_loss_distance_price = 0.0;
       intent.target_take_profit_price = 0.0;
@@ -1977,6 +2000,7 @@ private:
             "|remaining_ticket_count=" + IntegerToString(grid.position_count) +
             "|close_cap=" + IntegerToString(existing_latch.close_cap);
          LP_TradeIntent latched_close_intent;
+         LP_ResetTradeIntent(latched_close_intent);
          BuildGridCloseIntent(symbol, grid, existing_latch.close_reason, latch_metadata, grid.floating_pnl, latched_close_intent);
          if(!bus.Add(latched_close_intent))
          {
@@ -2091,6 +2115,7 @@ private:
          "|close_cap=" + IntegerToString(started_latch.close_cap);
 
       LP_TradeIntent close_intent;
+      LP_ResetTradeIntent(close_intent);
       BuildGridCloseIntent(symbol, grid, terminal_close_reason, metadata, net_open_money, close_intent);
       if(!bus.Add(close_intent))
       {
@@ -2215,7 +2240,2496 @@ private:
       }
    }
 
+   bool BuildShadowCandidateFromSnapshot(
+      const int branch,
+      const LP_RevmaCompletedM1Snapshot &snapshot,
+      LP_RevmaShadowCandidate &candidate,
+      bool &candidate_available)
+   {
+      LP_ResetRevmaShadowCandidate(candidate);
+      candidate_available = false;
+      if(!LP_RevmaCompletedM1SnapshotValid(snapshot) ||
+         (branch != LP_REVMA_BRANCH_U && branch != LP_REVMA_BRANCH_C))
+         return false;
+      LP_RevmaShadowGrid grid;
+      if(!m_discovery_shadow_portfolio.GetGrid(branch, snapshot.symbol_id,
+            grid))
+         return false;
+      bool birth = !grid.active;
+      int direction = birth ? snapshot.direction : grid.direction;
+      int candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_NONE;
+      if(birth)
+      {
+         if(!snapshot.birth_eligible || !snapshot.session_allowed ||
+            !snapshot.news_allowed ||
+            !m_discovery_shadow_portfolio.ReentryEligible(branch,
+               snapshot.symbol_id, snapshot.source_m1_time,
+               snapshot.strategy_state_identity_hash))
+            return true;
+         candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_BIRTH;
+      }
+      else
+      {
+         if(grid.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+            return true;
+         long decision_ticks = 0;
+         long minimum_ticks = 0;
+         long maximum_ticks = 0;
+         if(!LP_RevmaPriceToTicks(snapshot.decision_price,
+               grid.birth_broker_tick_size, decision_ticks) ||
+            !LP_RevmaPriceToTicks(grid.minimum_entry_price,
+               grid.birth_broker_tick_size, minimum_ticks) ||
+            !LP_RevmaPriceToTicks(grid.maximum_entry_price,
+               grid.birth_broker_tick_size, maximum_ticks) ||
+            maximum_ticks > LP_REVMA_GEOMETRY_ABS_LIMIT -
+               grid.discovery_mesh.discovery_cell_ticks)
+            return false;
+         long lower = minimum_ticks > grid.discovery_mesh.discovery_cell_ticks ?
+            minimum_ticks - grid.discovery_mesh.discovery_cell_ticks : 0;
+         long upper = maximum_ticks + grid.discovery_mesh.discovery_cell_ticks;
+         bool adverse = direction == LP_SIDE_LONG ?
+            (lower > 0 && decision_ticks <= lower) : decision_ticks >= upper;
+         bool favorable = direction == LP_SIDE_LONG ?
+            decision_ticks >= upper : (lower > 0 && decision_ticks <= lower);
+         if(!adverse && !favorable)
+            return true;
+         candidate_type = adverse ?
+            LP_REVMA_DISCOVERY_CANDIDATE_ADVERSE_ADD :
+            LP_REVMA_DISCOVERY_CANDIDATE_FAVORABLE_ADD;
+      }
+      candidate.valid = true;
+      candidate.birth = birth;
+      candidate.branch = branch;
+      candidate.symbol_id = snapshot.symbol_id;
+      candidate.direction = direction;
+      candidate.candidate_type = candidate_type;
+      candidate.source_m1_time = snapshot.source_m1_time;
+      candidate.grid_generation = birth ?
+         m_discovery_shadow_portfolio.NextGridGeneration(branch,
+            snapshot.symbol_id) : grid.grid_generation;
+      candidate.pre_candidate_state_hash =
+         m_discovery_shadow_portfolio.PreCandidateStateHash(branch,
+            snapshot.symbol_id);
+      candidate.strategy_identity_hash = birth ?
+         snapshot.signal_identity_hash : grid.strategy_identity_hash;
+      candidate.strategy_state_identity_hash =
+         snapshot.strategy_state_identity_hash;
+      LP_RevmaShadowPortfolioState portfolio;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(branch, portfolio))
+         return false;
+      candidate.branch_grid_id = LP_RevmaDiscoveryGridIdentity(branch,
+         snapshot.symbol_id, candidate.grid_generation, portfolio.cycle_id,
+         birth ? snapshot.source_m1_time : grid.birth_m1_time,
+         candidate.strategy_identity_hash);
+      candidate.candidate_identity = LP_RevmaDiscoveryAdmissionIdentity(
+         branch, candidate.branch_grid_id, snapshot.source_m1_time);
+      candidate.decision_price = snapshot.decision_price;
+      candidate.p0 = birth ? snapshot.decision_price : grid.birth_p0;
+      candidate.c0 = birth ? snapshot.center : grid.birth_c0;
+      candidate.q0 = birth ? snapshot.birth_q : grid.q0;
+      candidate.q_event_count = snapshot.signal.q_event_count;
+      candidate.stress_price = birth ? snapshot.stress_reference_price :
+         grid.birth_stress_price;
+      candidate.broker_tick_size = birth ? snapshot.broker_tick_size :
+         grid.birth_broker_tick_size;
+      candidate.initial_history_boundary = birth ?
+         snapshot.initial_history_boundary : grid.initial_history_boundary;
+      double slope = 0.0;
+      double liquidation_price = 0.0;
+      long snapshot_a_g = 0;
+      if(!LP_RevmaSnapshotDirectionValues(snapshot, direction,
+            candidate.fill_price, liquidation_price,
+            snapshot_a_g, candidate.incremental_margin_minor,
+            candidate.incremental_liquidation_minor, slope))
+         return false;
+      // Add reservation and q-cash remain frozen to the grid's birth A_g;
+      // NormalizeCandidateReservation inside the book recomputes the exact
+      // deltas and rejects caller authority.
+      candidate.a_g_candidate_minor = birth ? snapshot_a_g :
+         grid.a_g_candidate_minor;
+      candidate.a_g_minor = birth ? snapshot_a_g : grid.a_g_minor;
+      if(!birth)
+         candidate.stress_price = grid.birth_stress_price;
+      candidate.incremental_close_cost_minor =
+         snapshot.immediate_close_cost_minor;
+      candidate.lots = LP_REVMA_DISCOVERY_ATOM_LOTS;
+      candidate.shared_observation_snapshot_hash = snapshot.snapshot_hash;
+      candidate.matched_snapshot_hash =
+         LP_RevmaDiscoveryMatchedSnapshotIdentity(
+            candidate.symbol_id, candidate.source_m1_time,
+            candidate.direction, candidate.candidate_type,
+            candidate.pre_candidate_state_hash,
+            candidate.strategy_identity_hash, candidate.q_event_count,
+            candidate.q0, candidate.decision_price,
+            candidate.stress_price, candidate.fill_price,
+            candidate.p0, candidate.c0, candidate.broker_tick_size,
+            candidate.a_g_candidate_minor, candidate.a_g_minor,
+            candidate.incremental_margin_minor,
+            candidate.incremental_liquidation_minor,
+            candidate.incremental_close_cost_minor);
+      if(birth)
+         candidate.shared_origin_id = LP_RevmaDiscoverySharedOriginIdentity(
+            candidate.symbol_id, candidate.source_m1_time,
+            candidate.pre_candidate_state_hash,
+            candidate.matched_snapshot_hash);
+      else
+         candidate.shared_origin_id = grid.shared_origin_id;
+      candidate.opportunity_id =
+         m_discovery_shadow_portfolio.CausalMatchingOpen() ?
+         LP_RevmaDiscoveryOpportunityIdentity(candidate.shared_origin_id,
+            candidate.symbol_id, candidate.source_m1_time,
+            candidate.candidate_type, candidate.pre_candidate_state_hash,
+            candidate.matched_snapshot_hash) : 0;
+      if(candidate.branch_grid_id == 0 || candidate.candidate_identity == 0 ||
+         candidate.pre_candidate_state_hash == 0 ||
+         candidate.matched_snapshot_hash == 0 ||
+         candidate.shared_origin_id == 0 ||
+         !m_discovery_shadow_portfolio.PrepareCenterPolicy(candidate))
+         return false;
+      candidate_available = true;
+      return true;
+   }
+
+   bool MarkDiscoveryShadows(
+      LP_RevmaCompletedM1Snapshot &snapshots[],
+      const int snapshot_count,
+      const datetime source_m1_time)
+   {
+      bool matched = m_discovery_shadow_portfolio.CausalMatchingOpen();
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         LP_RevmaCompletedM1Snapshot snapshot = snapshots[i];
+         LP_RevmaShadowGrid u_grid;
+         LP_RevmaShadowGrid c_grid;
+         if(!m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_U,
+               snapshot.symbol_id, u_grid) ||
+            !m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_C,
+               snapshot.symbol_id, c_grid))
+            return false;
+         if(matched && u_grid.active != c_grid.active)
+            return false;
+         if(matched && !u_grid.active && !c_grid.active &&
+            (u_grid.reentry_requires_identity_transition ||
+             c_grid.reentry_requires_identity_transition))
+         {
+            if(u_grid.reentry_requires_identity_transition !=
+                  c_grid.reentry_requires_identity_transition ||
+               !m_discovery_shadow_portfolio.
+                  ObserveMatchedFlatReentryIdentity(snapshot.symbol_id,
+                     source_m1_time,
+                     snapshot.strategy_state_identity_hash))
+               return false;
+         }
+         else if(!matched)
+         {
+            if(!u_grid.active &&
+               u_grid.reentry_requires_identity_transition &&
+               !m_discovery_shadow_portfolio.ObserveFlatReentryIdentity(
+                  LP_REVMA_BRANCH_U, snapshot.symbol_id, source_m1_time,
+                  snapshot.strategy_state_identity_hash))
+               return false;
+            if(!c_grid.active &&
+               c_grid.reentry_requires_identity_transition &&
+               !m_discovery_shadow_portfolio.ObserveFlatReentryIdentity(
+                  LP_REVMA_BRANCH_C, snapshot.symbol_id, source_m1_time,
+                  snapshot.strategy_state_identity_hash))
+               return false;
+         }
+         if(matched && u_grid.active)
+         {
+            double open_price = 0.0;
+            double liquidation_price = 0.0;
+            double slope = 0.0;
+            long a_g = 0;
+            long margin = 0;
+            long immediate = 0;
+            if(!LP_RevmaSnapshotDirectionValues(snapshot, u_grid.direction,
+                  open_price, liquidation_price, a_g, margin, immediate,
+                  slope) ||
+               !m_discovery_shadow_portfolio.ObserveMatchedGridPath(
+                  snapshot.symbol_id, snapshot.decision_price,
+                  source_m1_time) ||
+               !m_discovery_shadow_portfolio.ObserveMatchedGridCenters(
+                  snapshot.symbol_id, snapshot.center, snapshot.current_q,
+                  snapshot.broker_tick_size, snapshot.signal.q_event_count,
+                  source_m1_time))
+               return false;
+            double mark_money = (double)u_grid.direction *
+               (liquidation_price - u_grid.average_entry_price) * slope *
+               (double)u_grid.atom_count;
+            long mark_minor = 0;
+            if(!LP_RevmaDiscoveryMoneyToSignedMinor(mark_money,
+                  snapshot.money_quantum, mark_minor) ||
+               !m_discovery_shadow_portfolio.SetMatchedGridMarkedLiquidation(
+                  snapshot.symbol_id, source_m1_time, mark_minor, 0))
+               return false;
+         }
+         else if(!matched)
+         {
+            for(int branch = LP_REVMA_BRANCH_U;
+               branch <= LP_REVMA_BRANCH_C; branch++)
+            {
+               LP_RevmaShadowGrid grid = branch == LP_REVMA_BRANCH_U ?
+                  u_grid : c_grid;
+               if(!grid.active)
+                  continue;
+               double open_price = 0.0;
+               double liquidation_price = 0.0;
+               double slope = 0.0;
+               long a_g = 0;
+               long margin = 0;
+               long immediate = 0;
+               if(!LP_RevmaSnapshotDirectionValues(snapshot, grid.direction,
+                     open_price, liquidation_price, a_g, margin, immediate,
+                     slope) ||
+                  !m_discovery_shadow_portfolio.ObserveGridPath(branch,
+                     snapshot.symbol_id, snapshot.decision_price,
+                     source_m1_time))
+                  return false;
+               if((branch == LP_REVMA_BRANCH_C &&
+                   !m_discovery_shadow_portfolio.ObserveCGridCenter(
+                      snapshot.symbol_id, snapshot.center,
+                      snapshot.current_q, snapshot.broker_tick_size,
+                      snapshot.signal.q_event_count, source_m1_time)) ||
+                  (branch == LP_REVMA_BRANCH_U &&
+                   !m_discovery_shadow_portfolio.ObserveUGridCenter(
+                      snapshot.symbol_id, snapshot.center,
+                      snapshot.current_q, snapshot.broker_tick_size,
+                      snapshot.signal.q_event_count, source_m1_time)))
+                  return false;
+               double mark_money = (double)grid.direction *
+                  (liquidation_price - grid.average_entry_price) * slope *
+                  (double)grid.atom_count;
+               long mark_minor = 0;
+               if(!LP_RevmaDiscoveryMoneyToSignedMinor(mark_money,
+                     snapshot.money_quantum, mark_minor) ||
+                  !m_discovery_shadow_portfolio.SetGridMarkedLiquidation(
+                     branch, snapshot.symbol_id, source_m1_time,
+                     mark_minor, 0))
+                  return false;
+            }
+         }
+      }
+      return true;
+   }
+
+   bool EvaluateAndCloseDiscoveryShadows(
+      LP_RevmaCompletedM1Snapshot &snapshots[],
+      const int snapshot_count,
+      const datetime source_m1_time)
+   {
+      bool matched = m_discovery_shadow_portfolio.CausalMatchingOpen();
+      LP_RevmaShadowPortfolioState u_before_authority;
+      LP_RevmaShadowPortfolioState c_before_authority;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            u_before_authority) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            c_before_authority))
+         return false;
+      if(matched)
+      {
+         if(!m_discovery_shadow_portfolio.EvaluateMatchedCloseAuthority(
+               source_m1_time))
+            return false;
+      }
+      else if(!m_discovery_shadow_portfolio.EvaluateCloseAuthority(
+            LP_REVMA_BRANCH_U, source_m1_time) ||
+         !m_discovery_shadow_portfolio.EvaluateCloseAuthority(
+            LP_REVMA_BRANCH_C, source_m1_time))
+         return false;
+      LP_RevmaShadowPortfolioState u_after_authority;
+      LP_RevmaShadowPortfolioState c_after_authority;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            u_after_authority) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            c_after_authority) ||
+         !AppendDiscoveryPortfolioAuthority(LP_REVMA_BRANCH_U,
+            u_after_authority.cycle_id,
+            u_after_authority.equity_reference_minor,
+            u_after_authority.capital_budget_minor,
+            u_after_authority.atom_count,
+            u_after_authority.reservation_minor,
+            u_after_authority.q_cash_minor,
+            u_after_authority.margin_minor,
+            u_after_authority.marked_liquidation_minor,
+            u_after_authority.realized_harvest_minor,
+            u_after_authority.realized_nonharvest_minor,
+            u_after_authority.concentration_q_cash_minor,
+            u_after_authority.concentration_currency_id,
+            u_before_authority.close_owner,
+            u_after_authority.close_owner, source_m1_time) ||
+         !AppendDiscoveryPortfolioAuthority(LP_REVMA_BRANCH_C,
+            c_after_authority.cycle_id,
+            c_after_authority.equity_reference_minor,
+            c_after_authority.capital_budget_minor,
+            c_after_authority.atom_count,
+            c_after_authority.reservation_minor,
+            c_after_authority.q_cash_minor,
+            c_after_authority.margin_minor,
+            c_after_authority.marked_liquidation_minor,
+            c_after_authority.realized_harvest_minor,
+            c_after_authority.realized_nonharvest_minor,
+            c_after_authority.concentration_q_cash_minor,
+            c_after_authority.concentration_currency_id,
+            c_before_authority.close_owner,
+            c_after_authority.close_owner, source_m1_time))
+         return false;
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         bool u_latched = false;
+         bool c_latched = false;
+         if(matched)
+         {
+            bool matched_latched = false;
+            if(!m_discovery_shadow_portfolio.EvaluateMatchedLocalHarvest(
+                  snapshots[i].symbol_id, source_m1_time,
+                  matched_latched))
+               return false;
+            u_latched = matched_latched;
+            c_latched = matched_latched;
+         }
+         else if(!m_discovery_shadow_portfolio.EvaluateLocalHarvest(
+               LP_REVMA_BRANCH_U, snapshots[i].symbol_id,
+               source_m1_time, u_latched) ||
+            !m_discovery_shadow_portfolio.EvaluateLocalHarvest(
+               LP_REVMA_BRANCH_C, snapshots[i].symbol_id,
+               source_m1_time, c_latched))
+            return false;
+      }
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         int symbol_id = snapshots[i].symbol_id;
+         LP_RevmaShadowGrid u_grid;
+         LP_RevmaShadowGrid c_grid;
+         if(!m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_U,
+               symbol_id, u_grid) ||
+            !m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_C,
+               symbol_id, c_grid))
+            return false;
+         if(matched && u_grid.active && c_grid.active &&
+            u_grid.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+         {
+             if(u_grid.close_owner != c_grid.close_owner ||
+                u_grid.terminal_reason != c_grid.terminal_reason ||
+                !m_discovery_shadow_portfolio.CloseMatchedGrid(symbol_id,
+                   u_grid.close_owner, source_m1_time,
+                   snapshots[i].strategy_state_identity_hash,
+                   u_grid.terminal_reason) ||
+                !EmitMatchedShadowGridTerminals(u_grid, c_grid,
+                   LP_REVMA_TELEMETRY_GRID_CLOSE))
+                return false;
+         }
+         else if(!matched)
+         {
+             if(u_grid.active &&
+                u_grid.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+             {
+                if(!m_discovery_shadow_portfolio.CloseGrid(
+                      LP_REVMA_BRANCH_U, symbol_id, u_grid.close_owner,
+                      source_m1_time,
+                      snapshots[i].strategy_state_identity_hash,
+                      u_grid.terminal_reason) ||
+                   !EmitShadowGridTerminal(LP_REVMA_BRANCH_U, u_grid,
+                      LP_REVMA_TELEMETRY_GRID_CLOSE))
+                   return false;
+             }
+             if(c_grid.active &&
+                c_grid.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+             {
+                if(!m_discovery_shadow_portfolio.CloseGrid(
+                      LP_REVMA_BRANCH_C, symbol_id, c_grid.close_owner,
+                      source_m1_time,
+                      snapshots[i].strategy_state_identity_hash,
+                      c_grid.terminal_reason) ||
+                   !EmitShadowGridTerminal(LP_REVMA_BRANCH_C, c_grid,
+                      LP_REVMA_TELEMETRY_GRID_CLOSE))
+                   return false;
+             }
+         }
+      }
+      LP_RevmaShadowPortfolioState u_portfolio;
+      LP_RevmaShadowPortfolioState c_portfolio;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            u_portfolio) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            c_portfolio))
+         return false;
+      if(matched && u_portfolio.close_owner !=
+            LP_REVMA_DISCOVERY_CLOSE_NONE &&
+         u_portfolio.reservation_minor == 0 &&
+         c_portfolio.reservation_minor == 0)
+      {
+         int close_owner = u_portfolio.close_owner;
+         if(close_owner != c_portfolio.close_owner ||
+            !m_discovery_shadow_portfolio.CompleteMatchedPortfolioClose() ||
+            !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+               u_portfolio) ||
+            !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+               c_portfolio) ||
+            !AppendDiscoveryPortfolioAuthorityComplete(
+               LP_REVMA_BRANCH_U, u_portfolio.cycle_id,
+               u_portfolio.equity_reference_minor,
+               u_portfolio.capital_budget_minor,
+               u_portfolio.realized_harvest_minor,
+               u_portfolio.realized_nonharvest_minor, close_owner,
+               source_m1_time) ||
+            !AppendDiscoveryPortfolioAuthorityComplete(
+               LP_REVMA_BRANCH_C, c_portfolio.cycle_id,
+               c_portfolio.equity_reference_minor,
+               c_portfolio.capital_budget_minor,
+               c_portfolio.realized_harvest_minor,
+               c_portfolio.realized_nonharvest_minor, close_owner,
+               source_m1_time))
+            return false;
+      }
+      else if(!matched)
+      {
+         if(u_portfolio.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE &&
+             u_portfolio.reservation_minor == 0 &&
+             (!m_discovery_shadow_portfolio.CompletePortfolioClose(
+                LP_REVMA_BRANCH_U) ||
+              !m_discovery_shadow_portfolio.GetPortfolio(
+                 LP_REVMA_BRANCH_U, u_portfolio) ||
+              !AppendDiscoveryPortfolioAuthorityComplete(
+                 LP_REVMA_BRANCH_U, u_portfolio.cycle_id,
+                 u_portfolio.equity_reference_minor,
+                 u_portfolio.capital_budget_minor,
+                 u_portfolio.realized_harvest_minor,
+                 u_portfolio.realized_nonharvest_minor,
+                 u_portfolio.close_owner, source_m1_time)))
+            return false;
+         if(c_portfolio.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE &&
+             c_portfolio.reservation_minor == 0 &&
+             (!m_discovery_shadow_portfolio.CompletePortfolioClose(
+                LP_REVMA_BRANCH_C) ||
+              !m_discovery_shadow_portfolio.GetPortfolio(
+                 LP_REVMA_BRANCH_C, c_portfolio) ||
+              !AppendDiscoveryPortfolioAuthorityComplete(
+                 LP_REVMA_BRANCH_C, c_portfolio.cycle_id,
+                 c_portfolio.equity_reference_minor,
+                 c_portfolio.capital_budget_minor,
+                 c_portfolio.realized_harvest_minor,
+                 c_portfolio.realized_nonharvest_minor,
+                 c_portfolio.close_owner, source_m1_time)))
+            return false;
+      }
+      return true;
+   }
+
+   bool BuildDiscoveryPortfolioTransition(
+      const int branch,
+      const ulong cycle_id,
+      const long equity_reference_minor,
+      const long budget_minor,
+      const int atom_count,
+      const long reservation_minor,
+      const long q_cash_minor,
+      const long margin_minor,
+      const long marked_liquidation_minor,
+      const long harvest_minor,
+      const long nonharvest_minor,
+      const long concentration_q_cash_minor,
+      const int concentration_currency_id,
+      const int close_owner,
+      const datetime source_m1_time,
+      const int event_type,
+      const string decision,
+      const string reason,
+      LP_RevmaDiscoveryTransitionRow &row)
+   {
+      if(!m_discovery_last_cohort_valid ||
+         !LP_RevmaDiscoveryBranchValid(branch) || cycle_id == 0 ||
+         equity_reference_minor <= 0 || budget_minor <= 0 ||
+         atom_count < 0 || reservation_minor < 0 || q_cash_minor < 0 ||
+         margin_minor < 0 || concentration_q_cash_minor < 0 ||
+         ((concentration_q_cash_minor == 0) !=
+          (concentration_currency_id == -1)) ||
+         concentration_currency_id < -1 ||
+         concentration_currency_id >= LP_CCY_COUNT ||
+         source_m1_time <= 0 ||
+         m_discovery_last_cohort[0].source_m1_time != source_m1_time ||
+         m_discovery_last_cohort_hash == 0 ||
+         m_discovery_last_cohort_signal_hash == 0 ||
+         m_discovery_last_cohort_strategy_hash == 0 ||
+         !m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      row.event_type = event_type;
+      row.event_time = TimeCurrent() < source_m1_time ?
+         source_m1_time : TimeCurrent();
+      row.source_m1_time = source_m1_time;
+      row.signal_identity_hash = m_discovery_last_cohort_signal_hash;
+      row.shared_observation_snapshot_hash = m_discovery_last_cohort_hash;
+      row.strategy_state_identity_hash =
+         m_discovery_last_cohort_strategy_hash;
+      row.branch = branch;
+      row.branch_cycle_id = cycle_id;
+      row.account_cycle_id = cycle_id;
+      row.symbol_id = -1;
+      row.direction = LP_SIDE_NONE;
+      row.atoms_before = atom_count;
+      row.atoms_after = atom_count;
+      row.lots_before = NormalizeDouble((double)atom_count *
+         LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      row.lots_after = row.lots_before;
+      row.reservation_minor = reservation_minor;
+      row.q_cash_minor = q_cash_minor;
+      row.margin_minor = margin_minor;
+      row.concentration_q_cash_minor = concentration_q_cash_minor;
+      row.concentration_currency_id = concentration_currency_id;
+      row.harvest_minor = harvest_minor;
+      row.nonharvest_minor = nonharvest_minor;
+      row.liability_minor = marked_liquidation_minor;
+      if(marked_liquidation_minor < 0)
+         row.maximum_adverse_excursion_minor = -marked_liquidation_minor;
+      row.budget_minor = budget_minor;
+      row.equity_reference_minor = equity_reference_minor;
+      row.close_owner = close_owner;
+      row.decision = decision;
+      row.reason = reason;
+      return true;
+   }
+
+   bool AppendDiscoveryPortfolioAuthority(
+      const int branch,
+      const ulong cycle_id,
+      const long equity_reference_minor,
+      const long budget_minor,
+      const int atom_count,
+      const long reservation_minor,
+      const long q_cash_minor,
+      const long margin_minor,
+      const long marked_liquidation_minor,
+      const long harvest_minor,
+      const long nonharvest_minor,
+      const long concentration_q_cash_minor,
+      const int concentration_currency_id,
+      const int previous_close_owner,
+      const int current_close_owner,
+      const datetime source_m1_time)
+   {
+      if(!LP_RevmaDiscoveryBranchValid(branch))
+         return false;
+      if(current_close_owner == previous_close_owner)
+         return current_close_owner == LP_REVMA_DISCOVERY_CLOSE_NONE ||
+            m_discovery_telemetry_close_owner[branch] == current_close_owner;
+      if(m_discovery_telemetry_close_owner[branch] !=
+            previous_close_owner ||
+         m_discovery_telemetry_close_complete[branch])
+         return false;
+      int event_type = LP_REVMA_TELEMETRY_FAILURE;
+      string reason = "";
+      if(current_close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP &&
+         previous_close_owner == LP_REVMA_DISCOVERY_CLOSE_NONE)
+      {
+         event_type = LP_REVMA_TELEMETRY_CLEANUP_LATCH;
+         reason = "account_cleanup";
+      }
+      else if(current_close_owner == LP_REVMA_DISCOVERY_CLOSE_HARD_RISK &&
+         previous_close_owner != LP_REVMA_DISCOVERY_CLOSE_HARD_RISK)
+      {
+         event_type = LP_REVMA_TELEMETRY_HARD_RISK_LATCH;
+         reason = "account_risk";
+      }
+      else
+         return false;
+      LP_RevmaDiscoveryTransitionRow row;
+      if(!BuildDiscoveryPortfolioTransition(branch, cycle_id,
+            equity_reference_minor, budget_minor, atom_count,
+            reservation_minor, q_cash_minor, margin_minor,
+            marked_liquidation_minor, harvest_minor, nonharvest_minor,
+            concentration_q_cash_minor, concentration_currency_id,
+            current_close_owner, source_m1_time, event_type, "CLOSE",
+            reason, row))
+         return false;
+      ulong event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+         event_hash == 0)
+         return false;
+      m_discovery_telemetry_close_owner[branch] = current_close_owner;
+      m_discovery_telemetry_close_complete[branch] = false;
+      return true;
+   }
+
+   bool AppendDiscoveryPortfolioAuthorityComplete(
+      const int branch,
+      const ulong cycle_id,
+      const long equity_reference_minor,
+      const long budget_minor,
+      const long harvest_minor,
+      const long nonharvest_minor,
+      const int close_owner,
+      const datetime source_m1_time)
+   {
+      if(m_discovery_telemetry_close_complete[branch])
+         return m_discovery_telemetry_close_owner[branch] == close_owner;
+      int event_type = close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP ?
+         LP_REVMA_TELEMETRY_CLEANUP_COMPLETE :
+         (close_owner == LP_REVMA_DISCOVERY_CLOSE_HARD_RISK ?
+          LP_REVMA_TELEMETRY_HARD_RISK_COMPLETE : LP_REVMA_TELEMETRY_FAILURE);
+      if(event_type == LP_REVMA_TELEMETRY_FAILURE ||
+         m_discovery_telemetry_close_owner[branch] != close_owner)
+         return false;
+      LP_RevmaDiscoveryTransitionRow row;
+      if(!BuildDiscoveryPortfolioTransition(branch, cycle_id,
+            equity_reference_minor, budget_minor, 0, 0, 0, 0, 0,
+            harvest_minor, nonharvest_minor, 0, -1, close_owner,
+            source_m1_time, event_type, "CLOSE",
+            close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP ?
+               "account_cleanup_complete" : "account_risk_complete", row))
+         return false;
+      ulong event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+         event_hash == 0)
+         return false;
+      m_discovery_telemetry_close_complete[branch] = true;
+      return true;
+   }
+
+   bool BuildShadowGridTransition(
+      const int branch,
+      const LP_RevmaShadowGrid &observation_grid,
+      const int event_type,
+      LP_RevmaDiscoveryTransitionRow &row,
+      LP_RevmaTerminalGridProjection &projection)
+   {
+      LP_ResetRevmaTerminalGridProjection(projection);
+      if(!m_discovery_last_cohort_valid ||
+         (branch != LP_REVMA_BRANCH_U && branch != LP_REVMA_BRANCH_C) ||
+         observation_grid.symbol_id < 0 ||
+         observation_grid.symbol_id >= LP_SYMBOL_COUNT ||
+         observation_grid.branch != branch ||
+         observation_grid.branch_grid_id == 0 ||
+         observation_grid.average_entry_price <= 0.0 ||
+         observation_grid.weighted_entry_price_lots <= 0.0 ||
+         !m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      LP_RevmaCompletedM1Snapshot snapshot =
+         m_discovery_last_cohort[observation_grid.symbol_id];
+      if(snapshot.source_m1_time <= 0 ||
+         snapshot.source_m1_time != observation_grid.last_mark_m1_time)
+         return false;
+      row.branch = branch;
+      long unfilled_jump = MathAbs(
+         observation_grid.path_geometry.current_cell_index -
+         observation_grid.path_geometry.previous_cell_index);
+      if(!LP_RevmaBridgePopulateObservation(row, snapshot,
+            observation_grid.direction, observation_grid.birth_p0,
+            observation_grid.birth_c0, observation_grid.q0,
+            observation_grid.birth_stress_price,
+            observation_grid.average_entry_price,
+            observation_grid.birth_m1_time,
+            observation_grid.initial_history_boundary,
+            observation_grid.last_positive_liquidation_opportunity_m1,
+            observation_grid.time_underwater_minutes, unfilled_jump,
+            observation_grid.discovery_mesh,
+            observation_grid.center_support,
+            observation_grid.path_geometry))
+         return false;
+      bool terminal_event = event_type == LP_REVMA_TELEMETRY_GRID_CLOSE ||
+         event_type == LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT;
+      if(terminal_event &&
+         !m_discovery_shadow_portfolio.BuildTerminalGridProjection(branch,
+            observation_grid.symbol_id, snapshot.source_m1_time, projection))
+         return false;
+      LP_RevmaShadowPortfolioState portfolio;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(branch, portfolio))
+         return false;
+      row.event_type = event_type;
+      row.branch_grid_id = observation_grid.branch_grid_id;
+      row.branch_cycle_id = observation_grid.branch_cycle_id;
+      row.account_cycle_id = observation_grid.branch_cycle_id;
+      row.grid_generation = observation_grid.grid_generation;
+      row.shared_origin_id = observation_grid.shared_origin_id;
+      row.matched_snapshot_hash =
+         observation_grid.birth_matched_snapshot_hash;
+      row.pre_candidate_state_hash =
+         observation_grid.birth_pre_candidate_state_hash;
+      row.a_g_candidate_minor = observation_grid.a_g_candidate_minor;
+      row.a_g_minor = observation_grid.a_g_minor;
+      row.adverse_add_count = observation_grid.adverse_add_count;
+      row.favorable_add_count = observation_grid.favorable_add_count;
+      row.weighted_entry_sum =
+         observation_grid.weighted_entry_price_lots;
+      row.maximum_adverse_excursion_minor =
+         observation_grid.maximum_adverse_excursion_minor;
+      row.atoms_before = terminal_event ? projection.atoms_before :
+         observation_grid.atom_count;
+      row.atoms_after = terminal_event ? projection.atoms_after :
+         observation_grid.atom_count;
+      row.lots_before = terminal_event ? projection.lots_before :
+         observation_grid.total_lots;
+      row.lots_after = terminal_event ? projection.lots_after :
+         observation_grid.total_lots;
+      row.reservation_minor = terminal_event ? projection.reservation_minor :
+         observation_grid.reservation_minor;
+      row.q_cash_minor = terminal_event ? projection.q_cash_minor :
+         observation_grid.q_cash_minor;
+      row.margin_minor = terminal_event ? projection.margin_minor :
+         observation_grid.margin_minor;
+      row.harvest_minor = terminal_event ? projection.harvest_minor :
+         observation_grid.realized_harvest_minor;
+      row.nonharvest_minor = terminal_event ? projection.nonharvest_minor :
+         observation_grid.realized_nonharvest_minor;
+      row.liability_minor = terminal_event ? projection.liability_minor :
+         observation_grid.marked_liquidation_minor;
+      row.liquidation_cost_minor = terminal_event ? projection.cost_minor :
+         observation_grid.estimated_close_cost_minor;
+      if(terminal_event)
+      {
+         row.maximum_adverse_excursion_minor =
+            projection.maximum_adverse_excursion_minor;
+         row.grid_age_minutes = projection.grid_age_minutes;
+         row.time_underwater_minutes = projection.time_underwater_minutes;
+         row.close_owner = projection.close_owner;
+         row.grid_terminal_reason = projection.origin_terminal_reason;
+         row.terminal_internal_state_hash =
+            projection.terminal_internal_state_hash;
+         row.terminal_projection_hash = projection.projection_hash;
+      }
+      else
+         row.close_owner = observation_grid.close_owner;
+      int current_atoms = row.atoms_before;
+      int reserved_atoms = current_atoms <= 0 ? 0 :
+         (current_atoms < 2 ? 2 : current_atoms);
+      long expected_reservation = 0;
+      long expected_q_cash = 0;
+      long candidate_current_reservation = 0;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            reserved_atoms, expected_reservation) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            current_atoms, expected_q_cash) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            reserved_atoms, candidate_current_reservation) ||
+         row.reservation_minor != expected_reservation ||
+         row.q_cash_minor != expected_q_cash)
+         return false;
+      row.prospective_reservation_minor = candidate_current_reservation;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            current_atoms, row.prospective_q_cash_minor))
+         return false;
+      row.reservation_overrun = row.reservation_minor >
+         candidate_current_reservation;
+      row.reservation_overrun_minor = row.reservation_overrun ?
+         row.reservation_minor - candidate_current_reservation : 0;
+      row.budget_minor = portfolio.capital_budget_minor;
+      row.equity_reference_minor = portfolio.equity_reference_minor;
+      row.decision = event_type == LP_REVMA_TELEMETRY_GRID_CLOSE ?
+         "CLOSE" : (event_type ==
+            LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT ? "SNAPSHOT" :
+            "LATCH");
+      row.reason = event_type == LP_REVMA_TELEMETRY_GRID_CLOSE ?
+         row.grid_terminal_reason : (event_type ==
+            LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT ?
+            "run_boundary_unresolved_grid_snapshot" :
+            "signed_center_support_positive_to_nonpositive");
+      return true;
+   }
+
+   bool AppendDiscoveryGridSummary(const int branch, const int symbol_id)
+   {
+      LP_RevmaDiscoverySummaryRow summary;
+      return m_discovery_telemetry.BuildGridSummaryBase(branch, symbol_id,
+         summary) && m_discovery_telemetry.AppendSummary(summary);
+   }
+
+   bool EmitShadowGridTerminal(
+      const int branch,
+      const LP_RevmaShadowGrid &observation_grid,
+      const int event_type)
+   {
+      LP_RevmaDiscoveryTransitionRow row;
+      LP_RevmaTerminalGridProjection projection;
+      if(!BuildShadowGridTransition(branch, observation_grid, event_type,
+            row, projection))
+         return false;
+      ulong event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+         event_hash == 0 ||
+         !m_discovery_shadow_portfolio.BindTerminalEvidenceEvent(branch,
+            observation_grid.symbol_id, observation_grid.branch_grid_id,
+            row.source_m1_time, projection.projection_hash,
+            projection.terminal_internal_state_hash, event_hash) ||
+         (event_type == LP_REVMA_TELEMETRY_GRID_CLOSE &&
+          !AppendDiscoveryGridSummary(branch, observation_grid.symbol_id)))
+         return false;
+      return true;
+   }
+
+   bool EmitMatchedShadowGridTerminals(
+      const LP_RevmaShadowGrid &u_observation_grid,
+      const LP_RevmaShadowGrid &c_observation_grid,
+      const int event_type)
+   {
+      if(u_observation_grid.symbol_id != c_observation_grid.symbol_id ||
+         u_observation_grid.branch_grid_id == 0 ||
+         c_observation_grid.branch_grid_id == 0)
+         return false;
+      LP_RevmaDiscoveryTransitionRow u_row;
+      LP_RevmaDiscoveryTransitionRow c_row;
+      LP_RevmaTerminalGridProjection u_projection;
+      LP_RevmaTerminalGridProjection c_projection;
+      if(!BuildShadowGridTransition(LP_REVMA_BRANCH_U,
+            u_observation_grid, event_type, u_row, u_projection) ||
+         !BuildShadowGridTransition(LP_REVMA_BRANCH_C,
+            c_observation_grid, event_type, c_row, c_projection))
+         return false;
+      ulong u_event_hash = 0;
+      ulong c_event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(u_row, u_event_hash) ||
+         u_event_hash == 0 ||
+         !m_discovery_telemetry.AppendTransition(c_row, c_event_hash) ||
+         c_event_hash == 0 ||
+         !m_discovery_shadow_portfolio.BindMatchedTerminalEvidenceEvents(
+            u_observation_grid.symbol_id, u_row.source_m1_time,
+            u_projection.projection_hash,
+            u_projection.terminal_internal_state_hash, u_event_hash,
+            c_projection.projection_hash,
+            c_projection.terminal_internal_state_hash, c_event_hash) ||
+         (event_type == LP_REVMA_TELEMETRY_GRID_CLOSE &&
+          (!AppendDiscoveryGridSummary(LP_REVMA_BRANCH_U,
+              u_observation_grid.symbol_id) ||
+           !AppendDiscoveryGridSummary(LP_REVMA_BRANCH_C,
+              c_observation_grid.symbol_id))))
+         return false;
+      return true;
+   }
+
+   bool EmitShadowCenterLatch(const LP_RevmaShadowGrid &grid)
+   {
+      LP_RevmaDiscoveryTransitionRow row;
+      LP_RevmaTerminalGridProjection projection;
+      if(!grid.active || !grid.center_support.adverse_adds_frozen ||
+         !BuildShadowGridTransition(LP_REVMA_BRANCH_C, grid,
+            LP_REVMA_TELEMETRY_CENTER_LATCH, row, projection))
+         return false;
+      ulong event_hash = 0;
+      return m_discovery_telemetry.AppendTransition(row, event_hash) &&
+         event_hash != 0;
+   }
+
+   bool CacheDiscoveryCohort(
+      LP_RevmaCompletedM1Snapshot &snapshots[],
+      const int snapshot_count,
+      const datetime source_m1_time)
+   {
+      m_discovery_last_cohort_valid = false;
+      m_discovery_last_cohort_hash = 0;
+      m_discovery_last_cohort_signal_hash = 0;
+      m_discovery_last_cohort_strategy_hash = 0;
+      if(snapshot_count != LP_SYMBOL_COUNT || source_m1_time <= 0)
+         return false;
+      bool seen[LP_SYMBOL_COUNT];
+      LP_RevmaCompletedM1Snapshot staged[LP_SYMBOL_COUNT];
+      for(int i = 0; i < LP_SYMBOL_COUNT; i++) seen[i] = false;
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         int symbol_id = snapshots[i].symbol_id;
+         if(!LP_RevmaCompletedM1SnapshotValid(snapshots[i]) ||
+            snapshots[i].source_m1_time != source_m1_time ||
+            symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT || seen[symbol_id])
+            return false;
+         staged[symbol_id] = snapshots[i];
+         seen[symbol_id] = true;
+      }
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         if(!seen[symbol_id])
+            return false;
+      }
+      ulong cohort_hash = LP_HashString(
+         "gate108_fx28_completed_m1_cohort_v1");
+      ulong signal_hash = LP_HashString(
+         "gate108_fx28_signal_identity_set_v1");
+      ulong strategy_hash = LP_HashString(
+         "gate108_fx28_strategy_state_identity_set_v1");
+      LP_HashMixLong(cohort_hash, (long)source_m1_time);
+      LP_HashMixLong(signal_hash, (long)source_m1_time);
+      LP_HashMixLong(strategy_hash, (long)source_m1_time);
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_HashMixInt(cohort_hash, symbol_id);
+         LP_HashMixULong(cohort_hash, staged[symbol_id].snapshot_hash);
+         LP_HashMixInt(signal_hash, symbol_id);
+         LP_HashMixULong(signal_hash,
+            staged[symbol_id].signal_identity_hash);
+         LP_HashMixInt(strategy_hash, symbol_id);
+         LP_HashMixULong(strategy_hash,
+            staged[symbol_id].strategy_state_identity_hash);
+      }
+      if(cohort_hash == 0 || signal_hash == 0 || strategy_hash == 0)
+         return false;
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         m_discovery_last_cohort[symbol_id] = staged[symbol_id];
+      m_discovery_last_cohort_hash = cohort_hash;
+      m_discovery_last_cohort_signal_hash = signal_hash;
+      m_discovery_last_cohort_strategy_hash = strategy_hash;
+      if(!m_discovery_telemetry.RegisterCompletedM1CohortIdentity(
+            source_m1_time, cohort_hash, signal_hash, strategy_hash))
+         return false;
+      m_discovery_last_cohort_valid = true;
+      return true;
+   }
+
+   bool EmitDiscoveryCycleStart(
+      const int branch,
+      const ulong cycle_id,
+      const long equity_reference_minor,
+      const long budget_minor,
+      const datetime source_m1_time)
+   {
+      if(!LP_RevmaDiscoveryBranchValid(branch) || cycle_id == 0 ||
+         source_m1_time <= 0 || equity_reference_minor <= 0 ||
+         budget_minor <= 0)
+         return false;
+      if(m_discovery_telemetry_cycle_started[branch] == cycle_id)
+         return true;
+      if(m_discovery_telemetry_cycle_sealed[branch] >=
+            (ulong)LP_REVMA_GEOMETRY_ABS_LIMIT ||
+         cycle_id != m_discovery_telemetry_cycle_sealed[branch] + 1 ||
+         (m_discovery_telemetry_cycle_started[branch] != 0 &&
+          m_discovery_telemetry_cycle_started[branch] !=
+             m_discovery_telemetry_cycle_sealed[branch]))
+         return false;
+      LP_RevmaDiscoveryTransitionRow row;
+      if(!m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      row.event_type = LP_REVMA_TELEMETRY_CYCLE_START;
+      row.event_time = TimeCurrent() < source_m1_time ?
+         source_m1_time : TimeCurrent();
+      row.source_m1_time = source_m1_time;
+      row.branch = branch;
+      row.branch_cycle_id = cycle_id;
+      row.account_cycle_id = cycle_id;
+      row.symbol_id = -1;
+      row.direction = LP_SIDE_NONE;
+      row.equity_reference_minor = equity_reference_minor;
+      row.budget_minor = budget_minor;
+      row.decision = "OPEN";
+      row.reason = cycle_id == 1 ? "run_cycle_start" :
+         "confirmed_flat_next_cycle_start";
+      ulong event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+         event_hash == 0)
+         return false;
+      m_discovery_telemetry_cycle_started[branch] = cycle_id;
+      m_discovery_telemetry_close_owner[branch] =
+         LP_REVMA_DISCOVERY_CLOSE_NONE;
+      m_discovery_telemetry_close_complete[branch] = false;
+      return true;
+   }
+
+   bool BuildShadowCandidateTransition(
+      const LP_RevmaShadowCandidate &candidate,
+      const int event_type,
+      const string decision,
+      const string reason,
+      LP_RevmaDiscoveryTransitionRow &row)
+   {
+      LP_RevmaShadowPortfolioState portfolio;
+      LP_RevmaShadowGrid grid;
+      if(!m_discovery_last_cohort_valid || candidate.symbol_id < 0 ||
+         candidate.symbol_id >= LP_SYMBOL_COUNT ||
+         !m_discovery_shadow_portfolio.GetPortfolio(candidate.branch,
+            portfolio) ||
+         !m_discovery_shadow_portfolio.GetGrid(candidate.branch,
+            candidate.symbol_id, grid) ||
+         m_discovery_last_cohort[candidate.symbol_id].source_m1_time !=
+             candidate.source_m1_time ||
+         m_discovery_last_cohort[candidate.symbol_id].snapshot_hash !=
+            candidate.shared_observation_snapshot_hash ||
+         m_discovery_last_cohort[candidate.symbol_id].
+            strategy_state_identity_hash !=
+               candidate.strategy_state_identity_hash ||
+         m_discovery_last_cohort[candidate.symbol_id].
+            initial_history_boundary != candidate.initial_history_boundary ||
+         !m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      LP_RevmaCompletedM1Snapshot snapshot =
+         m_discovery_last_cohort[candidate.symbol_id];
+      bool terminal_admission = event_type ==
+            LP_REVMA_TELEMETRY_BRANCH_BIRTH ||
+         event_type == LP_REVMA_TELEMETRY_ATOM_ADMISSION;
+      bool observation_before_admission = event_type ==
+         LP_REVMA_TELEMETRY_FAVORABLE_ELIGIBLE_AFTER_LATCH;
+      int current_atoms = grid.active ? grid.atom_count : 0;
+      if(observation_before_admission && candidate.committed)
+         current_atoms--;
+      if(current_atoms < 0)
+         return false;
+      int atoms_before = terminal_admission ? current_atoms - 1 :
+         current_atoms;
+      int atoms_after = terminal_admission ? current_atoms : current_atoms;
+      if(atoms_before < 0)
+         return false;
+
+      LP_RevmaDiscoveryMesh mesh;
+      LP_RevmaPathGeometryState path;
+      LP_RevmaCenterSupportState center =
+         candidate.center_support_snapshot;
+      LP_ResetRevmaDiscoveryMesh(mesh);
+      LP_ResetRevmaPathGeometryState(path);
+      bool use_committed_grid = grid.branch_grid_id ==
+            candidate.branch_grid_id &&
+         (grid.active || grid.last_flat_m1_time == candidate.source_m1_time);
+      if(use_committed_grid)
+      {
+         mesh = grid.discovery_mesh;
+         path = grid.path_geometry;
+      }
+      else if(!candidate.birth ||
+         !LP_RevmaBuildDiscoveryMesh(candidate.q0,
+            candidate.broker_tick_size, mesh) ||
+         !LP_RevmaInitializePathGeometry(candidate.p0, mesh,
+            candidate.source_m1_time, path))
+         return false;
+      long latest_jump = MathAbs(path.current_cell_index -
+         path.previous_cell_index);
+      long unfilled_jump = terminal_admission && latest_jump > 0 ?
+         latest_jump - 1 : latest_jump;
+      datetime positive_m1 = use_committed_grid ?
+         grid.last_positive_liquidation_opportunity_m1 : 0;
+      int underwater = use_committed_grid ? grid.time_underwater_minutes : 0;
+      datetime birth_time = candidate.birth ? candidate.source_m1_time :
+         grid.birth_m1_time;
+      datetime initial_history = candidate.initial_history_boundary;
+      // The bridge derives branch-specific C authority fields.  Identity must
+      // therefore be present before observation materialization.
+      row.branch = candidate.branch;
+      if(!LP_RevmaBridgePopulateObservation(row, snapshot,
+            candidate.direction, candidate.p0, candidate.c0, candidate.q0,
+            candidate.stress_price, candidate.fill_price, birth_time,
+            initial_history, positive_m1, underwater, unfilled_jump,
+            mesh, center, path))
+         return false;
+
+      row.event_type = event_type;
+      row.branch_grid_id = candidate.branch_grid_id;
+      row.branch_cycle_id = portfolio.cycle_id;
+      row.account_cycle_id = portfolio.cycle_id;
+      row.grid_generation = candidate.grid_generation;
+      row.candidate_identity = candidate.candidate_identity;
+      row.shared_origin_id = candidate.shared_origin_id;
+      row.opportunity_id = (event_type ==
+            LP_REVMA_TELEMETRY_FAVORABLE_ELIGIBLE_AFTER_LATCH ||
+         event_type == LP_REVMA_TELEMETRY_FIRST_INFEASIBILITY) ? 0 :
+            candidate.opportunity_id;
+      row.matched_snapshot_hash = candidate.matched_snapshot_hash;
+      row.pre_candidate_state_hash = candidate.pre_candidate_state_hash;
+      row.candidate_type = candidate.candidate_type;
+      row.atoms_before = atoms_before;
+      row.atoms_after = atoms_after;
+      row.lots_before = NormalizeDouble((double)atoms_before *
+         LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      row.lots_after = NormalizeDouble((double)atoms_after *
+         LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      long current_reservation = use_committed_grid ?
+         grid.reservation_minor : 0;
+      long current_q_cash = use_committed_grid ? grid.q_cash_minor : 0;
+      long current_margin = use_committed_grid ? grid.margin_minor : 0;
+      long current_mark = use_committed_grid ?
+         grid.marked_liquidation_minor : 0;
+      long current_cost = use_committed_grid ?
+         grid.estimated_close_cost_minor : 0;
+      int adverse_count = use_committed_grid ? grid.adverse_add_count : 0;
+      int favorable_count = use_committed_grid ? grid.favorable_add_count : 0;
+      double weighted_entry = use_committed_grid ?
+         grid.weighted_entry_price_lots : candidate.fill_price *
+            LP_REVMA_DISCOVERY_ATOM_LOTS;
+      if(observation_before_admission && candidate.committed)
+      {
+         if(!LP_RevmaTelemetrySafeMinorAdd(current_reservation,
+               -candidate.committed_reservation_delta_minor,
+               current_reservation) ||
+            !LP_RevmaTelemetrySafeMinorAdd(current_q_cash,
+               -candidate.incremental_q_cash_minor, current_q_cash) ||
+            !LP_RevmaTelemetrySafeMinorAdd(current_margin,
+               -candidate.incremental_margin_minor, current_margin) ||
+            !LP_RevmaTelemetrySafeMinorAdd(current_mark,
+               -candidate.incremental_liquidation_minor, current_mark) ||
+            !LP_RevmaTelemetrySafeMinorAdd(current_cost,
+               -candidate.incremental_close_cost_minor, current_cost))
+            return false;
+         weighted_entry -= candidate.fill_price * candidate.lots;
+         if(candidate.candidate_type ==
+               LP_REVMA_DISCOVERY_CANDIDATE_ADVERSE_ADD)
+            adverse_count--;
+         else
+            favorable_count--;
+      }
+      int reserved_atoms = current_atoms <= 0 ? 0 :
+         (current_atoms < 2 ? 2 : current_atoms);
+      int prospective_atoms = terminal_admission ? atoms_after :
+         atoms_before + 1;
+      int prospective_reserved_atoms = prospective_atoms < 2 ? 2 :
+         prospective_atoms;
+      long candidate_current_reservation = 0;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(candidate.a_g_candidate_minor,
+            reserved_atoms, candidate_current_reservation) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(candidate.a_g_candidate_minor,
+            prospective_reserved_atoms,
+            row.prospective_reservation_minor) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(candidate.a_g_candidate_minor,
+            prospective_atoms, row.prospective_q_cash_minor))
+         return false;
+      row.reservation_minor = current_reservation;
+      row.q_cash_minor = current_q_cash;
+      row.a_g_candidate_minor = candidate.a_g_candidate_minor;
+      row.a_g_minor = candidate.a_g_minor;
+      row.reservation_overrun = current_reservation >
+         candidate_current_reservation;
+      row.reservation_overrun_minor = row.reservation_overrun ?
+         current_reservation - candidate_current_reservation : 0;
+      row.margin_minor = current_margin;
+      row.incremental_margin_minor = candidate.incremental_margin_minor;
+      row.incremental_liquidation_minor =
+         candidate.incremental_liquidation_minor;
+      row.incremental_close_cost_minor =
+         candidate.incremental_close_cost_minor;
+      row.concentration_q_cash_minor =
+         candidate.concentration_q_cash_minor;
+      row.concentration_currency_id =
+         candidate.concentration_currency_id;
+      row.liquidation_cost_minor = current_cost;
+      row.maximum_adverse_excursion_minor = use_committed_grid ?
+         grid.maximum_adverse_excursion_minor : 0;
+      row.weighted_entry_sum = weighted_entry;
+      row.adverse_add_count = adverse_count;
+      row.favorable_add_count = favorable_count;
+      row.harvest_minor = use_committed_grid ?
+         grid.realized_harvest_minor : 0;
+      row.nonharvest_minor = use_committed_grid ?
+         grid.realized_nonharvest_minor : 0;
+      row.liability_minor = current_mark;
+      row.budget_minor = portfolio.capital_budget_minor;
+      row.equity_reference_minor = portfolio.equity_reference_minor;
+      row.close_owner = use_committed_grid ? grid.close_owner :
+         LP_REVMA_DISCOVERY_CLOSE_NONE;
+      row.decision = decision;
+      row.reason = reason;
+      return true;
+   }
+
+   bool EmitShadowCandidateTransitions(const int branch)
+   {
+      LP_RevmaShadowPortfolioState portfolio;
+      if((branch != LP_REVMA_BRANCH_U && branch != LP_REVMA_BRANCH_C) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(branch, portfolio) ||
+         portfolio.cycle_id == 0 ||
+         m_discovery_telemetry_cycle_started[branch] != portfolio.cycle_id ||
+         m_discovery_telemetry_cycle_sealed[branch] >= portfolio.cycle_id)
+         return false;
+      int count = m_discovery_shadow_portfolio.CandidateCount(branch);
+      for(int i = 0; i < count; i++)
+      {
+         LP_RevmaShadowCandidate candidate;
+         if(!m_discovery_shadow_portfolio.GetCandidate(branch, i,
+               candidate) || !candidate.valid ||
+            (candidate.decision != LP_REVMA_DISCOVERY_DECISION_ADMIT &&
+             candidate.decision != LP_REVMA_DISCOVERY_DECISION_REJECT))
+            return false;
+         if(branch == LP_REVMA_BRANCH_C &&
+            candidate.center_support_snapshot.adverse_adds_frozen &&
+            candidate.candidate_type ==
+               LP_REVMA_DISCOVERY_CANDIDATE_FAVORABLE_ADD)
+         {
+            LP_RevmaDiscoveryTransitionRow eligible;
+            if(!BuildShadowCandidateTransition(candidate,
+                  LP_REVMA_TELEMETRY_FAVORABLE_ELIGIBLE_AFTER_LATCH,
+                  "ELIGIBLE", "signed_center_support_favorable_add_eligible",
+                  eligible))
+               return false;
+            ulong eligible_hash = 0;
+            if(!m_discovery_telemetry.AppendTransition(eligible,
+                  eligible_hash) || eligible_hash == 0)
+               return false;
+         }
+         int event_type = candidate.decision ==
+               LP_REVMA_DISCOVERY_DECISION_ADMIT ?
+            (candidate.birth ? LP_REVMA_TELEMETRY_BRANCH_BIRTH :
+             LP_REVMA_TELEMETRY_ATOM_ADMISSION) :
+            (candidate.decision_reason ==
+               "signed_center_support_adverse_adds_frozen" ?
+             LP_REVMA_TELEMETRY_CENTER_BLOCKED_ADVERSE :
+             LP_REVMA_TELEMETRY_CANDIDATE_REJECTION);
+         LP_RevmaDiscoveryTransitionRow terminal;
+         if(!BuildShadowCandidateTransition(candidate, event_type,
+               candidate.decision == LP_REVMA_DISCOVERY_DECISION_ADMIT ?
+                  "ADMIT" : "REJECT",
+               candidate.decision == LP_REVMA_DISCOVERY_DECISION_ADMIT ?
+                  "formula_admission" : candidate.decision_reason,
+               terminal))
+            return false;
+         ulong terminal_hash = 0;
+         if(!m_discovery_telemetry.AppendTransition(terminal,
+               terminal_hash) || terminal_hash == 0)
+            return false;
+         if(candidate.decision == LP_REVMA_DISCOVERY_DECISION_REJECT &&
+            candidate.decision_reason !=
+               "signed_center_support_adverse_adds_frozen" &&
+            m_discovery_first_infeasibility_cycle[branch] !=
+               terminal.branch_cycle_id)
+         {
+            LP_RevmaDiscoveryTransitionRow marker = terminal;
+            marker.event_type = LP_REVMA_TELEMETRY_FIRST_INFEASIBILITY;
+            marker.sequence = 0;
+            marker.event_hash = 0;
+            marker.reconciliation_hash = 0;
+            marker.opportunity_id = 0;
+            ulong marker_hash = 0;
+            if(!m_discovery_telemetry.AppendTransition(marker,
+                  marker_hash) || marker_hash == 0)
+               return false;
+            m_discovery_first_infeasibility_cycle[branch] =
+               terminal.branch_cycle_id;
+         }
+         if(!m_discovery_first_divergence_emitted &&
+            branch == LP_REVMA_BRANCH_C &&
+            event_type == LP_REVMA_TELEMETRY_CENTER_BLOCKED_ADVERSE &&
+            candidate.opportunity_id != 0 &&
+            candidate.opportunity_id == m_discovery_shadow_portfolio.
+               FirstCausalDivergenceOpportunityId())
+         {
+            LP_RevmaDiscoveryTransitionRow divergence = terminal;
+            divergence.event_type = LP_REVMA_TELEMETRY_FIRST_DIVERGENCE;
+            divergence.sequence = 0;
+            divergence.event_hash = 0;
+            divergence.reconciliation_hash = 0;
+            ulong divergence_hash = 0;
+            if(!m_discovery_telemetry.AppendTransition(divergence,
+                  divergence_hash) || divergence_hash == 0)
+               return false;
+            m_discovery_first_divergence_emitted = true;
+         }
+      }
+      return true;
+   }
+
+   bool BuildRealCandidateTransition(
+      const LP_RevmaRealCandidate &candidate,
+      LP_RevmaDiscoveryTransitionRow &row)
+   {
+      if(!candidate.valid || !candidate.terminal ||
+         (candidate.decision != LP_REVMA_DISCOVERY_DECISION_ADMIT &&
+          candidate.decision != LP_REVMA_DISCOVERY_DECISION_REJECT) ||
+         !LP_RevmaCompletedM1SnapshotValid(candidate.snapshot) ||
+         candidate.snapshot.source_m1_time != candidate.source_m1_time ||
+         candidate.snapshot.snapshot_hash != candidate.shared_snapshot_hash ||
+         candidate.snapshot.strategy_state_identity_hash !=
+            candidate.strategy_state_identity_hash ||
+         candidate.initial_history_boundary !=
+            candidate.snapshot.initial_history_boundary ||
+         !m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      LP_RevmaRealPortfolioState portfolio;
+      LP_RevmaRealGrid grid;
+      if(!m_discovery_real_portfolio.GetPortfolio(portfolio) ||
+         !m_discovery_real_portfolio.GetGrid(candidate.symbol_id, grid))
+         return false;
+      bool admitted = candidate.decision ==
+         LP_REVMA_DISCOVERY_DECISION_ADMIT;
+      bool use_grid = grid.active &&
+         grid.branch_grid_id == candidate.branch_grid_id &&
+         grid.grid_generation == candidate.grid_generation;
+      if(admitted != candidate.execution_committed ||
+         (admitted && !use_grid))
+         return false;
+      LP_RevmaDiscoveryMesh mesh;
+      LP_RevmaPathGeometryState path;
+      LP_RevmaCenterSupportState center;
+      LP_ResetRevmaDiscoveryMesh(mesh);
+      LP_ResetRevmaPathGeometryState(path);
+      LP_ResetRevmaCenterSupportState(center);
+      double p0 = candidate.p0;
+      double c0 = candidate.c0;
+      double q0 = candidate.q0;
+      double stress_price = candidate.stress_price;
+      double fill_price = admitted ? candidate.actual_fill_price :
+         candidate.fill_proxy_price;
+      datetime birth_time = candidate.birth ? candidate.source_m1_time :
+         grid.birth_m1_time;
+      datetime initial_history = candidate.initial_history_boundary;
+      datetime positive_m1 = 0;
+      int underwater = 0;
+      double weighted_entry = 0.0;
+      int current_atoms = use_grid ? grid.atom_count : 0;
+      int adverse_count = use_grid ? grid.adverse_add_count : 0;
+      int favorable_count = use_grid ? grid.favorable_add_count : 0;
+      if(use_grid)
+      {
+         p0 = grid.p0;
+         c0 = grid.c0;
+         q0 = grid.q0;
+         stress_price = grid.stress_reference_price;
+         birth_time = grid.birth_m1_time;
+         initial_history = grid.initial_history_boundary;
+         positive_m1 = grid.last_positive_liquidation_opportunity_m1;
+         underwater = grid.time_underwater_minutes;
+         weighted_entry = grid.weighted_entry_price_lots;
+         mesh = grid.mesh;
+         path = grid.path;
+         center = grid.center_support;
+      }
+      else
+      {
+         if(!candidate.birth ||
+            !LP_RevmaBuildDiscoveryMesh(q0, candidate.broker_tick_size,
+               mesh) ||
+            !LP_RevmaInitializePathGeometry(p0, mesh,
+               candidate.source_m1_time, path) ||
+            !LP_RevmaInitializeCenterSupport(candidate.direction, p0, c0,
+               q0, candidate.broker_tick_size,
+               candidate.snapshot.signal.q_event_count,
+               candidate.source_m1_time, center))
+            return false;
+      }
+      row.branch = LP_REVMA_BRANCH_R;
+      long latest_jump = MathAbs(path.current_cell_index -
+         path.previous_cell_index);
+      long unfilled_jump = admitted && latest_jump > 0 ?
+         latest_jump - 1 : latest_jump;
+      if(!LP_RevmaBridgePopulateObservation(row, candidate.snapshot,
+            candidate.direction, p0, c0, q0, stress_price, fill_price,
+            birth_time, initial_history, positive_m1, underwater,
+            unfilled_jump, mesh, center, path))
+         return false;
+      row.event_type = admitted ?
+         (candidate.birth ? LP_REVMA_TELEMETRY_BRANCH_BIRTH :
+          LP_REVMA_TELEMETRY_ATOM_ADMISSION) :
+         LP_REVMA_TELEMETRY_CANDIDATE_REJECTION;
+      row.branch_grid_id = candidate.branch_grid_id;
+      row.branch_cycle_id = candidate.branch_cycle_id;
+      row.account_cycle_id = candidate.branch_cycle_id;
+      row.grid_generation = candidate.grid_generation;
+      row.candidate_identity = candidate.candidate_identity;
+      row.matched_snapshot_hash = admitted ?
+         candidate.telemetry_matched_snapshot_hash :
+         candidate.matched_snapshot_hash;
+      row.pre_candidate_state_hash = candidate.pre_candidate_state_hash;
+      row.candidate_type = candidate.candidate_type;
+      row.atoms_before = admitted ? current_atoms - 1 : current_atoms;
+      row.atoms_after = admitted ? current_atoms : current_atoms;
+      if(row.atoms_before < 0)
+         return false;
+      row.lots_before = NormalizeDouble((double)row.atoms_before *
+         LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      row.lots_after = NormalizeDouble((double)row.atoms_after *
+         LP_REVMA_DISCOVERY_ATOM_LOTS, 2);
+      long current_a_g = use_grid ? grid.a_g_minor :
+         candidate.a_g_candidate_minor;
+      row.a_g_candidate_minor = candidate.a_g_candidate_minor;
+      row.a_g_minor = admitted ? candidate.actual_a_g_minor : current_a_g;
+      int current_reserved_atoms = current_atoms <= 0 ? 0 : 2;
+      int prospective_atoms = admitted ? row.atoms_after :
+         row.atoms_before + 1;
+      int prospective_reserved_atoms = prospective_atoms <= 0 ? 0 : 2;
+      long candidate_current_reservation = 0;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            current_reserved_atoms, row.reservation_minor) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            current_atoms, row.q_cash_minor) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            current_reserved_atoms, candidate_current_reservation) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            prospective_reserved_atoms,
+            row.prospective_reservation_minor) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            prospective_atoms, row.prospective_q_cash_minor))
+         return false;
+      if(use_grid && (row.reservation_minor != grid.reservation_minor ||
+         row.q_cash_minor != grid.q_cash_minor))
+         return false;
+      row.reservation_overrun = row.reservation_minor >
+         candidate_current_reservation;
+      row.reservation_overrun_minor = row.reservation_overrun ?
+         row.reservation_minor - candidate_current_reservation : 0;
+      row.margin_minor = use_grid ? grid.margin_minor : 0;
+      row.incremental_margin_minor = admitted ?
+         candidate.actual_incremental_margin_minor :
+         candidate.incremental_margin_minor;
+      row.incremental_liquidation_minor = admitted ?
+         candidate.actual_incremental_liquidation_minor :
+         candidate.incremental_liquidation_minor;
+      row.incremental_close_cost_minor = admitted ?
+         candidate.actual_incremental_close_cost_minor :
+         candidate.incremental_close_cost_minor;
+      row.concentration_q_cash_minor =
+         candidate.prospective_concentration_q_cash_minor;
+      row.concentration_currency_id =
+         candidate.prospective_concentration_currency_id;
+      row.commission_minor = admitted ? candidate.actual_commission_minor : 0;
+      row.swap_minor = admitted ? candidate.actual_swap_minor : 0;
+      row.liquidation_cost_minor = use_grid ? grid.realized_cost_minor : 0;
+      row.maximum_adverse_excursion_minor = use_grid ?
+         grid.maximum_adverse_excursion_minor : 0;
+      row.weighted_entry_sum = use_grid ? weighted_entry :
+         (candidate.birth ? 0.0 : weighted_entry);
+      row.adverse_add_count = adverse_count;
+      row.favorable_add_count = favorable_count;
+      row.harvest_minor = 0;
+      row.nonharvest_minor = 0;
+      row.liability_minor = use_grid ? grid.marked_liquidation_minor : 0;
+      row.budget_minor = portfolio.capital_budget_minor;
+      row.equity_reference_minor = portfolio.equity_reference_minor;
+      row.close_owner = use_grid ? grid.close_owner :
+         LP_REVMA_DISCOVERY_CLOSE_NONE;
+      row.decision = admitted ? "ADMIT" : "REJECT";
+      row.reason = admitted ? "formula_admission_exact_fill" :
+         candidate.decision_reason;
+      return true;
+   }
+
+   bool EmitPendingShadowFirstDivergence()
+   {
+      if(m_discovery_first_divergence_emitted)
+         return true;
+      ulong opportunity_id = m_discovery_shadow_portfolio.
+         FirstCausalDivergenceOpportunityId();
+      if(opportunity_id == 0)
+         return true;
+      int count = m_discovery_shadow_portfolio.CandidateCount(
+         LP_REVMA_BRANCH_C);
+      for(int i = 0; i < count; i++)
+      {
+         LP_RevmaShadowCandidate candidate;
+         if(!m_discovery_shadow_portfolio.GetCandidate(LP_REVMA_BRANCH_C,
+               i, candidate))
+            return false;
+         if(candidate.opportunity_id != opportunity_id)
+            continue;
+         if(candidate.decision != LP_REVMA_DISCOVERY_DECISION_REJECT ||
+            candidate.decision_reason !=
+               "signed_center_support_adverse_adds_frozen")
+            return false;
+         LP_RevmaDiscoveryTransitionRow row;
+         if(!BuildShadowCandidateTransition(candidate,
+               LP_REVMA_TELEMETRY_FIRST_DIVERGENCE, "REJECT",
+               candidate.decision_reason, row))
+            return false;
+         ulong event_hash = 0;
+         if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+            event_hash == 0)
+            return false;
+         m_discovery_first_divergence_emitted = true;
+         return true;
+      }
+      return false;
+   }
+
+   bool EmitPendingRealCandidateTransitions()
+   {
+      int count = m_discovery_real_portfolio.CandidateCount();
+      for(int i = 0; i < count; i++)
+      {
+         LP_RevmaRealCandidate candidate;
+         if(!m_discovery_real_portfolio.GetCandidate(i, candidate))
+            return false;
+         if(!candidate.terminal || candidate.telemetry_event_hash != 0)
+            continue;
+         LP_RevmaDiscoveryTransitionRow row;
+         if(!BuildRealCandidateTransition(candidate, row))
+            return false;
+         ulong event_hash = 0;
+         if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+            event_hash == 0 ||
+            !m_discovery_real_portfolio.BindCandidateTelemetryEvent(
+               candidate.candidate_identity, event_hash))
+            return false;
+         if(candidate.decision == LP_REVMA_DISCOVERY_DECISION_REJECT &&
+            m_discovery_first_infeasibility_cycle[LP_REVMA_BRANCH_R] !=
+               row.branch_cycle_id)
+         {
+            LP_RevmaDiscoveryTransitionRow marker = row;
+            marker.event_type = LP_REVMA_TELEMETRY_FIRST_INFEASIBILITY;
+            marker.sequence = 0;
+            marker.event_hash = 0;
+            marker.reconciliation_hash = 0;
+            ulong marker_hash = 0;
+            if(!m_discovery_telemetry.AppendTransition(marker, marker_hash) ||
+               marker_hash == 0)
+               return false;
+            m_discovery_first_infeasibility_cycle[LP_REVMA_BRANCH_R] =
+               row.branch_cycle_id;
+         }
+      }
+      return true;
+   }
+
+   bool EmitRealGridTerminal(
+      const LP_RevmaRealGrid &observation_grid,
+      const int event_type)
+   {
+      if(!m_discovery_last_cohort_valid ||
+         observation_grid.symbol_id < 0 ||
+         observation_grid.symbol_id >= LP_SYMBOL_COUNT ||
+         observation_grid.branch_grid_id == 0 ||
+         observation_grid.average_entry_price <= 0.0 ||
+         observation_grid.weighted_entry_price_lots <= 0.0)
+         return false;
+      LP_RevmaCompletedM1Snapshot snapshot =
+         m_discovery_last_cohort[observation_grid.symbol_id];
+      if(snapshot.source_m1_time != observation_grid.last_mark_m1_time)
+         return false;
+      LP_RevmaTerminalGridProjection projection;
+      if(!m_discovery_real_portfolio.BuildTerminalGridProjection(
+            observation_grid.symbol_id, snapshot.source_m1_time,
+            projection))
+         return false;
+      LP_RevmaDiscoveryTransitionRow row;
+      if(!m_discovery_telemetry.SeedTransitionRow(row))
+         return false;
+      row.branch = LP_REVMA_BRANCH_R;
+      long unfilled_jump = MathAbs(observation_grid.path.current_cell_index -
+         observation_grid.path.previous_cell_index);
+      if(!LP_RevmaBridgePopulateObservation(row, snapshot,
+            observation_grid.direction, observation_grid.p0,
+            observation_grid.c0, observation_grid.q0,
+            observation_grid.stress_reference_price,
+            observation_grid.average_entry_price,
+            observation_grid.birth_m1_time,
+            observation_grid.initial_history_boundary,
+            observation_grid.last_positive_liquidation_opportunity_m1,
+            observation_grid.time_underwater_minutes, unfilled_jump,
+            observation_grid.mesh, observation_grid.center_support,
+            observation_grid.path))
+         return false;
+      LP_RevmaRealPortfolioState portfolio;
+      if(!m_discovery_real_portfolio.GetPortfolio(portfolio))
+         return false;
+      row.event_type = event_type;
+      row.branch_grid_id = observation_grid.branch_grid_id;
+      row.branch_cycle_id = observation_grid.branch_cycle_id;
+      row.account_cycle_id = observation_grid.branch_cycle_id;
+      row.grid_generation = observation_grid.grid_generation;
+      row.matched_snapshot_hash =
+         observation_grid.birth_matched_snapshot_hash;
+      row.a_g_candidate_minor = observation_grid.a_g_candidate_minor;
+      row.a_g_minor = observation_grid.a_g_minor;
+      row.atoms_before = projection.atoms_before;
+      row.atoms_after = projection.atoms_after;
+      row.lots_before = projection.lots_before;
+      row.lots_after = projection.lots_after;
+      row.reservation_minor = projection.reservation_minor;
+      row.q_cash_minor = projection.q_cash_minor;
+      int reserved_atoms = row.atoms_before <= 0 ? 0 : 2;
+      long expected_reservation = 0;
+      long expected_q_cash = 0;
+      long candidate_current_reservation = 0;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            reserved_atoms, expected_reservation) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_minor,
+            row.atoms_before, expected_q_cash) ||
+         !LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            reserved_atoms, candidate_current_reservation) ||
+         row.reservation_minor != expected_reservation ||
+         row.q_cash_minor != expected_q_cash)
+         return false;
+      row.prospective_reservation_minor = candidate_current_reservation;
+      if(!LP_RevmaTelemetrySafeMinorMultiply(row.a_g_candidate_minor,
+            row.atoms_before, row.prospective_q_cash_minor))
+         return false;
+      row.reservation_overrun = row.reservation_minor >
+         candidate_current_reservation;
+      row.reservation_overrun_minor = row.reservation_overrun ?
+         row.reservation_minor - candidate_current_reservation : 0;
+      row.margin_minor = projection.margin_minor;
+      row.liquidation_cost_minor = projection.cost_minor;
+      row.maximum_adverse_excursion_minor =
+         projection.maximum_adverse_excursion_minor;
+      row.grid_age_minutes = projection.grid_age_minutes;
+      row.time_underwater_minutes = projection.time_underwater_minutes;
+      row.weighted_entry_sum =
+         observation_grid.weighted_entry_price_lots;
+      row.adverse_add_count = observation_grid.adverse_add_count;
+      row.favorable_add_count = observation_grid.favorable_add_count;
+      row.harvest_minor = projection.harvest_minor;
+      row.nonharvest_minor = projection.nonharvest_minor;
+      row.liability_minor = projection.liability_minor;
+      row.budget_minor = portfolio.capital_budget_minor;
+      row.equity_reference_minor = portfolio.equity_reference_minor;
+      row.close_owner = projection.close_owner;
+      row.grid_terminal_reason = projection.origin_terminal_reason;
+      row.terminal_internal_state_hash =
+         projection.terminal_internal_state_hash;
+      row.terminal_projection_hash = projection.projection_hash;
+      row.decision = event_type == LP_REVMA_TELEMETRY_GRID_CLOSE ?
+         "CLOSE" : "SNAPSHOT";
+      row.reason = event_type == LP_REVMA_TELEMETRY_GRID_CLOSE ?
+         row.grid_terminal_reason :
+         "run_boundary_unresolved_grid_snapshot";
+      ulong event_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
+         event_hash == 0 ||
+         !m_discovery_real_portfolio.BindTerminalEvidenceEvent(
+            observation_grid.symbol_id, row.source_m1_time,
+            projection.projection_hash,
+            projection.terminal_internal_state_hash, event_hash) ||
+         (event_type == LP_REVMA_TELEMETRY_GRID_CLOSE &&
+          !AppendDiscoveryGridSummary(LP_REVMA_BRANCH_R,
+             observation_grid.symbol_id)))
+         return false;
+      return true;
+   }
+
+   bool SealDiscoveryBranchCycle(
+      const int branch,
+      const datetime terminal_m1_time,
+      const LP_RevmaConcurrentBranchRiskState &risk,
+      const bool expected_final_flat,
+      const bool formula_clean,
+      const bool reconciliation_clean,
+      const bool broker_contamination,
+      const bool cleanup_shortfall)
+   {
+      if(!LP_RevmaDiscoveryBranchValid(branch) || terminal_m1_time <= 0 ||
+         !LP_RevmaConcurrentBranchRiskStateValid(risk) ||
+         risk.branch != branch || risk.source_m1_time != terminal_m1_time)
+         return false;
+      if(m_discovery_telemetry_cycle_sealed[branch] ==
+            m_discovery_telemetry_cycle_started[branch])
+         return m_discovery_telemetry_cycle_sealed[branch] != 0;
+      ulong cycle_id = 0;
+      long equity_reference_minor = 0;
+      long budget_minor = 0;
+      long harvest_minor = 0;
+      long nonharvest_minor = 0;
+      int portfolio_atom_count = 0;
+      int portfolio_active_grid_count = 0;
+      long portfolio_reservation_minor = 0;
+      long portfolio_q_cash_minor = 0;
+      long portfolio_margin_minor = 0;
+      long portfolio_marked_liquidation_minor = 0;
+      long portfolio_branch_equity_minor = 0;
+      long portfolio_concentration_q_cash_minor = 0;
+      int portfolio_concentration_currency_id = -1;
+      int close_owner = LP_REVMA_DISCOVERY_CLOSE_NONE;
+      bool final_flat = false;
+      if(branch == LP_REVMA_BRANCH_R)
+      {
+         LP_RevmaRealPortfolioState portfolio;
+         if(!m_discovery_real_portfolio.GetPortfolio(portfolio))
+            return false;
+         cycle_id = portfolio.cycle_id;
+         equity_reference_minor = portfolio.equity_reference_minor;
+         budget_minor = portfolio.capital_budget_minor;
+         harvest_minor = portfolio.realized_harvest_minor;
+         nonharvest_minor = portfolio.realized_nonharvest_minor;
+         portfolio_atom_count = portfolio.atom_count;
+         portfolio_active_grid_count = portfolio.active_grid_count;
+         portfolio_reservation_minor = portfolio.reservation_minor;
+         portfolio_q_cash_minor = portfolio.q_cash_minor;
+         portfolio_margin_minor = portfolio.margin_minor;
+         portfolio_marked_liquidation_minor =
+            portfolio.marked_liquidation_minor;
+         portfolio_branch_equity_minor = portfolio.branch_equity_minor;
+         portfolio_concentration_q_cash_minor =
+            portfolio.concentration_q_cash_minor;
+         portfolio_concentration_currency_id =
+            portfolio.concentration_currency_id;
+         close_owner = portfolio.close_owner;
+         final_flat = portfolio.active_grid_count == 0;
+      }
+      else
+      {
+         LP_RevmaShadowPortfolioState portfolio;
+         if(!m_discovery_shadow_portfolio.GetPortfolio(branch, portfolio))
+            return false;
+         cycle_id = portfolio.cycle_id;
+         equity_reference_minor = portfolio.equity_reference_minor;
+         budget_minor = portfolio.capital_budget_minor;
+         harvest_minor = portfolio.realized_harvest_minor;
+         nonharvest_minor = portfolio.realized_nonharvest_minor;
+         portfolio_atom_count = portfolio.atom_count;
+         portfolio_active_grid_count = portfolio.active_grid_count;
+         portfolio_reservation_minor = portfolio.reservation_minor;
+         portfolio_q_cash_minor = portfolio.q_cash_minor;
+         portfolio_margin_minor = portfolio.margin_minor;
+         portfolio_marked_liquidation_minor =
+            portfolio.marked_liquidation_minor;
+         portfolio_branch_equity_minor = portfolio.branch_equity_minor;
+         portfolio_concentration_q_cash_minor =
+            portfolio.concentration_q_cash_minor;
+         portfolio_concentration_currency_id =
+            portfolio.concentration_currency_id;
+         close_owner = portfolio.close_owner;
+         final_flat = portfolio.active_grid_count == 0;
+      }
+      if(cycle_id == 0 || expected_final_flat != final_flat ||
+         m_discovery_telemetry_cycle_started[branch] != cycle_id ||
+         m_discovery_telemetry_cycle_sealed[branch] >= cycle_id ||
+         risk.atom_count != portfolio_atom_count ||
+         risk.active_grid_count != portfolio_active_grid_count ||
+         risk.reservation_minor != portfolio_reservation_minor ||
+         risk.q_cash_minor != portfolio_q_cash_minor ||
+         risk.margin_minor != portfolio_margin_minor ||
+         risk.marked_liquidation_minor !=
+            portfolio_marked_liquidation_minor ||
+         risk.branch_equity_minor != portfolio_branch_equity_minor ||
+         risk.concentration_q_cash_minor !=
+            portfolio_concentration_q_cash_minor ||
+         risk.concentration_currency_id !=
+            portfolio_concentration_currency_id ||
+         (final_flat && (risk.reservation_minor != 0 ||
+          risk.margin_minor != 0 || risk.q_cash_minor != 0 ||
+          risk.active_grid_count != 0)))
+         return false;
+      if(final_flat && close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE &&
+         !m_discovery_telemetry_close_complete[branch] &&
+         !AppendDiscoveryPortfolioAuthorityComplete(branch, cycle_id,
+            equity_reference_minor, budget_minor, harvest_minor,
+            nonharvest_minor, close_owner, terminal_m1_time))
+         return false;
+      LP_RevmaDiscoveryTransitionRow boundary;
+      if(!BuildDiscoveryPortfolioTransition(branch, cycle_id,
+            equity_reference_minor, budget_minor, risk.atom_count,
+            risk.reservation_minor, risk.q_cash_minor, risk.margin_minor,
+            risk.marked_liquidation_minor, harvest_minor, nonharvest_minor,
+            risk.concentration_q_cash_minor,
+            risk.concentration_currency_id, close_owner,
+            terminal_m1_time,
+            final_flat ? LP_REVMA_TELEMETRY_CYCLE_CLOSE :
+               LP_REVMA_TELEMETRY_RUN_BOUNDARY_UNRESOLVED,
+            final_flat ? "CLOSE" : "SNAPSHOT",
+            final_flat ?
+               (close_owner == LP_REVMA_DISCOVERY_CLOSE_HARD_RISK ?
+                  "account_risk" :
+                (close_owner == LP_REVMA_DISCOVERY_CLOSE_CLEANUP ?
+                   "account_cleanup" : "cycle_flat")) :
+               "run_boundary_unresolved", boundary))
+         return false;
+      ulong boundary_hash = 0;
+      if(!m_discovery_telemetry.AppendTransition(boundary, boundary_hash) ||
+         boundary_hash == 0)
+         return false;
+
+      if(!final_flat)
+      {
+         for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         {
+            bool active = false;
+            if(branch == LP_REVMA_BRANCH_R)
+            {
+               LP_RevmaRealGrid grid;
+               if(!m_discovery_real_portfolio.GetGrid(symbol_id, grid))
+                  return false;
+               active = grid.active && grid.branch_cycle_id == cycle_id;
+            }
+            else
+            {
+               LP_RevmaShadowGrid grid;
+               if(!m_discovery_shadow_portfolio.GetGrid(branch, symbol_id,
+                     grid))
+                  return false;
+               active = grid.active && grid.branch_cycle_id == cycle_id;
+            }
+            if(active && !AppendDiscoveryGridSummary(branch, symbol_id))
+               return false;
+         }
+      }
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaDiscoverySummaryRow symbol_summary;
+         if(!m_discovery_telemetry.BuildRollupSummaryBase("symbol", branch,
+               symbol_id, symbol_summary) ||
+            !m_discovery_telemetry.AppendSummary(symbol_summary))
+            return false;
+      }
+      LP_RevmaDiscoverySummaryRow top_summary;
+      if(!m_discovery_telemetry.BuildRollupSummaryBase("top_offender",
+            branch, -1, top_summary) ||
+         !m_discovery_telemetry.AppendSummary(top_summary))
+         return false;
+      LP_RevmaDiscoverySummaryRow cycle_summary;
+      if(!m_discovery_telemetry.BuildRollupSummaryBase("cycle", branch, -1,
+            cycle_summary))
+         return false;
+      cycle_summary.cleanup_shortfall = cleanup_shortfall;
+      cycle_summary.broker_contamination = broker_contamination;
+      cycle_summary.formula_clean = formula_clean;
+      cycle_summary.reconciliation_clean = reconciliation_clean;
+      if(!LP_RevmaBridgeApplyConcurrentRisk(cycle_summary, risk) ||
+         !m_discovery_telemetry.AppendSummary(cycle_summary))
+         return false;
+      LP_RevmaDiscoverySummaryRow reconciliation_summary;
+      if(!m_discovery_telemetry.BuildRollupSummaryBase("reconciliation",
+            branch, -1, reconciliation_summary))
+         return false;
+      reconciliation_summary.cleanup_shortfall = cleanup_shortfall;
+      reconciliation_summary.broker_contamination = broker_contamination;
+      reconciliation_summary.formula_clean = formula_clean;
+      reconciliation_summary.reconciliation_clean = reconciliation_clean;
+      if(!LP_RevmaBridgeApplyConcurrentRisk(reconciliation_summary, risk) ||
+         !m_discovery_telemetry.AppendSummary(reconciliation_summary))
+         return false;
+      m_discovery_telemetry_cycle_sealed[branch] = cycle_id;
+      return true;
+   }
+
+   bool AppendDiscoveryRunCompletion(
+      const int branch,
+      const datetime terminal_m1_time,
+      const bool final_flat,
+      const ulong terminal_grid_state_hash,
+      const LP_RevmaConcurrentBranchRiskState &terminal_risk,
+      const ulong terminal_book_hash,
+      const bool formula_clean,
+      const bool reconciliation_clean,
+      const bool broker_contamination,
+      const bool cleanup_shortfall)
+   {
+      LP_RevmaDiscoverySummaryRow summary;
+      if(terminal_m1_time <= 0 || terminal_grid_state_hash == 0 ||
+         terminal_book_hash == 0 ||
+         !m_discovery_telemetry.BuildRollupSummaryBase("run_completion",
+            branch, -1, summary))
+         return false;
+      summary.terminal_source_m1_time = terminal_m1_time;
+      summary.terminal_grid_state_hash = terminal_grid_state_hash;
+      summary.terminal_book_hash = terminal_book_hash;
+      summary.final_flat = final_flat;
+      summary.unresolved_inventory = !final_flat;
+      summary.cleanup_shortfall = cleanup_shortfall;
+      summary.broker_contamination = broker_contamination;
+      summary.formula_clean = formula_clean;
+      summary.reconciliation_clean = reconciliation_clean;
+      if(!LP_RevmaBridgeApplyConcurrentRisk(summary, terminal_risk) ||
+         !m_discovery_telemetry.AppendSummary(summary))
+         return false;
+      return true;
+   }
+
+   bool EmitDiscoveryOpenGridTerminalSnapshots(
+      const datetime terminal_m1_time)
+   {
+      if(!m_discovery_last_cohort_valid || terminal_m1_time <= 0)
+         return false;
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaRealGrid grid;
+         if(!m_discovery_real_portfolio.GetGrid(symbol_id, grid))
+            return false;
+         if(grid.active && grid.terminal_event_hash == 0 &&
+            !EmitRealGridTerminal(grid,
+               LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT))
+            return false;
+      }
+      bool matched = m_discovery_shadow_portfolio.CausalMatchingOpen();
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaShadowGrid u_grid;
+         LP_RevmaShadowGrid c_grid;
+         if(!m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_U,
+               symbol_id, u_grid) ||
+            !m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_C,
+               symbol_id, c_grid))
+            return false;
+         if(matched)
+         {
+            if(u_grid.active != c_grid.active)
+               return false;
+            if(u_grid.active && (u_grid.terminal_event_hash != 0 ||
+               c_grid.terminal_event_hash != 0 ||
+               !EmitMatchedShadowGridTerminals(u_grid, c_grid,
+                  LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT)))
+               return false;
+         }
+         else
+         {
+            if(u_grid.active && u_grid.terminal_event_hash == 0 &&
+               !EmitShadowGridTerminal(LP_REVMA_BRANCH_U, u_grid,
+                  LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT))
+               return false;
+            if(c_grid.active && c_grid.terminal_event_hash == 0 &&
+               !EmitShadowGridTerminal(LP_REVMA_BRANCH_C, c_grid,
+                  LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT))
+               return false;
+         }
+      }
+      return true;
+   }
+
+   bool SealDiscoveryFlatCycleBeforeReset(const int branch)
+   {
+      LP_RevmaConcurrentBranchRiskState risk;
+      LP_ResetRevmaConcurrentBranchRiskState(risk);
+      datetime terminal_m1_time = 0;
+      bool formula_clean = true;
+      bool cleanup_shortfall = false;
+      if(branch == LP_REVMA_BRANCH_R)
+      {
+         LP_RevmaRealPortfolioState portfolio;
+         if(!m_discovery_real_portfolio.GetPortfolio(portfolio) ||
+            !portfolio.cycle_reset_required ||
+            portfolio.active_grid_count != 0 ||
+            portfolio.cycle_flat_m1_time <= 0 ||
+            !m_discovery_real_portfolio.GetConcurrentRiskState(
+               portfolio.cycle_flat_m1_time, risk))
+            return false;
+         terminal_m1_time = portfolio.cycle_flat_m1_time;
+         formula_clean = portfolio.formula_clean;
+         cleanup_shortfall = portfolio.cleanup_shortfall;
+      }
+      else
+      {
+         LP_RevmaShadowPortfolioState portfolio;
+         if(!m_discovery_shadow_portfolio.GetPortfolio(branch, portfolio) ||
+            !portfolio.cycle_reset_required ||
+            portfolio.active_grid_count != 0 ||
+            portfolio.cycle_flat_m1_time <= 0 ||
+            !m_discovery_shadow_portfolio.GetConcurrentRiskState(branch,
+               portfolio.cycle_flat_m1_time, risk))
+            return false;
+         terminal_m1_time = portfolio.cycle_flat_m1_time;
+         cleanup_shortfall = portfolio.cleanup_shortfall;
+      }
+      return SealDiscoveryBranchCycle(branch, terminal_m1_time, risk, true,
+         formula_clean, true, false, cleanup_shortfall);
+   }
+
 public:
+   bool ReconcileDiscoveryRealConfirmedFlat(
+      LP_GridBook &grid_book,
+      const long actual_account_equity_minor)
+   {
+      if(!m_discovery_initialized || m_discovery_last_completed_m1 <= 0)
+         return true;
+      LP_RevmaRealPortfolioState portfolio_before;
+      if(!m_discovery_real_portfolio.GetPortfolio(portfolio_before))
+         return false;
+      LP_RevmaRealGrid before[LP_SYMBOL_COUNT];
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         if(!m_discovery_real_portfolio.GetGrid(symbol_id,
+               before[symbol_id]))
+            return false;
+      }
+      if(!m_discovery_real_portfolio.ReconcileConfirmedFlat(grid_book,
+            m_discovery_last_completed_m1,
+            actual_account_equity_minor) ||
+         !m_discovery_real_portfolio.ReconcileBrokerInventoryBijection(
+            grid_book))
+      {
+         InvalidateDiscovery(
+            m_discovery_real_portfolio.InvalidReason());
+         return false;
+      }
+      int newly_flat_grid_count = 0;
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaRealGrid after;
+         if(!m_discovery_real_portfolio.GetGrid(symbol_id, after))
+            return false;
+         if(before[symbol_id].active && !after.active &&
+            after.terminal_event_hash == 0 &&
+            !EmitRealGridTerminal(before[symbol_id],
+               LP_REVMA_TELEMETRY_GRID_CLOSE))
+         {
+            InvalidateDiscovery("real_terminal_close_telemetry_failed");
+            return false;
+         }
+         if(before[symbol_id].active && !after.active)
+            newly_flat_grid_count++;
+      }
+      LP_RevmaRealPortfolioState portfolio_after;
+      if(!m_discovery_real_portfolio.GetPortfolio(portfolio_after))
+         return false;
+      if(portfolio_after.close_owner != portfolio_before.close_owner &&
+         (portfolio_before.close_owner !=
+             LP_REVMA_DISCOVERY_CLOSE_CLEANUP ||
+          portfolio_after.close_owner !=
+             LP_REVMA_DISCOVERY_CLOSE_HARD_RISK ||
+          newly_flat_grid_count <= 0 ||
+          !portfolio_after.hard_risk_latched ||
+          portfolio_after.active_grid_count != 0 ||
+          portfolio_after.atom_count != 0 ||
+          portfolio_after.reservation_minor != 0 ||
+          portfolio_after.q_cash_minor != 0 ||
+          portfolio_after.margin_minor != 0 ||
+          portfolio_after.marked_liquidation_minor != 0 ||
+          portfolio_after.concentration_q_cash_minor != 0 ||
+          portfolio_after.concentration_currency_id != -1 ||
+          !AppendDiscoveryPortfolioAuthority(LP_REVMA_BRANCH_R,
+             portfolio_after.cycle_id,
+             portfolio_after.equity_reference_minor,
+             portfolio_after.capital_budget_minor,
+             portfolio_after.atom_count,
+             portfolio_after.reservation_minor,
+             portfolio_after.q_cash_minor,
+             portfolio_after.margin_minor,
+             portfolio_after.marked_liquidation_minor,
+             portfolio_after.realized_harvest_minor,
+             portfolio_after.realized_nonharvest_minor,
+             portfolio_after.concentration_q_cash_minor,
+             portfolio_after.concentration_currency_id,
+             portfolio_before.close_owner,
+             portfolio_after.close_owner,
+             m_discovery_last_completed_m1)))
+      {
+         InvalidateDiscovery("real_flat_risk_escalation_telemetry_failed");
+         return false;
+      }
+      if(portfolio_after.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE &&
+         portfolio_after.active_grid_count == 0 &&
+         portfolio_after.cycle_reset_required &&
+         !m_discovery_telemetry_close_complete[LP_REVMA_BRANCH_R] &&
+         !AppendDiscoveryPortfolioAuthorityComplete(LP_REVMA_BRANCH_R,
+            portfolio_after.cycle_id,
+            portfolio_after.equity_reference_minor,
+            portfolio_after.capital_budget_minor,
+            portfolio_after.realized_harvest_minor,
+            portfolio_after.realized_nonharvest_minor,
+            portfolio_after.close_owner,
+            m_discovery_last_completed_m1))
+      {
+         InvalidateDiscovery("real_close_authority_completion_telemetry_failed");
+         return false;
+      }
+      return true;
+   }
+
+   int ContinueDiscoveryRealCloses(
+      LP_GridBook &grid_book,
+      LP_IntentBus &bus,
+      const datetime staging_source_m1_time)
+   {
+      if(!m_discovery_initialized || !m_discovery_valid)
+         return 0;
+      if(!m_discovery_real_portfolio.CloseWorkActive())
+         return 0;
+      datetime effective_source_m1_time = staging_source_m1_time > 0 ?
+         staging_source_m1_time : m_discovery_last_completed_m1;
+      if(effective_source_m1_time <= 0 ||
+         ((long)effective_source_m1_time % 60) != 0 ||
+         !m_discovery_last_cohort_valid ||
+         m_discovery_last_cohort[0].source_m1_time !=
+            effective_source_m1_time)
+      {
+         InvalidateDiscovery("real_close_stage_cohort_provenance_invalid");
+         return 0;
+      }
+      int emitted = 0;
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaRealGrid real_grid;
+         if(!m_discovery_real_portfolio.GridCloseRequired(symbol_id,
+               real_grid))
+            continue;
+         LP_GridInventoryRow grid;
+         if(!grid_book.FindSymbolLaneGrid(symbol_id, LP_LANE_REVMA, grid) ||
+            grid.grid_key != real_grid.broker_grid_key)
+         {
+            InvalidateDiscovery("real_close_grid_inventory_missing");
+            return emitted;
+         }
+         LP_TradeIntent intent;
+         LP_ResetTradeIntent(intent);
+         BuildGridCloseIntent(grid.broker_symbol, grid,
+            real_grid.origin_terminal_reason,
+            "gate108_R_close_owner=" +
+               IntegerToString(real_grid.close_owner),
+            grid.floating_pnl, intent);
+         intent.gate108 = true;
+         intent.discovery_branch = LP_REVMA_BRANCH_R;
+         intent.discovery_branch_grid_id = real_grid.branch_grid_id;
+         intent.discovery_shared_snapshot_hash =
+            real_grid.birth_shared_snapshot_hash;
+         intent.discovery_source_m1_time =
+            effective_source_m1_time;
+         intent.discovery_close_owner = real_grid.close_owner;
+         intent.discovery_origin_terminal_reason =
+            real_grid.origin_terminal_reason;
+         if(!bus.Add(intent) ||
+            !m_discovery_real_portfolio.StageGridClose(symbol_id,
+               effective_source_m1_time))
+         {
+            InvalidateDiscovery("real_close_intent_stage_failed");
+            return emitted;
+         }
+         emitted++;
+      }
+      return emitted;
+   }
+
+   int ProcessDiscoveryCompletedM1Batch(
+      LP_RevmaCompletedM1Snapshot &snapshots[],
+      const int snapshot_count,
+      LP_GridBook &grid_book,
+      LP_IntentBus &bus)
+   {
+      if(!m_discovery_initialized || !m_discovery_valid ||
+         snapshot_count != LP_SYMBOL_COUNT)
+         return 0;
+      datetime source_m1_time = snapshots[0].source_m1_time;
+      bool seen[LP_SYMBOL_COUNT];
+      for(int i = 0; i < LP_SYMBOL_COUNT; i++) seen[i] = false;
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         if(!LP_RevmaCompletedM1SnapshotValid(snapshots[i]) ||
+            snapshots[i].source_m1_time != source_m1_time ||
+            snapshots[i].symbol_id < 0 ||
+            snapshots[i].symbol_id >= LP_SYMBOL_COUNT ||
+            seen[snapshots[i].symbol_id])
+         {
+            InvalidateDiscovery("shared_completed_m1_cohort_invalid");
+            return 0;
+         }
+         seen[snapshots[i].symbol_id] = true;
+      }
+      LP_RevmaShadowPortfolioState cycle_u;
+      LP_RevmaShadowPortfolioState cycle_c;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            cycle_u) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            cycle_c))
+      {
+         InvalidateDiscovery("shadow_cycle_state_unavailable");
+         return 0;
+      }
+      if(cycle_u.cycle_reset_required || cycle_c.cycle_reset_required)
+      {
+         if((cycle_u.cycle_reset_required &&
+             !SealDiscoveryFlatCycleBeforeReset(LP_REVMA_BRANCH_U)) ||
+            (cycle_c.cycle_reset_required &&
+             !SealDiscoveryFlatCycleBeforeReset(LP_REVMA_BRANCH_C)))
+         {
+            InvalidateDiscovery("shadow_prior_cycle_telemetry_seal_failed");
+            return 0;
+         }
+         bool cycle_ok = false;
+         if(m_discovery_shadow_portfolio.CausalMatchingOpen())
+         {
+            cycle_ok = cycle_u.cycle_reset_required &&
+               cycle_c.cycle_reset_required &&
+               m_discovery_shadow_portfolio.BeginMatchedNextCycle(
+                  cycle_u.cycle_id + 1, cycle_u.branch_equity_minor,
+                  source_m1_time);
+         }
+         else
+         {
+            bool u_ok = !cycle_u.cycle_reset_required ||
+               m_discovery_shadow_portfolio.BeginNextCycle(
+                  LP_REVMA_BRANCH_U, cycle_u.cycle_id + 1,
+                  cycle_u.branch_equity_minor, source_m1_time);
+            bool c_ok = !cycle_c.cycle_reset_required ||
+               m_discovery_shadow_portfolio.BeginNextCycle(
+                  LP_REVMA_BRANCH_C, cycle_c.cycle_id + 1,
+                  cycle_c.branch_equity_minor, source_m1_time);
+            cycle_ok = u_ok && c_ok;
+         }
+         if(!cycle_ok)
+         {
+            InvalidateDiscovery("shadow_next_cycle_boundary_failed");
+            return 0;
+         }
+      }
+      if(m_discovery_real_portfolio.CycleResetRequired() &&
+         (!SealDiscoveryFlatCycleBeforeReset(LP_REVMA_BRANCH_R) ||
+          !m_discovery_real_portfolio.BeginNextCycle(
+             m_discovery_real_portfolio.CycleId() + 1,
+             m_discovery_real_portfolio.BranchEquityMinor(),
+             source_m1_time)))
+      {
+         InvalidateDiscovery(
+            m_discovery_real_portfolio.InvalidReason());
+         return 0;
+      }
+      LP_RevmaRealPortfolioState cycle_r;
+      if(!CacheDiscoveryCohort(snapshots, snapshot_count, source_m1_time) ||
+         !m_discovery_real_portfolio.GetPortfolio(cycle_r) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            cycle_u) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            cycle_c) ||
+         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_R, cycle_r.cycle_id,
+            cycle_r.equity_reference_minor, cycle_r.capital_budget_minor,
+            source_m1_time) ||
+         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_U, cycle_u.cycle_id,
+            cycle_u.equity_reference_minor, cycle_u.capital_budget_minor,
+            source_m1_time) ||
+         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_C, cycle_c.cycle_id,
+            cycle_c.equity_reference_minor, cycle_c.capital_budget_minor,
+            source_m1_time))
+      {
+         InvalidateDiscovery("discovery_cycle_start_or_cohort_cache_failed");
+         return 0;
+      }
+      bool c_latched_before[LP_SYMBOL_COUNT];
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaShadowGrid c_grid;
+         if(!m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_C,
+               symbol_id, c_grid))
+         {
+            InvalidateDiscovery("center_pre_mark_state_unavailable");
+            return 0;
+         }
+         c_latched_before[symbol_id] = c_grid.active &&
+            c_grid.center_support.adverse_adds_frozen;
+      }
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         if(!m_discovery_real_portfolio.ObserveCompletedM1(snapshots[i],
+               grid_book))
+         {
+            InvalidateDiscovery(
+               m_discovery_real_portfolio.InvalidReason());
+            return 0;
+         }
+      }
+      if(!MarkDiscoveryShadows(snapshots, snapshot_count, source_m1_time))
+      {
+         InvalidateDiscovery("discovery_shadow_mark_failed");
+         return 0;
+      }
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+      {
+         LP_RevmaShadowGrid c_grid;
+         if(!m_discovery_shadow_portfolio.GetGrid(LP_REVMA_BRANCH_C,
+               symbol_id, c_grid) ||
+            (!c_latched_before[symbol_id] && c_grid.active &&
+             c_grid.center_support.adverse_adds_frozen &&
+             !EmitShadowCenterLatch(c_grid)))
+         {
+            InvalidateDiscovery("center_latch_telemetry_failed");
+            return 0;
+         }
+      }
+      LP_RevmaRealPortfolioState real_before_authority;
+      LP_RevmaRealPortfolioState real_after_authority;
+      if(!m_discovery_real_portfolio.GetPortfolio(real_before_authority) ||
+         !m_discovery_real_portfolio.EvaluateCloseAuthority(
+            source_m1_time) ||
+         !m_discovery_real_portfolio.GetPortfolio(real_after_authority) ||
+         !AppendDiscoveryPortfolioAuthority(LP_REVMA_BRANCH_R,
+            real_after_authority.cycle_id,
+            real_after_authority.equity_reference_minor,
+            real_after_authority.capital_budget_minor,
+            real_after_authority.atom_count,
+            real_after_authority.reservation_minor,
+            real_after_authority.q_cash_minor,
+            real_after_authority.margin_minor,
+            real_after_authority.marked_liquidation_minor,
+            real_after_authority.realized_harvest_minor,
+            real_after_authority.realized_nonharvest_minor,
+            real_after_authority.concentration_q_cash_minor,
+            real_after_authority.concentration_currency_id,
+            real_before_authority.close_owner,
+            real_after_authority.close_owner, source_m1_time) ||
+         !EvaluateAndCloseDiscoveryShadows(snapshots, snapshot_count,
+            source_m1_time))
+      {
+         InvalidateDiscovery("discovery_close_authority_lifecycle_failed");
+         return 0;
+      }
+      for(int i = 0; i < snapshot_count; i++)
+      {
+         if(!m_discovery_real_portfolio.EvaluateLocalHarvest(
+            snapshots[i].symbol_id, source_m1_time))
+         {
+            InvalidateDiscovery("real_local_harvest_evaluation_failed");
+            return 0;
+         }
+      }
+
+      // A close authority latched by this completed-M1 observation owns the
+      // routing prefix. No new R exposure is staged behind it in the same
+      // batch; the next completed-M1 cohort may reconsider admissions after
+      // broker inventory has reconciled.
+      int emitted = ContinueDiscoveryRealCloses(grid_book, bus,
+         source_m1_time);
+      bool real_close_priority =
+         m_discovery_real_portfolio.CloseWorkActive();
+      if(emitted > 0 && !real_close_priority)
+      {
+         InvalidateDiscovery("real_close_staging_priority_mismatch");
+         return 0;
+      }
+
+      bool shadow_batches = true;
+      LP_RevmaShadowPortfolioState u_portfolio;
+      LP_RevmaShadowPortfolioState c_portfolio;
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            u_portfolio) ||
+         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            c_portfolio))
+         shadow_batches = false;
+      bool branch_batch_open[LP_REVMA_SHADOW_BRANCH_COUNT];
+      branch_batch_open[0] = false;
+      branch_batch_open[1] = false;
+      if(shadow_batches)
+      {
+         for(int branch = LP_REVMA_BRANCH_U;
+            branch <= LP_REVMA_BRANCH_C && shadow_batches; branch++)
+         {
+            int branch_index = LP_RevmaShadowIndex(branch);
+            LP_RevmaShadowPortfolioState state =
+               branch == LP_REVMA_BRANCH_U ? u_portfolio : c_portfolio;
+            if(state.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+               continue;
+            branch_batch_open[branch_index] =
+               m_discovery_shadow_portfolio.BeginClosedM1Batch(
+                  branch, source_m1_time);
+            shadow_batches = branch_batch_open[branch_index];
+         }
+         for(int i = 0; i < snapshot_count && shadow_batches; i++)
+         {
+            for(int branch = LP_REVMA_BRANCH_U;
+               branch <= LP_REVMA_BRANCH_C; branch++)
+            {
+               if(!branch_batch_open[LP_RevmaShadowIndex(branch)])
+                  continue;
+               LP_RevmaShadowCandidate candidate;
+               bool available = false;
+               if(!BuildShadowCandidateFromSnapshot(branch, snapshots[i],
+                     candidate, available) ||
+                  (available &&
+                   !m_discovery_shadow_portfolio.AddCandidate(candidate)))
+               {
+                  shadow_batches = false;
+                  break;
+               }
+            }
+         }
+         if(shadow_batches)
+         {
+            for(int branch = LP_REVMA_BRANCH_U;
+               branch <= LP_REVMA_BRANCH_C && shadow_batches; branch++)
+            {
+               if(!branch_batch_open[LP_RevmaShadowIndex(branch)])
+                  continue;
+               shadow_batches =
+                  m_discovery_shadow_portfolio.ValidateBranchOpportunities(
+                     branch) &&
+                  m_discovery_shadow_portfolio.SortAndAllocate(branch) &&
+                   m_discovery_shadow_portfolio.CommitTransitions(branch);
+            }
+            for(int branch = LP_REVMA_BRANCH_U;
+               branch <= LP_REVMA_BRANCH_C && shadow_batches; branch++)
+            {
+               if(!branch_batch_open[LP_RevmaShadowIndex(branch)])
+                  continue;
+               shadow_batches = EmitShadowCandidateTransitions(branch);
+            }
+            for(int branch = LP_REVMA_BRANCH_U;
+               branch <= LP_REVMA_BRANCH_C && shadow_batches; branch++)
+            {
+               if(!branch_batch_open[LP_RevmaShadowIndex(branch)])
+                  continue;
+               shadow_batches =
+                  m_discovery_shadow_portfolio.EndClosedM1Batch(branch);
+            }
+            if(shadow_batches)
+               shadow_batches = EmitPendingShadowFirstDivergence();
+         }
+      }
+      if(!shadow_batches)
+      {
+         InvalidateDiscovery("shadow_batch_schedule_failed");
+         return 0;
+      }
+
+      if(!real_close_priority &&
+         m_discovery_real_portfolio.CloseOwner() ==
+         LP_REVMA_DISCOVERY_CLOSE_NONE)
+      {
+         if(!m_discovery_real_portfolio.BeginClosedM1Batch(source_m1_time))
+         {
+            InvalidateDiscovery("real_batch_begin_failed");
+            return 0;
+         }
+         for(int i = 0; i < snapshot_count; i++)
+         {
+            if(!m_discovery_real_portfolio.BuildCandidate(snapshots[i]))
+            {
+               InvalidateDiscovery("real_candidate_build_failed");
+               return emitted;
+            }
+         }
+         if(!m_discovery_real_portfolio.SortAndAllocate())
+         {
+            InvalidateDiscovery("real_candidate_allocation_failed");
+            return emitted;
+         }
+         if(!EmitPendingRealCandidateTransitions())
+         {
+            InvalidateDiscovery("real_allocation_rejection_telemetry_failed");
+            return emitted;
+         }
+         LP_RevmaRealCandidate candidate;
+         while(m_discovery_real_portfolio.GetNextRoutableCandidate(candidate))
+         {
+            LP_TradeIntent intent;
+            LP_ResetTradeIntent(intent);
+            BuildIntent(candidate.snapshot.signal,
+               candidate.birth ? LP_INTENT_OPEN_GRID :
+                  LP_INTENT_ADD_GRID_LEG,
+               candidate.broker_grid_key, candidate.variant_id,
+               candidate.direction, "gate108_R_formula_candidate", intent);
+            intent.requested_lots = LP_REVMA_DISCOVERY_ATOM_LOTS;
+            intent.expires_at = (datetime)((long)TimeCurrent() + 600);
+            intent.gate108 = true;
+            intent.discovery_branch = LP_REVMA_BRANCH_R;
+            intent.discovery_branch_grid_id = candidate.branch_grid_id;
+            intent.discovery_candidate_identity =
+               candidate.candidate_identity;
+            intent.discovery_shared_snapshot_hash =
+               candidate.shared_snapshot_hash;
+            intent.discovery_matched_snapshot_hash =
+               candidate.matched_snapshot_hash;
+            intent.discovery_pre_candidate_state_hash =
+               candidate.pre_candidate_state_hash;
+            intent.discovery_source_m1_time = candidate.source_m1_time;
+            if(!bus.Add(intent) ||
+               !m_discovery_real_portfolio.StageCandidate(
+                  candidate.candidate_identity, intent.intent_id))
+            {
+               InvalidateDiscovery("real_candidate_intent_stage_failed");
+               return emitted;
+            }
+            emitted++;
+         }
+         if(!EmitPendingRealCandidateTransitions())
+         {
+            InvalidateDiscovery("real_pre_stage_rejection_telemetry_failed");
+            return emitted;
+         }
+      }
+      m_discovery_last_completed_m1 = source_m1_time;
+      return emitted;
+   }
+
+   bool EndDiscoveryRealBatch()
+   {
+      if(!m_discovery_real_portfolio.BatchOpen())
+         return true;
+      if(!m_discovery_real_portfolio.EndClosedM1Batch())
+      {
+         InvalidateDiscovery(
+            m_discovery_real_portfolio.InvalidReason());
+         return false;
+      }
+      return true;
+   }
+
+   bool AuthorizeDiscoveryRealIntentBeforeRoute(
+      const LP_TradeIntent &intent,
+      bool &authorized)
+   {
+      if(!m_discovery_real_portfolio.AuthorizeBeforeRoute(intent,
+            authorized))
+      {
+         InvalidateDiscovery(
+            m_discovery_real_portfolio.InvalidReason());
+         return false;
+      }
+      if(intent.gate108 && !authorized &&
+         !EmitPendingRealCandidateTransitions())
+      {
+         InvalidateDiscovery("real_pre_route_rejection_telemetry_failed");
+         return false;
+      }
+      return true;
+   }
+
    bool CanResetDiscoveryForNewRun()
    {
       return m_discovery_shadow_portfolio.CanResetForNewRun() &&
@@ -2268,6 +4782,7 @@ public:
       m_birth_persistence_dirty_before_final_checkpoint = false;
       m_close_latch_persistence_dirty_before_final_checkpoint = false;
       m_protection_manager.Reset();
+      m_discovery_real_portfolio.Reset();
       m_research_telemetry.Reset();
       bool shadow_reset = m_discovery_shadow_portfolio.ResetForNewRun();
       bool telemetry_reset = m_discovery_telemetry.ResetForNewRun();
@@ -2278,6 +4793,25 @@ public:
       m_discovery_valid = m_discovery_reset_valid;
       m_discovery_invalid_reason = m_discovery_reset_valid ? "" :
          "discovery_reset_failed";
+      m_discovery_last_completed_m1 = 0;
+      m_discovery_last_cohort_valid = false;
+      m_discovery_last_cohort_hash = 0;
+      m_discovery_last_cohort_signal_hash = 0;
+      m_discovery_last_cohort_strategy_hash = 0;
+      m_discovery_first_divergence_emitted = false;
+      for(int branch = 0; branch < LP_REVMA_DISCOVERY_BRANCH_COUNT;
+         branch++)
+      {
+         m_discovery_telemetry_cycle_started[branch] = 0;
+         m_discovery_telemetry_cycle_sealed[branch] = 0;
+         m_discovery_first_infeasibility_cycle[branch] = 0;
+         m_discovery_telemetry_close_owner[branch] =
+            LP_REVMA_DISCOVERY_CLOSE_NONE;
+         m_discovery_telemetry_close_complete[branch] = false;
+      }
+      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
+         LP_ResetRevmaCompletedM1Snapshot(
+            m_discovery_last_cohort[symbol_id]);
       ArrayResize(m_births, 0);
       ArrayResize(m_pending_lifecycle, 0);
       ArrayResize(m_close_latches, 0);
@@ -2321,11 +4855,15 @@ public:
       }
       ulong cycle_id = 1;
       if(cycle_id == 0 ||
+         !m_discovery_real_portfolio.Initialize(
+            equity_reference_minor, money_quantum) ||
          !m_discovery_shadow_portfolio.InitializeMatchedBranches(
             cycle_id, equity_reference_minor, money_quantum))
       {
+         m_discovery_real_portfolio.Reset();
          m_discovery_valid = false;
-         m_discovery_invalid_reason = "discovery_shadow_initialization_failed";
+         m_discovery_invalid_reason =
+            "discovery_branch_initialization_failed";
          return false;
       }
       if(!m_discovery_telemetry.Initialize(
@@ -2340,6 +4878,7 @@ public:
          string telemetry_reason = m_discovery_telemetry.InvalidReason();
          bool shadow_cleanup =
             m_discovery_shadow_portfolio.ResetForNewRun();
+         m_discovery_real_portfolio.Reset();
          bool telemetry_cleanup = m_discovery_telemetry.ResetForNewRun();
          m_discovery_reset_valid = shadow_cleanup && telemetry_cleanup;
          m_discovery_valid = false;
@@ -2354,62 +4893,125 @@ public:
       return true;
    }
 
-   bool FinalizeDiscovery(
-      const datetime terminal_completed_m1_time,
-      const ulong real_terminal_grid_state_hash,
-      const ulong real_terminal_book_hash,
-      const bool real_final_flat)
+   bool FinalizeDiscovery()
    {
       if(!m_discovery_initialized || m_discovery_finalized)
          return false;
+      datetime terminal_completed_m1_time = m_discovery_last_completed_m1;
+      bool real_final_flat = false;
       bool u_final_flat = false;
       bool c_final_flat = false;
+      ulong real_terminal_grid_state_hash = 0;
       ulong u_terminal_grid_state_hash = 0;
       ulong c_terminal_grid_state_hash = 0;
+      ulong real_terminal_book_hash = 0;
       ulong u_terminal_book_hash = 0;
       ulong c_terminal_book_hash = 0;
-      bool shadow_terminal_ok =
-         m_discovery_shadow_portfolio.MatchedBranchesTerminalReconciled(
-            terminal_completed_m1_time, u_final_flat,
-            u_terminal_grid_state_hash, u_terminal_book_hash, c_final_flat,
-            c_terminal_grid_state_hash, c_terminal_book_hash);
-      bool wrapper_terminal_ok = terminal_completed_m1_time > 0 &&
-         real_terminal_grid_state_hash != 0 &&
-         real_terminal_book_hash != 0 &&
-         m_pending_lifecycle_count == 0 && !HasLatchedGridClose() &&
-         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_R) &&
-         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_U) &&
-         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_C) &&
-         m_discovery_telemetry.BranchTerminalBoundaryM1(
-            LP_REVMA_BRANCH_R) == terminal_completed_m1_time &&
-         m_discovery_telemetry.BranchTerminalBoundaryM1(
-            LP_REVMA_BRANCH_U) == terminal_completed_m1_time &&
-         m_discovery_telemetry.BranchTerminalBoundaryM1(
-            LP_REVMA_BRANCH_C) == terminal_completed_m1_time &&
-         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_R) ==
-            real_terminal_book_hash &&
-         m_discovery_telemetry.BranchTerminalGridStateHash(
-            LP_REVMA_BRANCH_R) == real_terminal_grid_state_hash &&
-         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_R) ==
-            real_final_flat &&
-         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_U) ==
-            u_terminal_book_hash &&
-         m_discovery_telemetry.BranchTerminalGridStateHash(
-            LP_REVMA_BRANCH_U) == u_terminal_grid_state_hash &&
-         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_U) ==
-            u_final_flat &&
-         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_C) ==
-            c_terminal_book_hash &&
-         m_discovery_telemetry.BranchTerminalGridStateHash(
-            LP_REVMA_BRANCH_C) == c_terminal_grid_state_hash &&
-         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_C) ==
-            c_final_flat;
-      bool shadow_ok = shadow_terminal_ok && wrapper_terminal_ok;
-      if(!shadow_ok)
-         InvalidateDiscovery("discovery_shadow_final_reconciliation_failed");
+      LP_RevmaConcurrentBranchRiskState real_terminal_risk;
+      LP_RevmaConcurrentBranchRiskState u_terminal_risk;
+      LP_RevmaConcurrentBranchRiskState c_terminal_risk;
+      LP_ResetRevmaConcurrentBranchRiskState(real_terminal_risk);
+      LP_ResetRevmaConcurrentBranchRiskState(u_terminal_risk);
+      LP_ResetRevmaConcurrentBranchRiskState(c_terminal_risk);
+      bool terminal_ok = m_discovery_valid &&
+         terminal_completed_m1_time > 0 &&
+         m_discovery_last_cohort_valid &&
+         m_discovery_last_cohort[0].source_m1_time ==
+            terminal_completed_m1_time;
+      if(terminal_ok)
+         terminal_ok = EmitDiscoveryOpenGridTerminalSnapshots(
+            terminal_completed_m1_time);
+      if(terminal_ok)
+         terminal_ok = m_discovery_real_portfolio.BranchTerminalReconciled(
+               terminal_completed_m1_time, real_final_flat,
+               real_terminal_grid_state_hash, real_terminal_risk,
+               real_terminal_book_hash) &&
+            m_discovery_shadow_portfolio.MatchedBranchesTerminalReconciled(
+               terminal_completed_m1_time, u_final_flat,
+               u_terminal_grid_state_hash, u_terminal_risk,
+               u_terminal_book_hash, c_final_flat,
+               c_terminal_grid_state_hash, c_terminal_risk,
+               c_terminal_book_hash);
+      LP_RevmaRealPortfolioState real_portfolio;
+      LP_RevmaShadowPortfolioState u_portfolio;
+      LP_RevmaShadowPortfolioState c_portfolio;
+      if(terminal_ok)
+         terminal_ok = m_discovery_real_portfolio.GetPortfolio(
+               real_portfolio) &&
+            m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+               u_portfolio) &&
+            m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+               c_portfolio);
+      if(terminal_ok)
+         terminal_ok = SealDiscoveryBranchCycle(LP_REVMA_BRANCH_R,
+               terminal_completed_m1_time, real_terminal_risk,
+               real_final_flat, real_portfolio.formula_clean, true, false,
+               real_portfolio.cleanup_shortfall) &&
+            SealDiscoveryBranchCycle(LP_REVMA_BRANCH_U,
+               terminal_completed_m1_time, u_terminal_risk, u_final_flat,
+               true, true, false, u_portfolio.cleanup_shortfall) &&
+            SealDiscoveryBranchCycle(LP_REVMA_BRANCH_C,
+               terminal_completed_m1_time, c_terminal_risk, c_final_flat,
+               true, true, false, c_portfolio.cleanup_shortfall);
+      if(terminal_ok)
+         terminal_ok = AppendDiscoveryRunCompletion(LP_REVMA_BRANCH_R,
+               terminal_completed_m1_time, real_final_flat,
+               real_terminal_grid_state_hash, real_terminal_risk,
+               real_terminal_book_hash, real_portfolio.formula_clean,
+               true, false, real_portfolio.cleanup_shortfall) &&
+            AppendDiscoveryRunCompletion(LP_REVMA_BRANCH_U,
+               terminal_completed_m1_time, u_final_flat,
+               u_terminal_grid_state_hash, u_terminal_risk,
+               u_terminal_book_hash, true, true, false,
+               u_portfolio.cleanup_shortfall) &&
+            AppendDiscoveryRunCompletion(LP_REVMA_BRANCH_C,
+               terminal_completed_m1_time, c_final_flat,
+               c_terminal_grid_state_hash, c_terminal_risk,
+               c_terminal_book_hash, true, true, false,
+               c_portfolio.cleanup_shortfall);
+      if(terminal_ok)
+      {
+         terminal_ok = m_pending_lifecycle_count == 0 &&
+            !HasLatchedGridClose() &&
+            m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_R) &&
+            m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_U) &&
+            m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_C) &&
+            m_discovery_telemetry.BranchTerminalBoundaryM1(
+               LP_REVMA_BRANCH_R) == terminal_completed_m1_time &&
+            m_discovery_telemetry.BranchTerminalBoundaryM1(
+               LP_REVMA_BRANCH_U) == terminal_completed_m1_time &&
+            m_discovery_telemetry.BranchTerminalBoundaryM1(
+               LP_REVMA_BRANCH_C) == terminal_completed_m1_time &&
+            m_discovery_telemetry.BranchTerminalBookHash(
+               LP_REVMA_BRANCH_R) == real_terminal_book_hash &&
+            m_discovery_telemetry.BranchTerminalGridStateHash(
+               LP_REVMA_BRANCH_R) == real_terminal_grid_state_hash &&
+            m_discovery_telemetry.CurrentBranchTerminalGridEvidenceHash(
+               LP_REVMA_BRANCH_R) == real_terminal_grid_state_hash &&
+            m_discovery_telemetry.BranchTerminalFinalFlat(
+               LP_REVMA_BRANCH_R) == real_final_flat &&
+            m_discovery_telemetry.BranchTerminalBookHash(
+               LP_REVMA_BRANCH_U) == u_terminal_book_hash &&
+            m_discovery_telemetry.BranchTerminalGridStateHash(
+               LP_REVMA_BRANCH_U) == u_terminal_grid_state_hash &&
+            m_discovery_telemetry.CurrentBranchTerminalGridEvidenceHash(
+               LP_REVMA_BRANCH_U) == u_terminal_grid_state_hash &&
+            m_discovery_telemetry.BranchTerminalFinalFlat(
+               LP_REVMA_BRANCH_U) == u_final_flat &&
+            m_discovery_telemetry.BranchTerminalBookHash(
+               LP_REVMA_BRANCH_C) == c_terminal_book_hash &&
+            m_discovery_telemetry.BranchTerminalGridStateHash(
+               LP_REVMA_BRANCH_C) == c_terminal_grid_state_hash &&
+            m_discovery_telemetry.CurrentBranchTerminalGridEvidenceHash(
+               LP_REVMA_BRANCH_C) == c_terminal_grid_state_hash &&
+            m_discovery_telemetry.BranchTerminalFinalFlat(
+               LP_REVMA_BRANCH_C) == c_final_flat;
+      }
+      if(!terminal_ok)
+         InvalidateDiscovery("discovery_terminal_reconciliation_failed");
       bool telemetry_ok = m_discovery_telemetry.Finalize();
       m_discovery_finalized = true;
-      m_discovery_valid = m_discovery_valid && shadow_ok && telemetry_ok;
+      m_discovery_valid = m_discovery_valid && terminal_ok && telemetry_ok;
       if(!m_discovery_valid && m_discovery_invalid_reason == "")
          m_discovery_invalid_reason = m_discovery_telemetry.InvalidReason();
       return m_discovery_valid;
@@ -2429,6 +5031,7 @@ public:
    bool DiscoveryTelemetryValid()
    {
       return m_discovery_valid &&
+         m_discovery_real_portfolio.Valid() &&
          m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_U) &&
          m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_C) &&
          m_discovery_telemetry.Valid();
@@ -2453,6 +5056,8 @@ public:
    {
       if(m_discovery_invalid_reason != "")
          return m_discovery_invalid_reason;
+      if(!m_discovery_real_portfolio.Valid())
+         return "R:" + m_discovery_real_portfolio.InvalidReason();
       if(!m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_U))
          return "U:" + m_discovery_shadow_portfolio.BranchInvalidReason(
             LP_REVMA_BRANCH_U);
@@ -2468,6 +5073,14 @@ public:
       LP_ReceiptWriter &receipts
    )
    {
+      if(intent.gate108 && decision.decision == LP_RISK_REJECT)
+      {
+         InvalidateDiscovery("gate108_risk_boundary_rejection:" +
+            IntegerToString(decision.reason) + ":" +
+            (decision.explanation == "" ? "unspecified" :
+             decision.explanation));
+         return false;
+      }
       if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE ||
          decision.decision != LP_RISK_REJECT)
          return true;
@@ -2512,6 +5125,23 @@ public:
       LP_ReceiptWriter &receipts
    )
    {
+      if(plan.gate108 &&
+         (plan.action == LP_INTENT_OPEN_GRID ||
+          plan.action == LP_INTENT_ADD_GRID_LEG))
+      {
+         if(!m_discovery_real_portfolio.RecordExecution(plan, execution))
+         {
+            InvalidateDiscovery(
+               m_discovery_real_portfolio.InvalidReason());
+            return false;
+         }
+         if(!EmitPendingRealCandidateTransitions())
+         {
+            InvalidateDiscovery("real_execution_transition_telemetry_failed");
+            return false;
+         }
+         return true;
+      }
       if(plan.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE)
          return true;
 
@@ -2634,6 +5264,17 @@ public:
       LP_ReceiptWriter &receipts
    )
    {
+      if(plan.gate108 && plan.action == LP_INTENT_CLOSE_GRID)
+      {
+         if(!m_discovery_real_portfolio.RecordCloseExecution(plan,
+               execution))
+         {
+            InvalidateDiscovery(
+               m_discovery_real_portfolio.InvalidReason());
+            return false;
+         }
+         return true;
+      }
       m_research_telemetry.RecordCloseExecution(plan, execution);
       m_research_telemetry.RecordAccountCloseExecution(plan, execution);
       if(!UpdateCloseLatchProgress(plan, execution, receipts))
@@ -3012,6 +5653,7 @@ public:
          }
 
          LP_TradeIntent add_intent;
+         LP_ResetTradeIntent(add_intent);
          string add_fee_source = "";
          double net_open_money_after_fees_before = active_grid.floating_pnl - GridCloseFeeMoney(active_grid, config, add_fee_source);
          string metadata = AddMetadata(
@@ -3140,6 +5782,7 @@ public:
       }
 
       LP_TradeIntent open_intent;
+      LP_ResetTradeIntent(open_intent);
       BuildIntent(signal, LP_INTENT_OPEN_GRID, 0, signal.variant_id, signal.direction, "", open_intent);
       int grid_family = (int)(open_intent.intent_id % 9000) + 1;
       open_intent.grid_key = LP_BuildGridKey(

@@ -134,6 +134,8 @@ struct LP_RevmaDiscoveryTransitionRow
    ulong shared_origin_id;
    ulong opportunity_id;
    ulong matched_snapshot_hash;
+   ulong shared_observation_snapshot_hash;
+   ulong strategy_state_identity_hash;
    int symbol_id;
    int direction;
    int candidate_type;
@@ -221,6 +223,7 @@ struct LP_RevmaDiscoveryTransitionRow
    long incremental_liquidation_minor;
    long incremental_close_cost_minor;
    long concentration_q_cash_minor;
+   int concentration_currency_id;
    long commission_minor;
    long swap_minor;
    long liquidation_cost_minor;
@@ -241,6 +244,7 @@ struct LP_RevmaDiscoveryTransitionRow
    string grid_terminal_reason;
    ulong pre_candidate_state_hash;
    ulong terminal_internal_state_hash;
+   ulong terminal_projection_hash;
    ulong event_hash;
    ulong reconciliation_hash;
 };
@@ -252,6 +256,7 @@ void LP_ResetRevmaDiscoveryTransitionRow(LP_RevmaDiscoveryTransitionRow &row)
    row.branch = -1;
    row.symbol_id = -1;
    row.direction = LP_SIDE_NONE;
+   row.concentration_currency_id = -1;
    row.decision = "";
    row.reason = "";
 }
@@ -281,11 +286,34 @@ struct LP_RevmaDiscoverySummaryRow
    double current_lots;
    long current_reservation_minor;
    long current_margin_minor;
+   long current_q_cash_minor;
+   int current_active_grid_count;
+   long current_concentration_q_cash_minor;
+   int current_concentration_currency_id;
+   long current_liquidation_liability_minor;
+   long equity_high_water_minor;
+   long branch_drawdown_minor;
+   long cycle_peak_reservation_minor;
+   long cycle_peak_margin_minor;
+   long cycle_peak_q_cash_minor;
+   int cycle_peak_atom_count;
    long peak_reservation_minor;
    bool reservation_overrun_observed;
    long peak_reservation_overrun_minor;
    long peak_q_cash_minor;
    long peak_margin_minor;
+   int peak_active_grid_count;
+   long peak_concentration_q_cash_minor;
+   int peak_concentration_currency_id;
+   long peak_liquidation_liability_minor;
+   long maximum_drawdown_minor;
+   ulong cycle_risk_snapshot_count;
+   ulong cycle_risk_snapshot_hash;
+   ulong cycle_candidate_built_count;
+   ulong cycle_candidate_decision_count;
+   ulong cycle_candidate_admitted_count;
+   ulong cycle_candidate_rejected_count;
+   ulong cycle_inventory_transition_count;
    long maximum_adverse_excursion_minor;
    int maximum_age_minutes;
    int time_underwater_minutes;
@@ -332,6 +360,34 @@ struct LP_RevmaDiscoverySummaryRow
    datetime terminal_source_m1_time;
    ulong terminal_grid_state_hash;
    ulong terminal_book_hash;
+   ulong terminal_projection_hash;
+   ulong terminal_risk_state_hash;
+   long run_peak_reservation_minor;
+   long run_peak_margin_minor;
+   long run_peak_q_cash_minor;
+   int run_peak_atom_count;
+   int run_peak_active_grid_count;
+   long run_peak_concentration_q_cash_minor;
+   int run_peak_concentration_currency_id;
+   long run_peak_liquidation_liability_minor;
+   long run_equity_high_water_minor;
+   long run_maximum_drawdown_minor;
+   ulong run_risk_snapshot_count;
+   ulong run_risk_snapshot_hash;
+   ulong run_candidate_built_count;
+   ulong run_candidate_decision_count;
+   ulong run_candidate_admitted_count;
+   ulong run_candidate_rejected_count;
+   ulong run_inventory_transition_count;
+   ulong writer_branch_transition_rows;
+   ulong writer_cycle_candidate_decision_rows;
+   ulong writer_cycle_candidate_admitted_rows;
+   ulong writer_cycle_candidate_rejected_rows;
+   ulong writer_cycle_inventory_transition_rows;
+   ulong writer_run_candidate_decision_rows;
+   ulong writer_run_candidate_admitted_rows;
+   ulong writer_run_candidate_rejected_rows;
+   ulong writer_run_inventory_transition_rows;
    long run_elapsed_microseconds;
    long transition_flush_microseconds;
    long transition_flush_max_microseconds;
@@ -346,6 +402,9 @@ void LP_ResetRevmaDiscoverySummaryRow(LP_RevmaDiscoverySummaryRow &row)
    row.branch = -1;
    row.symbol_id = -1;
    row.direction = LP_SIDE_NONE;
+   row.current_concentration_currency_id = -1;
+   row.peak_concentration_currency_id = -1;
+   row.run_peak_concentration_currency_id = -1;
    row.summary_type = "";
    row.first_infeasibility = "";
    row.terminal_reason = "";
@@ -767,10 +826,11 @@ bool LP_RevmaTelemetryEconomicInfeasibilityReasonValid(
 {
    return reason ==
          "fill_reconciliation_capacity_overrun_blocks_new_exposure" ||
-      reason == "capital_budget_capacity_exhausted" ||
-      reason == "projected_equity_exhausted_by_immediate_liability" ||
-      reason == "projected_post_liquidation_margin_capacity_exhausted" ||
-      reason == "real_execution_two_atom_envelope_exhausted";
+       reason == "capital_budget_capacity_exhausted" ||
+       reason == "projected_equity_exhausted_by_immediate_liability" ||
+       reason == "projected_post_liquidation_margin_capacity_exhausted" ||
+       reason == "real_execution_two_atom_envelope_exhausted" ||
+       reason == "broker_session_closed_before_order_send";
 }
 
 bool LP_RevmaTelemetryShadowInfeasibilityReasonValid(
@@ -852,7 +912,48 @@ bool LP_RevmaTelemetryGridMoneyEvidenceValid(
       ((current_atoms == 0 && row.margin_minor == 0) ||
        (current_atoms > 0 && row.margin_minor > 0)) &&
       ((candidate_observation && row.incremental_margin_minor > 0) ||
-       (!candidate_observation && row.incremental_margin_minor == 0));
+      (!candidate_observation && row.incremental_margin_minor == 0));
+}
+
+bool LP_RevmaTelemetryTerminalProjectionValid(
+   const LP_RevmaDiscoveryTransitionRow &row)
+{
+   LP_RevmaTerminalGridProjection projection;
+   LP_ResetRevmaTerminalGridProjection(projection);
+   projection.valid = true;
+   projection.branch = row.branch;
+   projection.symbol_id = row.symbol_id;
+   projection.branch_grid_id = row.branch_grid_id;
+   projection.branch_cycle_id = row.branch_cycle_id;
+   projection.grid_generation = row.grid_generation;
+   projection.direction = row.direction;
+   projection.terminal_source_m1_time = row.source_m1_time;
+   projection.boundary_class = row.event_type ==
+      LP_REVMA_TELEMETRY_GRID_CLOSE ? "confirmed_flat_close" :
+      "run_boundary_unresolved";
+   projection.atoms_before = row.atoms_before;
+   projection.atoms_after = row.atoms_after;
+   projection.lots_before = row.lots_before;
+   projection.lots_after = row.lots_after;
+   projection.reservation_minor = row.reservation_minor;
+   projection.q_cash_minor = row.q_cash_minor;
+   projection.margin_minor = row.margin_minor;
+   projection.harvest_minor = row.harvest_minor;
+   projection.nonharvest_minor = row.nonharvest_minor;
+   projection.liability_minor = row.liability_minor;
+   projection.cost_minor = row.liquidation_cost_minor;
+   projection.maximum_adverse_excursion_minor =
+      row.maximum_adverse_excursion_minor;
+   projection.grid_age_minutes = row.grid_age_minutes;
+   projection.time_underwater_minutes = row.time_underwater_minutes;
+   projection.close_owner = row.close_owner;
+   projection.origin_terminal_reason = row.grid_terminal_reason;
+   projection.terminal_internal_state_hash =
+      row.terminal_internal_state_hash;
+   projection.projection_hash =
+      LP_RevmaTerminalGridProjectionIdentity(projection);
+   return LP_RevmaTerminalGridProjectionValid(projection) &&
+      projection.projection_hash == row.terminal_projection_hash;
 }
 
 bool LP_RevmaTelemetryEventShapeValid(const LP_RevmaDiscoveryTransitionRow &row)
@@ -864,21 +965,40 @@ bool LP_RevmaTelemetryEventShapeValid(const LP_RevmaDiscoveryTransitionRow &row)
        row.source_m1_time <= 0 ||
        ((long)row.source_m1_time % 60) != 0 ||
        row.event_time < row.source_m1_time ||
-       row.concentration_q_cash_minor != 0 ||
+       row.concentration_q_cash_minor < 0 ||
+       ((row.concentration_q_cash_minor == 0) !=
+        (row.concentration_currency_id == -1)) ||
+       row.concentration_currency_id < -1 ||
+       row.concentration_currency_id >= LP_CCY_COUNT ||
        !LP_RevmaTelemetryFiniteTransition(row))
       return false;
    if(row.budget_minor <= 0 || row.equity_reference_minor <= 0 ||
       !LP_RevmaDiscoveryCapitalBudgetMinor(row.equity_reference_minor,
          expected_budget_minor) || row.budget_minor != expected_budget_minor)
       return false;
-   if(row.event_type != LP_REVMA_TELEMETRY_FAILURE &&
+   bool aggregate_branch_event = row.symbol_id == -1 &&
+      row.event_type != LP_REVMA_TELEMETRY_FAILURE &&
+      row.event_type != LP_REVMA_TELEMETRY_CYCLE_START;
+   if(!aggregate_branch_event &&
+      row.event_type != LP_REVMA_TELEMETRY_FAILURE &&
       row.event_type != LP_REVMA_TELEMETRY_CYCLE_START &&
-      (row.signal_identity_hash == 0 || row.q_day_count <= 0 ||
+      (row.signal_identity_hash == 0 ||
+       row.shared_observation_snapshot_hash == 0 ||
+       row.strategy_state_identity_hash == 0 ||
+       row.q_day_count <= 0 ||
        row.q_event_count <= 0 || row.q_event_count > 2147483647 ||
        row.reconstruction_epoch == 0 ||
        row.q0 <= 0.0 || row.current_q <= 0.0 ||
        NormalizeDouble(row.current_q_ratio, 12) !=
           NormalizeDouble(row.current_q / row.q0, 12)))
+      return false;
+   if(aggregate_branch_event &&
+      (row.signal_identity_hash == 0 ||
+       row.shared_observation_snapshot_hash == 0 ||
+       row.strategy_state_identity_hash == 0 || row.q_day_count != 0 ||
+       row.q_event_count != 0 || row.reconstruction_epoch != 0 ||
+       row.q0 != 0.0 || row.current_q != 0.0 ||
+       row.current_q_ratio != 0.0))
       return false;
    bool grid_event = row.event_type == LP_REVMA_TELEMETRY_BRANCH_BIRTH ||
       row.event_type == LP_REVMA_TELEMETRY_ATOM_ADMISSION ||
@@ -949,15 +1069,13 @@ bool LP_RevmaTelemetryEventShapeValid(const LP_RevmaDiscoveryTransitionRow &row)
       row.event_type == LP_REVMA_TELEMETRY_GRID_TERMINAL_SNAPSHOT;
    if(terminal_grid_event != (row.terminal_internal_state_hash != 0))
       return false;
-   bool origin_terminal_reason_valid = row.grid_terminal_reason == "" ||
-      row.grid_terminal_reason == "grid_harvest" ||
-      row.grid_terminal_reason == "account_cleanup" ||
-      row.grid_terminal_reason == "account_risk";
-   bool terminal_owner_reason_shape = origin_terminal_reason_valid &&
-      ((row.close_owner == LP_REVMA_DISCOVERY_CLOSE_NONE &&
-        row.grid_terminal_reason == "") ||
-       (row.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE &&
-        row.grid_terminal_reason != ""));
+   if(terminal_grid_event != (row.terminal_projection_hash != 0) ||
+      (terminal_grid_event &&
+       !LP_RevmaTelemetryTerminalProjectionValid(row)))
+      return false;
+   bool terminal_owner_reason_shape =
+      LP_RevmaDiscoveryTerminalReasonOwnerConsistent(
+         row.grid_terminal_reason, row.close_owner);
    if((terminal_grid_event && !terminal_owner_reason_shape) ||
       (!terminal_grid_event && row.grid_terminal_reason != ""))
       return false;
@@ -970,10 +1088,9 @@ bool LP_RevmaTelemetryEventShapeValid(const LP_RevmaDiscoveryTransitionRow &row)
       return row.signal_identity_hash != 0 && row.candidate_identity != 0 &&
           candidate_evidence_complete &&
           row.candidate_type == LP_REVMA_DISCOVERY_CANDIDATE_BIRTH &&
-          ((row.branch == LP_REVMA_BRANCH_R && row.shared_origin_id == 0 &&
-            row.opportunity_id == 0) ||
-           (row.branch != LP_REVMA_BRANCH_R && row.shared_origin_id != 0 &&
-            row.opportunity_id != 0)) &&
+           ((row.branch == LP_REVMA_BRANCH_R && row.shared_origin_id == 0 &&
+             row.opportunity_id == 0) ||
+            (row.branch != LP_REVMA_BRANCH_R && row.shared_origin_id != 0)) &&
           row.pre_candidate_state_hash != 0 &&
           row.direction != LP_SIDE_NONE && row.atoms_before == 0 &&
           row.atoms_after == 1 && row.p0 > 0.0 && row.q0 > 0.0 &&
@@ -1140,6 +1257,7 @@ struct LP_RevmaTelemetryLifecycleState
    datetime terminal_snapshot_m1_time;
    datetime terminal_transition_m1_time;
    ulong terminal_event_hash;
+   ulong terminal_projection_hash;
    ulong terminal_internal_state_hash;
    int terminal_atoms_before;
    int terminal_atoms_after;
@@ -1301,6 +1419,10 @@ private:
    long m_transition_flushes;
    long m_summary_flushes;
    datetime m_last_source_m1_time;
+   datetime m_registered_cohort_source_m1_time;
+   ulong m_registered_cohort_snapshot_hash;
+   ulong m_registered_cohort_signal_hash;
+   ulong m_registered_cohort_strategy_hash;
    datetime m_initial_history_boundary[LP_SYMBOL_COUNT];
    LP_RevmaTelemetryLifecycleState
       m_lifecycle[LP_REVMA_DISCOVERY_BRANCH_COUNT][LP_SYMBOL_COUNT];
@@ -1392,6 +1514,15 @@ private:
    int m_cycle_center_blocked_adverse_candidates;
    int m_cycle_favorable_eligible_after_latch;
    datetime m_cycle_first_center_latch_time;
+   ulong m_writer_branch_transition_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_cycle_candidate_decision_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_cycle_candidate_admitted_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_cycle_candidate_rejected_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_cycle_inventory_transition_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_run_candidate_decision_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_run_candidate_admitted_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_run_candidate_rejected_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
+   ulong m_writer_run_inventory_transition_rows[LP_REVMA_DISCOVERY_BRANCH_COUNT];
 
    void ResetState()
    {
@@ -1437,6 +1568,10 @@ private:
       m_transition_flushes = 0;
       m_summary_flushes = 0;
       m_last_source_m1_time = 0;
+      m_registered_cohort_source_m1_time = 0;
+      m_registered_cohort_snapshot_hash = 0;
+      m_registered_cohort_signal_hash = 0;
+      m_registered_cohort_strategy_hash = 0;
       m_causal_matching_closed = false;
       m_first_divergence_opportunity_id = 0;
       m_failure_event_count = 0;
@@ -1484,6 +1619,15 @@ private:
       for(int branch = 0; branch < LP_REVMA_DISCOVERY_BRANCH_COUNT; branch++)
       {
          m_branch_cycle_id[branch] = 0;
+         m_writer_branch_transition_rows[branch] = 0;
+         m_writer_cycle_candidate_decision_rows[branch] = 0;
+         m_writer_cycle_candidate_admitted_rows[branch] = 0;
+         m_writer_cycle_candidate_rejected_rows[branch] = 0;
+         m_writer_cycle_inventory_transition_rows[branch] = 0;
+         m_writer_run_candidate_decision_rows[branch] = 0;
+         m_writer_run_candidate_admitted_rows[branch] = 0;
+         m_writer_run_candidate_rejected_rows[branch] = 0;
+         m_writer_run_inventory_transition_rows[branch] = 0;
          m_branch_account_cycle_id[branch] = 0;
          m_branch_equity_reference_minor[branch] = 0;
          m_branch_budget_minor[branch] = 0;
@@ -1555,6 +1699,66 @@ private:
       m_valid = false;
       if(m_invalid_reason == "" || m_invalid_reason == "not_initialized")
          m_invalid_reason = reason;
+   }
+
+   bool IncrementWriterCounter(ulong &counter)
+   {
+      if(counter >= (ulong)LP_REVMA_DISCOVERY_MINOR_ABS_LIMIT)
+         return false;
+      counter++;
+      return true;
+   }
+
+   bool ApplyWriterTransitionCounts(
+      const LP_RevmaDiscoveryTransitionRow &row)
+   {
+      int branch = row.branch;
+      if(!LP_RevmaDiscoveryBranchValid(branch) ||
+         !IncrementWriterCounter(m_writer_branch_transition_rows[branch]))
+         return false;
+      if(row.event_type == LP_REVMA_TELEMETRY_CYCLE_START)
+      {
+         m_writer_cycle_candidate_decision_rows[branch] = 0;
+         m_writer_cycle_candidate_admitted_rows[branch] = 0;
+         m_writer_cycle_candidate_rejected_rows[branch] = 0;
+         m_writer_cycle_inventory_transition_rows[branch] = 0;
+         return true;
+      }
+      bool admitted = row.event_type == LP_REVMA_TELEMETRY_BRANCH_BIRTH ||
+         row.event_type == LP_REVMA_TELEMETRY_ATOM_ADMISSION;
+      bool rejected = row.event_type ==
+            LP_REVMA_TELEMETRY_CENTER_BLOCKED_ADVERSE ||
+         row.event_type == LP_REVMA_TELEMETRY_CANDIDATE_REJECTION;
+      if(admitted || rejected)
+      {
+         if(!IncrementWriterCounter(
+               m_writer_cycle_candidate_decision_rows[branch]) ||
+            !IncrementWriterCounter(
+               m_writer_run_candidate_decision_rows[branch]))
+            return false;
+         if(admitted)
+         {
+            if(!IncrementWriterCounter(
+                  m_writer_cycle_candidate_admitted_rows[branch]) ||
+               !IncrementWriterCounter(
+                  m_writer_run_candidate_admitted_rows[branch]))
+               return false;
+         }
+         else if(!IncrementWriterCounter(
+               m_writer_cycle_candidate_rejected_rows[branch]) ||
+            !IncrementWriterCounter(
+               m_writer_run_candidate_rejected_rows[branch]))
+            return false;
+      }
+      if(admitted || row.event_type == LP_REVMA_TELEMETRY_GRID_CLOSE)
+      {
+         if(!IncrementWriterCounter(
+               m_writer_cycle_inventory_transition_rows[branch]) ||
+            !IncrementWriterCounter(
+               m_writer_run_inventory_transition_rows[branch]))
+            return false;
+      }
+      return true;
    }
 
    int EventSymbolSlot(const int symbol_id)
@@ -1705,12 +1909,13 @@ private:
          if(state.grid_id == 0 || state.cycle_id != cycle_id)
          {
             if(!LP_RevmaTerminalGridEventSetMix(hash, symbol_id,
-               0, 0, 0, 0))
+               0, 0, 0, 0, 0))
                return 0;
             continue;
          }
           if(state.terminal_transition_m1_time <= 0 ||
              state.terminal_transition_m1_time > terminal_source_m1_time ||
+             state.terminal_projection_hash == 0 ||
              state.terminal_internal_state_hash == 0 ||
              state.terminal_event_hash == 0 ||
             (state.open &&
@@ -1718,6 +1923,7 @@ private:
             return 0;
          if(!LP_RevmaTerminalGridEventSetMix(hash, symbol_id, state.grid_id,
             state.terminal_transition_m1_time,
+            state.terminal_projection_hash,
             state.terminal_internal_state_hash, state.terminal_event_hash))
             return 0;
       }
@@ -1996,17 +2202,19 @@ private:
          state.terminal_internal_state_hash == 0 ||
          state.terminal_atoms_before < 1 ||
          state.terminal_liability_minor < -LP_REVMA_GEOMETRY_ABS_LIMIT ||
-         state.terminal_maximum_adverse_excursion_minor < 0)
+         state.terminal_maximum_adverse_excursion_minor < 0 ||
+         !LP_RevmaDiscoveryTerminalReasonOwnerConsistent(
+            state.terminal_reason, state.terminal_close_owner))
          return false;
       long terminal_adverse = state.terminal_liability_minor < 0 ?
          -state.terminal_liability_minor : 0;
       bool closed = !state.open;
-      int expected_local = closed && state.terminal_close_owner ==
-         LP_REVMA_DISCOVERY_CLOSE_LOCAL_HARVEST ? 1 : 0;
-      int expected_cleanup = closed && state.terminal_close_owner ==
-         LP_REVMA_DISCOVERY_CLOSE_CLEANUP ? 1 : 0;
-      int expected_risk = closed && state.terminal_close_owner ==
-         LP_REVMA_DISCOVERY_CLOSE_HARD_RISK ? 1 : 0;
+      int expected_local = closed && state.terminal_reason ==
+         "grid_harvest" ? 1 : 0;
+      int expected_cleanup = closed && state.terminal_reason ==
+         "account_cleanup" ? 1 : 0;
+      int expected_risk = closed && state.terminal_reason ==
+         "account_risk" ? 1 : 0;
       int expected_applicable = row.branch == LP_REVMA_BRANCH_C &&
          state.center_applicable ? 1 : 0;
       int expected_triggered = expected_applicable > 0 &&
@@ -2049,12 +2257,12 @@ private:
          row.local_harvest_close_count == expected_local &&
          row.cleanup_close_count == expected_cleanup &&
          row.hard_risk_close_count == expected_risk &&
-         row.local_harvest_pnl_minor ==
-            (expected_local > 0 ? state.terminal_harvest_minor : 0) &&
-         row.cleanup_pnl_minor ==
-            (expected_cleanup > 0 ? state.terminal_nonharvest_minor : 0) &&
-         row.hard_risk_pnl_minor ==
-            (expected_risk > 0 ? state.terminal_nonharvest_minor : 0) &&
+          row.local_harvest_pnl_minor ==
+             (expected_local > 0 ? state.terminal_harvest_minor : 0) &&
+          row.cleanup_pnl_minor ==
+             (expected_cleanup > 0 ? state.terminal_nonharvest_minor : 0) &&
+          row.hard_risk_pnl_minor ==
+             (expected_risk > 0 ? state.terminal_nonharvest_minor : 0) &&
          row.cleanup_funding_minor == 0 &&
          row.center_applicable_grids == expected_applicable &&
          row.center_triggered_grids == expected_triggered &&
@@ -2081,6 +2289,7 @@ private:
       LP_RevmaTelemetryLifecycleState state =
          m_lifecycle[row.branch][row.symbol_id];
       state.terminal_event_hash = row.event_hash;
+      state.terminal_projection_hash = row.terminal_projection_hash;
       state.terminal_internal_state_hash =
          row.terminal_internal_state_hash;
       state.terminal_atoms_before = row.atoms_before;
@@ -2512,8 +2721,13 @@ private:
           row.nonharvest_minor != 0 || row.liability_minor >= 0 ||
           !lifecycle_mark_valid || lifecycle_cycle_mark < 0))
          return false;
+      bool exact_already_flat_hard_risk_latch = branch_flat &&
+         branch_atoms == 0 && row.atoms_before == 0 && row.atoms_after == 0 &&
+         row.reservation_minor == 0 && row.q_cash_minor == 0 &&
+         row.margin_minor == 0 && row.liability_minor == 0;
       if(row.event_type == LP_REVMA_TELEMETRY_HARD_RISK_LATCH &&
-         (branch_atoms <= 0 || row.atoms_before != branch_atoms ||
+         ((branch_atoms <= 0 && !exact_already_flat_hard_risk_latch) ||
+          row.atoms_before != branch_atoms ||
           row.atoms_after != branch_atoms || !lifecycle_mark_valid ||
           lifecycle_cycle_mark > -row.budget_minor))
          return false;
@@ -2522,7 +2736,9 @@ private:
             [LP_REVMA_TELEMETRY_CLEANUP_LATCH] ||
           m_cycle_event_seen[row.branch]
             [LP_REVMA_TELEMETRY_HARD_RISK_LATCH] ||
-          !branch_flat || row.atoms_before != 0 || row.atoms_after != 0))
+          !branch_flat || row.atoms_before != 0 || row.atoms_after != 0 ||
+          !lifecycle_mark_valid ||
+          lifecycle_cycle_mark <= -row.budget_minor))
          return false;
       if(row.event_type == LP_REVMA_TELEMETRY_HARD_RISK_COMPLETE &&
          (!m_cycle_event_seen[row.branch]
@@ -3014,6 +3230,80 @@ private:
       ApplyCausalState(row);
    }
 
+   bool SummaryConcurrentRiskState(
+      const LP_RevmaDiscoverySummaryRow &row,
+      LP_RevmaConcurrentBranchRiskState &state)
+   {
+      LP_ResetRevmaConcurrentBranchRiskState(state);
+      state.valid = true;
+      state.branch = row.branch;
+      state.source_m1_time = row.terminal_source_m1_time;
+      state.reservation_minor = row.current_reservation_minor;
+      state.margin_minor = row.current_margin_minor;
+      state.q_cash_minor = row.current_q_cash_minor;
+      state.atom_count = row.current_atoms;
+      state.active_grid_count = row.current_active_grid_count;
+      state.concentration_q_cash_minor =
+         row.current_concentration_q_cash_minor;
+      state.concentration_currency_id =
+         row.current_concentration_currency_id;
+      state.marked_liquidation_minor = row.liability_minor;
+      state.liquidation_liability_minor =
+         row.current_liquidation_liability_minor;
+      state.branch_equity_minor = row.branch_equity_minor;
+      state.equity_high_water_minor = row.equity_high_water_minor;
+      state.branch_drawdown_minor = row.branch_drawdown_minor;
+      state.cycle_peak_reservation_minor =
+         row.cycle_peak_reservation_minor;
+      state.cycle_peak_margin_minor = row.cycle_peak_margin_minor;
+      state.cycle_peak_q_cash_minor = row.cycle_peak_q_cash_minor;
+      state.cycle_peak_atom_count = row.cycle_peak_atom_count;
+      state.cycle_peak_active_grid_count = row.peak_active_grid_count;
+      state.cycle_peak_concentration_q_cash_minor =
+         row.peak_concentration_q_cash_minor;
+      state.cycle_peak_concentration_currency_id =
+         row.peak_concentration_currency_id;
+      state.cycle_peak_liquidation_liability_minor =
+         row.peak_liquidation_liability_minor;
+      state.cycle_maximum_drawdown_minor = row.maximum_drawdown_minor;
+      state.run_peak_reservation_minor = row.run_peak_reservation_minor;
+      state.run_peak_margin_minor = row.run_peak_margin_minor;
+      state.run_peak_q_cash_minor = row.run_peak_q_cash_minor;
+      state.run_peak_atom_count = row.run_peak_atom_count;
+      state.run_peak_active_grid_count = row.run_peak_active_grid_count;
+      state.run_peak_concentration_q_cash_minor =
+         row.run_peak_concentration_q_cash_minor;
+      state.run_peak_concentration_currency_id =
+         row.run_peak_concentration_currency_id;
+      state.run_peak_liquidation_liability_minor =
+         row.run_peak_liquidation_liability_minor;
+      state.run_equity_high_water_minor = row.run_equity_high_water_minor;
+      state.run_maximum_drawdown_minor = row.run_maximum_drawdown_minor;
+      state.cycle_risk_snapshot_count = row.cycle_risk_snapshot_count;
+      state.cycle_risk_snapshot_hash = row.cycle_risk_snapshot_hash;
+      state.run_risk_snapshot_count = row.run_risk_snapshot_count;
+      state.run_risk_snapshot_hash = row.run_risk_snapshot_hash;
+      state.cycle_candidate_built_count = row.cycle_candidate_built_count;
+      state.cycle_candidate_decision_count =
+         row.cycle_candidate_decision_count;
+      state.cycle_candidate_admitted_count =
+         row.cycle_candidate_admitted_count;
+      state.cycle_candidate_rejected_count =
+         row.cycle_candidate_rejected_count;
+      state.cycle_inventory_transition_count =
+         row.cycle_inventory_transition_count;
+      state.run_candidate_built_count = row.run_candidate_built_count;
+      state.run_candidate_decision_count = row.run_candidate_decision_count;
+      state.run_candidate_admitted_count = row.run_candidate_admitted_count;
+      state.run_candidate_rejected_count = row.run_candidate_rejected_count;
+      state.run_inventory_transition_count =
+         row.run_inventory_transition_count;
+      state.state_hash = LP_RevmaConcurrentBranchRiskIdentity(state);
+      return state.state_hash != 0 &&
+         state.state_hash == row.terminal_risk_state_hash &&
+         LP_RevmaConcurrentBranchRiskStateValid(state);
+   }
+
    bool ValidateSummaryState(const LP_RevmaDiscoverySummaryRow &row)
    {
       long expected_realized = 0;
@@ -3045,7 +3335,7 @@ private:
          row.maximum_age_minutes < 0 || row.time_underwater_minutes < 0 ||
          row.local_harvest_close_count < 0 || row.cleanup_close_count < 0 ||
          row.hard_risk_close_count < 0 ||
-         row.cost_minor < 0 || row.harvest_minor < 0 ||
+         row.cost_minor < 0 ||
          row.marked_after_cost_minor != row.liability_minor ||
          row.local_harvest_pnl_minor != row.harvest_minor ||
          !LP_RevmaTelemetrySafeMinorAdd(row.cleanup_pnl_minor,
@@ -3070,8 +3360,7 @@ private:
          row.cleanup_funding_minor != (aggregate_money_scope ?
             m_branch_cleanup_funding_minor[row.branch] : 0) ||
          row.cleanup_funding_minor < 0 ||
-          row.cleanup_funding_minor > row.harvest_minor ||
-          row.unresolved_inventory != !row.final_flat ||
+         row.unresolved_inventory != !row.final_flat ||
          (row.formula_clean && (!row.reconciliation_clean ||
           row.broker_contamination)) ||
          (row.latest_infeasibility == "" &&
@@ -3082,8 +3371,17 @@ private:
           row.summary_type != "run_completion" &&
           (row.terminal_source_m1_time != 0 ||
            row.terminal_grid_state_hash != 0 ||
-           row.terminal_book_hash != 0)) ||
-          row.terminal_reason == "")
+           row.terminal_book_hash != 0 ||
+           row.terminal_projection_hash != 0 ||
+           row.terminal_risk_state_hash != 0)) ||
+         (row.summary_type == "grid" &&
+          (row.terminal_projection_hash == 0 ||
+           row.terminal_risk_state_hash != 0)) ||
+         (row.summary_type == "run_completion" &&
+          (row.terminal_projection_hash != 0 ||
+           row.terminal_risk_state_hash == 0)) ||
+          (row.terminal_reason == "" &&
+           !(row.summary_type == "grid" && !row.final_flat)))
           return false;
       bool aggregate_integrity_scope = row.summary_type == "cycle" ||
          row.summary_type == "reconciliation" ||
@@ -3141,8 +3439,10 @@ private:
              state.terminal_summary_written || row.final_flat == state.open ||
              row.direction != state.direction ||
              row.birth_time != state.birth_m1_time ||
-              row.close_owner != state.terminal_close_owner ||
-              row.terminal_reason != state.terminal_reason ||
+             row.close_owner != state.terminal_close_owner ||
+             row.terminal_reason != state.terminal_reason ||
+             row.terminal_projection_hash !=
+                state.terminal_projection_hash ||
               !GridSummaryMatchesTerminal(row, state))
               return false;
            LP_RevmaTelemetrySummaryLedger symbol_projection =
@@ -3239,6 +3539,9 @@ private:
          ulong expected_terminal_grid_evidence_hash =
             BranchTerminalGridEvidenceHash(row.branch, row.branch_cycle_id,
                row.terminal_source_m1_time);
+         LP_RevmaConcurrentBranchRiskState terminal_risk;
+         bool risk_state_clean = SummaryConcurrentRiskState(row,
+            terminal_risk);
          ulong expected_terminal_book_hash =
             LP_RevmaDiscoveryTerminalBookIdentity(
                row.branch, row.branch_cycle_id,
@@ -3249,8 +3552,34 @@ private:
                row.liability_minor, row.cost_minor,
                row.current_reservation_minor, row.current_margin_minor,
                row.branch_equity_minor, row.close_owner,
-               row.cleanup_shortfall, row.terminal_grid_state_hash);
+               row.cleanup_shortfall,
+               row.close_owner == LP_REVMA_DISCOVERY_CLOSE_HARD_RISK,
+               terminal_risk,
+               row.terminal_grid_state_hash);
          return !m_branch_run_completion_summary[row.branch] &&
+            risk_state_clean &&
+            row.cycle_candidate_built_count ==
+               row.writer_cycle_candidate_decision_rows &&
+            row.cycle_candidate_decision_count ==
+               row.writer_cycle_candidate_decision_rows &&
+            row.cycle_candidate_admitted_count ==
+               row.writer_cycle_candidate_admitted_rows &&
+            row.cycle_candidate_rejected_count ==
+               row.writer_cycle_candidate_rejected_rows &&
+            row.cycle_inventory_transition_count ==
+               row.writer_cycle_inventory_transition_rows &&
+            row.run_candidate_built_count ==
+               row.writer_run_candidate_decision_rows &&
+            row.run_candidate_decision_count ==
+               row.writer_run_candidate_decision_rows &&
+            row.run_candidate_admitted_count ==
+               row.writer_run_candidate_admitted_rows &&
+            row.run_candidate_rejected_count ==
+               row.writer_run_candidate_rejected_rows &&
+            row.run_inventory_transition_count ==
+               row.writer_run_inventory_transition_rows &&
+            row.writer_branch_transition_rows ==
+               m_writer_branch_transition_rows[row.branch] &&
             m_branch_reconciliation_summary[row.branch] &&
             m_branch_reconciliation_clean[row.branch] &&
             m_branch_cycle_sealed[row.branch] &&
@@ -3428,7 +3757,7 @@ private:
 
    string TransitionLine(const LP_RevmaDiscoveryTransitionRow &row)
    {
-      string f[160];
+      string f[170];
       int n = 0;
       f[n++] = LP_RevmaTelemetryCsv(LP_REVMA_DISCOVERY_TELEMETRY_SCHEMA_ID);
       f[n++] = LP_RevmaTelemetryCsv(LP_RevmaDiscoveryTelemetryEventName(row.event_type));
@@ -3454,6 +3783,8 @@ private:
       f[n++] = (string)row.shared_origin_id;
       f[n++] = (string)row.opportunity_id;
       f[n++] = (string)row.matched_snapshot_hash;
+      f[n++] = (string)row.shared_observation_snapshot_hash;
+      f[n++] = (string)row.strategy_state_identity_hash;
       f[n++] = IntegerToString(row.symbol_id);
       f[n++] = IntegerToString(row.direction);
       f[n++] = IntegerToString(row.candidate_type);
@@ -3542,6 +3873,7 @@ private:
       f[n++] = (string)row.incremental_liquidation_minor;
       f[n++] = (string)row.incremental_close_cost_minor;
       f[n++] = (string)row.concentration_q_cash_minor;
+      f[n++] = IntegerToString(row.concentration_currency_id);
       f[n++] = (string)row.commission_minor;
       f[n++] = (string)row.swap_minor;
       f[n++] = (string)row.liquidation_cost_minor;
@@ -3562,6 +3894,7 @@ private:
       f[n++] = LP_RevmaTelemetryCsv(row.grid_terminal_reason);
       f[n++] = (string)row.pre_candidate_state_hash;
       f[n++] = (string)row.terminal_internal_state_hash;
+      f[n++] = (string)row.terminal_projection_hash;
       f[n++] = (string)row.event_hash;
       f[n++] = (string)row.reconciliation_hash;
       return LP_RevmaTelemetryJoin(f, n);
@@ -3569,7 +3902,7 @@ private:
 
    string SummaryLine(const LP_RevmaDiscoverySummaryRow &row)
    {
-      string f[96];
+      string f[160];
       int n = 0;
       f[n++] = LP_RevmaTelemetryCsv(LP_REVMA_DISCOVERY_TELEMETRY_SCHEMA_ID);
       f[n++] = LP_RevmaTelemetryCsv(row.summary_type);
@@ -3659,6 +3992,57 @@ private:
       f[n++] = (string)row.transition_flush_max_microseconds;
       f[n++] = (string)row.summary_flush_microseconds;
       f[n++] = (string)row.summary_flush_max_microseconds;
+      f[n++] = (string)row.current_q_cash_minor;
+      f[n++] = IntegerToString(row.current_active_grid_count);
+      f[n++] = (string)row.current_concentration_q_cash_minor;
+      f[n++] = IntegerToString(row.current_concentration_currency_id);
+      f[n++] = (string)row.current_liquidation_liability_minor;
+      f[n++] = (string)row.equity_high_water_minor;
+      f[n++] = (string)row.branch_drawdown_minor;
+      f[n++] = (string)row.cycle_peak_reservation_minor;
+      f[n++] = (string)row.cycle_peak_margin_minor;
+      f[n++] = (string)row.cycle_peak_q_cash_minor;
+      f[n++] = IntegerToString(row.cycle_peak_atom_count);
+      f[n++] = IntegerToString(row.peak_active_grid_count);
+      f[n++] = (string)row.peak_concentration_q_cash_minor;
+      f[n++] = IntegerToString(row.peak_concentration_currency_id);
+      f[n++] = (string)row.peak_liquidation_liability_minor;
+      f[n++] = (string)row.maximum_drawdown_minor;
+      f[n++] = (string)row.cycle_risk_snapshot_count;
+      f[n++] = (string)row.cycle_risk_snapshot_hash;
+      f[n++] = (string)row.cycle_candidate_built_count;
+      f[n++] = (string)row.cycle_candidate_decision_count;
+      f[n++] = (string)row.cycle_candidate_admitted_count;
+      f[n++] = (string)row.cycle_candidate_rejected_count;
+      f[n++] = (string)row.cycle_inventory_transition_count;
+      f[n++] = (string)row.terminal_projection_hash;
+      f[n++] = (string)row.terminal_risk_state_hash;
+      f[n++] = (string)row.run_peak_reservation_minor;
+      f[n++] = (string)row.run_peak_margin_minor;
+      f[n++] = (string)row.run_peak_q_cash_minor;
+      f[n++] = IntegerToString(row.run_peak_atom_count);
+      f[n++] = IntegerToString(row.run_peak_active_grid_count);
+      f[n++] = (string)row.run_peak_concentration_q_cash_minor;
+      f[n++] = IntegerToString(row.run_peak_concentration_currency_id);
+      f[n++] = (string)row.run_peak_liquidation_liability_minor;
+      f[n++] = (string)row.run_equity_high_water_minor;
+      f[n++] = (string)row.run_maximum_drawdown_minor;
+      f[n++] = (string)row.run_risk_snapshot_count;
+      f[n++] = (string)row.run_risk_snapshot_hash;
+      f[n++] = (string)row.run_candidate_built_count;
+      f[n++] = (string)row.run_candidate_decision_count;
+      f[n++] = (string)row.run_candidate_admitted_count;
+      f[n++] = (string)row.run_candidate_rejected_count;
+      f[n++] = (string)row.run_inventory_transition_count;
+      f[n++] = (string)row.writer_branch_transition_rows;
+      f[n++] = (string)row.writer_cycle_candidate_decision_rows;
+      f[n++] = (string)row.writer_cycle_candidate_admitted_rows;
+      f[n++] = (string)row.writer_cycle_candidate_rejected_rows;
+      f[n++] = (string)row.writer_cycle_inventory_transition_rows;
+      f[n++] = (string)row.writer_run_candidate_decision_rows;
+      f[n++] = (string)row.writer_run_candidate_admitted_rows;
+      f[n++] = (string)row.writer_run_candidate_rejected_rows;
+      f[n++] = (string)row.writer_run_inventory_transition_rows;
       return LP_RevmaTelemetryJoin(f, n);
    }
 
@@ -3748,6 +4132,276 @@ public:
       if(!CanResetForNewRun())
          return false;
       ResetState();
+      return true;
+   }
+
+   bool RegisterCompletedM1CohortIdentity(
+      const datetime source_m1_time,
+      const ulong cohort_snapshot_hash,
+      const ulong cohort_signal_hash,
+      const ulong cohort_strategy_hash)
+   {
+      if(!m_initialized || !m_valid || source_m1_time <= 0 ||
+         ((long)source_m1_time % 60) != 0 ||
+         source_m1_time <= m_registered_cohort_source_m1_time ||
+         cohort_snapshot_hash == 0 || cohort_signal_hash == 0 ||
+         cohort_strategy_hash == 0)
+      {
+         Invalidate("completed_m1_cohort_identity_registration_failed");
+         return false;
+      }
+      m_registered_cohort_source_m1_time = source_m1_time;
+      m_registered_cohort_snapshot_hash = cohort_snapshot_hash;
+      m_registered_cohort_signal_hash = cohort_signal_hash;
+      m_registered_cohort_strategy_hash = cohort_strategy_hash;
+      return true;
+   }
+
+   bool SeedTransitionRow(LP_RevmaDiscoveryTransitionRow &row)
+   {
+      LP_ResetRevmaDiscoveryTransitionRow(row);
+      if(!m_initialized || !m_valid)
+         return false;
+      row.valid = true;
+      row.run_id = m_run_id;
+      row.source_revision = m_source_revision;
+      row.profile_id = m_profile_id;
+      row.profile_hash = m_profile_hash;
+      row.config_hash = m_config_hash;
+      row.formula_hash = m_formula_hash;
+      return true;
+   }
+
+   bool SeedSummaryRow(
+      const string summary_type,
+      const int branch,
+      LP_RevmaDiscoverySummaryRow &row)
+   {
+      LP_ResetRevmaDiscoverySummaryRow(row);
+      if(!m_initialized || !m_valid ||
+         !LP_RevmaTelemetrySummaryTypeValid(summary_type) ||
+         !LP_RevmaDiscoveryBranchValid(branch) ||
+         m_branch_cycle_id[branch] == 0)
+         return false;
+      row.valid = true;
+      row.summary_type = summary_type;
+      row.run_id = m_run_id;
+      row.source_revision = m_source_revision;
+      row.profile_id = m_profile_id;
+      row.profile_hash = m_profile_hash;
+      row.config_hash = m_config_hash;
+      row.formula_hash = m_formula_hash;
+      row.branch = branch;
+      row.branch_cycle_id = m_branch_cycle_id[branch];
+      row.account_cycle_id = m_branch_account_cycle_id[branch];
+      row.equity_reference_minor =
+         m_branch_equity_reference_minor[branch];
+      row.budget_minor = m_branch_budget_minor[branch];
+      row.formula_clean = true;
+      row.reconciliation_clean = true;
+      return true;
+   }
+
+   bool BuildGridSummaryBase(
+      const int branch,
+      const int symbol_id,
+      LP_RevmaDiscoverySummaryRow &row)
+   {
+      if(symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT ||
+         !SeedSummaryRow("grid", branch, row))
+         return false;
+      LP_RevmaTelemetryLifecycleState state =
+         m_lifecycle[branch][symbol_id];
+      if(state.grid_id == 0 || state.cycle_id != row.branch_cycle_id ||
+         state.terminal_event_hash == 0 ||
+         state.terminal_projection_hash == 0 ||
+         state.terminal_internal_state_hash == 0 ||
+         state.terminal_summary_written)
+         return false;
+      row.branch_grid_id = state.grid_id;
+      row.symbol_id = symbol_id;
+      row.direction = state.direction;
+      row.birth_time = state.birth_m1_time;
+      row.close_time = state.open ? 0 :
+         state.terminal_transition_m1_time;
+      row.peak_atoms = state.terminal_atoms_before;
+      row.peak_lots = state.terminal_lots_before;
+      row.current_atoms = state.terminal_atoms_after;
+      row.current_lots = state.terminal_lots_after;
+      row.current_reservation_minor = state.open ?
+         state.terminal_reservation_minor : 0;
+      row.current_margin_minor = state.open ?
+         state.terminal_margin_minor : 0;
+      row.current_q_cash_minor = state.open ?
+         state.terminal_q_cash_minor : 0;
+      row.current_active_grid_count = state.open ? 1 : 0;
+      row.current_liquidation_liability_minor = state.open &&
+         state.terminal_liability_minor < 0 ?
+            -state.terminal_liability_minor : 0;
+      row.peak_reservation_minor = state.terminal_reservation_minor;
+      row.reservation_overrun_observed =
+         state.terminal_reservation_overrun;
+      row.peak_reservation_overrun_minor =
+         state.terminal_reservation_overrun_minor;
+      row.peak_q_cash_minor = state.terminal_q_cash_minor;
+      row.peak_margin_minor = state.terminal_margin_minor;
+      row.peak_active_grid_count = 1;
+      row.peak_liquidation_liability_minor =
+         state.terminal_maximum_adverse_excursion_minor;
+      row.maximum_adverse_excursion_minor =
+         state.terminal_maximum_adverse_excursion_minor;
+      row.maximum_age_minutes = state.terminal_grid_age_minutes;
+      row.time_underwater_minutes =
+         state.terminal_time_underwater_minutes;
+      row.harvest_minor = state.terminal_harvest_minor;
+      row.nonharvest_minor = state.terminal_nonharvest_minor;
+      row.liability_minor = state.terminal_liability_minor;
+      row.cost_minor = state.terminal_cost_minor;
+      if(!LP_RevmaTelemetrySafeMinorAdd(row.harvest_minor,
+            row.nonharvest_minor, row.realized_after_cost_minor) ||
+         !LP_RevmaTelemetrySafeMinorAdd(row.realized_after_cost_minor,
+            row.liability_minor, row.managed_cycle_pnl_minor) ||
+         !LP_RevmaTelemetrySafeMinorAdd(row.equity_reference_minor,
+            row.managed_cycle_pnl_minor, row.branch_equity_minor))
+         return false;
+      row.marked_after_cost_minor = row.liability_minor;
+      row.close_owner = state.terminal_close_owner;
+      row.local_harvest_close_count = !state.open &&
+         state.terminal_reason == "grid_harvest" ? 1 : 0;
+      row.cleanup_close_count = !state.open &&
+         state.terminal_reason == "account_cleanup" ? 1 : 0;
+      row.hard_risk_close_count = !state.open &&
+         state.terminal_reason == "account_risk" ? 1 : 0;
+      row.local_harvest_pnl_minor =
+         row.local_harvest_close_count > 0 ? row.harvest_minor : 0;
+      row.cleanup_pnl_minor = row.cleanup_close_count > 0 ?
+         row.nonharvest_minor : 0;
+      row.hard_risk_pnl_minor = row.hard_risk_close_count > 0 ?
+         row.nonharvest_minor : 0;
+      row.center_applicable_grids = branch == LP_REVMA_BRANCH_C &&
+         state.center_applicable ? 1 : 0;
+      row.center_triggered_grids = row.center_applicable_grids > 0 &&
+         state.center_triggered ? 1 : 0;
+      row.center_not_triggered_grids = row.center_applicable_grids > 0 &&
+         !state.center_triggered ? 1 : 0;
+      row.center_not_applicable_grids = branch == LP_REVMA_BRANCH_C &&
+         !state.center_applicable ? 1 : 0;
+      row.center_blocked_adverse_candidates = state.blocked_adverse_count;
+      row.favorable_eligible_after_latch =
+         state.favorable_eligible_after_latch;
+      row.center_latched = state.center_triggered;
+      row.first_latch_time = state.center_latch_time;
+      row.final_flat = !state.open;
+      row.unresolved_inventory = state.open;
+      row.terminal_reason = state.terminal_reason;
+      row.summary_child_evidence_hash = state.terminal_event_hash;
+      row.terminal_grid_state_hash =
+         state.terminal_internal_state_hash;
+      row.terminal_projection_hash = state.terminal_projection_hash;
+      return true;
+   }
+
+   bool BuildRollupSummaryBase(
+      const string summary_type,
+      const int branch,
+      const int requested_symbol_id,
+      LP_RevmaDiscoverySummaryRow &row)
+   {
+      if(summary_type == "grid" ||
+         !SeedSummaryRow(summary_type, branch, row))
+         return false;
+      LP_RevmaTelemetrySummaryLedger ledger;
+      LP_ResetRevmaTelemetrySummaryLedger(ledger);
+      bool aggregate = summary_type == "cycle" ||
+         summary_type == "reconciliation" ||
+         summary_type == "run_completion";
+      if(summary_type == "symbol")
+      {
+         if(requested_symbol_id < 0 ||
+            requested_symbol_id >= LP_SYMBOL_COUNT)
+            return false;
+         row.symbol_id = requested_symbol_id;
+         ledger = m_symbol_summary_ledger[branch][requested_symbol_id];
+      }
+      else if(summary_type == "top_offender")
+      {
+         int offender = ExpectedTopOffenderSymbolId(branch);
+         row.symbol_id = offender;
+         ledger = offender < 0 ? m_branch_summary_ledger[branch] :
+            m_symbol_summary_ledger[branch][offender];
+      }
+      else
+      {
+         row.symbol_id = -1;
+         ledger = m_branch_summary_ledger[branch];
+      }
+      if(!ledger.valid)
+         return false;
+      row.direction = ledger.peak_direction;
+      if(ledger.peak_atoms == 0)
+         row.direction = LP_SIDE_NONE;
+      row.peak_atoms = ledger.peak_atoms;
+      row.peak_lots = ledger.peak_lots;
+      row.current_atoms = ledger.current_atoms;
+      row.current_lots = ledger.current_lots;
+      row.current_reservation_minor = ledger.current_reservation_minor;
+      row.current_margin_minor = ledger.current_margin_minor;
+      row.peak_reservation_minor = ledger.peak_reservation_minor;
+      row.reservation_overrun_observed =
+         ledger.reservation_overrun_observed;
+      row.peak_reservation_overrun_minor =
+         ledger.peak_reservation_overrun_minor;
+      row.peak_q_cash_minor = ledger.peak_q_cash_minor;
+      row.peak_margin_minor = ledger.peak_margin_minor;
+      row.maximum_adverse_excursion_minor =
+         ledger.maximum_adverse_excursion_minor;
+      row.maximum_age_minutes = ledger.maximum_age_minutes;
+      row.time_underwater_minutes = ledger.time_underwater_minutes;
+      row.harvest_minor = ledger.harvest_minor;
+      row.nonharvest_minor = ledger.nonharvest_minor;
+      row.liability_minor = ledger.liability_minor;
+      row.cost_minor = ledger.cost_minor;
+      row.local_harvest_close_count = ledger.local_harvest_close_count;
+      row.cleanup_close_count = ledger.cleanup_close_count;
+      row.hard_risk_close_count = ledger.hard_risk_close_count;
+      row.local_harvest_pnl_minor = ledger.local_harvest_pnl_minor;
+      row.cleanup_pnl_minor = ledger.cleanup_pnl_minor;
+      row.hard_risk_pnl_minor = ledger.hard_risk_pnl_minor;
+      row.center_applicable_grids = ledger.center_applicable_grids;
+      row.center_triggered_grids = ledger.center_triggered_grids;
+      row.center_not_triggered_grids =
+         ledger.center_not_triggered_grids;
+      row.center_not_applicable_grids =
+         ledger.center_not_applicable_grids;
+      row.center_blocked_adverse_candidates =
+         ledger.center_blocked_adverse_candidates;
+      row.favorable_eligible_after_latch =
+         ledger.favorable_eligible_after_latch;
+      row.center_latched = ledger.center_latched;
+      row.first_latch_time = ledger.first_latch_time;
+      row.summary_child_evidence_hash =
+         FinalSummaryLedgerEvidenceHash(ledger);
+      if(row.summary_child_evidence_hash == 0 ||
+         !LP_RevmaTelemetrySafeMinorAdd(row.harvest_minor,
+            row.nonharvest_minor, row.realized_after_cost_minor) ||
+         !LP_RevmaTelemetrySafeMinorAdd(row.realized_after_cost_minor,
+            row.liability_minor, row.managed_cycle_pnl_minor) ||
+         !LP_RevmaTelemetrySafeMinorAdd(row.equity_reference_minor,
+            row.managed_cycle_pnl_minor, row.branch_equity_minor))
+         return false;
+      row.marked_after_cost_minor = row.liability_minor;
+      row.final_flat = row.current_atoms == 0;
+      row.unresolved_inventory = !row.final_flat;
+      row.close_owner = aggregate ? m_branch_close_owner[branch] :
+         LP_REVMA_DISCOVERY_CLOSE_NONE;
+      row.first_infeasibility = aggregate ?
+         m_branch_first_infeasibility[branch] : "";
+      row.latest_infeasibility = aggregate ?
+         m_branch_latest_infeasibility[branch] : "";
+      row.latest_infeasibility_m1_time = aggregate ?
+         m_branch_latest_infeasibility_m1[branch] : 0;
+      row.terminal_reason = aggregate ?
+         m_branch_terminal_reason[branch] : "scope_complete";
       return true;
    }
 
@@ -3845,8 +4499,8 @@ public:
       m_valid = true;
       m_initialized = true;
       m_invalid_reason = "";
-      string transition_header = "schema_id,event_type,sequence,event_time,source_m1_time,run_id,source_revision,profile_id,profile_hash,config_hash,formula_hash,signal_identity_hash,q_day_count,q_event_count,reconstruction_epoch,branch_id,branch_grid_id,branch_cycle_id,account_cycle_id,grid_generation,candidate_identity,shared_origin_id,opportunity_id,matched_snapshot_hash,symbol_id,direction,candidate_type,birth_bucket,center_alignment,p0,stress_price,fill_price,current_price,c0,previous_center,current_center,q0,current_q,q_profile_id,q_event_cadence,current_q_ratio,discovery_cell_ticks,discovery_cell_price,broker_tick_size,p0_ticks,c0_ticks,previous_center_ticks,current_center_ticks,support0_sign,previous_support_sign,current_support_sign,support0_q,current_support_q,revision_q,center_applicable,center_latched,center_latch_time,center_update_count,center_observation_index,center_not_available_count,first_center_update_observation_index,last_center_update_observation_index,first_center_update_q_event_index,last_center_update_q_event_index,first_center_update_time,last_center_update_time,center_staleness_minutes,cumulative_signed_revision_q,cumulative_absolute_revision_q,minimum_support_q,maximum_support_q,regression_sum_x,regression_sum_y,regression_sum_x2,regression_sum_xy,blocked_adverse_count,previous_cell_index,current_cell_index,total_cell_path,completed_cell_crossings,unfilled_jump_cells,matched_reversal_crossings,adverse_frontier_expansions,favorable_frontier_expansions,max_cell_jump,last_movement_sign,minimum_cell_index,maximum_cell_index,new_extreme_count,initial_history_boundary,last_reversal_m1,time_since_last_reversal_minutes,last_positive_liquidation_opportunity_m1,time_since_positive_liquidation_opportunity_minutes,atoms_before,atoms_after,lots_before,lots_after,reservation_minor,q_cash_minor,prospective_reservation_minor,prospective_q_cash_minor,a_g_candidate_minor,a_g_minor,reservation_overrun,reservation_overrun_minor,margin_minor,incremental_margin_minor,incremental_liquidation_minor,incremental_close_cost_minor,concentration_q_cash_minor,commission_minor,swap_minor,liquidation_cost_minor,maximum_adverse_excursion_minor,grid_age_minutes,time_underwater_minutes,weighted_entry_sum,adverse_add_count,favorable_add_count,harvest_minor,nonharvest_minor,liability_minor,budget_minor,equity_reference_minor,close_owner,decision,reason,grid_terminal_reason,pre_candidate_state_hash,terminal_internal_state_hash,event_hash,reconciliation_hash";
-      string summary_header = "schema_id,summary_type,summary_sequence,run_id,source_revision,profile_id,profile_hash,config_hash,formula_hash,branch_id,branch_grid_id,branch_cycle_id,account_cycle_id,symbol_id,direction,birth_time,close_time,peak_atoms,peak_lots,current_atoms,current_lots,current_reservation_minor,current_margin_minor,peak_reservation_minor,reservation_overrun_observed,peak_reservation_overrun_minor,peak_q_cash_minor,peak_margin_minor,maximum_adverse_excursion_minor,maximum_age_minutes,time_underwater_minutes,realized_after_cost_minor,marked_after_cost_minor,cost_minor,harvest_minor,nonharvest_minor,local_harvest_close_count,cleanup_close_count,hard_risk_close_count,local_harvest_pnl_minor,cleanup_pnl_minor,hard_risk_pnl_minor,liability_minor,cleanup_funding_minor,managed_cycle_pnl_minor,branch_equity_minor,budget_minor,equity_reference_minor,close_owner,center_applicable_grids,center_triggered_grids,center_not_triggered_grids,center_not_applicable_grids,center_blocked_adverse_candidates,favorable_eligible_after_latch,center_latched,first_latch_time,final_flat,cleanup_shortfall,broker_contamination,formula_clean,reconciliation_clean,unresolved_inventory,first_infeasibility,latest_infeasibility,latest_infeasibility_m1_time,terminal_reason,summary_child_evidence_hash,event_hash,reconciliation_hash,terminal_branch_transition_hash,terminal_source_m1_time,terminal_grid_state_hash,terminal_book_hash,run_elapsed_microseconds,transition_rows,transition_bytes,transition_committed_rows,summary_rows,summary_committed_rows,appended_transition_chain_hash,committed_transition_chain_hash,appended_summary_chain_hash,committed_summary_chain_hash,transition_flush_microseconds,transition_flush_max_microseconds,summary_flush_microseconds,summary_flush_max_microseconds";
+      string transition_header = "schema_id,event_type,sequence,event_time,source_m1_time,run_id,source_revision,profile_id,profile_hash,config_hash,formula_hash,signal_identity_hash,q_day_count,q_event_count,reconstruction_epoch,branch_id,branch_grid_id,branch_cycle_id,account_cycle_id,grid_generation,candidate_identity,shared_origin_id,opportunity_id,matched_snapshot_hash,shared_observation_snapshot_hash,strategy_state_identity_hash,symbol_id,direction,candidate_type,birth_bucket,center_alignment,p0,stress_price,fill_price,current_price,c0,previous_center,current_center,q0,current_q,q_profile_id,q_event_cadence,current_q_ratio,discovery_cell_ticks,discovery_cell_price,broker_tick_size,p0_ticks,c0_ticks,previous_center_ticks,current_center_ticks,support0_sign,previous_support_sign,current_support_sign,support0_q,current_support_q,revision_q,center_applicable,center_latched,center_latch_time,center_update_count,center_observation_index,center_not_available_count,first_center_update_observation_index,last_center_update_observation_index,first_center_update_q_event_index,last_center_update_q_event_index,first_center_update_time,last_center_update_time,center_staleness_minutes,cumulative_signed_revision_q,cumulative_absolute_revision_q,minimum_support_q,maximum_support_q,regression_sum_x,regression_sum_y,regression_sum_x2,regression_sum_xy,blocked_adverse_count,previous_cell_index,current_cell_index,total_cell_path,completed_cell_crossings,unfilled_jump_cells,matched_reversal_crossings,adverse_frontier_expansions,favorable_frontier_expansions,max_cell_jump,last_movement_sign,minimum_cell_index,maximum_cell_index,new_extreme_count,initial_history_boundary,last_reversal_m1,time_since_last_reversal_minutes,last_positive_liquidation_opportunity_m1,time_since_positive_liquidation_opportunity_minutes,atoms_before,atoms_after,lots_before,lots_after,reservation_minor,q_cash_minor,prospective_reservation_minor,prospective_q_cash_minor,a_g_candidate_minor,a_g_minor,reservation_overrun,reservation_overrun_minor,margin_minor,incremental_margin_minor,incremental_liquidation_minor,incremental_close_cost_minor,concentration_q_cash_minor,concentration_currency_id,commission_minor,swap_minor,liquidation_cost_minor,maximum_adverse_excursion_minor,grid_age_minutes,time_underwater_minutes,weighted_entry_sum,adverse_add_count,favorable_add_count,harvest_minor,nonharvest_minor,liability_minor,budget_minor,equity_reference_minor,close_owner,decision,reason,grid_terminal_reason,pre_candidate_state_hash,terminal_internal_state_hash,terminal_projection_hash,event_hash,reconciliation_hash";
+      string summary_header = "schema_id,summary_type,summary_sequence,run_id,source_revision,profile_id,profile_hash,config_hash,formula_hash,branch_id,branch_grid_id,branch_cycle_id,account_cycle_id,symbol_id,direction,birth_time,close_time,peak_atoms,peak_lots,current_atoms,current_lots,current_reservation_minor,current_margin_minor,peak_reservation_minor,reservation_overrun_observed,peak_reservation_overrun_minor,peak_q_cash_minor,peak_margin_minor,maximum_adverse_excursion_minor,maximum_age_minutes,time_underwater_minutes,realized_after_cost_minor,marked_after_cost_minor,cost_minor,harvest_minor,nonharvest_minor,local_harvest_close_count,cleanup_close_count,hard_risk_close_count,local_harvest_pnl_minor,cleanup_pnl_minor,hard_risk_pnl_minor,liability_minor,cleanup_funding_minor,managed_cycle_pnl_minor,branch_equity_minor,budget_minor,equity_reference_minor,close_owner,center_applicable_grids,center_triggered_grids,center_not_triggered_grids,center_not_applicable_grids,center_blocked_adverse_candidates,favorable_eligible_after_latch,center_latched,first_latch_time,final_flat,cleanup_shortfall,broker_contamination,formula_clean,reconciliation_clean,unresolved_inventory,first_infeasibility,latest_infeasibility,latest_infeasibility_m1_time,terminal_reason,summary_child_evidence_hash,event_hash,reconciliation_hash,terminal_branch_transition_hash,terminal_source_m1_time,terminal_grid_state_hash,terminal_book_hash,run_elapsed_microseconds,transition_rows,transition_bytes,transition_committed_rows,summary_rows,summary_committed_rows,appended_transition_chain_hash,committed_transition_chain_hash,appended_summary_chain_hash,committed_summary_chain_hash,transition_flush_microseconds,transition_flush_max_microseconds,summary_flush_microseconds,summary_flush_max_microseconds,current_q_cash_minor,current_active_grid_count,current_concentration_q_cash_minor,current_concentration_currency_id,current_liquidation_liability_minor,equity_high_water_minor,branch_drawdown_minor,cycle_peak_reservation_minor,cycle_peak_margin_minor,cycle_peak_q_cash_minor,cycle_peak_atom_count,peak_active_grid_count,peak_concentration_q_cash_minor,peak_concentration_currency_id,peak_liquidation_liability_minor,maximum_drawdown_minor,cycle_risk_snapshot_count,cycle_risk_snapshot_hash,cycle_candidate_built_count,cycle_candidate_decision_count,cycle_candidate_admitted_count,cycle_candidate_rejected_count,cycle_inventory_transition_count,terminal_projection_hash,terminal_risk_state_hash,run_peak_reservation_minor,run_peak_margin_minor,run_peak_q_cash_minor,run_peak_atom_count,run_peak_active_grid_count,run_peak_concentration_q_cash_minor,run_peak_concentration_currency_id,run_peak_liquidation_liability_minor,run_equity_high_water_minor,run_maximum_drawdown_minor,run_risk_snapshot_count,run_risk_snapshot_hash,run_candidate_built_count,run_candidate_decision_count,run_candidate_admitted_count,run_candidate_rejected_count,run_inventory_transition_count,writer_branch_transition_rows,writer_cycle_candidate_decision_rows,writer_cycle_candidate_admitted_rows,writer_cycle_candidate_rejected_rows,writer_cycle_inventory_transition_rows,writer_run_candidate_decision_rows,writer_run_candidate_admitted_rows,writer_run_candidate_rejected_rows,writer_run_inventory_transition_rows";
       string manifest_header = "schema_id,manifest_sequence,run_id,source_revision,profile_id,profile_hash,config_hash,formula_hash,complete,invalid_reason,transition_attempted_rows,transition_committed_rows,transition_bytes,transition_file_size,summary_attempted_rows,summary_committed_rows,summary_bytes,summary_file_size,appended_transition_chain_hash,committed_transition_chain_hash,appended_summary_chain_hash,committed_summary_chain_hash,transition_flushes,summary_flushes,transition_flush_microseconds,transition_flush_max_microseconds,summary_flush_microseconds,summary_flush_max_microseconds,failure_events,last_transition_sequence,last_summary_sequence,run_elapsed_microseconds,previous_manifest_chain_hash,manifest_row_hash,manifest_chain_hash";
       if(!GuardLine(transition_header, true) || !GuardLine(summary_header, false) ||
          StringLen(manifest_header) + 2 > LP_REVMA_DISCOVERY_MAX_LINE_BYTES)
@@ -3932,6 +4586,9 @@ public:
       ulong &appended_event_hash)
    {
       appended_event_hash = 0;
+      bool aggregate_branch_event = row.symbol_id == -1 &&
+         row.event_type != LP_REVMA_TELEMETRY_FAILURE &&
+         row.event_type != LP_REVMA_TELEMETRY_CYCLE_START;
       if(!m_initialized || !m_valid || !row.valid ||
          row.event_time <= 0 || row.run_id != m_run_id ||
          row.source_revision != m_source_revision || row.profile_id != m_profile_id ||
@@ -3949,6 +4606,13 @@ public:
           !LP_RevmaTelemetryAsciiFieldValid(row.reason, true) ||
           !LP_RevmaTelemetryAsciiFieldValid(row.grid_terminal_reason, true) ||
          !LP_RevmaTelemetryEventShapeValid(row) ||
+         (aggregate_branch_event &&
+          (row.source_m1_time != m_registered_cohort_source_m1_time ||
+           row.shared_observation_snapshot_hash !=
+              m_registered_cohort_snapshot_hash ||
+           row.signal_identity_hash != m_registered_cohort_signal_hash ||
+           row.strategy_state_identity_hash !=
+              m_registered_cohort_strategy_hash)) ||
          !ValidateTransitionState(row) ||
          (row.candidate_identity != 0 &&
           row.candidate_identity != LP_RevmaDiscoveryAdmissionIdentity(
@@ -4000,6 +4664,11 @@ public:
       m_next_sequence++;
       m_appended_transition_chain_hash = chain_hash;
       m_branch_transition_chain[materialized.branch] = chain_hash;
+      if(!ApplyWriterTransitionCounts(materialized))
+      {
+         Invalidate("telemetry_writer_transition_count_overflow");
+         return false;
+      }
       ApplyTransitionState(materialized);
       if(m_transition_count >= LP_REVMA_DISCOVERY_TRANSITION_FLUSH_ROWS)
       {
@@ -4014,6 +4683,24 @@ public:
       if(LP_RevmaDiscoveryBranchValid(row.branch))
       {
          row.account_cycle_id = m_branch_account_cycle_id[row.branch];
+         row.writer_branch_transition_rows =
+            m_writer_branch_transition_rows[row.branch];
+         row.writer_cycle_candidate_decision_rows =
+            m_writer_cycle_candidate_decision_rows[row.branch];
+         row.writer_cycle_candidate_admitted_rows =
+            m_writer_cycle_candidate_admitted_rows[row.branch];
+         row.writer_cycle_candidate_rejected_rows =
+            m_writer_cycle_candidate_rejected_rows[row.branch];
+         row.writer_cycle_inventory_transition_rows =
+            m_writer_cycle_inventory_transition_rows[row.branch];
+         row.writer_run_candidate_decision_rows =
+            m_writer_run_candidate_decision_rows[row.branch];
+         row.writer_run_candidate_admitted_rows =
+            m_writer_run_candidate_admitted_rows[row.branch];
+         row.writer_run_candidate_rejected_rows =
+            m_writer_run_candidate_rejected_rows[row.branch];
+         row.writer_run_inventory_transition_rows =
+            m_writer_run_inventory_transition_rows[row.branch];
          bool aggregate_money_scope = row.summary_type == "cycle" ||
             row.summary_type == "reconciliation" ||
             row.summary_type == "run_completion";

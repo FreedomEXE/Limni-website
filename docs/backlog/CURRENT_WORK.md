@@ -77,6 +77,17 @@ controlled telemetry validation; see
 
 ### Gate 108 - RevMA Adaptive Grid Discovery v1 (implementation open)
 
+### Gate 108A canonical terminal consolidation — 2026-07-11
+
+Canonical MT5 target is now exclusively terminal ID `94497` with data root
+`C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB`.
+The active manifest, synchronization tool, and static audit reject obsolete
+terminal targets. The 57-file source closure, controlled preset, and canonical
+EX5 were synchronized and proved in
+`docs/research/gates/gate108/GATE108A_CANONICAL_TERMINAL_CONSOLIDATION_2026-07-11.md`.
+No tester/backtest ran and no old terminal was removed. Freedom owns the
+manual removal decision after review.
+
 Freedom accepted Gate 107C-R as diagnostically closed and explicitly opened
 Gate 108 implementation on 2026-07-10. Gate 107C-R is not a promoted strategy.
 Gate 108 proceeds in small reviewable phases and stops before every

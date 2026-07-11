@@ -56,16 +56,51 @@ public:
          config, run_id, equity_reference_minor, money_quantum);
    }
 
-   bool FinalizeRevmaDiscovery(
-      const datetime terminal_completed_m1_time,
-      const ulong real_terminal_grid_state_hash,
-      const ulong real_terminal_book_hash,
-      const bool real_final_flat)
+   bool FinalizeRevmaDiscovery()
    {
-      return m_revma.FinalizeDiscovery(
-         terminal_completed_m1_time, real_terminal_grid_state_hash,
-         real_terminal_book_hash,
-         real_final_flat);
+      return m_revma.FinalizeDiscovery();
+   }
+
+   bool ReconcileRevmaDiscoveryRealConfirmedFlat(
+      LP_GridBook &grid_book,
+      const long actual_account_equity_minor)
+   {
+      return m_revma.ReconcileDiscoveryRealConfirmedFlat(grid_book,
+         actual_account_equity_minor);
+   }
+
+   int ContinueRevmaDiscoveryRealCloses(
+      LP_GridBook &grid_book,
+      LP_IntentBus &bus)
+   {
+      if(!m_enabled)
+         return 0;
+      return m_revma.ContinueDiscoveryRealCloses(grid_book, bus, 0);
+   }
+
+   int ProcessRevmaDiscoveryCompletedM1Batch(
+      LP_RevmaCompletedM1Snapshot &snapshots[],
+      const int snapshot_count,
+      LP_GridBook &grid_book,
+      LP_IntentBus &bus)
+   {
+      if(!m_enabled)
+         return 0;
+      return m_revma.ProcessDiscoveryCompletedM1Batch(
+         snapshots, snapshot_count, grid_book, bus);
+   }
+
+   bool EndRevmaDiscoveryRealBatch()
+   {
+      return m_revma.EndDiscoveryRealBatch();
+   }
+
+   bool AuthorizeRevmaDiscoveryRealIntentBeforeRoute(
+      const LP_TradeIntent &intent,
+      bool &authorized)
+   {
+      return m_revma.AuthorizeDiscoveryRealIntentBeforeRoute(intent,
+         authorized);
    }
 
    bool RevmaDiscoveryTelemetryValid()

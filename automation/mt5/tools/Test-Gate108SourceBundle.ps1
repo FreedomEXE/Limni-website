@@ -1,5 +1,6 @@
 param(
-    [switch]$PrintExpectedOnly
+    [switch]$PrintExpectedOnly,
+    [string]$ManifestPath = ""
 )
 
 Set-StrictMode -Version Latest
@@ -42,6 +43,10 @@ function Read-CanonicalSourceText {
         $text = [regex]::Replace($text, $pattern, "`$1$selfSentinel`$2")
     }
     return $text
+}
+
+function ConvertTo-CsvField([string]$Value) {
+    return '"' + $Value.Replace('"', '""') + '"'
 }
 
 $visited = [System.Collections.Generic.HashSet[string]]::new(
@@ -98,13 +103,30 @@ if ($relativePaths.Count -eq 0) {
 $sha256 = [System.Security.Cryptography.SHA256]::Create()
 try {
     $manifestLines = [System.Collections.Generic.List[string]]::new()
+    $manifestCsvLines = [System.Collections.Generic.List[string]]::new()
+    $manifestCsvLines.Add('repo_relative_path,terminal_relative_path,raw_bytes,raw_sha256,canonical_bytes,canonical_sha256,self_identity_normalized')
     foreach ($relativePath in $relativePaths) {
         $fullPath = $pathMap[$relativePath]
+        if (!$relativePath.StartsWith('automation/mt5/', [System.StringComparison]::Ordinal)) {
+            throw "Gate108 closure path cannot map to a terminal: '$relativePath'."
+        }
+        $terminalRelativePath = $relativePath.Substring('automation/mt5/'.Length)
+        $rawBytes = [System.IO.File]::ReadAllBytes($fullPath)
+        $rawHashBytes = $sha256.ComputeHash($rawBytes)
+        $rawHash = ([System.BitConverter]::ToString($rawHashBytes) -replace '-', '').ToLowerInvariant()
         $canonicalText = Read-CanonicalSourceText -Path $fullPath `
             -NormalizeSelfIdentity:($fullPath -ieq $buildInfoPath)
-        $fileHashBytes = $sha256.ComputeHash($utf8NoBom.GetBytes($canonicalText))
+        $canonicalBytes = $utf8NoBom.GetBytes($canonicalText)
+        $fileHashBytes = $sha256.ComputeHash($canonicalBytes)
         $fileHash = ([System.BitConverter]::ToString($fileHashBytes) -replace '-', '').ToLowerInvariant()
         $manifestLines.Add($relativePath + "`0" + $fileHash)
+        $manifestCsvLines.Add((
+            (ConvertTo-CsvField $relativePath) + ',' +
+            (ConvertTo-CsvField $terminalRelativePath) + ',' +
+            $rawBytes.Length + ',' + $rawHash + ',' +
+            $canonicalBytes.Length + ',' + $fileHash + ',' +
+            (($fullPath -ieq $buildInfoPath).ToString().ToLowerInvariant())
+        ))
     }
     $manifestPayload = ($manifestLines -join "`n") + "`n"
     $bundleHashBytes = $sha256.ComputeHash($utf8NoBom.GetBytes($manifestPayload))
@@ -123,6 +145,28 @@ Write-Output "source_count=$($relativePaths.Count)"
 Write-Output "external_include_count=$($externalIncludes.Count)"
 Write-Output "external_includes=$externalList"
 Write-Output "bundle_id=$expectedBundleId"
+
+if ($ManifestPath -ne "") {
+    if (![System.IO.Path]::IsPathRooted($ManifestPath)) {
+        $ManifestPath = Join-Path $repoRoot $ManifestPath
+    }
+    $ManifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
+    $protectedRoot = [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot 'automation\mt5')).TrimEnd('\', '/') +
+        [System.IO.Path]::DirectorySeparatorChar
+    if ($ManifestPath.StartsWith($protectedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Manifest output may not overlap the active MT5 source/preset/tool tree: '$ManifestPath'."
+    }
+    $manifestParent = Split-Path -Parent $ManifestPath
+    if (!(Test-Path -LiteralPath $manifestParent -PathType Container)) {
+        throw "Manifest parent directory does not exist: '$manifestParent'."
+    }
+    [System.IO.File]::WriteAllLines(
+        $ManifestPath,
+        [string[]]$manifestCsvLines,
+        $utf8NoBom)
+    Write-Output "manifest_path=$([System.IO.Path]::GetFullPath($ManifestPath))"
+}
 
 if ($PrintExpectedOnly) {
     exit 0

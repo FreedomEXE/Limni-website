@@ -37,6 +37,7 @@ struct LP_RevmaSymbolState
    int current_level;
    int event_count;
    ulong reconstruction_epoch;
+   datetime initial_history_boundary;
    int event_capacity;
    double events[];
    int cached_metric_event_count;
@@ -87,6 +88,7 @@ private:
       state.current_level = 0;
       state.event_count = 0;
       state.reconstruction_epoch = 0;
+      state.initial_history_boundary = 0;
       state.event_capacity = 0;
       ArrayResize(state.events, 0);
       state.cached_metric_event_count = -1;
@@ -283,6 +285,7 @@ private:
       signal.q_days = state.q_day_count;
       signal.q_event_count = state.event_count;
       signal.reconstruction_epoch = state.reconstruction_epoch;
+      signal.initial_history_boundary = state.initial_history_boundary;
       signal.q_profile = config.revma_q_profile;
       signal.max_m1_bars = LP_RevmaResolvedMaxM1Bars(config);
       signal.q_profile_id = LP_RevmaConfigQProfileId(config);
@@ -313,13 +316,14 @@ private:
       int sleeve = LP_REVMA_SLEEVE_NONE;
       if(direction.valid && LP_RevmaClassifySleeve(direction.confirmed_direction, signal.price, direction.anchor, relation, sleeve))
       {
+         signal.birth_eligible = true;
          signal.anchor_relation = relation;
          signal.sleeve = sleeve;
          signal.variant_id = LP_RevmaVariantForSleeve(sleeve);
       }
       else
       {
-         signal.valid = false;
+         signal.birth_eligible = false;
          signal.anchor_relation = relation;
          signal.reason_code = direction.valid ? "mean_reversion_setup_required" : direction.reason_code;
       }
@@ -517,6 +521,7 @@ private:
          return false;
       }
       state.reconstruction_epoch = reconstruction_epoch;
+      state.initial_history_boundary = rates[0].time;
       for(int i = 0; i < copied; i++)
          ProcessClosedBar(state, meta, config, rates[i], signal);
       state.bootstrapped = true;

@@ -1,5 +1,5 @@
 /*-----------------------------------------------
-  LimniPortfolioEA operator inputs and config loader
+  Gate 108A controlled profile and broker input
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_CONFIG_MQH__
 #define __LIMNI_PORTFOLIO_CONFIG_MQH__
@@ -68,71 +68,12 @@ enum ReceiptModeInput
    ReceiptCompactLongRun = 2 // Compact Long Run
 };
 
-input group "Execution"
-input ExecutionModeInput ExecutionMode = ExecutionTester;
-input bool EnableTrading = true;
-input bool AllowLiveTrading = false;
-input bool EnableOpenOrderRouting = true;
-input bool EnableCloseExecution = true;
-input bool EnableAccountCloseExecution = false;
-input bool EnableStrategyEvaluation = true;
-input bool RequireHedgingAccount = true;
-input bool RequireAllSymbols = false;
-
-input group "Symbol Universe"
+// Gate 108 strategy, lifecycle, capacity and evidence settings are compile
+// frozen. The broker suffix is the only exposed compatibility input and has no
+// formula authority.
+input group "Gate 108 Broker Compatibility"
 input string BrokerSymbolSuffix = ".i";
-
-input group "Calendar Guards"
-input bool UseWeekBoundaryGuard = true;
-input double BrokerToEstOffsetHours = 0.0;
-input NewsGuardModeInput NewsGuardMode = NewsDisabled;
-input string NewsCalendarFile = "LimniPortfolioEA\\news_events.csv";
-input int NewsBlockBeforeMinutes = 30;
-input int NewsBlockAfterMinutes = 30;
-
-input group "Portfolio Risk Guards"
-input bool EnableCurrencyExposureGuard = false;
-input double MaxCurrencySignedLots = 5.0;
-input double MaxCurrencyGrossLots = 10.0;
-input int MaxSameDirectionGridsPerCurrency = 4;
-input int MaxManagedPositions = 200;
-input double MaxSingleOrderLots = 1.0;
-input int MaxClosePositionsPerStep = 10;
-input NewsImpactLevelInput NewsMinimumImpact = NewsImpactHigh;
-
-input group "Revma"
-input UniverseModeInput RevmaUniverseMode = UniverseCurrentChart;
-input RevmaQProfileInput RevmaQProfile = RevmaQMedium;
-input int RevmaCustomMaxM1Bars = 50000;
-input double RevmaFixedLots = 0.01;
-input double RevmaGridSpacingQ = 0.1;
-input int RevmaIntentExpiryMinutes = 10;
-input bool RevmaShowVisualDashboard = false;
-input int RevmaDashboardRefreshSeconds = 1;
-input bool RevmaDashboardScreenshotOnDivergentAdd = false;
-
-input group "Stop / Take Profit"
-input StopTakeProfitModeInput StopTakeProfitMode = SinglePairQAfterFees;
-input BrokerGridTpSyncModeInput BrokerGridTpSyncMode = BrokerGridTpSyncLiveOnly;
-input double GridTakeProfitQ = 0.1;
-input double GridStopLossQ = 0.0;
-input double AccountTakeProfitPct = 0.0;
-input double AccountStopLossPct = 0.0;
-input double StopTakeProfitCloseCommissionPerLot = 0.00;
-input double HwmTrailArmPct = 0.010;
-input double HwmTrailMinLockPct = 0.005;
-input double HwmTrailGivebackPct = 0.010;
-input bool HwmTrailBlockNewEntriesWhenArmed = true;
-input double HwmTrailHardStopLossPct = 0.000;
-
-input group "Diagnostics"
-input bool UseTimerWatchdog = true;
-input int TimerWatchdogSeconds = 5;
-input bool PersistRevmaLifecycleState = true;
 const string SourceRevision = LP_EA_SOURCE_BUNDLE_ID;
-input bool ExportToCommonFiles = true;
-input ReceiptModeInput ReceiptMode = ReceiptOff;
-input string OutputFolder = "OFF";
 
 string LP_OutputFolderNumberPart(const double value, const int digits)
 {
@@ -204,73 +145,68 @@ string LP_ResolveOutputFolder(const LP_Config &config, const string requested_fo
 
 void LP_LoadConfig(LP_Config &config)
 {
-   config.execution_mode = (LP_ExecutionMode)ExecutionMode;
-   config.news_guard_mode = (LP_NewsGuardMode)NewsGuardMode;
-   config.enable_trading = EnableTrading;
-   config.allow_live_trading = AllowLiveTrading;
-   config.enable_open_order_routing = EnableOpenOrderRouting;
-   config.enable_close_execution = EnableCloseExecution;
-   config.enable_account_close_execution = EnableAccountCloseExecution;
-   config.enable_strategy_evaluation = EnableStrategyEvaluation;
-   config.require_hedging_account = RequireHedgingAccount;
-   config.require_all_symbols = RequireAllSymbols;
-   config.use_timer_watchdog = UseTimerWatchdog;
-   config.timer_watchdog_seconds = MathMax(1, TimerWatchdogSeconds);
-   config.persist_revma_lifecycle_state = PersistRevmaLifecycleState;
+   config.execution_mode = LP_EXECUTION_TESTER_ONLY;
+   config.news_guard_mode = LP_NEWS_GUARD_DISABLED;
+   config.enable_trading = true;
+   config.allow_live_trading = false;
+   config.enable_open_order_routing = true;
+   config.enable_close_execution = true;
+   config.enable_account_close_execution = true;
+   config.enable_strategy_evaluation = true;
+   config.require_hedging_account = true;
+   config.require_all_symbols = true;
+   config.use_timer_watchdog = true;
+   config.timer_watchdog_seconds = 5;
+   config.persist_revma_lifecycle_state = false;
    config.source_revision = SourceRevision;
-   config.use_week_boundary_guard = UseWeekBoundaryGuard;
-   config.broker_to_est_offset_hours = BrokerToEstOffsetHours;
+   config.use_week_boundary_guard = true;
+   config.broker_to_est_offset_hours = 0.0;
    config.sunday_open_hour_est = 17;
    config.friday_close_hour_est = 17;
    config.boundary_block_minutes = 60;
-   config.news_block_before_minutes = NewsBlockBeforeMinutes;
-   config.news_block_after_minutes = NewsBlockAfterMinutes;
+   config.news_block_before_minutes = 30;
+   config.news_block_after_minutes = 30;
    config.broker_symbol_suffix = BrokerSymbolSuffix;
-   config.news_calendar_file = NewsCalendarFile;
-   config.export_to_common_files = ExportToCommonFiles;
-   config.receipt_mode = (LP_ReceiptMode)ReceiptMode;
-   if(LP_OutputFolderAutoRequested(OutputFolder))
-   {
-      config.export_to_common_files = true;
-      config.receipt_mode = LP_RECEIPT_MODE_COMPACT_LONG_RUN;
-   }
+   config.news_calendar_file = "LimniPortfolioEA\\news_events.csv";
+   config.export_to_common_files = true;
+   config.receipt_mode = LP_RECEIPT_MODE_OFF;
    config.enable_portfolio_harvest_governor = false;
    config.harvest_initial_target_money = 0.0;
    config.harvest_trail_money = 0.0;
    config.harvest_soft_lock_on_breach = false;
    config.harvest_grid_winddown_on_breach = false;
    config.harvest_arm_emergency_liquidation = false;
-   config.enable_currency_exposure_guard = EnableCurrencyExposureGuard;
+   config.enable_currency_exposure_guard = false;
    config.enable_qstate_trend_variant = false;
    config.enable_revma_system = true;
-   config.revma_universe_mode = (LP_UniverseMode)RevmaUniverseMode;
-   config.revma_q_profile = (LP_RevmaQProfile)RevmaQProfile;
-   config.revma_max_m1_bars = RevmaCustomMaxM1Bars;
-   config.revma_fixed_lots = RevmaFixedLots;
-   config.revma_grid_spacing_q = RevmaGridSpacingQ;
-   config.revma_intent_expiry_minutes = RevmaIntentExpiryMinutes;
-   config.revma_show_visual_dashboard = RevmaShowVisualDashboard;
-   config.revma_dashboard_refresh_seconds = MathMax(0, RevmaDashboardRefreshSeconds);
-   config.revma_dashboard_screenshot_on_divergent_add = RevmaDashboardScreenshotOnDivergentAdd;
-   config.stop_take_profit_mode = (LP_StopTakeProfitMode)StopTakeProfitMode;
-   config.broker_grid_tp_sync_mode = (LP_BrokerGridTpSyncMode)BrokerGridTpSyncMode;
-   config.grid_take_profit_q = MathMax(0.0, GridTakeProfitQ);
-   config.grid_stop_loss_q = MathMax(0.0, GridStopLossQ);
-   config.account_take_profit_pct = MathMax(0.0, AccountTakeProfitPct);
-   config.account_stop_loss_pct = MathMax(0.0, AccountStopLossPct);
-   config.stop_take_profit_close_commission_per_lot = MathMax(0.0, StopTakeProfitCloseCommissionPerLot);
-   config.hwm_trail_arm_pct = MathMax(0.0, HwmTrailArmPct);
-   config.hwm_trail_min_lock_pct = MathMax(0.0, HwmTrailMinLockPct);
-   config.hwm_trail_giveback_pct = MathMax(0.0, HwmTrailGivebackPct);
-   config.hwm_trail_block_new_entries_when_armed = HwmTrailBlockNewEntriesWhenArmed;
-   config.hwm_trail_hard_stop_loss_pct = MathMax(0.0, HwmTrailHardStopLossPct);
-   config.max_currency_signed_lots = MaxCurrencySignedLots;
-   config.max_currency_gross_lots = MaxCurrencyGrossLots;
-   config.max_same_direction_grids_per_currency = MaxSameDirectionGridsPerCurrency;
-   config.max_managed_positions = MaxManagedPositions;
-   config.max_single_order_lots = MaxSingleOrderLots;
-   config.max_close_positions_per_step = MaxClosePositionsPerStep;
-   config.news_minimum_impact = (int)NewsMinimumImpact;
+   config.revma_universe_mode = LP_UNIVERSE_FX28;
+   config.revma_q_profile = LP_REVMA_Q_PROFILE_MEDIUM;
+   config.revma_max_m1_bars = 50000;
+   config.revma_fixed_lots = 0.01;
+   config.revma_grid_spacing_q = 0.10;
+   config.revma_intent_expiry_minutes = 10;
+   config.revma_show_visual_dashboard = false;
+   config.revma_dashboard_refresh_seconds = 1;
+   config.revma_dashboard_screenshot_on_divergent_add = false;
+   config.stop_take_profit_mode = LP_SLTP_DISABLED;
+   config.broker_grid_tp_sync_mode = LP_BROKER_GRID_TP_SYNC_OFF;
+   config.grid_take_profit_q = 0.0;
+   config.grid_stop_loss_q = 0.0;
+   config.account_take_profit_pct = 0.0;
+   config.account_stop_loss_pct = 0.0;
+   config.stop_take_profit_close_commission_per_lot = 0.0;
+   config.hwm_trail_arm_pct = 0.0;
+   config.hwm_trail_min_lock_pct = 0.0;
+   config.hwm_trail_giveback_pct = 0.0;
+   config.hwm_trail_block_new_entries_when_armed = false;
+   config.hwm_trail_hard_stop_loss_pct = 0.0;
+   config.max_currency_signed_lots = 5.0;
+   config.max_currency_gross_lots = 10.0;
+   config.max_same_direction_grids_per_currency = 4;
+   config.max_managed_positions = 200;
+   config.max_single_order_lots = 1.0;
+   config.max_close_positions_per_step = 10;
+   config.news_minimum_impact = 3;
    config.qstate_scale_lookback_days = LIMNI_QSTATE_V001_SCALE_LOOKBACK_DAYS;
    config.qstate_fixed_lots = 0.01;
    config.qstate_grid_spacing_q = 1.0;
@@ -280,7 +216,7 @@ void LP_LoadConfig(LP_Config &config)
    config.qstate_max_spread_cost_q = LIMNI_QSTATE_V001_MAX_SPREAD_COST_Q;
    config.qstate_intent_expiry_minutes = 10;
    config.qstate_reentry_next_day_after_harvest = true;
-   config.output_folder = LP_ResolveOutputFolder(config, OutputFolder);
+   config.output_folder = "OFF";
 }
 
 ulong LP_ConfigHash(const LP_Config &config)

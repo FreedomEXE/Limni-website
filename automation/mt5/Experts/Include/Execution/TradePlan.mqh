@@ -8,6 +8,16 @@
 
 void LP_ResetTradePlan(LP_TradePlan &plan)
 {
+   plan.gate108 = false;
+   plan.discovery_branch = -1;
+   plan.discovery_branch_grid_id = 0;
+   plan.discovery_candidate_identity = 0;
+   plan.discovery_shared_snapshot_hash = 0;
+   plan.discovery_matched_snapshot_hash = 0;
+   plan.discovery_pre_candidate_state_hash = 0;
+   plan.discovery_source_m1_time = 0;
+   plan.discovery_close_owner = 0;
+   plan.discovery_origin_terminal_reason = "";
    plan.plan_id = 0;
    plan.decision_id = 0;
    plan.intent_id = 0;

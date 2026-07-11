@@ -1,0 +1,35 @@
+{
+  "activeExpert": {
+    "name": "LimniPortfolioEA",
+    "source": "automation/mt5/Experts/Limni/LimniPortfolioEA.mq5",
+    "compiled": "automation/mt5/Experts/Limni/LimniPortfolioEA.ex5",
+    "includeSource": "automation/mt5/Experts/Include",
+    "terminalSource": "Experts/Limni/LimniPortfolioEA.mq5",
+    "terminalCompiled": "Experts/Limni/LimniPortfolioEA.ex5",
+    "terminalInclude": "Experts/Include"
+  },
+  "terminals": [
+    {
+      "id": "94497",
+      "role": "canonical Limni/Poseidon MT5 terminal",
+      "mql5Root": "C:/Users/User/AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB/MQL5",
+      "metaEditor": "C:/Users/User/AppData/Roaming/Five Percent Online MetaTrader 5/MetaEditor64.exe",
+      "terminalExe": "C:/Users/User/AppData/Roaming/Five Percent Online MetaTrader 5/terminal64.exe"
+    }
+  ],
+  "bannedInputNames": [
+    "RevmaContinuationGridSpacing",
+    "RevmaReversionGridSpacing",
+    "RevmaContinuationTakeProfit",
+    "RevmaReversionTakeProfit",
+    "RevmaContinuationStopLoss",
+    "RevmaReversionStopLoss",
+    "RevmaSleeveMode",
+    "RevmaContinuation",
+    "RevmaReversion",
+    "LP_VARIANT_REVMA_CONTINUATION",
+    "RevmaTrend",
+    "continuation_add",
+    "revma_continuation"
+  ]
+}

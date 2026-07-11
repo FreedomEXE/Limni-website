@@ -355,6 +355,7 @@ public:
    bool AddCloseIntent(const LP_Config &config, const ulong config_hash, const ulong intent_id, const LP_PortfolioState &portfolio, const LP_PortfolioStopTakeProfitDecision &decision, LP_IntentBus &bus, LP_ReceiptWriter &receipts)
    {
       LP_TradeIntent intent;
+      LP_ResetTradeIntent(intent);
       intent.intent_id = intent_id;
       intent.symbol_id = -1;
       intent.symbol = "";

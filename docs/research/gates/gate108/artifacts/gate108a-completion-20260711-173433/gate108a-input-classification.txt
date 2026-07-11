@@ -1,0 +1,8 @@
+input_group_metadata_count=1
+broker_compatibility_inputs=1
+strategy_inputs=0
+lifecycle_inputs=0
+capital_inputs=0
+account_size_authority=tester_account_contract
+preset_bytes=22
+preset_sha256=57A2AECDE64179F4363E66EC85242A31BADC5AB9EACD7A862CB65AF53F454F1C
