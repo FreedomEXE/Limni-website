@@ -184,6 +184,43 @@ sync/compile, Strategy Tester, smoke/shard runner, benchmark, optimization,
 Gate 108A acceptance, or runtime-readiness claim until the Phase 3 pushed clean
 source packet receives outsider review.
 
+Outsider review accepted Phase 3 as stated evidence for Phase 4:
+`GATE108_PHASE3_ACCEPTED_AS_STATED_EVIDENCE_FOR_PHASE4`. This is not repo,
+runtime, mechanics, parity, speed, economic, or Gate 108A acceptance.
+
+Phase 4 source status:
+
+- dedicated discovery transition and final-summary CSV artifacts added outside
+  the general receipt writer;
+- formula-hashed constants freeze transition buffer `256`, transition flush
+  `64`, summary buffer `64`, summary flush `16`, line guard `8192` bytes, and
+  per-artifact guard `4294967296` bytes;
+- every atom admission and only named lifecycle/policy transitions can enter
+  the transition stream; there is no per-tick, unchanged-M1, per-cell-object,
+  position-history, broker, or general-receipt path;
+- transition rows expose frozen/observed center values, support signs and q
+  values, latch identity/time, blocked adverse candidates, favorable
+  eligibility after latch, atoms/lots before and after, U/C shared origin and
+  matched opportunity, path geometry, money ledger, decisions, and hashes;
+- final summaries expose center applicable/triggered/not-triggered/
+  not-applicable counts, blocked/favorable counts, lifecycle money, first
+  infeasibility, flat/unresolved truth, contamination, formula cleanliness,
+  reconciliation, row counts, and output bytes;
+- open, header, serialization, buffer, line, byte, write, flush, schema, and
+  counter failure invalidates telemetry; no evidence is silently dropped or
+  capped;
+- initial compile exposed two `uint -> int` FileWriteString warnings; return
+  variables were corrected to `uint` before acceptance;
+- final repository compile: `0 errors, 0 warnings`, `441524 ms`;
+- final EX5 size: `616390` bytes, `+2248` bytes from Phase 3; compile duration
+  is about 17% slower than Phase 3 but remains below Phase 2 and is not another
+  multiplicative increase.
+
+Phase 4 stop line: no R two-atom mutation, Engine scheduling, terminal
+sync/compile, Strategy Tester, smoke/shard runner, benchmark, optimization,
+Gate 108A acceptance, or runtime-readiness claim until the Phase 4 pushed clean
+source packet receives outsider review.
+
 ## Historical overrides below
 
 Everything below this heading is retained as chronological project history and

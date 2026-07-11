@@ -12,6 +12,7 @@
 #include "Revma\\RevmaDiscoveryTypes.mqh"
 #include "Revma\\RevmaPathGeometry.mqh"
 #include "Revma\\RevmaShadowPortfolio.mqh"
+#include "Revma\\RevmaDiscoveryTelemetry.mqh"
 #include "Revma\\RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot
@@ -157,6 +158,7 @@ private:
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
    LP_RevmaShadowPortfolio m_discovery_shadow_portfolio;
+   LP_RevmaDiscoveryTelemetry m_discovery_telemetry;
    LP_RevmaResearchTelemetry m_research_telemetry;
    bool m_state_loaded;
    bool m_state_persistence_enabled;

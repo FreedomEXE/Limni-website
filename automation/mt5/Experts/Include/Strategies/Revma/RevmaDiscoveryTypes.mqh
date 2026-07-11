@@ -20,6 +20,13 @@
 #define LP_REVMA_DISCOVERY_MAX_ADMISSIONS_PER_M1 1
 #define LP_REVMA_DISCOVERY_BRANCH_COUNT 3
 #define LP_REVMA_SHADOW_BRANCH_COUNT 2
+#define LP_REVMA_DISCOVERY_TELEMETRY_SCHEMA_ID "gate108-discovery-telemetry-v1"
+#define LP_REVMA_DISCOVERY_TRANSITION_BUFFER_ROWS 256
+#define LP_REVMA_DISCOVERY_TRANSITION_FLUSH_ROWS 64
+#define LP_REVMA_DISCOVERY_SUMMARY_BUFFER_ROWS 64
+#define LP_REVMA_DISCOVERY_SUMMARY_FLUSH_ROWS 16
+#define LP_REVMA_DISCOVERY_MAX_LINE_BYTES 8192
+#define LP_REVMA_DISCOVERY_ARTIFACT_BYTE_GUARD 4294967296
 
 enum LP_RevmaDiscoveryBranch
 {
@@ -95,6 +102,12 @@ ulong LP_RevmaDiscoveryFormulaHash()
    payload += "|center_authority=C_aligned_positive_to_nonpositive_adverse_add_only";
    payload += "|center_missing=no_latch_no_reclassification";
    payload += "|center_misaligned=observational_only";
+   payload += "|telemetry_schema=gate108-discovery-telemetry-v1";
+   payload += "|transition_buffer_rows=256|transition_flush_rows=64";
+   payload += "|summary_buffer_rows=64|summary_flush_rows=16";
+   payload += "|telemetry_max_line_bytes=8192|artifact_byte_guard=4294967296";
+   payload += "|telemetry_encoding=ansi_ascii_csv_crlf";
+   payload += "|telemetry_failure=run_invalid_no_silent_drop";
    payload += "|cell_quantization=ceil_outward_to_broker_tick";
    payload += "|path_price=closed_m1_structural_decision_price";
    payload += "|branches=R,U,C";
