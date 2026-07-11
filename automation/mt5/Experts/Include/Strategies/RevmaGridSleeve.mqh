@@ -9,6 +9,8 @@
 #include "..\\Receipts\\ReceiptWriter.mqh"
 #include "IntentBus.mqh"
 #include "RevmaTypes.mqh"
+#include "Revma\\RevmaDiscoveryTypes.mqh"
+#include "Revma\\RevmaPathGeometry.mqh"
 #include "Revma\\RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot

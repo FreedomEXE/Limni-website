@@ -75,6 +75,61 @@ proof are complete. The remaining Gate 107C-R evidence is Freedom-owned
 controlled telemetry validation; see
 `docs/research/gates/gate107/GATE107CR_REVMA_RESEARCH_INTEGRITY_CORRECTION_2026-07-09.md`.
 
+### Gate 108 - RevMA Adaptive Grid Discovery v1 (implementation open)
+
+Freedom accepted Gate 107C-R as diagnostically closed and explicitly opened
+Gate 108 implementation on 2026-07-10. Gate 107C-R is not a promoted strategy.
+Gate 108 proceeds in small reviewable phases and stops before every
+Freedom-owned MT5 runtime test.
+
+Canonical architecture:
+`docs/research/gates/gate108/GATE108_REVMA_ADAPTIVE_GRID_DISCOVERY_V1_ARCHITECTURE_2026-07-10.md`.
+
+Next-chat handoff:
+`docs/research/gates/gate108/NEXT_CHAT_GATE108_REVMA_ADAPTIVE_GRID_DISCOVERY_HANDOFF_2026-07-10.md`.
+
+Frozen Gate 108 shape:
+
+```text
+R = two-atom real execution envelope
+U = complete raw count-uncapped shadow portfolio
+C = complete signed-center-support shadow portfolio
+```
+
+All branches preserve completed-M1 cadence, both adverse/favorable add
+semantics, harvest-before-add ordering, q-cash/capital accounting, cleanup,
+hard risk, and close-aware re-entry. Shadows use arithmetic state only and may
+create at most one atom per grid per completed M1. Path diagnostics may count
+all completed cells crossed by a jump, but trade admission may not backfill
+multiple atoms.
+
+Gate 108 implementation authority covers source mutation, static review,
+repository/terminal compilation, and terminal source/profile sync. Codex never
+owns MT5 Strategy Tester execution, smoke/shard runners, benchmarks,
+optimization, or any other backtest automation.
+
+Freedom froze the single non-optimized capital mandate on 2026-07-10:
+`CapitalBudgetFraction=0.10`. It is formula/profile identity, not an MT5
+optimization input, and Gate 108 may not run a budget ladder or enlarge it
+after early capacity exhaustion or hard-risk liquidation.
+
+Phase 1 source status:
+
+- immutable discovery/profile/mesh and R/U/C branch IDs added;
+- `0.10` capital mandate, `0.10q` mesh, `0.01` atom, R two-atom maximum, and
+  one-admission-per-grid-M1 constants included in the formula hash;
+- admission identity is branch/grid/source-M1/formula hashed;
+- policy-neutral outward tick mesh and aggregate completed-cell path
+  primitives added with no per-cell objects, receipts, or broker calls;
+- repository compile: `0 errors, 0 warnings`.
+
+## Historical overrides below
+
+Everything below this heading is retained as chronological project history and
+is superseded by the 2026-07-09 Gate 107C-R hot override plus the 2026-07-10
+Gate 108 staged architecture above. Later historical stop boundaries and active
+document lists must not override the current Gate 107C-R -> Gate 108 sequence.
+
 ### Current Override - 2026-07-07
 
 Active lane: Gate 99ZZE `revma-grid-basket-tp-repair`.
