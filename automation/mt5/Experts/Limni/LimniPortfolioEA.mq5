@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.027"
-#property description "LimniPortfolioEA 0.1.27-gate107crs inventory speed integrity"
+#property version   "1.029"
+#property description "LimniPortfolioEA Gate108 Phase4R institutional foundation"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"

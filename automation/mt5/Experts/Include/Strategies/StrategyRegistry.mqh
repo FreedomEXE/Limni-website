@@ -19,12 +19,19 @@ private:
    bool m_enabled;
 
 public:
-   void Reset()
+   bool CanReset()
    {
+      return m_revma.CanResetDiscoveryForNewRun();
+   }
+
+   bool Reset()
+   {
+      if(!CanReset())
+         return false;
       m_enabled = false;
       m_trend_follow.Reset();
       m_reversal.Reset();
-      m_revma.Reset();
+      return m_revma.Reset();
    }
 
    void SetEnabled(const bool enabled)
@@ -36,6 +43,64 @@ public:
    {
       m_trend_follow.Configure(config_hash);
       m_revma.Configure(config_hash, config);
+   }
+
+   bool InitializeRevmaDiscovery(
+      const LP_Config &config,
+      const string run_id,
+      const long equity_reference_minor,
+      const double money_quantum
+   )
+   {
+      return m_revma.InitializeDiscovery(
+         config, run_id, equity_reference_minor, money_quantum);
+   }
+
+   bool FinalizeRevmaDiscovery(
+      const datetime terminal_completed_m1_time,
+      const ulong real_terminal_grid_state_hash,
+      const ulong real_terminal_book_hash,
+      const bool real_final_flat)
+   {
+      return m_revma.FinalizeDiscovery(
+         terminal_completed_m1_time, real_terminal_grid_state_hash,
+         real_terminal_book_hash,
+         real_final_flat);
+   }
+
+   bool RevmaDiscoveryTelemetryValid()
+   {
+      return m_revma.DiscoveryTelemetryValid();
+   }
+
+   string RevmaDiscoveryTelemetryInvalidReason()
+   {
+      return m_revma.DiscoveryTelemetryInvalidReason();
+   }
+
+   bool RevmaDiscoveryInitialized()
+   {
+      return m_revma.DiscoveryInitialized();
+   }
+
+   bool RevmaDiscoveryFaultLatched()
+   {
+      return m_revma.DiscoveryFaultLatched();
+   }
+
+   bool RevmaDiscoveryOperationalValid()
+   {
+      return m_revma.DiscoveryOperationalValid();
+   }
+
+   bool RevmaDiscoveryCompletionValid()
+   {
+      return m_revma.DiscoveryCompletionValid();
+   }
+
+   void InvalidateRevmaDiscovery(const string reason)
+   {
+      m_revma.InvalidateDiscovery(reason);
    }
 
    int LoadRevmaGridState(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
@@ -135,31 +200,31 @@ public:
       return m_revma.BrokerTpSyncTicketScanCount();
    }
 
-   void RecordRevmaRiskDecision(
+   bool RecordRevmaRiskDecision(
       const LP_TradeIntent &intent,
       const LP_RiskDecision &decision,
       LP_ReceiptWriter &receipts
    )
    {
-      m_revma.RecordRiskDecision(intent, decision, receipts);
+      return m_revma.RecordRiskDecision(intent, decision, receipts);
    }
 
-   void RecordRevmaExecutionOutcome(
+   bool RecordRevmaExecutionOutcome(
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution,
       LP_ReceiptWriter &receipts
    )
    {
-      m_revma.RecordExecutionOutcome(plan, execution, receipts);
+      return m_revma.RecordExecutionOutcome(plan, execution, receipts);
    }
 
-   void RecordRevmaCloseExecution(
+   bool RecordRevmaCloseExecution(
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution,
       LP_ReceiptWriter &receipts
    )
    {
-      m_revma.RecordCloseExecution(plan, execution, receipts);
+      return m_revma.RecordCloseExecution(plan, execution, receipts);
    }
 
    bool HasLatchedRevmaGridClose()

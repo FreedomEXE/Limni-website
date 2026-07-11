@@ -158,8 +158,7 @@ public:
             "qstate_adverse_add_1q",
             add_intent
          );
-         bus.Add(add_intent);
-         return 1;
+         return bus.Add(add_intent) ? 1 : 0;
       }
 
       if(grid_book.HasSymbolLaneGrid(snapshot.symbol_id, LP_LANE_TREND_FOLLOW, LP_VARIANT_STRICT))
@@ -175,8 +174,7 @@ public:
          "qstate_strong_direction_open",
          open_intent
       );
-      bus.Add(open_intent);
-      return 1;
+      return bus.Add(open_intent) ? 1 : 0;
    }
 };
 

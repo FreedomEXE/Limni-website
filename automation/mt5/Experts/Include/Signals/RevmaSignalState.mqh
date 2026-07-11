@@ -36,6 +36,7 @@ struct LP_RevmaSymbolState
    double last_event_price;
    int current_level;
    int event_count;
+   ulong reconstruction_epoch;
    int event_capacity;
    double events[];
    int cached_metric_event_count;
@@ -85,6 +86,7 @@ private:
       state.last_event_price = 0.0;
       state.current_level = 0;
       state.event_count = 0;
+      state.reconstruction_epoch = 0;
       state.event_capacity = 0;
       ArrayResize(state.events, 0);
       state.cached_metric_event_count = -1;
@@ -279,6 +281,8 @@ private:
       signal.source_m1_time = direction.asof_m1_time;
       signal.closed_m1_bars = state.closed_m1_bars;
       signal.q_days = state.q_day_count;
+      signal.q_event_count = state.event_count;
+      signal.reconstruction_epoch = state.reconstruction_epoch;
       signal.q_profile = config.revma_q_profile;
       signal.max_m1_bars = LP_RevmaResolvedMaxM1Bars(config);
       signal.q_profile_id = LP_RevmaConfigQProfileId(config);
@@ -500,6 +504,19 @@ private:
          return false;
       }
       NormalizeRatesOrder(rates, copied);
+      ulong reconstruction_epoch = LP_HashString("revma_reconstruction_epoch_v1");
+      LP_HashMixInt(reconstruction_epoch, meta.symbol_id);
+      LP_HashMixLong(reconstruction_epoch, (long)rates[0].time);
+      LP_HashMixLong(reconstruction_epoch, (long)rates[copied - 1].time);
+      LP_HashMixInt(reconstruction_epoch, copied);
+      LP_HashMixInt(reconstruction_epoch, LP_RevmaResolvedMaxM1Bars(config));
+      LP_HashMixInt(reconstruction_epoch, (int)config.revma_q_profile);
+      if(reconstruction_epoch == 0)
+      {
+         detail = "bootstrap_reconstruction_epoch_zero";
+         return false;
+      }
+      state.reconstruction_epoch = reconstruction_epoch;
       for(int i = 0; i < copied; i++)
          ProcessClosedBar(state, meta, config, rates[i], signal);
       state.bootstrapped = true;

@@ -4,6 +4,7 @@
 #ifndef __LIMNI_PORTFOLIO_CONFIG_MQH__
 #define __LIMNI_PORTFOLIO_CONFIG_MQH__
 
+#include "BuildInfo.mqh"
 #include "Types.mqh"
 #include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
 #include "..\\Strategies\\RevmaTypes.mqh"
@@ -128,7 +129,7 @@ input group "Diagnostics"
 input bool UseTimerWatchdog = true;
 input int TimerWatchdogSeconds = 5;
 input bool PersistRevmaLifecycleState = true;
-input string SourceRevision = "UNSET";
+const string SourceRevision = LP_EA_SOURCE_BUNDLE_ID;
 input bool ExportToCommonFiles = true;
 input ReceiptModeInput ReceiptMode = ReceiptOff;
 input string OutputFolder = "OFF";
@@ -299,7 +300,15 @@ ulong LP_ConfigHash(const LP_Config &config)
        LP_BoolText(config.persist_revma_lifecycle_state) + "|" +
        config.source_revision + "|" +
        LP_ReceiptModeName(config.receipt_mode) + "|" +
+      LP_BoolText(config.export_to_common_files) + "|" +
+      config.output_folder + "|" +
+      LP_BoolText(config.use_week_boundary_guard) + "|" +
       DoubleToString(config.broker_to_est_offset_hours, 2) + "|" +
+      IntegerToString(config.sunday_open_hour_est) + "|" +
+      IntegerToString(config.friday_close_hour_est) + "|" +
+      IntegerToString(config.boundary_block_minutes) + "|" +
+      IntegerToString(config.news_block_before_minutes) + "|" +
+      IntegerToString(config.news_block_after_minutes) + "|" +
       config.broker_symbol_suffix + "|" +
       config.news_calendar_file + "|" +
       LP_BoolText(config.enable_portfolio_harvest_governor) + "|" +
@@ -309,6 +318,8 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.harvest_grid_winddown_on_breach) + "|" +
       LP_BoolText(config.harvest_arm_emergency_liquidation) + "|" +
       LP_BoolText(config.enable_currency_exposure_guard) + "|" +
+      LP_BoolText(config.enable_qstate_trend_variant) + "|" +
+      LP_BoolText(config.enable_revma_system) + "|" +
       LP_UniverseModeName(config.revma_universe_mode) + "|" +
       LP_RevmaQProfileName(config.revma_q_profile) + "|" +
       IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) + "|" +
@@ -316,6 +327,9 @@ ulong LP_ConfigHash(const LP_Config &config)
       DoubleToString(config.revma_fixed_lots, 4) + "|" +
       DoubleToString(config.revma_grid_spacing_q, 2) + "|" +
       IntegerToString(config.revma_intent_expiry_minutes) + "|" +
+      LP_BoolText(config.revma_show_visual_dashboard) + "|" +
+      IntegerToString(config.revma_dashboard_refresh_seconds) + "|" +
+      LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) + "|" +
       LP_StopTakeProfitModeName(config.stop_take_profit_mode) + "|" +
       LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode) + "|" +
       DoubleToString(config.grid_take_profit_q, 4) + "|" +

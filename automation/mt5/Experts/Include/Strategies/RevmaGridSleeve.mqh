@@ -159,6 +159,12 @@ private:
    LP_RevmaGridProtectionManager m_protection_manager;
    LP_RevmaShadowPortfolio m_discovery_shadow_portfolio;
    LP_RevmaDiscoveryTelemetry m_discovery_telemetry;
+   bool m_discovery_reset_valid;
+   bool m_discovery_initialization_attempted;
+   bool m_discovery_initialized;
+   bool m_discovery_finalized;
+   bool m_discovery_valid;
+   string m_discovery_invalid_reason;
    LP_RevmaResearchTelemetry m_research_telemetry;
    bool m_state_loaded;
    bool m_state_persistence_enabled;
@@ -360,18 +366,22 @@ private:
       return FindCloseLatchIndex(grid_key) >= 0;
    }
 
-   void RememberBirth(const ulong grid_key, const LP_RevmaSignal &signal, const string add_policy)
+   bool RememberBirth(const ulong grid_key, const LP_RevmaSignal &signal, const string add_policy)
    {
       if(grid_key <= 0)
-         return;
+         return false;
 
       int index = FindBirthIndex(grid_key);
       if(index < 0)
       {
          if(m_birth_count >= m_birth_capacity)
          {
-            m_birth_capacity = m_birth_capacity <= 0 ? 32 : m_birth_capacity * 2;
-            ArrayResize(m_births, m_birth_capacity);
+            int next_capacity = m_birth_capacity <= 0 ? 32 :
+               m_birth_capacity * 2;
+            if(next_capacity <= m_birth_capacity ||
+               ArrayResize(m_births, next_capacity) < next_capacity)
+               return false;
+            m_birth_capacity = next_capacity;
          }
          index = m_birth_count;
          m_birth_count++;
@@ -408,6 +418,7 @@ private:
       m_births[index].formula_hash = signal.formula_hash;
       m_births[index].pair_direction_formula_id = signal.pair_direction_formula_id;
       m_births[index].pair_direction_formula_hash = signal.pair_direction_formula_hash;
+      return true;
    }
 
    bool FindBirth(const ulong grid_key, LP_RevmaGridBirthSnapshot &birth)
@@ -432,7 +443,7 @@ private:
       return -1;
    }
 
-   void RememberPendingLifecycle(
+   bool RememberPendingLifecycle(
       const LP_TradeIntent &intent,
       const LP_RevmaSignal &signal,
       const string add_type,
@@ -441,18 +452,24 @@ private:
       const double grid_floating_pnl_before
    )
    {
-      if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE || intent.intent_id <= 0)
-         return;
+      if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE)
+         return true;
+      if(intent.intent_id <= 0)
+         return false;
 
       int index = FindPendingLifecycleIndex(intent.intent_id);
       if(index < 0)
       {
          if(m_pending_lifecycle_count >= m_pending_lifecycle_capacity)
          {
-            m_pending_lifecycle_capacity = m_pending_lifecycle_capacity <= 0 ? 32 : m_pending_lifecycle_capacity * 2;
-            ArrayResize(m_pending_lifecycle, m_pending_lifecycle_capacity);
-            if(m_pending_lifecycle_capacity > m_pending_lifecycle_max_allocated)
-               m_pending_lifecycle_max_allocated = m_pending_lifecycle_capacity;
+            int next_capacity = m_pending_lifecycle_capacity <= 0 ? 32 :
+               m_pending_lifecycle_capacity * 2;
+            int resized = ArrayResize(m_pending_lifecycle, next_capacity);
+            if(resized < next_capacity)
+               return false;
+            m_pending_lifecycle_capacity = next_capacity;
+            if(next_capacity > m_pending_lifecycle_max_allocated)
+               m_pending_lifecycle_max_allocated = next_capacity;
          }
          index = m_pending_lifecycle_count;
          m_pending_lifecycle_count++;
@@ -470,6 +487,7 @@ private:
       m_pending_lifecycle[index].position_count_before = position_count_before;
       m_pending_lifecycle[index].lots_before = lots_before;
       m_pending_lifecycle[index].grid_floating_pnl_before = grid_floating_pnl_before;
+      return true;
    }
 
    bool TakePendingLifecycle(const ulong intent_id, LP_RevmaPendingLifecycle &pending)
@@ -549,7 +567,7 @@ private:
    bool PersistBirths(LP_ReceiptWriter &receipts, const string cause, const bool force_write)
    {
       if(!m_state_persistence_enabled)
-         return false;
+         return true;
 
       ulong started_at = GetMicrosecondCount();
       m_birth_persistence_dirty = true;
@@ -685,9 +703,9 @@ private:
       return true;
    }
 
-   void PersistBirths(LP_ReceiptWriter &receipts, const string cause)
+   bool PersistBirths(LP_ReceiptWriter &receipts, const string cause)
    {
-      PersistBirths(receipts, cause, false);
+      return PersistBirths(receipts, cause, false);
    }
 
    void CompactCloseLatches()
@@ -709,7 +727,7 @@ private:
    bool PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause, const bool force_write)
    {
       if(!m_state_persistence_enabled)
-         return false;
+         return true;
 
       ulong started_at = GetMicrosecondCount();
       m_close_latch_persistence_dirty = true;
@@ -760,9 +778,9 @@ private:
       return true;
    }
 
-   void PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause)
+   bool PersistCloseLatches(LP_ReceiptWriter &receipts, const string cause)
    {
-      PersistCloseLatches(receipts, cause, false);
+      return PersistCloseLatches(receipts, cause, false);
    }
 
    bool StartCloseLatch(
@@ -783,8 +801,12 @@ private:
       {
          if(m_close_latch_count >= m_close_latch_capacity)
          {
-            m_close_latch_capacity = m_close_latch_capacity <= 0 ? 16 : m_close_latch_capacity * 2;
-            ArrayResize(m_close_latches, m_close_latch_capacity);
+            int next_capacity = m_close_latch_capacity <= 0 ? 16 :
+               m_close_latch_capacity * 2;
+            int resized = ArrayResize(m_close_latches, next_capacity);
+            if(resized < next_capacity)
+               return false;
+            m_close_latch_capacity = next_capacity;
          }
          index = m_close_latch_count;
          m_close_latch_count++;
@@ -799,8 +821,8 @@ private:
       m_close_latches[index].remaining_ticket_count = grid.position_count;
       m_close_latches[index].close_cap = config.max_close_positions_per_step;
       latch = m_close_latches[index];
-      if(started)
-         PersistCloseLatches(receipts, "grid_close_latched");
+      if(started && !PersistCloseLatches(receipts, "grid_close_latched", false))
+         return false;
       return started;
    }
 
@@ -821,26 +843,31 @@ private:
       return remaining;
    }
 
-   void UpdateCloseLatchProgress(
+   bool UpdateCloseLatchProgress(
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution,
       LP_ReceiptWriter &receipts
    )
    {
       if(plan.action != LP_INTENT_CLOSE_GRID || plan.grid_key <= 0)
-         return;
+         return true;
       int index = FindCloseLatchIndex(plan.grid_key);
       if(index < 0)
-         return;
+         return false;
 
       LP_RevmaGridCloseLatch latch = m_close_latches[index];
+      if(execution.attempted_positions < 0 || execution.closed_positions < 0 ||
+         latch.attempted_count > 2147483647 - execution.attempted_positions ||
+         latch.closed_count > 2147483647 - execution.closed_positions)
+         return false;
       latch.attempted_count += execution.attempted_positions;
       latch.closed_count += execution.closed_positions;
       latch.remaining_ticket_count = CountLiveGridTickets(plan);
       if(execution.close_limit > 0)
          latch.close_cap = execution.close_limit;
       m_close_latches[index] = latch;
-      PersistCloseLatches(receipts, "grid_close_progress");
+      if(!PersistCloseLatches(receipts, "grid_close_progress"))
+         return false;
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_EXIT,
          plan.symbol,
@@ -859,33 +886,39 @@ private:
          plan.decision_id,
          plan.magic
       );
+      return true;
    }
 
-   void ClearCloseLatch(const ulong grid_key, LP_ReceiptWriter &receipts, const string cause)
+   bool ClearCloseLatch(const ulong grid_key, LP_ReceiptWriter &receipts, const string cause)
    {
       int index = FindCloseLatchIndex(grid_key);
       if(index < 0)
-         return;
+         return true;
       m_close_latches[index].valid = false;
-      PersistCloseLatches(receipts, cause);
+      return PersistCloseLatches(receipts, cause);
    }
 
-   void UpsertBirthSnapshot(const LP_RevmaGridBirthSnapshot &birth)
+   bool UpsertBirthSnapshot(const LP_RevmaGridBirthSnapshot &birth)
    {
       if(!birth.valid || birth.grid_key <= 0)
-         return;
+         return false;
       int index = FindBirthIndex(birth.grid_key);
       if(index < 0)
       {
          if(m_birth_count >= m_birth_capacity)
          {
-            m_birth_capacity = m_birth_capacity <= 0 ? 32 : m_birth_capacity * 2;
-            ArrayResize(m_births, m_birth_capacity);
+            int next_capacity = m_birth_capacity <= 0 ? 32 :
+               m_birth_capacity * 2;
+            if(next_capacity <= m_birth_capacity ||
+               ArrayResize(m_births, next_capacity) < next_capacity)
+               return false;
+            m_birth_capacity = next_capacity;
          }
          index = m_birth_count;
          m_birth_count++;
       }
       m_births[index] = birth;
+      return true;
    }
 
    bool RemoveBirth(const ulong grid_key)
@@ -897,17 +930,24 @@ private:
       return true;
    }
 
-   void RecordAdd(const ulong grid_key, const string add_type, LP_ReceiptWriter &receipts)
+   bool RecordAdd(const ulong grid_key, const string add_type, LP_ReceiptWriter &receipts)
    {
       int index = FindBirthIndex(grid_key);
       if(index < 0)
-         return;
+         return false;
+      if(m_births[index].add_sequence >= 2147483647 ||
+         (add_type == "adverse" &&
+          m_births[index].adverse_add_count >= 2147483647) ||
+         (add_type == "favorable" &&
+          m_births[index].favorable_add_count >= 2147483647) ||
+         (add_type != "adverse" && add_type != "favorable"))
+         return false;
       m_births[index].add_sequence++;
       if(add_type == "adverse")
          m_births[index].adverse_add_count++;
       else if(add_type == "favorable")
          m_births[index].favorable_add_count++;
-      PersistBirths(receipts, "executed_add");
+      return PersistBirths(receipts, "executed_add", false);
    }
 
    bool LoadOnePersistedBirth(
@@ -1012,8 +1052,7 @@ private:
       birth.add_sequence = (int)StringToInteger(add_sequence_text);
       birth.adverse_add_count = (int)StringToInteger(adverse_add_count_text);
       birth.favorable_add_count = (int)StringToInteger(favorable_add_count_text);
-      UpsertBirthSnapshot(birth);
-      return true;
+      return UpsertBirthSnapshot(birth);
    }
 
    int LoadPersistedCloseLatchesInternal(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
@@ -1229,7 +1268,8 @@ private:
             close_latch.close_reason : "manual_or_external";
          m_research_telemetry.RecordGridClosed(m_births[i], terminal_reason);
          m_births[i].valid = false;
-         ClearCloseLatch(removed_key, receipts, "grid_close_flat");
+         if(!ClearCloseLatch(removed_key, receipts, "grid_close_flat"))
+            InvalidateDiscovery("close_latch_flat_persistence_failed");
          removed++;
          receipts.Write(
             LP_RECEIPT_REVMA_GRID_EXIT,
@@ -1244,8 +1284,8 @@ private:
             0
          );
       }
-      if(removed > 0)
-         PersistBirths(receipts, "stale_cleanup");
+      if(removed > 0 && !PersistBirths(receipts, "stale_cleanup"))
+         InvalidateDiscovery("stale_birth_cleanup_persistence_failed");
       return removed;
    }
 
@@ -1938,7 +1978,16 @@ private:
             "|close_cap=" + IntegerToString(existing_latch.close_cap);
          LP_TradeIntent latched_close_intent;
          BuildGridCloseIntent(symbol, grid, existing_latch.close_reason, latch_metadata, grid.floating_pnl, latched_close_intent);
-         bus.Add(latched_close_intent);
+         if(!bus.Add(latched_close_intent))
+         {
+            InvalidateDiscovery("latched_grid_close_intent_allocation_failed");
+            receipts.Write(LP_RECEIPT_ERROR, symbol,
+               "gate108_intent_bus_allocation_failed",
+               "action=latched_grid_close|grid_key=" + (string)grid.grid_key,
+               LP_LANE_REVMA, grid.variant_id, grid.grid_key,
+               latched_close_intent.intent_id, 0, 0);
+            return false;
+         }
          receipts.Write(
             LP_RECEIPT_REVMA_GRID_EXIT,
             symbol,
@@ -2006,7 +2055,15 @@ private:
 
       string terminal_close_reason = reason == "take_profit_grid_q_after_fees" ? "grid_tp" : "grid_sl";
       LP_RevmaGridCloseLatch started_latch;
-      StartCloseLatch(grid, terminal_close_reason, config, receipts, started_latch);
+      if(!StartCloseLatch(grid, terminal_close_reason, config, receipts, started_latch))
+      {
+         InvalidateDiscovery("revma_grid_close_latch_failed");
+         receipts.Write(LP_RECEIPT_ERROR, symbol,
+            "revma_grid_close_latch_failed",
+            "grid_key=" + (string)grid.grid_key + "|reason=" + terminal_close_reason,
+            LP_LANE_REVMA, grid.variant_id, grid.grid_key, 0, 0, 0);
+         return false;
+      }
 
       string metadata = BasketExitMetadata(
          symbol,
@@ -2035,7 +2092,16 @@ private:
 
       LP_TradeIntent close_intent;
       BuildGridCloseIntent(symbol, grid, terminal_close_reason, metadata, net_open_money, close_intent);
-      bus.Add(close_intent);
+      if(!bus.Add(close_intent))
+      {
+         InvalidateDiscovery("grid_close_intent_allocation_failed");
+         receipts.Write(LP_RECEIPT_ERROR, symbol,
+            "gate108_intent_bus_allocation_failed",
+            "action=grid_close|grid_key=" + (string)grid.grid_key,
+            LP_LANE_REVMA, grid.variant_id, grid.grid_key,
+            close_intent.intent_id, 0, 0);
+         return false;
+      }
 
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_EXIT,
@@ -2150,8 +2216,21 @@ private:
    }
 
 public:
-   void Reset()
+   bool CanResetDiscoveryForNewRun()
    {
+      return m_discovery_shadow_portfolio.CanResetForNewRun() &&
+         m_discovery_telemetry.CanResetForNewRun();
+   }
+
+   bool Reset()
+   {
+      if(!CanResetDiscoveryForNewRun())
+      {
+         m_discovery_reset_valid = false;
+         m_discovery_valid = false;
+         m_discovery_invalid_reason = "discovery_reset_preflight_failed";
+         return false;
+      }
       m_next_intent_id = 990300000001;
       m_strategy_version_hash = LP_RevmaFormulaHash();
       m_config_hash = 0;
@@ -2190,9 +2269,19 @@ public:
       m_close_latch_persistence_dirty_before_final_checkpoint = false;
       m_protection_manager.Reset();
       m_research_telemetry.Reset();
+      bool shadow_reset = m_discovery_shadow_portfolio.ResetForNewRun();
+      bool telemetry_reset = m_discovery_telemetry.ResetForNewRun();
+      m_discovery_reset_valid = shadow_reset && telemetry_reset;
+      m_discovery_initialization_attempted = false;
+      m_discovery_initialized = false;
+      m_discovery_finalized = false;
+      m_discovery_valid = m_discovery_reset_valid;
+      m_discovery_invalid_reason = m_discovery_reset_valid ? "" :
+         "discovery_reset_failed";
       ArrayResize(m_births, 0);
       ArrayResize(m_pending_lifecycle, 0);
       ArrayResize(m_close_latches, 0);
+      return m_discovery_reset_valid;
    }
 
    void Configure(const ulong config_hash, const LP_Config &config)
@@ -2201,7 +2290,179 @@ public:
       m_state_persistence_enabled = config.persist_revma_lifecycle_state;
    }
 
-   void RecordRiskDecision(
+   bool InitializeDiscovery(
+      const LP_Config &config,
+      const string run_id,
+      const long equity_reference_minor,
+      const double money_quantum
+   )
+   {
+      string profile_reason = "";
+      if(!m_discovery_reset_valid || m_discovery_initialized ||
+         m_discovery_finalized || m_discovery_initialization_attempted)
+      {
+         m_discovery_valid = false;
+         m_discovery_invalid_reason = "discovery_initialize_state_invalid";
+         return false;
+      }
+      m_discovery_initialization_attempted = true;
+      ulong actual_config_hash = LP_ConfigHash(config);
+      if(actual_config_hash == 0 || m_config_hash != actual_config_hash)
+      {
+         m_discovery_valid = false;
+         m_discovery_invalid_reason = "discovery_config_hash_mismatch";
+         return false;
+      }
+      if(!LP_RevmaDiscoveryConfigValid(config, profile_reason))
+      {
+         m_discovery_valid = false;
+         m_discovery_invalid_reason = "discovery_profile_invalid:" + profile_reason;
+         return false;
+      }
+      ulong cycle_id = 1;
+      if(cycle_id == 0 ||
+         !m_discovery_shadow_portfolio.InitializeMatchedBranches(
+            cycle_id, equity_reference_minor, money_quantum))
+      {
+         m_discovery_valid = false;
+         m_discovery_invalid_reason = "discovery_shadow_initialization_failed";
+         return false;
+      }
+      if(!m_discovery_telemetry.Initialize(
+         LP_REVMA_DISCOVERY_OUTPUT_FOLDER,
+         true,
+         run_id,
+         config.source_revision,
+         m_config_hash,
+         LP_REVMA_DISCOVERY_PROFILE_ID
+      ))
+      {
+         string telemetry_reason = m_discovery_telemetry.InvalidReason();
+         bool shadow_cleanup =
+            m_discovery_shadow_portfolio.ResetForNewRun();
+         bool telemetry_cleanup = m_discovery_telemetry.ResetForNewRun();
+         m_discovery_reset_valid = shadow_cleanup && telemetry_cleanup;
+         m_discovery_valid = false;
+         m_discovery_invalid_reason =
+            "discovery_telemetry_initialization_failed:" + telemetry_reason +
+            (m_discovery_reset_valid ? "" : ":cleanup_failed");
+         return false;
+      }
+      m_discovery_initialized = true;
+      m_discovery_valid = true;
+      m_discovery_invalid_reason = "";
+      return true;
+   }
+
+   bool FinalizeDiscovery(
+      const datetime terminal_completed_m1_time,
+      const ulong real_terminal_grid_state_hash,
+      const ulong real_terminal_book_hash,
+      const bool real_final_flat)
+   {
+      if(!m_discovery_initialized || m_discovery_finalized)
+         return false;
+      bool u_final_flat = false;
+      bool c_final_flat = false;
+      ulong u_terminal_grid_state_hash = 0;
+      ulong c_terminal_grid_state_hash = 0;
+      ulong u_terminal_book_hash = 0;
+      ulong c_terminal_book_hash = 0;
+      bool shadow_terminal_ok =
+         m_discovery_shadow_portfolio.MatchedBranchesTerminalReconciled(
+            terminal_completed_m1_time, u_final_flat,
+            u_terminal_grid_state_hash, u_terminal_book_hash, c_final_flat,
+            c_terminal_grid_state_hash, c_terminal_book_hash);
+      bool wrapper_terminal_ok = terminal_completed_m1_time > 0 &&
+         real_terminal_grid_state_hash != 0 &&
+         real_terminal_book_hash != 0 &&
+         m_pending_lifecycle_count == 0 && !HasLatchedGridClose() &&
+         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_R) &&
+         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_U) &&
+         m_discovery_telemetry.BranchTerminalReady(LP_REVMA_BRANCH_C) &&
+         m_discovery_telemetry.BranchTerminalBoundaryM1(
+            LP_REVMA_BRANCH_R) == terminal_completed_m1_time &&
+         m_discovery_telemetry.BranchTerminalBoundaryM1(
+            LP_REVMA_BRANCH_U) == terminal_completed_m1_time &&
+         m_discovery_telemetry.BranchTerminalBoundaryM1(
+            LP_REVMA_BRANCH_C) == terminal_completed_m1_time &&
+         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_R) ==
+            real_terminal_book_hash &&
+         m_discovery_telemetry.BranchTerminalGridStateHash(
+            LP_REVMA_BRANCH_R) == real_terminal_grid_state_hash &&
+         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_R) ==
+            real_final_flat &&
+         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_U) ==
+            u_terminal_book_hash &&
+         m_discovery_telemetry.BranchTerminalGridStateHash(
+            LP_REVMA_BRANCH_U) == u_terminal_grid_state_hash &&
+         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_U) ==
+            u_final_flat &&
+         m_discovery_telemetry.BranchTerminalBookHash(LP_REVMA_BRANCH_C) ==
+            c_terminal_book_hash &&
+         m_discovery_telemetry.BranchTerminalGridStateHash(
+            LP_REVMA_BRANCH_C) == c_terminal_grid_state_hash &&
+         m_discovery_telemetry.BranchTerminalFinalFlat(LP_REVMA_BRANCH_C) ==
+            c_final_flat;
+      bool shadow_ok = shadow_terminal_ok && wrapper_terminal_ok;
+      if(!shadow_ok)
+         InvalidateDiscovery("discovery_shadow_final_reconciliation_failed");
+      bool telemetry_ok = m_discovery_telemetry.Finalize();
+      m_discovery_finalized = true;
+      m_discovery_valid = m_discovery_valid && shadow_ok && telemetry_ok;
+      if(!m_discovery_valid && m_discovery_invalid_reason == "")
+         m_discovery_invalid_reason = m_discovery_telemetry.InvalidReason();
+      return m_discovery_valid;
+   }
+
+   void InvalidateDiscovery(const string reason)
+   {
+      if(!m_discovery_valid)
+         return;
+      m_discovery_valid = false;
+      m_discovery_invalid_reason = reason == "" ?
+         "discovery_invalid_unspecified" : reason;
+      if(m_discovery_initialized && !m_discovery_finalized)
+         m_discovery_telemetry.LatchFailure(m_discovery_invalid_reason);
+   }
+
+   bool DiscoveryTelemetryValid()
+   {
+      return m_discovery_valid &&
+         m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_U) &&
+         m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_C) &&
+         m_discovery_telemetry.Valid();
+   }
+
+   bool DiscoveryInitialized() { return m_discovery_initialized; }
+   bool DiscoveryFaultLatched() { return !m_discovery_valid; }
+
+   bool DiscoveryOperationalValid()
+   {
+      return m_discovery_initialized && !m_discovery_finalized &&
+         DiscoveryTelemetryValid();
+   }
+
+   bool DiscoveryCompletionValid()
+   {
+      return m_discovery_initialized && m_discovery_finalized &&
+         m_discovery_valid;
+   }
+
+   string DiscoveryTelemetryInvalidReason()
+   {
+      if(m_discovery_invalid_reason != "")
+         return m_discovery_invalid_reason;
+      if(!m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_U))
+         return "U:" + m_discovery_shadow_portfolio.BranchInvalidReason(
+            LP_REVMA_BRANCH_U);
+      if(!m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_C))
+         return "C:" + m_discovery_shadow_portfolio.BranchInvalidReason(
+            LP_REVMA_BRANCH_C);
+      return m_discovery_telemetry.InvalidReason();
+   }
+
+   bool RecordRiskDecision(
       const LP_TradeIntent &intent,
       const LP_RiskDecision &decision,
       LP_ReceiptWriter &receipts
@@ -2209,11 +2470,14 @@ public:
    {
       if(intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE ||
          decision.decision != LP_RISK_REJECT)
-         return;
+         return true;
 
       LP_RevmaPendingLifecycle pending;
       if(!TakePendingLifecycle(intent.intent_id, pending))
-         return;
+      {
+         InvalidateDiscovery("risk_rejection_lifecycle_link_missing");
+         return false;
+      }
 
       int receipt_kind = pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
          LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
@@ -2239,20 +2503,24 @@ public:
          decision.decision_id,
          0
       );
+      return true;
    }
 
-   void RecordExecutionOutcome(
+   bool RecordExecutionOutcome(
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution,
       LP_ReceiptWriter &receipts
    )
    {
       if(plan.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_NONE)
-         return;
+         return true;
 
       LP_RevmaPendingLifecycle pending;
       if(!TakePendingLifecycle(plan.intent_id, pending))
-         return;
+      {
+         InvalidateDiscovery("executed_lifecycle_pending_record_missing");
+         return false;
+      }
 
       int receipt_kind = pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
          LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
@@ -2278,20 +2546,33 @@ public:
             plan.decision_id,
             plan.magic
          );
-         return;
+         return true;
       }
 
       if(pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_BIRTH)
       {
-         RememberBirth(pending.grid_key, pending.signal, AddPolicyName(pending.signal));
-         PersistBirths(receipts, "executed_birth");
+         if(!RememberBirth(pending.grid_key, pending.signal,
+               AddPolicyName(pending.signal)) ||
+            !PersistBirths(receipts, "executed_birth"))
+         {
+            InvalidateDiscovery("executed_birth_snapshot_allocation_or_persistence_failed");
+            return false;
+         }
          LP_RevmaGridBirthSnapshot birth;
-         if(FindBirth(pending.grid_key, birth))
-            m_research_telemetry.RecordExecutedBirth(birth, execution);
+         if(!FindBirth(pending.grid_key, birth))
+         {
+            InvalidateDiscovery("executed_birth_snapshot_missing_after_commit");
+            return false;
+         }
+         m_research_telemetry.RecordExecutedBirth(birth, execution);
       }
       else if(pending.event_type == LP_RESEARCH_LIFECYCLE_GRID_ADD)
       {
-         RecordAdd(pending.grid_key, pending.add_type, receipts);
+         if(!RecordAdd(pending.grid_key, pending.add_type, receipts))
+         {
+            InvalidateDiscovery("executed_add_snapshot_update_failed");
+            return false;
+         }
          m_research_telemetry.RecordExecutedAdd(
             pending.grid_key,
             pending.add_type,
@@ -2320,6 +2601,7 @@ public:
          plan.decision_id,
          plan.magic
       );
+      return true;
    }
 
    int LoadPersistedBirths(LP_GridBook &grid_book, LP_ReceiptWriter &receipts)
@@ -2346,7 +2628,7 @@ public:
       }
    }
 
-   void RecordCloseExecution(
+   bool RecordCloseExecution(
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution,
       LP_ReceiptWriter &receipts
@@ -2354,7 +2636,12 @@ public:
    {
       m_research_telemetry.RecordCloseExecution(plan, execution);
       m_research_telemetry.RecordAccountCloseExecution(plan, execution);
-      UpdateCloseLatchProgress(plan, execution, receipts);
+      if(!UpdateCloseLatchProgress(plan, execution, receipts))
+      {
+         InvalidateDiscovery("close_latch_progress_reconciliation_failed");
+         return false;
+      }
+      return true;
    }
 
    bool HasLatchedGridClose()
@@ -2377,8 +2664,12 @@ public:
       {
          m_birth_persistence_dirty_before_final_checkpoint = m_birth_persistence_dirty;
          m_close_latch_persistence_dirty_before_final_checkpoint = m_close_latch_persistence_dirty;
-         PersistBirths(receipts, "tester_final_checkpoint", true);
-         PersistCloseLatches(receipts, "tester_final_checkpoint", true);
+         bool births_ok = PersistBirths(receipts,
+            "tester_final_checkpoint", true);
+         bool latches_ok = PersistCloseLatches(receipts,
+            "tester_final_checkpoint", true);
+         if(!births_ok || !latches_ok)
+            InvalidateDiscovery("final_lifecycle_persistence_checkpoint_failed");
          m_persistence_final_checkpoint_count++;
       }
 
@@ -2743,15 +3034,35 @@ public:
           add_intent.research_add_type = add_type;
           add_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
              (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-           RememberPendingLifecycle(
+           if(!RememberPendingLifecycle(
               add_intent,
               signal,
               add_type,
               active_grid.position_count,
               active_grid.lots,
               active_grid.floating_pnl
-           );
-           bus.Add(add_intent);
+           ))
+           {
+              InvalidateDiscovery("pending_add_lifecycle_allocation_failed");
+              receipts.Write(LP_RECEIPT_ERROR, signal.symbol,
+                 "gate108_pending_lifecycle_allocation_failed",
+                 "action=add|grid_key=" + (string)active_grid.grid_key,
+                 LP_LANE_REVMA, frozen_variant_id, active_grid.grid_key,
+                 add_intent.intent_id, 0, 0);
+              return 0;
+           }
+           if(!bus.Add(add_intent))
+           {
+              InvalidateDiscovery("add_intent_bus_allocation_failed");
+              LP_RevmaPendingLifecycle discarded;
+              TakePendingLifecycle(add_intent.intent_id, discarded);
+              receipts.Write(LP_RECEIPT_ERROR, signal.symbol,
+                 "gate108_intent_bus_allocation_failed",
+                 "action=add|grid_key=" + (string)active_grid.grid_key,
+                 LP_LANE_REVMA, frozen_variant_id, active_grid.grid_key,
+                 add_intent.intent_id, 0, 0);
+              return 0;
+           }
          if(!CurrentMatchesFrozenIdentity(signal, frozen_variant_id, frozen_direction))
          {
             m_last_divergent_add_text =
@@ -2850,8 +3161,28 @@ public:
       open_intent.requested_lots = config.revma_fixed_lots;
       open_intent.expires_at = config.revma_intent_expiry_minutes > 0 ?
          (datetime)((long)TimeCurrent() + (long)config.revma_intent_expiry_minutes * 60) : 0;
-      RememberPendingLifecycle(open_intent, signal, "", 0, 0.0, 0.0);
-      bus.Add(open_intent);
+      if(!RememberPendingLifecycle(open_intent, signal, "", 0, 0.0, 0.0))
+      {
+         InvalidateDiscovery("pending_birth_lifecycle_allocation_failed");
+         receipts.Write(LP_RECEIPT_ERROR, signal.symbol,
+            "gate108_pending_lifecycle_allocation_failed",
+            "action=birth|grid_key=" + (string)open_intent.grid_key,
+            LP_LANE_REVMA, signal.variant_id, open_intent.grid_key,
+            open_intent.intent_id, 0, 0);
+         return 0;
+      }
+      if(!bus.Add(open_intent))
+      {
+         InvalidateDiscovery("birth_intent_bus_allocation_failed");
+         LP_RevmaPendingLifecycle discarded;
+         TakePendingLifecycle(open_intent.intent_id, discarded);
+         receipts.Write(LP_RECEIPT_ERROR, signal.symbol,
+            "gate108_intent_bus_allocation_failed",
+            "action=birth|grid_key=" + (string)open_intent.grid_key,
+            LP_LANE_REVMA, signal.variant_id, open_intent.grid_key,
+            open_intent.intent_id, 0, 0);
+         return 0;
+      }
       UpdateVisualText(signal, false, active_grid, birth_snapshot, signal.variant_id, signal.direction, signal.sleeve, add_policy, 0.0, "birth intent emitted", config);
       string birth_candidate_payload = birth;
       if(receipts.CompactLongRunMode())

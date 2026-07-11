@@ -352,7 +352,7 @@ public:
       WriteReceipt(config, receipts, portfolio, decision.hwm_mode ? "hwm_monitoring" : "monitoring", decision);
    }
 
-   void AddCloseIntent(const LP_Config &config, const ulong config_hash, const ulong intent_id, const LP_PortfolioState &portfolio, const LP_PortfolioStopTakeProfitDecision &decision, LP_IntentBus &bus, LP_ReceiptWriter &receipts)
+   bool AddCloseIntent(const LP_Config &config, const ulong config_hash, const ulong intent_id, const LP_PortfolioState &portfolio, const LP_PortfolioStopTakeProfitDecision &decision, LP_IntentBus &bus, LP_ReceiptWriter &receipts)
    {
       LP_TradeIntent intent;
       intent.intent_id = intent_id;
@@ -398,8 +398,10 @@ public:
          "|hwm_cycle_hwm_pct=" + DoubleToString(decision.hwm_cycle_hwm_pct, 6) +
          "|hwm_cycle_floor_pct=" + DoubleToString(decision.hwm_cycle_floor_pct, 6) +
          "|managed_positions=" + IntegerToString(portfolio.managed_position_count);
-      bus.Add(intent);
+      if(!bus.Add(intent))
+         return false;
       WriteReceipt(config, receipts, portfolio, "account_exit_intent", decision);
+      return true;
    }
 };
 

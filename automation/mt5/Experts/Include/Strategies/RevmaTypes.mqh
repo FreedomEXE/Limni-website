@@ -246,6 +246,8 @@ struct LP_RevmaSignal
    datetime source_m1_time;
    int closed_m1_bars;
    int q_days;
+   int q_event_count;
+   ulong reconstruction_epoch;
    int q_profile;
    int max_m1_bars;
    string q_profile_id;
@@ -289,6 +291,8 @@ void LP_ResetRevmaSignal(LP_RevmaSignal &signal)
    signal.source_m1_time = 0;
    signal.closed_m1_bars = 0;
    signal.q_days = 0;
+   signal.q_event_count = 0;
+   signal.reconstruction_epoch = 0;
    signal.q_profile = LP_REVMA_Q_PROFILE_MEDIUM;
    signal.max_m1_bars = 50000;
    signal.q_profile_id = "";

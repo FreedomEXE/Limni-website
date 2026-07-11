@@ -221,6 +221,53 @@ sync/compile, Strategy Tester, smoke/shard runner, benchmark, optimization,
 Gate 108A acceptance, or runtime-readiness claim until the Phase 4 pushed clean
 source packet receives outsider review.
 
+Outsider review accepted Phase 4 as stated evidence and authorized the R
+execution-envelope and Engine-scheduling boundary:
+`GATE108_PHASE4_ACCEPTED_AS_STATED_EVIDENCE`. This remains telemetry-foundation
+acceptance only, not runtime, artifact-volume, reconciliation, economic or
+Gate 108A acceptance.
+
+Phase 4R institutional foundation-hardening status:
+
+- three adversarial read-only audits pass the frozen shadow, telemetry and
+  source-identity checkpoint; no remaining Phase 4R high-severity static
+  finding is open;
+- exact `CapitalBudgetFraction = 1/10 = 0.10`, cycle `E_ref/B`, sequential
+  branch/account IDs, completed-M1 alignment, frozen A-g and current versus
+  prospective per-grid money are fail-closed and formula-identified;
+- local harvest is proven before allocation; add type is recomputed from
+  decision price versus executed-entry extrema plus the frozen cell; decision,
+  stress-reference and fill prices are distinct and snapshot-hashed;
+- U/C are paired before the narrow authorized divergence and branch-local
+  afterward; C adverse authority is recomputed and cannot be caller-forged;
+- one terminal candidate decision is permitted per grid/completed M1; rejected
+  births, canonical R pre-route rejection and writer-owned first/latest
+  infeasibility are linked without fake lifecycle state;
+- immutable grid origin reason is separate from active close owner, and
+  cycle/reconciliation/run cleanliness and failure fields must agree exactly;
+- telemetry schema `gate108-discovery-telemetry-v12` has transition cardinality
+  `133/133`, summary `88/88`, completion manifest `35`, and header-seeded hash
+  chains;
+- canonical local source closure: `54` files plus external compiler-library
+  boundary `Trade/Trade.mqh`;
+- sealed source bundle:
+  `sha256:985e930f89dfce55c88a026db42725210f6b189ef98c2d147bd77975babd2516`,
+  verifier `status=MATCH` before and after compilation;
+- final repository-only compile attempt 17: `0 errors, 0 warnings`, `198399 ms`;
+  EX5 `635728` bytes, SHA-256
+  `7eac521d8fcc52d200abd59dc1ae459b7215f2ed1f53a8c0d5f5fb977e306b06`;
+- discovery/R/Engine scheduling remains dormant. Shared signal provenance,
+  deterministic valuation proxies, R router-stage mechanics, terminal
+  row/state equivalence, true concurrent portfolio peaks/concentration and
+  final summary scopes are explicit Phase 5 pre-activation blockers;
+- no terminal-copy synchronization, Strategy Tester, smoke/shard runner,
+  benchmark, optimization, parameter ladder or backtest automation occurred.
+
+Phase 4R stop line: push and clean the independently re-reviewed foundation
+checkpoint before R two-atom and synchronized Engine scheduling. Phase 4R does
+not reopen any optimization input and makes no runtime, mechanics, speed,
+parity, economic, promotion, live-readiness or funding claim.
+
 ## Historical overrides below
 
 Everything below this heading is retained as chronological project history and

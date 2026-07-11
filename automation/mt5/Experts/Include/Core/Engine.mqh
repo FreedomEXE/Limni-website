@@ -66,6 +66,7 @@ private:
    bool m_cached_portfolio_valid;
    bool m_portfolio_dirty;
    bool m_stop_take_profit_liquidation_active;
+   bool m_fatal_invariant_latched;
    int m_cached_positions_total;
    datetime m_last_tester_chart_closed_m1_time;
    LP_PortfolioState m_cached_portfolio;
@@ -115,6 +116,15 @@ private:
    {
       m_receipts.Write(LP_RECEIPT_ERROR, "", status, message, 0, 0, 0, 0, 0, 0);
       Print(LP_EA_NAME, " ", status, ": ", message);
+   }
+
+   void LatchFatalInvariant(const string reason)
+   {
+      if(m_fatal_invariant_latched)
+         return;
+      m_fatal_invariant_latched = true;
+      m_strategy_registry.InvalidateRevmaDiscovery(reason);
+      WriteError("fatal_invariant_latched", reason);
    }
 
    ulong NextSystemIntentId()
@@ -431,7 +441,7 @@ private:
       return true;
    }
 
-   void AddHarvestCloseIntent(const LP_HarvestDecision &harvest, LP_IntentBus &bus)
+   bool AddHarvestCloseIntent(const LP_HarvestDecision &harvest, LP_IntentBus &bus)
    {
       LP_TradeIntent intent;
       intent.intent_id = NextSystemIntentId();
@@ -466,7 +476,7 @@ private:
          "|managed_floating_pnl=" + DoubleToString(harvest.managed_floating_pnl, 2) +
          "|hwm=" + DoubleToString(harvest.high_watermark_money, 2) +
          "|trail_floor=" + DoubleToString(harvest.trail_floor_money, 2);
-      bus.Add(intent);
+      return bus.Add(intent);
    }
 
    int EvaluateRevmaSymbol(
@@ -535,8 +545,10 @@ private:
    }
 
 public:
-   void Reset()
+   bool Reset()
    {
+      if(!m_strategy_registry.CanReset())
+         return false;
       m_config_hash = 0;
       m_symbol_universe_hash = 0;
       m_initialized = false;
@@ -562,6 +574,7 @@ public:
       m_cached_portfolio_valid = false;
       m_portfolio_dirty = true;
       m_stop_take_profit_liquidation_active = false;
+      m_fatal_invariant_latched = false;
       m_cached_positions_total = -1;
       m_last_tester_chart_closed_m1_time = 0;
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
@@ -576,7 +589,8 @@ public:
       m_clock.Reset();
       m_lrmg_state.Reset();
       m_revma_state.Reset();
-      m_strategy_registry.Reset();
+      if(!m_strategy_registry.Reset())
+         return false;
       m_intent_selector.Reset();
       m_intent_bus.Reset();
       m_position_commission_cache.Reset();
@@ -589,11 +603,16 @@ public:
       m_revma_visual_reporter.Reset();
       m_risk_arbiter.Reset();
       m_trade_router.Reset();
+      return true;
    }
 
    int OnInit()
    {
-      Reset();
+      if(!Reset())
+      {
+         Print(LP_EA_NAME, " discovery reset preflight failed.");
+         return INIT_FAILED;
+      }
       m_started_tick_count = GetTickCount();
       LP_LoadConfig(m_config);
       m_config_hash = LP_ConfigHash(m_config);
@@ -784,6 +803,8 @@ public:
    {
       if(!m_initialized)
          return;
+      if(m_fatal_invariant_latched)
+         return;
 
       m_step_count++;
       if(source == "tick")
@@ -894,7 +915,10 @@ public:
       string harvest_close_reason = "";
       bool harvest_close_required = m_account_guard.RequiresAccountClose(portfolio, harvest_close_reason);
       if(harvest_close_required)
-         AddHarvestCloseIntent(harvest, m_intent_bus);
+      {
+         if(!AddHarvestCloseIntent(harvest, m_intent_bus))
+            LatchFatalInvariant("harvest_close_intent_allocation_failed");
+      }
 
       LP_PortfolioStopTakeProfitDecision stop_take_profit;
       bool stop_take_profit_block_new_entries = m_stop_take_profit_guard.Evaluate(
@@ -924,7 +948,12 @@ public:
          else if(harvest_close_required)
             m_stop_take_profit_guard.WriteReceipt(m_config, m_receipts, portfolio, "triggered_harvest_close_already_queued", stop_take_profit);
          else
-            m_stop_take_profit_guard.AddCloseIntent(m_config, m_config_hash, NextSystemIntentId(), portfolio, stop_take_profit, m_intent_bus, m_receipts);
+         {
+            if(!m_stop_take_profit_guard.AddCloseIntent(m_config, m_config_hash,
+               NextSystemIntentId(), portfolio, stop_take_profit, m_intent_bus,
+               m_receipts))
+               LatchFatalInvariant("account_close_intent_allocation_failed");
+         }
       }
       else if(stop_take_profit.hwm_cycle_reset_flat)
       {
@@ -1005,6 +1034,24 @@ public:
 
       m_total_new_bars += cycle_new_bars;
 
+      if(!m_intent_bus.Valid())
+      {
+         LatchFatalInvariant(m_intent_bus.InvalidReason());
+         return;
+      }
+      if(m_fatal_invariant_latched)
+         return;
+
+      if(m_strategy_registry.RevmaDiscoveryFaultLatched() ||
+         (m_strategy_registry.RevmaDiscoveryInitialized() &&
+         !m_strategy_registry.RevmaDiscoveryOperationalValid())
+      )
+      {
+         LatchFatalInvariant(
+            m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+         return;
+      }
+
       m_currency_guard.BeginIntentBatch();
       for(int intent_index = 0; intent_index < m_intent_bus.Count(); intent_index++)
       {
@@ -1020,7 +1067,13 @@ public:
          m_risk_arbiter.Decide(intent, portfolio, m_currency_guard, decision, plan);
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RISK_RESERVATION, risk_reservation_started_at);
          LP_LogRiskDecision(m_receipts, decision);
-         m_strategy_registry.RecordRevmaRiskDecision(intent, decision, m_receipts);
+         if(!m_strategy_registry.RecordRevmaRiskDecision(
+            intent, decision, m_receipts))
+         {
+            LatchFatalInvariant(
+               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+            return;
+         }
          if(plan.executable)
             LP_LogTradePlan(m_receipts, plan);
          if(plan.executable)
@@ -1053,8 +1106,20 @@ public:
                   plan.magic
                );
             }
-            m_strategy_registry.RecordRevmaExecutionOutcome(plan, execution, m_receipts);
-            m_strategy_registry.RecordRevmaCloseExecution(plan, execution, m_receipts);
+            if(!m_strategy_registry.RecordRevmaExecutionOutcome(
+               plan, execution, m_receipts))
+            {
+               LatchFatalInvariant(
+                  m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               return;
+            }
+            if(!m_strategy_registry.RecordRevmaCloseExecution(
+               plan, execution, m_receipts))
+            {
+               LatchFatalInvariant(
+                  m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               return;
+            }
             m_position_index.MarkDirty();
             m_portfolio_dirty = true;
          }

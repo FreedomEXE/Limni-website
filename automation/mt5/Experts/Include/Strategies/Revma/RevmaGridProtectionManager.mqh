@@ -393,7 +393,15 @@ public:
       intent.config_hash = config_hash;
       intent.strategy_version_hash = LP_HashString("gate99zzg_revma_grid_broker_tp_sync");
       intent.human_reason = "revma_grid_broker_tp_sync|" + metadata;
-      bus.Add(intent);
+      if(!bus.Add(intent))
+      {
+         receipts.Write(LP_RECEIPT_ERROR, symbol,
+            "intent_bus_allocation_failed",
+            "action=broker_tp_sync|grid_key=" + (string)grid.grid_key,
+            LP_LANE_REVMA, grid.variant_id, grid.grid_key,
+            intent.intent_id, 0, 0);
+         return false;
+      }
 
       receipts.Write(
          LP_RECEIPT_REVMA_GRID_EXIT,
