@@ -1,5 +1,5 @@
 /*-----------------------------------------------
-  Gate 108A controlled profile and broker input
+  Modular portfolio shell operator surface
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_CONFIG_MQH__
 #define __LIMNI_PORTFOLIO_CONFIG_MQH__
@@ -33,8 +33,8 @@ enum NewsImpactLevelInput
 
 enum UniverseModeInput
 {
-   UniverseCurrentChart = 0, // Current Chart
-   UniverseFx28 = 1          // FX28
+   UniverseCurrentChart = 0, // Single Pair - Current Chart
+   UniverseFx28 = 1          // FX28 Portfolio
 };
 
 enum RevmaQProfileInput
@@ -68,11 +68,26 @@ enum ReceiptModeInput
    ReceiptCompactLongRun = 2 // Compact Long Run
 };
 
-// Gate 108 strategy, lifecycle, capacity and evidence settings are compile
-// frozen. The broker suffix is the only exposed compatibility input and has no
-// formula authority.
-input group "Gate 108 Broker Compatibility"
+input group "Systems"
+input bool EnableRevma = true;
+input bool EnableKyma = false;
+input bool EnableKatarakti = false;
+
+input group "Universe / Test Scope"
+input UniverseModeInput UniverseMode = UniverseFx28;
+
+input group "Execution"
+input ExecutionModeInput ExecutionMode = ExecutionTester;
+input bool AllowLiveTrading = false;
+
+input group "Broker Compatibility"
 input string BrokerSymbolSuffix = ".i";
+
+input group "Display / Diagnostics"
+input bool ShowSystemDashboard = true;
+
+// Strategy, lifecycle, capacity and evidence settings remain compile-frozen.
+// The operator surface selects systems, scope and execution policy only.
 const string SourceRevision = LP_EA_SOURCE_BUNDLE_ID;
 
 string LP_OutputFolderNumberPart(const double value, const int digits)
@@ -145,16 +160,16 @@ string LP_ResolveOutputFolder(const LP_Config &config, const string requested_fo
 
 void LP_LoadConfig(LP_Config &config)
 {
-   config.execution_mode = LP_EXECUTION_TESTER_ONLY;
+   config.execution_mode = (LP_ExecutionMode)ExecutionMode;
    config.news_guard_mode = LP_NEWS_GUARD_DISABLED;
-   config.enable_trading = true;
-   config.allow_live_trading = false;
+   config.enable_trading = ExecutionMode != ExecutionDisabled;
+   config.allow_live_trading = AllowLiveTrading;
    config.enable_open_order_routing = true;
    config.enable_close_execution = true;
    config.enable_account_close_execution = true;
-   config.enable_strategy_evaluation = true;
+   config.enable_strategy_evaluation = EnableRevma || EnableKyma || EnableKatarakti;
    config.require_hedging_account = true;
-   config.require_all_symbols = true;
+   config.require_all_symbols = UniverseMode == UniverseFx28;
    config.use_timer_watchdog = true;
    config.timer_watchdog_seconds = 5;
    config.persist_revma_lifecycle_state = false;
@@ -178,14 +193,16 @@ void LP_LoadConfig(LP_Config &config)
    config.harvest_arm_emergency_liquidation = false;
    config.enable_currency_exposure_guard = false;
    config.enable_qstate_trend_variant = false;
-   config.enable_revma_system = true;
-   config.revma_universe_mode = LP_UNIVERSE_FX28;
+   config.enable_revma_system = EnableRevma;
+   config.enable_kyma_system = EnableKyma;
+   config.enable_katarakti_system = EnableKatarakti;
+   config.revma_universe_mode = (LP_UniverseMode)UniverseMode;
    config.revma_q_profile = LP_REVMA_Q_PROFILE_MEDIUM;
    config.revma_max_m1_bars = 50000;
    config.revma_fixed_lots = 0.01;
    config.revma_grid_spacing_q = 0.10;
    config.revma_intent_expiry_minutes = 10;
-   config.revma_show_visual_dashboard = false;
+   config.revma_show_visual_dashboard = ShowSystemDashboard;
    config.revma_dashboard_refresh_seconds = 1;
    config.revma_dashboard_screenshot_on_divergent_add = false;
    config.stop_take_profit_mode = LP_SLTP_DISABLED;
@@ -256,6 +273,8 @@ ulong LP_ConfigHash(const LP_Config &config)
       LP_BoolText(config.enable_currency_exposure_guard) + "|" +
       LP_BoolText(config.enable_qstate_trend_variant) + "|" +
       LP_BoolText(config.enable_revma_system) + "|" +
+      LP_BoolText(config.enable_kyma_system) + "|" +
+      LP_BoolText(config.enable_katarakti_system) + "|" +
       LP_UniverseModeName(config.revma_universe_mode) + "|" +
       LP_RevmaQProfileName(config.revma_q_profile) + "|" +
       IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) + "|" +

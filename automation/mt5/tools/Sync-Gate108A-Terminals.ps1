@@ -18,7 +18,39 @@ $TerminalManifestPath = (Resolve-Path -LiteralPath $TerminalManifestPath).Path
 $terminalManifest = Get-Content -Raw -LiteralPath $TerminalManifestPath | ConvertFrom-Json
 $expectedTerminalIds = @('94497')
 $expectedCompilerHash = '2C0C8E9E5C1239E30E8A908D9205CDB01B9CDFCF876752E43BD7A755CCE58AD3'
-$expectedPresetHash = '57A2AECDE64179F4363E66EC85242A31BADC5AB9EACD7A862CB65AF53F454F1C'
+$profileDefinitions = @(
+    [pscustomobject]@{
+        id = 'fx28_research'
+        repo_relative_path = 'automation\mt5\tester-presets\limni-portfolio-revma-gate108a-controlled.set'
+        terminal_relative_path = 'Profiles\Tester\LimniPortfolioEA.set'
+        expected_sha256 = '051DA44F9FA14AA9904DA1B2454413FD224A725D74CD639E2679A6D0C0ED3AB2'
+        expected_bytes = 158
+        source = ''
+    },
+    [pscustomobject]@{
+        id = 'single_pair_mechanics'
+        repo_relative_path = 'automation\mt5\tester-presets\limni-portfolio-revma-single-pair-mechanics.set'
+        terminal_relative_path = 'Profiles\Tester\LimniPortfolioEA-SinglePairMechanics.set'
+        expected_sha256 = 'B84DECD18D3D5E6940D71416DFEA0FD29A584798FB52282FEF6BFF715C344FB2'
+        expected_bytes = 157
+        source = ''
+    }
+)
+$profileById = @{}
+foreach ($profile in $profileDefinitions) {
+    $source = (Resolve-Path -LiteralPath (Join-Path $repoRoot $profile.repo_relative_path)).Path
+    $item = Get-Item -LiteralPath $source
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash
+    if ($profile.expected_sha256 -like 'REPLACE_*' -or
+        $profile.expected_bytes -le 0 -or
+        $hash -cne $profile.expected_sha256 -or
+        $item.Length -ne $profile.expected_bytes) {
+        throw "Controlled profile source identity is not sealed: $($profile.id) hash=$hash bytes=$($item.Length)"
+    }
+    $profile.source = $source
+    $profileById[$profile.id] = $profile
+}
+$expectedPresetHash = $profileById['fx28_research'].expected_sha256
 $expectedStandardIncludes = @(
     'Object.mqh',
     'StdLibErr.mqh',
@@ -232,14 +264,14 @@ if (@($bundleOutput | Select-String '^status=MATCH$').Count -ne 1) { throw "Sour
 $preBundleIdentity = @($bundleOutput | Where-Object { $_ -match '^bundle_id=' })
 if ($preBundleIdentity.Count -ne 1) { throw "Precompile source bundle identity is missing or duplicated." }
 $profileOutput = @(& $profileTool -ProofPath $profileProofPath -SourceManifestPath $sourceManifestPath)
-$inputLines = @($profileOutput | Where-Object { $_ -match '^(input_group_metadata_count|broker_compatibility_inputs|strategy_inputs|lifecycle_inputs|capital_inputs|account_size_authority|preset_bytes|preset_sha256)=' })
+$inputLines = @($profileOutput | Where-Object { $_ -match '^(input_group_metadata_count|broker_compatibility_inputs|strategy_inputs|lifecycle_inputs|capital_inputs|system_switch_inputs|scope_inputs|execution_inputs|diagnostic_inputs|account_size_authority|preset_bytes|preset_sha256|single_pair_preset_bytes|single_pair_preset_sha256)=' })
 [System.IO.File]::WriteAllLines($inputProofPath, [string[]]$inputLines, $utf8NoBom)
 if (@($profileOutput | Select-String '^status=PASS$').Count -ne 1) { throw "Controlled profile proof failed." }
 
 $closure = @(Import-Csv -LiteralPath $sourceManifestPath)
 if ($closure.Count -ne 57) { throw "Canonical Gate108 source closure must contain 57 files." }
 $expectedLocal = [string[]]@($closure.terminal_relative_path)
-$presetSource = (Resolve-Path -LiteralPath (Join-Path $repoRoot 'automation\mt5\tester-presets\limni-portfolio-revma-gate108a-controlled.set')).Path
+$presetSource = $profileById['fx28_research'].source
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $presetSource).Hash -cne $expectedPresetHash) { throw "Controlled preset source hash mismatch." }
 
 $compilerRows = [System.Collections.Generic.List[object]]::new()
@@ -287,9 +319,20 @@ foreach ($terminal in $terminals) {
             repo_sha256 = $repoHash
         })
     }
-    $presetTarget = Assert-PathUnder $mql5Root (Join-Path $mql5Root 'Profiles\Tester\LimniPortfolioEA.set')
-    if (!$resolvedDestinations.Add((Get-NormalizedFullPath $presetTarget))) {
-        throw "Terminal preset destination is duplicated: $presetTarget"
+    $profileTargets = [System.Collections.Generic.List[object]]::new()
+    foreach ($profile in $profileDefinitions) {
+        $profileTarget = Assert-PathUnder $mql5Root (
+            Join-Path $mql5Root $profile.terminal_relative_path)
+        if (!$resolvedDestinations.Add((Get-NormalizedFullPath $profileTarget))) {
+            throw "Terminal profile destination is duplicated: $profileTarget"
+        }
+        $profileTargets.Add([pscustomobject]@{
+            id = $profile.id
+            source = $profile.source
+            target = $profileTarget
+            expected_sha256 = $profile.expected_sha256
+            expected_bytes = $profile.expected_bytes
+        })
     }
     $terminalContexts.Add([pscustomobject]@{
         id = [string]$terminal.id
@@ -297,7 +340,7 @@ foreach ($terminal in $terminals) {
         compiler = $compiler
         terminal_exe = $terminalExe
         files = $fileMappings
-        preset_target = $presetTarget
+        profile_targets = $profileTargets
     })
 }
 $compilerRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-toolchain-proof.csv') -NoTypeInformation -Encoding UTF8
@@ -322,12 +365,17 @@ foreach ($context in $terminalContexts) {
             match = $true
         })
     }
-    $presetParent = Split-Path -Parent $context.preset_target
-    if (!(Test-Path -LiteralPath $presetParent -PathType Container)) { New-Item -ItemType Directory -Path $presetParent -Force | Out-Null }
-    Copy-Item -LiteralPath $presetSource -Destination $context.preset_target -Force
-    $presetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $context.preset_target).Hash
-    if ($presetHash -cne $expectedPresetHash -or (Get-Item -LiteralPath $context.preset_target).Length -ne 22) { throw "Terminal preset mismatch: $($context.id)" }
-    $presetRows.Add([pscustomobject]@{ phase = 'precompile'; terminal_id = $context.id; path = $context.preset_target; bytes = 22; sha256 = $presetHash; match = $true })
+    foreach ($profile in $context.profile_targets) {
+        $profileParent = Split-Path -Parent $profile.target
+        if (!(Test-Path -LiteralPath $profileParent -PathType Container)) { New-Item -ItemType Directory -Path $profileParent -Force | Out-Null }
+        Copy-Item -LiteralPath $profile.source -Destination $profile.target -Force
+        $profileHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $profile.target).Hash
+        if ($profileHash -cne $profile.expected_sha256 -or
+            (Get-Item -LiteralPath $profile.target).Length -ne $profile.expected_bytes) {
+            throw "Terminal profile mismatch: terminal=$($context.id) profile=$($profile.id)"
+        }
+        $presetRows.Add([pscustomobject]@{ phase = 'precompile'; terminal_id = $context.id; profile_id = $profile.id; path = $profile.target; bytes = $profile.expected_bytes; sha256 = $profileHash; match = $true })
+    }
 }
 $sourceRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-terminal-source-hash-proof.csv') -NoTypeInformation -Encoding UTF8
 $presetRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-terminal-preset-hash-proof.csv') -NoTypeInformation -Encoding UTF8
@@ -431,7 +479,7 @@ if ($postBundleIdentity.Count -ne 1 -or
 }
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $presetSource).Hash -cne
         $expectedPresetHash -or
-    (Get-Item -LiteralPath $presetSource).Length -ne 22) {
+    (Get-Item -LiteralPath $presetSource).Length -ne $profileById['fx28_research'].expected_bytes) {
     throw "Repository controlled preset changed during synchronization."
 }
 foreach ($context in $terminalContexts) {
@@ -450,12 +498,14 @@ foreach ($context in $terminalContexts) {
             match = $true
         })
     }
-    $presetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $context.preset_target).Hash
-    if ($presetHash -cne $expectedPresetHash -or
-        (Get-Item -LiteralPath $context.preset_target).Length -ne 22) {
-        throw "Post-compile terminal preset drift: $($context.id)"
+    foreach ($profile in $context.profile_targets) {
+        $profileHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $profile.target).Hash
+        if ($profileHash -cne $profile.expected_sha256 -or
+            (Get-Item -LiteralPath $profile.target).Length -ne $profile.expected_bytes) {
+            throw "Post-compile terminal profile drift: terminal=$($context.id) profile=$($profile.id)"
+        }
+        $presetRows.Add([pscustomobject]@{ phase = 'postcompile'; terminal_id = $context.id; profile_id = $profile.id; path = $profile.target; bytes = $profile.expected_bytes; sha256 = $profileHash; match = $true })
     }
-    $presetRows.Add([pscustomobject]@{ phase = 'postcompile'; terminal_id = $context.id; path = $context.preset_target; bytes = 22; sha256 = $presetHash; match = $true })
 }
 $sourceRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-terminal-source-hash-proof.csv') -NoTypeInformation -Encoding UTF8
 $presetRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-terminal-preset-hash-proof.csv') -NoTypeInformation -Encoding UTF8

@@ -128,33 +128,62 @@ closed the following implementation risks before source sealing:
 ```text
 CapitalBudgetFraction=0.10
 source_bundle_algorithm=sha256-canonical-local-include-closure-v1
-source_bundle_id=sha256:73b802f48ded0eee9029e91fbf6235e49a8b2129da54dd79b385ed2c6b362141
+source_bundle_id=sha256:6efd1d405df9c8be38f1a801510539716d55a4906fd333e841e7618a719375ea
 source_files=57
 external_include=Trade/Trade.mqh
 profile_hash_expected_fnv1a64=5876431486502579717
-formula_hash_expected_fnv1a64=5186801232550464544
+formula_hash_expected_fnv1a64=12023205941797858167
 underlying_revma_formula_hash_expected_fnv1a64=907110450252532080
 pair_direction_formula_hash_expected_fnv1a64=8337305153952970193
-preset_bytes=22
-preset_sha256=57A2AECDE64179F4363E66EC85242A31BADC5AB9EACD7A862CB65AF53F454F1C
+preset_bytes=158
+preset_sha256=051DA44F9FA14AA9904DA1B2454413FD224A725D74CD639E2679A6D0C0ED3AB2
+single_pair_preset_bytes=157
+single_pair_preset_sha256=B84DECD18D3D5E6940D71416DFEA0FD29A584798FB52282FEF6BFF715C344FB2
 ```
 
 The canonical operator surface is:
 
 ```text
-input group "Gate 108 Broker Compatibility"
+input group "Systems"
+input bool EnableRevma = true;
+input bool EnableKyma = false;
+input bool EnableKatarakti = false;
+input group "Universe / Test Scope"
+input UniverseModeInput UniverseMode = UniverseFx28;
+input group "Execution"
+input ExecutionModeInput ExecutionMode = ExecutionTester;
+input bool AllowLiveTrading = false;
+input group "Broker Compatibility"
 input string BrokerSymbolSuffix = ".i";
+input group "Display / Diagnostics"
+input bool ShowSystemDashboard = true;
 ```
 
 Classification:
 
 ```text
-input_group_metadata_count=1
+input_group_metadata_count=5
 broker_compatibility_inputs=1
 strategy_inputs=0
 lifecycle_inputs=0
 capital_inputs=0
+system_switch_inputs=3
+scope_inputs=1
+execution_inputs=2
+diagnostic_inputs=1
 account_size_authority=tester_account_contract
+```
+
+The synchronized profiles are:
+
+```text
+limni-portfolio-revma-gate108a-controlled.set
+  EnableRevma=true, UniverseMode=FX28 Portfolio, ExecutionMode=Tester,
+  AllowLiveTrading=false, ShowSystemDashboard=false
+
+limni-portfolio-revma-single-pair-mechanics.set
+  EnableRevma=true, UniverseMode=Single Pair - Current Chart,
+  ExecutionMode=Tester, AllowLiveTrading=false, ShowSystemDashboard=true
 ```
 
 The offline expected profile/formula hashes are not presented as runtime
@@ -178,11 +207,11 @@ controlled evidence review.
 ## Final synchronization evidence
 
 Final canonical-terminal synchronization is recorded in
-`docs/research/gates/gate108/artifacts/gate108a-canonical-consolidation-20260711-183200/`.
+`docs/research/gates/gate108/artifacts/gate108a-operator-surface-final-20260711/`.
 The repository and canonical receipts are both `0 errors, 0 warnings`; the
-source bundle is `sha256:73b802f48ded0eee9029e91fbf6235e49a8b2129da54dd79b385ed2c6b362141`.
-The final synchronized EX5 is 904680 bytes with SHA256
-`D1AC7BFFD7F14C6E9490FFEA9165D7E4BBC57277E7B7DB4BBB5556E4AF58D57C` in both
+source bundle is `sha256:6efd1d405df9c8be38f1a801510539716d55a4906fd333e841e7618a719375ea`.
+The final synchronized EX5 is 998400 bytes with SHA256
+`42D239F0C0F90586E15A3ABE2B37E45B2F393316C65312FD340128491AF3AF83` in both
 the repository and canonical terminal. No tester or backtest automation ran.
 
 ## Explicit model declarations and limitations

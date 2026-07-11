@@ -15,6 +15,7 @@ $typesPath = Join-Path $repoRoot "automation\mt5\Experts\Include\Strategies\Revm
 $revmaTypesPath = Join-Path $repoRoot "automation\mt5\Experts\Include\Strategies\RevmaTypes.mqh"
 $pairDirectionPath = Join-Path $repoRoot "automation\mt5\Indicators\Include\LimniPairDirectionCore.mqh"
 $presetPath = Join-Path $repoRoot "automation\mt5\tester-presets\limni-portfolio-revma-gate108a-controlled.set"
+$singlePairPresetPath = Join-Path $repoRoot "automation\mt5\tester-presets\limni-portfolio-revma-single-pair-mechanics.set"
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 
 if ($SourceManifestPath -eq "") {
@@ -199,33 +200,58 @@ try {
         }
     }
     $expectedInputs = @(
-        'input group "Gate 108 Broker Compatibility"',
-        'input string BrokerSymbolSuffix = ".i";'
+        'input group "Systems"',
+        'input bool EnableRevma = true;',
+        'input bool EnableKyma = false;',
+        'input bool EnableKatarakti = false;',
+        'input group "Universe / Test Scope"',
+        'input UniverseModeInput UniverseMode = UniverseFx28;',
+        'input group "Execution"',
+        'input ExecutionModeInput ExecutionMode = ExecutionTester;',
+        'input bool AllowLiveTrading = false;',
+        'input group "Broker Compatibility"',
+        'input string BrokerSymbolSuffix = ".i";',
+        'input group "Display / Diagnostics"',
+        'input bool ShowSystemDashboard = true;'
     )
-    if ($inputLines.Count -ne 2 -or
-        $inputLines[0] -cne $expectedInputs[0] -or
-        $inputLines[1] -cne $expectedInputs[1] -or
+    if ($inputLines.Count -ne $expectedInputs.Count -or
+        (($inputLines -join "`n") -cne ($expectedInputs -join "`n")) -or
         @($inputLines | Where-Object { $_ -match '^sinput\b' }).Count -ne 0) {
         throw "Gate108 operator input surface is not exact."
     }
 
     $presetBytes = [System.IO.File]::ReadAllBytes($presetPath)
     $presetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $presetPath).Hash
-    $expectedPreset = [System.Text.Encoding]::ASCII.GetBytes("BrokerSymbolSuffix=.i`n")
+    $expectedPreset = [System.Text.Encoding]::ASCII.GetBytes(
+        "EnableRevma=true`nEnableKyma=false`nEnableKatarakti=false`nUniverseMode=1`nExecutionMode=2`nAllowLiveTrading=false`nBrokerSymbolSuffix=.i`nShowSystemDashboard=false`n")
     $presetBytesMatch = ($presetBytes.Length -eq $expectedPreset.Length -and
         @((Compare-Object -ReferenceObject $presetBytes -DifferenceObject $expectedPreset -SyncWindow 0)).Count -eq 0)
-    if ($presetBytes.Length -ne 22 -or $presetHash -cne '57A2AECDE64179F4363E66EC85242A31BADC5AB9EACD7A862CB65AF53F454F1C' -or
+    if (-not $presetBytesMatch) {
+        throw "Gate108 controlled tester preset content mismatch."
+    }
+    $singlePresetBytes = [System.IO.File]::ReadAllBytes($singlePairPresetPath)
+    $singlePresetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $singlePairPresetPath).Hash
+    $expectedSinglePreset = [System.Text.Encoding]::ASCII.GetBytes(
+        "EnableRevma=true`nEnableKyma=false`nEnableKatarakti=false`nUniverseMode=0`nExecutionMode=2`nAllowLiveTrading=false`nBrokerSymbolSuffix=.i`nShowSystemDashboard=true`n")
+    $singlePresetBytesMatch = ($singlePresetBytes.Length -eq $expectedSinglePreset.Length -and
+        @((Compare-Object -ReferenceObject $singlePresetBytes -DifferenceObject $expectedSinglePreset -SyncWindow 0)).Count -eq 0)
+    if (-not $singlePresetBytesMatch) {
+        throw "Single-pair mechanics preset content mismatch."
+    }
+
+    if ($presetHash -eq $singlePresetHash -or
+        $presetHash -eq '' -or $singlePresetHash -eq '') {
+        throw "Controlled profiles must have distinct non-empty identities."
+    }
+
+    if ($presetBytes.Length -eq 0 -or
         -not $presetBytesMatch) {
         throw "Gate108 controlled tester preset mismatch."
     }
 
     $configText = [System.IO.File]::ReadAllText($configPath)
     $requiredConfigPatterns = @(
-        'config\.execution_mode\s*=\s*LP_EXECUTION_TESTER_ONLY\s*;',
-        'config\.allow_live_trading\s*=\s*false\s*;',
         'config\.enable_qstate_trend_variant\s*=\s*false\s*;',
-        'config\.enable_revma_system\s*=\s*true\s*;',
-        'config\.revma_universe_mode\s*=\s*LP_UNIVERSE_FX28\s*;',
         'config\.revma_fixed_lots\s*=\s*0\.01\s*;',
         'config\.revma_grid_spacing_q\s*=\s*0\.10\s*;',
         'config\.stop_take_profit_mode\s*=\s*LP_SLTP_DISABLED\s*;',
@@ -234,6 +260,20 @@ try {
     )
     foreach ($pattern in $requiredConfigPatterns) {
         Assert-RegexCount $configText $pattern 1 "controlled config pattern $pattern"
+    }
+    $operatorMappingPatterns = @(
+        'config\.execution_mode\s*=\s*\(LP_ExecutionMode\)ExecutionMode\s*;',
+        'config\.enable_trading\s*=\s*ExecutionMode\s*!=\s*ExecutionDisabled\s*;',
+        'config\.allow_live_trading\s*=\s*AllowLiveTrading\s*;',
+        'config\.require_all_symbols\s*=\s*UniverseMode\s*==\s*UniverseFx28\s*;',
+        'config\.enable_revma_system\s*=\s*EnableRevma\s*;',
+        'config\.enable_kyma_system\s*=\s*EnableKyma\s*;',
+        'config\.enable_katarakti_system\s*=\s*EnableKatarakti\s*;',
+        'config\.revma_universe_mode\s*=\s*\(LP_UniverseMode\)UniverseMode\s*;',
+        'config\.revma_show_visual_dashboard\s*=\s*ShowSystemDashboard\s*;'
+    )
+    foreach ($pattern in $operatorMappingPatterns) {
+        Assert-RegexCount $configText $pattern 1 "operator mapping $pattern"
     }
 
     $buildInfoText = [System.IO.File]::ReadAllText($buildInfoPath)
@@ -327,14 +367,20 @@ try {
     $proof.Add('source_bundle_id=' + $bundleMap['bundle_id'])
     $proof.Add('source_count=57')
     $proof.Add('external_include=Trade/Trade.mqh')
-    $proof.Add('input_group_metadata_count=1')
+    $proof.Add('input_group_metadata_count=5')
     $proof.Add('broker_compatibility_inputs=1')
     $proof.Add('strategy_inputs=0')
     $proof.Add('lifecycle_inputs=0')
     $proof.Add('capital_inputs=0')
+    $proof.Add('system_switch_inputs=3')
+    $proof.Add('scope_inputs=1')
+    $proof.Add('execution_inputs=2')
+    $proof.Add('diagnostic_inputs=1')
     $proof.Add('account_size_authority=tester_account_contract')
-    $proof.Add('preset_bytes=22')
+    $proof.Add('preset_bytes=' + $presetBytes.Length)
     $proof.Add('preset_sha256=' + $presetHash)
+    $proof.Add('single_pair_preset_bytes=' + $singlePresetBytes.Length)
+    $proof.Add('single_pair_preset_sha256=' + $singlePresetHash)
     $proof.Add('profile_id=' + $values['LP_REVMA_DISCOVERY_PROFILE_ID'])
     $proof.Add('profile_hash_expected_fnv1a64=' + $profileHash)
     $proof.Add('formula_id=' + $values['LP_REVMA_DISCOVERY_FORMULA_ID'])

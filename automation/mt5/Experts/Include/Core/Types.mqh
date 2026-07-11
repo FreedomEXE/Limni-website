@@ -285,6 +285,8 @@ struct LP_Config
    bool enable_currency_exposure_guard;
    bool enable_qstate_trend_variant;
    bool enable_revma_system;
+   bool enable_kyma_system;
+   bool enable_katarakti_system;
    LP_UniverseMode revma_universe_mode;
    LP_RevmaQProfile revma_q_profile;
    int revma_max_m1_bars;
@@ -713,6 +715,36 @@ string LP_BoolText(const bool value)
    return value ? "true" : "false";
 }
 
+string LP_UniverseDisplayName(const LP_UniverseMode mode)
+{
+   if(mode == LP_UNIVERSE_CURRENT_CHART)
+      return "Single Pair";
+   return "FX28 Portfolio";
+}
+
+string LP_RunClassification(const LP_UniverseMode mode)
+{
+   if(mode == LP_UNIVERSE_CURRENT_CHART)
+      return "SINGLE_PAIR_MECHANICS";
+   return "FX28_PORTFOLIO_RESEARCH";
+}
+
+string LP_ActiveSystemsText(
+   const bool enable_revma,
+   const bool enable_kyma,
+   const bool enable_katarakti
+)
+{
+   string active = "";
+   if(enable_revma)
+      active = "Revma";
+   if(enable_kyma)
+      active += active == "" ? "Kyma" : ", Kyma";
+   if(enable_katarakti)
+      active += active == "" ? "Katarakti" : ", Katarakti";
+   return active == "" ? "None" : active;
+}
+
 string LP_SafePart(const string value)
 {
    string out = "";
@@ -743,12 +775,12 @@ string LP_Stamp(const datetime value)
 string LP_ExecutionModeName(const LP_ExecutionMode mode)
 {
    if(mode == LP_EXECUTION_DRY_RUN)
-      return "EXECUTION_DRY_RUN";
+      return "Dry Run";
    if(mode == LP_EXECUTION_TESTER_ONLY)
-      return "EXECUTION_TESTER_ONLY";
+      return "Tester";
    if(mode == LP_EXECUTION_LIVE_ALLOWED)
-      return "EXECUTION_LIVE_ALLOWED";
-   return "EXECUTION_DISABLED";
+      return "Live";
+   return "Disabled";
 }
 
 string LP_NewsGuardModeName(const LP_NewsGuardMode mode)

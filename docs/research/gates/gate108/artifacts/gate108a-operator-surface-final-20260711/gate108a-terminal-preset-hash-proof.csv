@@ -1,0 +1,5 @@
+"phase","terminal_id","profile_id","path","bytes","sha256","match"
+"precompile","94497","fx28_research","C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set","158","051DA44F9FA14AA9904DA1B2454413FD224A725D74CD639E2679A6D0C0ED3AB2","True"
+"precompile","94497","single_pair_mechanics","C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA-SinglePairMechanics.set","157","B84DECD18D3D5E6940D71416DFEA0FD29A584798FB52282FEF6BFF715C344FB2","True"
+"postcompile","94497","fx28_research","C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA.set","158","051DA44F9FA14AA9904DA1B2454413FD224A725D74CD639E2679A6D0C0ED3AB2","True"
+"postcompile","94497","single_pair_mechanics","C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Profiles\Tester\LimniPortfolioEA-SinglePairMechanics.set","157","B84DECD18D3D5E6940D71416DFEA0FD29A584798FB52282FEF6BFF715C344FB2","True"

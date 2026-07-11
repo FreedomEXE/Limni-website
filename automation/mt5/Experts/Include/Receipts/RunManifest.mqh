@@ -21,7 +21,16 @@ void LP_WriteRunManifest(
       LP_RECEIPT_RUN_START,
       "",
       "started",
-      "scope=" + LP_BUILD_SCOPE +
+      "ea=" + LP_EA_NAME +
+         "|active_systems=" + LP_ActiveSystemsText(
+            config.enable_revma_system,
+            config.enable_kyma_system,
+            config.enable_katarakti_system) +
+         "|universe=" + LP_UniverseDisplayName(config.revma_universe_mode) +
+         "|execution=" + LP_ExecutionModeName(config.execution_mode) +
+         "|profile_classification=" + LP_RunClassification(config.revma_universe_mode) +
+         "|research_build_identity=" + LP_BUILD_GATE +
+         "|scope=" + LP_BUILD_SCOPE +
          "|receipt_payload_contract=" + receipts.PayloadContract() +
          "|execution_mode=" + LP_ExecutionModeName(config.execution_mode) +
          "|enable_trading=" + LP_BoolText(config.enable_trading) +
@@ -38,6 +47,10 @@ void LP_WriteRunManifest(
          "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
          "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor) +
          "|currency_guard=" + LP_BoolText(config.enable_currency_exposure_guard) +
+         "|active_systems=" + LP_ActiveSystemsText(
+            config.enable_revma_system,
+            config.enable_kyma_system,
+            config.enable_katarakti_system) +
          "|active_system=" + LP_REVMA_SYSTEM_ID +
          "|revma_formula_id=" + LP_REVMA_FORMULA_ID +
          "|revma_formula_hash=" + (string)LP_RevmaFormulaHash() +
@@ -74,6 +87,14 @@ void LP_WriteRunManifest(
    );
 
    receipts.Summary("ea_name", LP_EA_NAME);
+   receipts.Summary("active_systems", LP_ActiveSystemsText(
+      config.enable_revma_system,
+      config.enable_kyma_system,
+      config.enable_katarakti_system));
+   receipts.Summary("universe", LP_UniverseDisplayName(config.revma_universe_mode));
+   receipts.Summary("execution", LP_ExecutionModeName(config.execution_mode));
+   receipts.Summary("profile_classification", LP_RunClassification(config.revma_universe_mode));
+   receipts.Summary("research_build_identity", LP_BUILD_GATE);
    receipts.Summary("ea_version", LP_EA_VERSION);
    receipts.Summary("build_gate", LP_BUILD_GATE);
    receipts.Summary("build_scope", LP_BUILD_SCOPE);

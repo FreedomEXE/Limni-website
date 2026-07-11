@@ -45,6 +45,7 @@ private:
    ulong m_config_hash;
    ulong m_symbol_universe_hash;
    bool m_initialized;
+   bool m_gate108_research_active;
    int m_step_count;
    int m_tick_count;
    int m_timer_count;
@@ -114,6 +115,53 @@ private:
    LP_PortfolioStopTakeProfitGuard m_stop_take_profit_guard;
    LP_RiskArbiter m_risk_arbiter;
    LP_TradeRouter m_trade_router;
+
+   bool Gate108ResearchRun()
+   {
+      return m_config.enable_revma_system &&
+         m_config.revma_universe_mode == LP_UNIVERSE_FX28;
+   }
+
+   bool SinglePairRun()
+   {
+      return m_config.revma_universe_mode == LP_UNIVERSE_CURRENT_CHART;
+   }
+
+   bool OperatorSurfaceValid(string &reason)
+   {
+      reason = "";
+      if(m_config.execution_mode == LP_EXECUTION_LIVE_ALLOWED &&
+         !m_config.allow_live_trading)
+      {
+         reason = "live_execution_requires_allow_live_trading";
+         return false;
+      }
+      if(m_config.enable_kyma_system)
+      {
+         reason = "system_lane_not_implemented:Kyma";
+         return false;
+      }
+      if(m_config.enable_katarakti_system)
+      {
+         reason = "system_lane_not_implemented:Katarakti";
+         return false;
+      }
+      return true;
+   }
+
+   string OperatorIdentityText()
+   {
+      return "EA: " + LP_EA_NAME +
+         "\nActive Systems: " + LP_ActiveSystemsText(
+            m_config.enable_revma_system,
+            m_config.enable_kyma_system,
+            m_config.enable_katarakti_system) +
+         "\nUniverse: " + LP_UniverseDisplayName(
+            m_config.revma_universe_mode) +
+         "\nExecution: " + LP_ExecutionModeName(
+            m_config.execution_mode) +
+         "\nResearch Build: " + LP_BUILD_GATE;
+   }
 
    bool LiveNewsBarrierFails()
    {
@@ -208,6 +256,8 @@ private:
             reason = "gate108_symbol_spec_cache_read_failed";
             return false;
          }
+         if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
+            continue;
          double atom = LP_REVMA_DISCOVERY_ATOM_LOTS;
          double step_units = meta.lot_step > 0.0 ? atom / meta.lot_step : 0.0;
          double normalized_atom = MathRound(step_units) * meta.lot_step;
@@ -932,7 +982,8 @@ private:
          }
       }
 
-      string dashboard_text = m_strategy_registry.RevmaVisualDashboardText();
+       string dashboard_text = OperatorIdentityText() + "\n" +
+          m_strategy_registry.RevmaVisualDashboardText();
       if(m_revma_visual_reporter.UpdateRequired(m_config, dashboard_text, emitted > 0))
       {
          bool screenshot_requested = m_strategy_registry.ConsumeRevmaDashboardScreenshotRequest();
@@ -959,6 +1010,7 @@ public:
       m_config_hash = 0;
       m_symbol_universe_hash = 0;
       m_initialized = false;
+      m_gate108_research_active = false;
       m_step_count = 0;
       m_tick_count = 0;
       m_timer_count = 0;
@@ -1045,12 +1097,19 @@ public:
       LP_LoadConfig(m_config);
       m_config_hash = LP_ConfigHash(m_config);
       m_symbol_universe_hash = LP_SymbolUniverseHash(m_config.broker_symbol_suffix);
+      m_gate108_research_active = Gate108ResearchRun();
 
-      if(!LP_IsTesterRuntime() ||
-         (bool)MQLInfoInteger(MQL_OPTIMIZATION))
+      if((bool)MQLInfoInteger(MQL_OPTIMIZATION))
       {
          Print(LP_EA_NAME,
-            " Gate108A is controlled tester-only and forbids optimization.");
+            " optimization is disabled for this operator surface.");
+         return INIT_FAILED;
+      }
+
+      if(m_config.execution_mode == LP_EXECUTION_TESTER_ONLY &&
+         !LP_IsTesterRuntime())
+      {
+         Print(LP_EA_NAME, " Execution=Tester requires Strategy Tester runtime.");
          return INIT_FAILED;
       }
 
@@ -1061,6 +1120,14 @@ public:
       }
 
       LP_WriteRunManifest(m_receipts, m_config, m_config_hash, m_symbol_universe_hash);
+
+      string operator_reason = "";
+      if(!OperatorSurfaceValid(operator_reason))
+      {
+         WriteError("init_failed", operator_reason);
+         m_receipts.Flush();
+         return INIT_FAILED;
+      }
 
       if(m_config.require_hedging_account && !LP_HedgingAccount())
       {
@@ -1091,7 +1158,8 @@ public:
          return INIT_FAILED;
       }
       string symbol_execution_reason = "";
-      if(!Gate108SymbolExecutionContractValid(symbol_execution_reason))
+      if(m_config.enable_revma_system &&
+         !Gate108SymbolExecutionContractValid(symbol_execution_reason))
       {
          WriteError("init_failed", symbol_execution_reason);
          m_receipts.Flush();
@@ -1125,51 +1193,55 @@ public:
       m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
       m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
 
-      if(state.open_position_count != 0 ||
+      if(m_gate108_research_active &&
+         (state.open_position_count != 0 ||
          OrdersTotal() != 0 ||
          state.managed_position_count != 0 ||
          state.entry_group_position_count != 0 ||
          state.grid_group_position_count != 0 ||
          state.external_position_count != 0 ||
          state.unknown_managed_position_count != 0 ||
-         AccountInfoString(ACCOUNT_CURRENCY) !=
-            LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY)
+          AccountInfoString(ACCOUNT_CURRENCY) !=
+             LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY))
       {
          WriteError("init_failed",
             "gate108_requires_flat_revma_only_usd_account");
          m_receipts.Flush();
          return INIT_FAILED;
       }
-      double money_quantum = MathPow(10.0,
-         -LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY_DIGITS);
-      long equity_reference_minor = 0;
-      if(!LP_RevmaDiscoveryMoneyBurdenToMinor(state.equity,
-            money_quantum, equity_reference_minor) ||
-         equity_reference_minor <= 0)
+      if(m_gate108_research_active)
       {
-         WriteError("init_failed",
-            "gate108_equity_reference_quantization_failed");
-         m_receipts.Flush();
-         return INIT_FAILED;
-      }
-      if(!CaptureGate108AccountHistoryBaseline())
-      {
-         WriteError("init_failed",
-            "gate108_account_history_baseline_capture_failed");
-         m_receipts.Flush();
-         return INIT_FAILED;
-      }
-      string discovery_run_id = "G108A_" + LP_SafePart(
-         LP_Stamp(TimeLocal()) + "_R" +
-         IntegerToString((long)GetTickCount()));
-      if(!m_strategy_registry.InitializeRevmaDiscovery(m_config,
-            discovery_run_id, equity_reference_minor, money_quantum))
-      {
-         WriteError("init_failed",
-            "gate108_discovery_initialize_failed:" +
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
-         m_receipts.Flush();
-         return INIT_FAILED;
+         double money_quantum = MathPow(10.0,
+            -LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY_DIGITS);
+         long equity_reference_minor = 0;
+         if(!LP_RevmaDiscoveryMoneyBurdenToMinor(state.equity,
+               money_quantum, equity_reference_minor) ||
+            equity_reference_minor <= 0)
+         {
+            WriteError("init_failed",
+               "gate108_equity_reference_quantization_failed");
+            m_receipts.Flush();
+            return INIT_FAILED;
+         }
+         if(!CaptureGate108AccountHistoryBaseline())
+         {
+            WriteError("init_failed",
+               "gate108_account_history_baseline_capture_failed");
+            m_receipts.Flush();
+            return INIT_FAILED;
+         }
+         string discovery_run_id = "G108A_" + LP_SafePart(
+            LP_Stamp(TimeLocal()) + "_R" +
+            IntegerToString((long)GetTickCount()));
+         if(!m_strategy_registry.InitializeRevmaDiscovery(m_config,
+               discovery_run_id, equity_reference_minor, money_quantum))
+         {
+            WriteError("init_failed",
+               "gate108_discovery_initialize_failed:" +
+                  m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+            m_receipts.Flush();
+            return INIT_FAILED;
+         }
       }
 
       LP_HarvestDecision harvest;
@@ -1197,7 +1269,19 @@ public:
       m_receipts.Flush();
       m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RECEIPT_FLUSH, init_flush_started_at);
 
-      Print(LP_EA_NAME, " initialized. run_id=", m_receipts.RunId(), " execution=", LP_ExecutionModeName(m_config.execution_mode));
+      Print(
+         LP_EA_NAME,
+         " initialized | active_systems=",
+         LP_ActiveSystemsText(
+            m_config.enable_revma_system,
+            m_config.enable_kyma_system,
+            m_config.enable_katarakti_system),
+         " | universe=", LP_UniverseDisplayName(m_config.revma_universe_mode),
+         " | execution=", LP_ExecutionModeName(m_config.execution_mode),
+         " | classification=", LP_RunClassification(m_config.revma_universe_mode),
+         " | research_build=", LP_BUILD_GATE,
+         " | run_id=", m_receipts.RunId()
+      );
       return INIT_SUCCEEDED;
    }
 
@@ -1321,6 +1405,18 @@ public:
       }
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
+      m_receipts.Summary("completion_ea_name", LP_EA_NAME);
+      m_receipts.Summary("completion_active_systems", LP_ActiveSystemsText(
+         m_config.enable_revma_system,
+         m_config.enable_kyma_system,
+         m_config.enable_katarakti_system));
+      m_receipts.Summary("completion_universe",
+         LP_UniverseDisplayName(m_config.revma_universe_mode));
+      m_receipts.Summary("completion_execution",
+         LP_ExecutionModeName(m_config.execution_mode));
+      m_receipts.Summary("completion_profile_classification",
+         LP_RunClassification(m_config.revma_universe_mode));
+      m_receipts.Summary("completion_research_build_identity", LP_BUILD_GATE);
       m_receipts.Summary("engine_steps", IntegerToString(m_step_count));
       m_receipts.Summary("total_ticks", IntegerToString(m_tick_count));
       m_receipts.Summary("total_new_bars", IntegerToString(m_total_new_bars));
@@ -1328,6 +1424,15 @@ public:
       m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
       m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit",
          "reason=" + IntegerToString(reason) +
+         "|ea=" + LP_EA_NAME +
+         "|active_systems=" + LP_ActiveSystemsText(
+            m_config.enable_revma_system,
+            m_config.enable_kyma_system,
+            m_config.enable_katarakti_system) +
+         "|universe=" + LP_UniverseDisplayName(m_config.revma_universe_mode) +
+         "|execution=" + LP_ExecutionModeName(m_config.execution_mode) +
+         "|profile_classification=" + LP_RunClassification(m_config.revma_universe_mode) +
+         "|research_build_identity=" + LP_BUILD_GATE +
          "|gate108_finalize_ok=" + LP_BoolText(discovery_finalize_ok),
          0, 0, 0, 0, 0, 0);
       LP_BrokerExecutionIntegrity broker_integrity;
@@ -1454,6 +1559,8 @@ public:
       LP_BarClockState cohort_states[LP_SYMBOL_COUNT];
       int cohort_count = 0;
       bool tester_fast_cadence = TesterRuntime();
+      bool single_pair_run = SinglePairRun();
+      bool single_pair_history_waiting = false;
       bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
       bool scan_symbol_clocks = !tester_fast_cadence ||
          force_initial_fx28_scan ||
@@ -1477,6 +1584,11 @@ public:
             LP_BarClockState clock_state;
             if(!m_clock.ProbeSymbol(meta, clock_state))
             {
+               if(single_pair_run)
+               {
+                  single_pair_history_waiting = true;
+                  continue;
+               }
                LatchFatalInvariant("gate108_m1_cohort_probe_failed:" +
                   meta.canonical_symbol);
                return;
@@ -1499,7 +1611,26 @@ public:
                   cohort_source_times_mixed = true;
             }
          }
-         if(any_new_cohort_bar)
+         if(single_pair_run)
+         {
+            if(cohort_count == 1 && cohort_states[0].new_bar)
+            {
+               if(!m_clock.CommitSingle(cohort_states[0]))
+               {
+                  LatchFatalInvariant(
+                     "single_pair_m1_commit_failed:" +
+                        cohort_states[0].symbol);
+                  return;
+               }
+               cycle_new_bars = 1;
+               new_symbol_count = 1;
+               new_symbol_ids[0] = cohort_states[0].symbol_id;
+               ZeroMemory(new_symbol_bars[0]);
+               new_symbol_bars[0].time = cohort_states[0].last_bar_time;
+               new_symbol_bars[0].close = cohort_states[0].close;
+            }
+         }
+         else if(any_new_cohort_bar)
          {
             bool cohort_ready = all_cohort_bars_new &&
                !cohort_source_times_mixed &&
@@ -1746,9 +1877,11 @@ public:
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_BROKER_TP_SYNC, broker_tp_sync_started_at);
       }
 
-      if(cycle_new_bars > 0)
-      {
-         LP_RevmaCompletedM1Snapshot discovery_snapshots[LP_SYMBOL_COUNT];
+       if(cycle_new_bars > 0)
+       {
+         if(m_gate108_research_active)
+         {
+          LP_RevmaCompletedM1Snapshot discovery_snapshots[LP_SYMBOL_COUNT];
          bool discovery_snapshot_seen[LP_SYMBOL_COUNT];
          for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
          {
@@ -1817,11 +1950,28 @@ public:
                m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
             return;
          }
-         if(discovery_intents > 0)
-         {
-            m_total_intents += discovery_intents;
+          if(discovery_intents > 0)
+          {
+             m_total_intents += discovery_intents;
+          }
          }
-      }
+         else if(single_pair_run && m_config.enable_revma_system &&
+            !single_pair_history_waiting && new_symbol_count == 1)
+         {
+            LP_SymbolMeta meta;
+            if(!m_symbol_cache.Get(new_symbol_ids[0], meta))
+            {
+               LatchFatalInvariant("single_pair_symbol_meta_unavailable");
+               return;
+            }
+            EvaluateRevmaSymbol(
+               meta,
+               harvest,
+               exit_block_new_entries,
+               new_symbol_bars[0]
+            );
+         }
+       }
 
       m_total_new_bars += cycle_new_bars;
 
@@ -1833,10 +1983,10 @@ public:
       if(m_fatal_invariant_latched)
          return;
 
-      if(m_strategy_registry.RevmaDiscoveryFaultLatched() ||
-         (m_strategy_registry.RevmaDiscoveryInitialized() &&
-         !m_strategy_registry.RevmaDiscoveryOperationalValid())
-      )
+       if(m_gate108_research_active &&
+          (m_strategy_registry.RevmaDiscoveryFaultLatched() ||
+           (m_strategy_registry.RevmaDiscoveryInitialized() &&
+            !m_strategy_registry.RevmaDiscoveryOperationalValid())))
       {
          LatchFatalInvariant(
             m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
@@ -1968,7 +2118,8 @@ public:
          }
       }
 
-      if(!m_strategy_registry.EndRevmaDiscoveryRealBatch())
+       if(m_gate108_research_active &&
+          !m_strategy_registry.EndRevmaDiscoveryRealBatch())
       {
          LatchFatalInvariant(
             m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
@@ -1981,15 +2132,20 @@ public:
             LP_RECEIPT_ENGINE_STEP,
             "",
             source,
-            "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
+             "cycle_new_bars=" + IntegerToString(cycle_new_bars) +
                "|active_symbols_scanned=" + IntegerToString(active_symbols_scanned) +
                "|clock_ready_symbols=" + IntegerToString(clock_ready_symbols) +
                "|evaluated_symbols=" + IntegerToString(new_symbol_count) +
+               "|run_classification=" + LP_RunClassification(m_config.revma_universe_mode) +
+               "|active_systems=" + LP_ActiveSystemsText(
+                  m_config.enable_revma_system,
+                  m_config.enable_kyma_system,
+                  m_config.enable_katarakti_system) +
+               "|single_pair_history_waiting=" + LP_BoolText(single_pair_history_waiting) +
                "|forced_initial_fx28_symbols=" + IntegerToString(forced_initial_symbols) +
                "|total_new_bars=" + IntegerToString(m_total_new_bars) +
-               "|intents=" + IntegerToString(m_intent_bus.Count()) +
-               "|active_system=" + LP_REVMA_SYSTEM_ID +
-               "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
+                "|intents=" + IntegerToString(m_intent_bus.Count()) +
+                "|managed_positions=" + IntegerToString(portfolio.managed_position_count) +
                "|open_grids=" + IntegerToString(portfolio.open_grid_count) +
                "|harvest_state=" + LP_HarvestStateName(harvest.state) +
                "|harvest_block_new_entries=" + LP_BoolText(harvest.block_new_entries) +

@@ -96,6 +96,20 @@ public:
       return true;
    }
 
+   bool CommitSingle(const LP_BarClockState &state)
+   {
+      int id = state.symbol_id;
+      if(id < 0 || id >= LP_SYMBOL_COUNT || !state.synchronized ||
+         !state.new_bar || state.last_bar_time <= 0 ||
+         ((long)state.last_bar_time % 60) != 0 || state.close <= 0.0 ||
+         (m_last_bar_time[id] > 0 &&
+          state.last_bar_time <= m_last_bar_time[id]))
+         return false;
+      m_last_bar_time[id] = state.last_bar_time;
+      m_new_bar_count++;
+      return true;
+   }
+
    bool RefreshSymbol(const LP_SymbolMeta &meta, LP_BarClockState &state)
    {
       if(!ProbeSymbol(meta, state))

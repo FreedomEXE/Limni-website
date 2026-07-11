@@ -165,8 +165,12 @@ bool LP_RevmaDiscoveryCapitalBudgetMinor(
 bool LP_RevmaDiscoveryConfigValid(const LP_Config &config, string &reason)
 {
    reason = "";
-   if(config.execution_mode != LP_EXECUTION_TESTER_ONLY ||
-      !config.enable_trading || config.allow_live_trading ||
+   if((config.execution_mode == LP_EXECUTION_LIVE_ALLOWED &&
+       !config.allow_live_trading) ||
+      (config.execution_mode != LP_EXECUTION_LIVE_ALLOWED &&
+       config.allow_live_trading) ||
+      (config.execution_mode != LP_EXECUTION_DISABLED &&
+       !config.enable_trading) ||
       !config.enable_open_order_routing || !config.enable_close_execution ||
       !config.enable_account_close_execution ||
       !config.enable_strategy_evaluation || !config.enable_revma_system)

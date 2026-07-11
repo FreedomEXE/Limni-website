@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.030"
-#property description "LimniPortfolioEA Gate108A RevMA Adaptive Grid Discovery v1"
+#property version   "1.031"
+#property description "Limni Portfolio EA modular multi-system portfolio shell"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"
