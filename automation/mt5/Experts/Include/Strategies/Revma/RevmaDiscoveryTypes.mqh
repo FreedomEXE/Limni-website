@@ -45,6 +45,13 @@ enum LP_RevmaDiscoveryCloseOwner
    LP_REVMA_DISCOVERY_CLOSE_HARD_RISK = 3
 };
 
+enum LP_RevmaDiscoveryCandidateType
+{
+   LP_REVMA_DISCOVERY_CANDIDATE_BIRTH = 0,
+   LP_REVMA_DISCOVERY_CANDIDATE_ADVERSE_ADD = 1,
+   LP_REVMA_DISCOVERY_CANDIDATE_FAVORABLE_ADD = 2
+};
+
 string LP_RevmaDiscoveryBranchId(const int branch)
 {
    if(branch == LP_REVMA_BRANCH_R)
@@ -85,6 +92,9 @@ ulong LP_RevmaDiscoveryFormulaHash()
    payload += "|allocation=build_all_sort_reservation_symbol_identity_allocate_commit";
    payload += "|money_ledger=signed_integer_minor_currency_units";
    payload += "|arithmetic_failure=branch_invalid";
+   payload += "|center_authority=C_aligned_positive_to_nonpositive_adverse_add_only";
+   payload += "|center_missing=no_latch_no_reclassification";
+   payload += "|center_misaligned=observational_only";
    payload += "|cell_quantization=ceil_outward_to_broker_tick";
    payload += "|path_price=closed_m1_structural_decision_price";
    payload += "|branches=R,U,C";
@@ -92,6 +102,21 @@ ulong LP_RevmaDiscoveryFormulaHash()
    payload += "|resource_exhaustion=invalidates_not_caps";
    cached_hash = LP_HashString(payload);
    return cached_hash;
+}
+
+ulong LP_RevmaDiscoveryOpportunityIdentity(
+   const ulong shared_origin_id,
+   const int symbol_id,
+   const datetime source_m1_time,
+   const int candidate_type
+)
+{
+   ulong hash = shared_origin_id;
+   LP_HashMixInt(hash, symbol_id);
+   LP_HashMixLong(hash, (long)source_m1_time);
+   LP_HashMixInt(hash, candidate_type);
+   LP_HashMixULong(hash, LP_RevmaDiscoveryFormulaHash());
+   return hash;
 }
 
 ulong LP_RevmaDiscoveryAdmissionIdentity(const int branch, const ulong branch_grid_id, const datetime source_m1_time)

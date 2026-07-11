@@ -154,6 +154,36 @@ terminal sync/compile, Strategy Tester, smoke/shard runner, benchmark,
 optimization, Gate 108A acceptance, or runtime-readiness claim until the
 Phase 2 source packet receives outsider review.
 
+Outsider review accepted Phase 2 as stated evidence for Phase 3:
+`GATE108_PHASE2_ACCEPTED_AS_STATED_EVIDENCE_FOR_PHASE3`. This is not repo,
+runtime, mechanics, economic, or Gate 108A acceptance.
+
+Phase 3 source status:
+
+- C owns integer-tick signed-center support state per shadow grid;
+- aligned applicability is frozen only when `Support0Sign > 0`;
+- the first aligned `SupportPreviousSign > 0` to `SupportCurrentSign <= 0`
+  transition permanently latches future C adverse adds off;
+- favorable adds, misaligned births, U, R, existing C inventory, cleanup, and
+  hard risk are outside center authority;
+- missing/non-finite center observations record `CENTER_NOT_AVAILABLE` without
+  latching or reclassifying applicability;
+- U/C matched initialization is explicit, both branch batches must be built
+  before allocation, and claimed causal opportunities require matching
+  shared-origin, symbol, source-M1, candidate type, and pre-candidate economic
+  state hash;
+- a center-blocked candidate mutates policy metadata only; inventory, money,
+  reservation, capacity, and admission identity remain unchanged;
+- repository compile: `0 errors, 0 warnings`, `378418 ms`;
+- EX5 size: `614142` bytes, up `138` bytes from Phase 2; compile duration
+  improved about 19% from `467050 ms`, so Phase 3 did not repeat the Phase 2
+  multiplicative compile-growth warning.
+
+Phase 3 stop line: no buffered telemetry, R-envelope mutation, terminal
+sync/compile, Strategy Tester, smoke/shard runner, benchmark, optimization,
+Gate 108A acceptance, or runtime-readiness claim until the Phase 3 pushed clean
+source packet receives outsider review.
+
 ## Historical overrides below
 
 Everything below this heading is retained as chronological project history and

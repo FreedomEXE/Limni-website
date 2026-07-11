@@ -5,6 +5,7 @@
 #define __LIMNI_PORTFOLIO_REVMA_SHADOW_PORTFOLIO_MQH__
 
 #include "RevmaDiscoveryTypes.mqh"
+#include "RevmaCenterSupportPolicy.mqh"
 
 #define LP_REVMA_MINOR_ABS_LIMIT 9000000000000000000
 
@@ -74,6 +75,7 @@ struct LP_RevmaShadowGrid
    long cost_minor;
    int close_owner;
    string terminal_reason;
+   LP_RevmaCenterSupportState center_support;
 };
 
 void LP_ResetRevmaShadowGrid(LP_RevmaShadowGrid &grid, const int branch, const int symbol_id)
@@ -106,6 +108,7 @@ void LP_ResetRevmaShadowGrid(LP_RevmaShadowGrid &grid, const int branch, const i
    grid.cost_minor = 0;
    grid.close_owner = LP_REVMA_DISCOVERY_CLOSE_NONE;
    grid.terminal_reason = "";
+   LP_ResetRevmaCenterSupportState(grid.center_support);
 }
 
 struct LP_RevmaShadowPortfolioState
@@ -179,6 +182,18 @@ struct LP_RevmaShadowCandidate
    double lots;
    long incremental_reservation_minor;
    long incremental_q_cash_minor;
+   int candidate_type;
+   ulong shared_origin_id;
+   ulong opportunity_id;
+   ulong pre_candidate_state_hash;
+   double p0;
+   double c0;
+   double broker_tick_size;
+   bool center_policy_checked;
+   bool center_policy_applies;
+   bool center_add_authorized;
+   string center_policy_reason;
+   LP_RevmaCenterSupportState center_support_snapshot;
 };
 
 void LP_ResetRevmaShadowCandidate(LP_RevmaShadowCandidate &candidate)
@@ -200,6 +215,18 @@ void LP_ResetRevmaShadowCandidate(LP_RevmaShadowCandidate &candidate)
    candidate.lots = 0.0;
    candidate.incremental_reservation_minor = 0;
    candidate.incremental_q_cash_minor = 0;
+   candidate.candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_BIRTH;
+   candidate.shared_origin_id = 0;
+   candidate.opportunity_id = 0;
+   candidate.pre_candidate_state_hash = 0;
+   candidate.p0 = 0.0;
+   candidate.c0 = 0.0;
+   candidate.broker_tick_size = 0.0;
+   candidate.center_policy_checked = false;
+   candidate.center_policy_applies = false;
+   candidate.center_add_authorized = false;
+   candidate.center_policy_reason = "CENTER_POLICY_NOT_CHECKED";
+   LP_ResetRevmaCenterSupportState(candidate.center_support_snapshot);
 }
 
 class LP_RevmaShadowPortfolio
@@ -209,6 +236,8 @@ private:
    LP_RevmaShadowPortfolioState m_portfolios[LP_REVMA_SHADOW_BRANCH_COUNT];
    LP_RevmaShadowCandidate m_candidates[LP_REVMA_SHADOW_BRANCH_COUNT][LP_SYMBOL_COUNT];
    int m_candidate_count[LP_REVMA_SHADOW_BRANCH_COUNT];
+   bool m_matched_initialization_complete;
+   bool m_matched_opportunities_validated;
 
    void Invalidate(const int shadow_index, const string reason)
    {
@@ -280,6 +309,30 @@ private:
       return left.candidate_identity < right.candidate_identity;
    }
 
+   ulong EconomicPreCandidateStateHash(const int shadow_index, const int symbol_id)
+   {
+      LP_RevmaShadowGrid grid = m_grids[shadow_index][symbol_id];
+      LP_RevmaShadowPortfolioState portfolio = m_portfolios[shadow_index];
+      string payload = "gate108_pre_candidate_economic_state_v1";
+      payload += "|symbol=" + IntegerToString(symbol_id);
+      payload += "|active=" + IntegerToString(grid.active ? 1 : 0);
+      payload += "|flat=" + IntegerToString(grid.flat ? 1 : 0);
+      payload += "|direction=" + IntegerToString(grid.direction);
+      payload += "|atoms=" + IntegerToString(grid.atom_count);
+      payload += "|lots=" + DoubleToString(grid.total_lots, 8);
+      payload += "|weighted=" + DoubleToString(grid.weighted_entry_price_lots, 12);
+      payload += "|q0=" + DoubleToString(grid.q0, 12);
+      payload += "|grid_q_cash=" + (string)grid.q_cash_minor;
+      payload += "|grid_reservation=" + (string)grid.reservation_minor;
+      payload += "|portfolio_reservation=" + (string)portfolio.reservation_minor;
+      payload += "|portfolio_equity=" + (string)portfolio.branch_equity_minor;
+      payload += "|portfolio_H=" + (string)portfolio.realized_harvest_minor;
+      payload += "|portfolio_R=" + (string)portfolio.realized_nonharvest_minor;
+      payload += "|portfolio_L=" + (string)portfolio.marked_liquidation_minor;
+      payload += "|close_owner=" + IntegerToString(portfolio.close_owner);
+      return LP_HashString(payload);
+   }
+
    void SortCandidates(const int shadow_index)
    {
       int count = m_candidate_count[shadow_index];
@@ -311,6 +364,8 @@ private:
          grid.branch_cycle_id = m_portfolios[shadow_index].cycle_id;
          grid.birth_m1_time = candidate.source_m1_time;
          grid.q0 = candidate.q0;
+         if(candidate.branch == LP_REVMA_BRANCH_C)
+            grid.center_support = candidate.center_support_snapshot;
       }
       else if(!grid.active || grid.branch_grid_id != candidate.branch_grid_id ||
          grid.direction != candidate.direction ||
@@ -341,6 +396,8 @@ private:
       grid.reservation_minor = new_grid_reservation;
       grid.last_admission_m1_time = candidate.source_m1_time;
       grid.last_admission_identity = candidate.candidate_identity;
+      if(candidate.branch == LP_REVMA_BRANCH_C)
+         grid.center_support = candidate.center_support_snapshot;
       m_grids[shadow_index][candidate.symbol_id] = grid;
       candidate.committed = true;
       candidate.decision = LP_REVMA_DISCOVERY_DECISION_ADMIT;
@@ -351,6 +408,8 @@ private:
 public:
    LP_RevmaShadowPortfolio()
    {
+      m_matched_initialization_complete = false;
+      m_matched_opportunities_validated = false;
       for(int shadow_index = 0; shadow_index < LP_REVMA_SHADOW_BRANCH_COUNT; shadow_index++)
       {
          int branch = shadow_index == 0 ? LP_REVMA_BRANCH_U : LP_REVMA_BRANCH_C;
@@ -393,11 +452,34 @@ public:
       return true;
    }
 
+   bool InitializeMatchedBranches(const ulong cycle_id, const long equity_reference_minor, const double money_quantum)
+   {
+      m_matched_initialization_complete = false;
+      if(!InitializeBranch(LP_REVMA_BRANCH_U, cycle_id, equity_reference_minor, money_quantum) ||
+         !InitializeBranch(LP_REVMA_BRANCH_C, cycle_id, equity_reference_minor, money_quantum))
+         return false;
+      LP_RevmaShadowPortfolioState u = m_portfolios[LP_RevmaShadowIndex(LP_REVMA_BRANCH_U)];
+      LP_RevmaShadowPortfolioState c = m_portfolios[LP_RevmaShadowIndex(LP_REVMA_BRANCH_C)];
+      if(u.cycle_id != c.cycle_id || u.money_quantum != c.money_quantum ||
+         u.equity_reference_minor != c.equity_reference_minor ||
+         u.capital_budget_minor != c.capital_budget_minor ||
+         u.reservation_minor != c.reservation_minor ||
+         u.branch_equity_minor != c.branch_equity_minor)
+      {
+         Invalidate(0, "matched_initialization_U_C_mismatch");
+         Invalidate(1, "matched_initialization_U_C_mismatch");
+         return false;
+      }
+      m_matched_initialization_complete = true;
+      return true;
+   }
+
    bool BeginClosedM1Batch(const int branch, const datetime source_m1_time)
    {
       int shadow_index = LP_RevmaShadowIndex(branch);
       if(shadow_index < 0 || !m_portfolios[shadow_index].valid ||
          !m_portfolios[shadow_index].initialized || m_portfolios[shadow_index].batch_open ||
+         !m_matched_initialization_complete ||
          source_m1_time <= m_portfolios[shadow_index].batch_m1_time)
       {
          if(shadow_index >= 0) Invalidate(shadow_index, "closed_m1_batch_begin_invalid");
@@ -410,8 +492,84 @@ public:
       m_portfolios[shadow_index].batch_hash = LP_HashString(LP_RevmaDiscoveryBranchId(branch));
       LP_HashMixLong(m_portfolios[shadow_index].batch_hash, (long)source_m1_time);
       m_candidate_count[shadow_index] = 0;
+      m_matched_opportunities_validated = false;
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
          LP_ResetRevmaShadowCandidate(m_candidates[shadow_index][i]);
+      return true;
+   }
+
+   bool PrepareCenterPolicy(LP_RevmaShadowCandidate &candidate)
+   {
+      int shadow_index = LP_RevmaShadowIndex(candidate.branch);
+      if(shadow_index < 0 || candidate.symbol_id < 0 || candidate.symbol_id >= LP_SYMBOL_COUNT ||
+         !candidate.valid || !m_portfolios[shadow_index].valid ||
+         candidate.source_m1_time != m_portfolios[shadow_index].batch_m1_time)
+      {
+         if(shadow_index >= 0) Invalidate(shadow_index, "center_policy_prepare_invariant_failure");
+         return false;
+      }
+      candidate.center_policy_checked = true;
+      if(candidate.branch == LP_REVMA_BRANCH_U)
+      {
+         candidate.center_policy_applies = false;
+         candidate.center_add_authorized = true;
+         candidate.center_policy_reason = "U_CENTER_AUTHORITY_FORBIDDEN";
+         LP_ResetRevmaCenterSupportState(candidate.center_support_snapshot);
+         return true;
+      }
+
+      if(candidate.birth)
+      {
+         if(!LP_RevmaInitializeCenterSupport(candidate.direction, candidate.p0, candidate.c0,
+            candidate.q0, candidate.broker_tick_size, candidate.source_m1_time,
+            candidate.center_support_snapshot))
+         {
+            candidate.center_policy_reason = "CENTER_NOT_AVAILABLE";
+            return false;
+         }
+      }
+      else
+      {
+         LP_RevmaShadowGrid existing = m_grids[shadow_index][candidate.symbol_id];
+         if(!existing.active || !existing.center_support.valid)
+         {
+            Invalidate(shadow_index, "C_center_state_missing_for_add");
+            return false;
+         }
+         candidate.center_support_snapshot = existing.center_support;
+      }
+      candidate.center_policy_applies = candidate.center_support_snapshot.applicable;
+      candidate.center_add_authorized = LP_RevmaCenterAuthorizesCandidate(
+         candidate.candidate_type,
+         candidate.center_support_snapshot,
+         candidate.center_policy_reason
+      );
+      return candidate.center_support_snapshot.valid;
+   }
+
+   bool ObserveCGridCenter(
+      const int symbol_id,
+      const double current_center,
+      const double current_q,
+      const double broker_tick_size,
+      const datetime source_m1_time
+   )
+   {
+      int shadow_index = LP_RevmaShadowIndex(LP_REVMA_BRANCH_C);
+      if(symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT ||
+         !m_portfolios[shadow_index].valid || !m_grids[shadow_index][symbol_id].active)
+      {
+         Invalidate(shadow_index, "C_center_observation_grid_invalid");
+         return false;
+      }
+      LP_RevmaCenterSupportState state = m_grids[shadow_index][symbol_id].center_support;
+      if(!LP_RevmaObserveCenterSupport(current_center, current_q, broker_tick_size,
+         source_m1_time, state))
+      {
+         Invalidate(shadow_index, "C_center_observation_state_invalid");
+         return false;
+      }
+      m_grids[shadow_index][symbol_id].center_support = state;
       return true;
    }
 
@@ -428,7 +586,17 @@ public:
          candidate.fill_price <= 0.0 || !MathIsValidNumber(candidate.fill_price) ||
          candidate.q0 <= 0.0 || !MathIsValidNumber(candidate.q0) ||
          candidate.lots != LP_REVMA_DISCOVERY_ATOM_LOTS ||
-         candidate.incremental_reservation_minor <= 0 || candidate.incremental_q_cash_minor <= 0)
+         candidate.incremental_reservation_minor <= 0 || candidate.incremental_q_cash_minor <= 0 ||
+         !candidate.center_policy_checked || candidate.pre_candidate_state_hash == 0 ||
+         candidate.pre_candidate_state_hash != EconomicPreCandidateStateHash(shadow_index, candidate.symbol_id) ||
+         (candidate.opportunity_id != 0 && (candidate.shared_origin_id == 0 ||
+          candidate.opportunity_id != LP_RevmaDiscoveryOpportunityIdentity(candidate.shared_origin_id,
+            candidate.symbol_id, candidate.source_m1_time, candidate.candidate_type))) ||
+         (candidate.birth && candidate.candidate_type != LP_REVMA_DISCOVERY_CANDIDATE_BIRTH) ||
+         (!candidate.birth && candidate.candidate_type == LP_REVMA_DISCOVERY_CANDIDATE_BIRTH) ||
+         (candidate.branch == LP_REVMA_BRANCH_U && (!candidate.center_add_authorized ||
+            candidate.center_policy_applies)) ||
+         (candidate.branch == LP_REVMA_BRANCH_C && !candidate.center_support_snapshot.valid))
       {
          if(shadow_index >= 0) Invalidate(shadow_index, "shadow_candidate_invariant_failure");
          return false;
@@ -462,11 +630,65 @@ public:
       return true;
    }
 
+   ulong PreCandidateStateHash(const int branch, const int symbol_id)
+   {
+      int shadow_index = LP_RevmaShadowIndex(branch);
+      if(shadow_index < 0 || symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT ||
+         !m_portfolios[shadow_index].valid)
+         return 0;
+      return EconomicPreCandidateStateHash(shadow_index, symbol_id);
+   }
+
+   bool ValidateMatchedOpportunities()
+   {
+      m_matched_opportunities_validated = false;
+      if(!m_portfolios[0].valid || !m_portfolios[1].valid ||
+         !m_portfolios[0].batch_open || !m_portfolios[1].batch_open ||
+         m_portfolios[0].batch_m1_time != m_portfolios[1].batch_m1_time)
+      {
+         Invalidate(0, "matched_opportunity_batch_mismatch");
+         Invalidate(1, "matched_opportunity_batch_mismatch");
+         return false;
+      }
+      for(int branch_index = 0; branch_index < LP_REVMA_SHADOW_BRANCH_COUNT; branch_index++)
+      {
+         int other_index = branch_index == 0 ? 1 : 0;
+         for(int i = 0; i < m_candidate_count[branch_index]; i++)
+         {
+            LP_RevmaShadowCandidate candidate = m_candidates[branch_index][i];
+            if(candidate.opportunity_id == 0)
+               continue;
+            bool counterpart_found = false;
+            for(int j = 0; j < m_candidate_count[other_index]; j++)
+            {
+               LP_RevmaShadowCandidate other = m_candidates[other_index][j];
+               if(other.opportunity_id != candidate.opportunity_id)
+                  continue;
+               counterpart_found = other.shared_origin_id == candidate.shared_origin_id &&
+                  other.symbol_id == candidate.symbol_id &&
+                  other.source_m1_time == candidate.source_m1_time &&
+                  other.candidate_type == candidate.candidate_type &&
+                  other.pre_candidate_state_hash == candidate.pre_candidate_state_hash;
+               break;
+            }
+            if(!counterpart_found)
+            {
+               Invalidate(0, "matched_causal_opportunity_not_identical");
+               Invalidate(1, "matched_causal_opportunity_not_identical");
+               return false;
+            }
+         }
+      }
+      m_matched_opportunities_validated = true;
+      return true;
+   }
+
    bool SortAndAllocate(const int branch)
    {
       int shadow_index = LP_RevmaShadowIndex(branch);
       if(shadow_index < 0 || !m_portfolios[shadow_index].valid ||
-         !m_portfolios[shadow_index].batch_open || m_portfolios[shadow_index].allocation_complete)
+         !m_portfolios[shadow_index].batch_open || m_portfolios[shadow_index].allocation_complete ||
+         !m_matched_opportunities_validated)
       {
          if(shadow_index >= 0) Invalidate(shadow_index, "shadow_allocation_state_invalid");
          return false;
@@ -481,6 +703,25 @@ public:
       }
       for(int i = 0; i < m_candidate_count[shadow_index]; i++)
       {
+         if(!m_candidates[shadow_index][i].center_add_authorized)
+         {
+            if(m_candidates[shadow_index][i].branch != LP_REVMA_BRANCH_C ||
+               m_candidates[shadow_index][i].candidate_type != LP_REVMA_DISCOVERY_CANDIDATE_ADVERSE_ADD ||
+               !m_candidates[shadow_index][i].center_policy_applies ||
+               !m_candidates[shadow_index][i].center_support_snapshot.adverse_adds_frozen)
+            {
+               Invalidate(shadow_index, "unauthorized_center_rejection_shape");
+               return false;
+            }
+            m_candidates[shadow_index][i].allocated = false;
+            m_candidates[shadow_index][i].decision = LP_REVMA_DISCOVERY_DECISION_REJECT;
+            m_candidates[shadow_index][i].decision_reason = "signed_center_support_adverse_adds_frozen";
+            // Policy metadata advances, but inventory, money, reservation,
+            // capacity, and admission identity remain untouched.
+            m_grids[shadow_index][m_candidates[shadow_index][i].symbol_id].center_support =
+               m_candidates[shadow_index][i].center_support_snapshot;
+            continue;
+         }
          long candidate_total = 0;
          if(!LP_RevmaSafeMinorAdd(allocated_reservation,
             m_candidates[shadow_index][i].incremental_reservation_minor, candidate_total))
