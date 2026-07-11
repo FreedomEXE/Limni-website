@@ -81,6 +81,10 @@ ulong LP_RevmaDiscoveryFormulaHash()
    payload += "|atom_lots=0.01";
    payload += "|real_max_atoms=2";
    payload += "|max_admissions_per_grid_m1=1";
+   payload += "|shadow_topology=2x28_one_grid_per_symbol_branch";
+   payload += "|allocation=build_all_sort_reservation_symbol_identity_allocate_commit";
+   payload += "|money_ledger=signed_integer_minor_currency_units";
+   payload += "|arithmetic_failure=branch_invalid";
    payload += "|cell_quantization=ceil_outward_to_broker_tick";
    payload += "|path_price=closed_m1_structural_decision_price";
    payload += "|branches=R,U,C";

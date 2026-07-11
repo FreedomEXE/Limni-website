@@ -123,6 +123,37 @@ Phase 1 source status:
   primitives added with no per-cell objects, receipts, or broker calls;
 - repository compile: `0 errors, 0 warnings`.
 
+Outsider review accepted Phase 1 for Phase 2 only:
+`GATE108_PHASE1_ACCEPTED_FOR_PHASE2`. This is not Gate 108A, mechanics,
+economics, or runtime-readiness acceptance.
+
+Phase 2 source status:
+
+- fixed `shadow_grid[2][28]` and `shadow_portfolio[2]` aggregate arithmetic
+  books added for independent U/C ownership;
+- no TradeRouter, order, position, history, receipt, file, symbol-info, or
+  account-info dependency exists in the shadow module;
+- every branch batch follows build-all, reservation/symbol/identity sort,
+  allocate, commit, and reconcile sequencing;
+- one candidate per symbol/grid/source-M1 identity is enforced and duplicate
+  or lifecycle-inconsistent admission invalidates the branch;
+- branch-local integer minor-currency state owns equity reference, budget,
+  harvest, non-harvest realization, marked liquidation, cost, reservation,
+  and derived equity;
+- cleanup and hard-risk close authority, flat completion, cleanup shortfall,
+  and close-aware re-entry are branch-local;
+- arithmetic overflow, fixed-resource exhaustion, reservation mismatch, close
+  mismatch, or batch-state failure invalidates the affected branch;
+- repository compile: `0 errors, 0 warnings`, `467050 ms`;
+- compile duration increased materially from the Phase 1 `215878 ms` receipt
+  and must be visible to outsider review, though it is not Strategy Tester
+  throughput evidence.
+
+Phase 2 stop line: no signed-center authority, telemetry, R-envelope mutation,
+terminal sync/compile, Strategy Tester, smoke/shard runner, benchmark,
+optimization, Gate 108A acceptance, or runtime-readiness claim until the
+Phase 2 source packet receives outsider review.
+
 ## Historical overrides below
 
 Everything below this heading is retained as chronological project history and

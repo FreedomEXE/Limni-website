@@ -11,6 +11,7 @@
 #include "RevmaTypes.mqh"
 #include "Revma\\RevmaDiscoveryTypes.mqh"
 #include "Revma\\RevmaPathGeometry.mqh"
+#include "Revma\\RevmaShadowPortfolio.mqh"
 #include "Revma\\RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot
@@ -155,6 +156,7 @@ private:
    string m_last_divergent_add_text;
    bool m_dashboard_screenshot_requested;
    LP_RevmaGridProtectionManager m_protection_manager;
+   LP_RevmaShadowPortfolio m_discovery_shadow_portfolio;
    LP_RevmaResearchTelemetry m_research_telemetry;
    bool m_state_loaded;
    bool m_state_persistence_enabled;
