@@ -1,0 +1,48 @@
+[
+  {
+    "question": "Are strong closed weekly wins being offset by unresolved adverse open inventory?",
+    "answer": "yes",
+    "evidence": "closed_weekly=0.919571 mtm_weekly=0.595174 final_open=-2351.084511",
+    "content_hash": "3015E914AF354D47B045C250173FEF848824F02F2C7310E3E4EC0FCAEF10671C"
+  },
+  {
+    "question": "Is Candidate B flip handling the main source of realized damage?",
+    "answer": "material_realized_damage",
+    "evidence": "flip_loss=-6297.282489 flip_events=402",
+    "content_hash": "37328092E3C060F1E700041D0C1680F6A3A777CEBAE629A1C893274CE3C306D9"
+  },
+  {
+    "question": "Is the third reset actually dangerous?",
+    "answer": "not_obviously_third_reset",
+    "evidence": "worst_bucket=reset_1",
+    "content_hash": "657E4CDD9F77AA87F9A3ED9653EC799F6E73F4CC4E614DD6DA2D811E681C0D47"
+  },
+  {
+    "question": "At what age does adverse inventory become toxic?",
+    "answer": "13_plus_weeks",
+    "evidence": "open_loss=-2073.0693 flip_loss=-541.15384",
+    "content_hash": "8EDAE61773FF2A3BB0DE60B843483CF9DF682D83D9D0B254EC2C59D8FEDCCC95"
+  },
+  {
+    "question": "Does directional T100/L3 beat the fully hedged long-short weekly reference?",
+    "answer": "hedged_reference_matches_or_beats_directional_candidate_gross_edge_warning",
+    "evidence": {
+      "diagnostic": "fully_hedged_long_short_28_pairs_weekly_vs_directional_t100_l3",
+      "directional_rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+      "hedged_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+      "directional_final_equity_adr": 13772.999764,
+      "hedged_final_equity_adr": 53646.297719,
+      "equity_edge_vs_hedged_adr": -39873.297955,
+      "directional_max_drawdown_adr": -1989.442654,
+      "hedged_max_drawdown_adr": -705.647194,
+      "drawdown_edge_vs_hedged_adr": -1283.79546,
+      "directional_worst_13_week_loss_adr": -1989.442654,
+      "hedged_worst_13_week_loss_adr": 915.954548,
+      "directional_mtm_weekly_win_rate": 0.595174,
+      "hedged_mtm_weekly_win_rate": 0.857909,
+      "edge_read": "hedged_reference_matches_or_beats_directional_candidate_gross_edge_warning",
+      "content_hash": "FDDB68FC754971D5C7F4EC320382F799B5EDE6BAD22786E74AAD09AA353276CF"
+    },
+    "content_hash": "3F0731DE115E814FC95B48484A925E7CA247A959BFFEBE86E1CA649EBFB03FB3"
+  }
+]

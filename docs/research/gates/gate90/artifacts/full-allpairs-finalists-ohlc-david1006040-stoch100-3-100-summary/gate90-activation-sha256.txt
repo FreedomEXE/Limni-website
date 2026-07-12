@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T05:35:21.828Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json F94136331566ED34E22F9645BF467C684302C158DB849223F8B902F771BAB409 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/activation-summary.rows.json
+weekly_json BB51B4C863B0D1FA12B817D7E8CFE5F06B877A14F35E9D769E7C82C147766687 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/close-events.rows.json
+validation_json B29743DCB740A7F4AC0C757CCC9472182E6AC339A23EC86FB3FBB8651C944A8C docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/metric-definitions.rows.json
+command_receipt 9727CDC88AE739112B190240C49F4E0FC138352B08E340B658CB8C88A7EF2381 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/command-receipt.json
+run_summary_json D3AE9A45C4A7BFAF6199840EABAB0E50D933957562A507E32F820F6C3DF29895 docs/research/gates/gate90/artifacts/full-allpairs-finalists-ohlc-david1006040-stoch100-3-100-summary/gate90-run-summary.json
+report DC56BCD6956B9299BCFB51D47B10ACEA940047DEE4D5B3E5CAA17CB0837B9107 docs/research/gates/gate90/GATE90_FULL_ALLPAIRS_FINALISTS_OHLC_DAVID1006040_STOCH100_3_100_SUMMARY_2026-07-02.md

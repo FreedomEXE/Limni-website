@@ -1,0 +1,93 @@
+{
+  "gate_id": "Gate 72A: warehouse-manifest-binding-audit",
+  "command": "npm run engine:gate72a:warehouse-manifest-binding-audit",
+  "generated_at": "2026-06-29T00:14:38.902Z",
+  "git_commit": "dc2043d87e8e76763e674ffe2bac31bb313b3fe7",
+  "verdict": "PASS_WITH_CAVEAT_GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT__DIRECT_PATH_BINDING_TRANSITIVE_GATE68",
+  "validation": {
+    "gate71a_passed": true,
+    "gate68c_passed": true,
+    "gate69b_passed": true,
+    "candidate_b_file_hash_matches_protocol": true,
+    "candidate_b_final_ledger_bound_to_gate68_transitively": true,
+    "candidate_b_forced28_preserved": true,
+    "manifest_id_matches_config_hash": true,
+    "warehouse_ready_and_hash_valid": true,
+    "clean_entry_exposure_model_bound": true,
+    "legacy_adr_grid_control_only": true,
+    "spread_slippage_explicit_protocol_field_present": false,
+    "gate68_capsule_direct_manifest_field_present": false,
+    "promotion_started": false,
+    "risk_layer_started": false
+  },
+  "binding_audit": {
+    "manifest_id": "gate71bm_basket_path_1A8231225169",
+    "expected_manifest_id": "gate71bm_basket_path_1A8231225169",
+    "direct_bindings": {
+      "warehouse_status_complete": true,
+      "config_hash_matches": true,
+      "warehouse_hash_matches": true,
+      "candidate_b_ledger_file_sha256_bound": true,
+      "point_contract_id_bound": true,
+      "price_bundle_id_bound": true,
+      "path_resolution_bound": true,
+      "clean_entry_exposure_model_id_bound": true,
+      "adr_target_pct_bound": true,
+      "universe_symbol_count": 28,
+      "week_count": 373,
+      "point_count": 2484553
+    },
+    "protocol_bindings": {
+      "objective": "maximize profitable-week rate subject to no tail-risk degradation, no total-ADR collapse, and no year/regime concentration",
+      "adr_account_mapping": "1 ADR = 1 percent account profit under the current ADR-normalized research convention",
+      "execution_window": "engine/src/evaluation/executionPriceWindows.ts",
+      "entry_timestamp": "first loaded path bar open in the execution window",
+      "close_timestamp": "Friday 11:00 America/New_York execution cutoff",
+      "threshold_crossing_semantics": "closed-bar/timestamped 1m mark crossing; no intrabar interpolation",
+      "spread_slippage_explicit_field_present": false,
+      "spread_slippage_assumption_for_gate72_review": "no additional spread/slippage layer beyond canonical price marks was introduced in Gate 71 clean basket path evidence"
+    },
+    "transitive_upstream_bindings": {
+      "gate68_capsule_direct_manifest_field_present": false,
+      "gate68_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+      "gate68_capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+      "gate69b_final_ledger_bound_to_gate68_capsule": true,
+      "gate69b_final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+      "gate71a_candidate_b_final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+      "gate71a_candidate_b_ledger_file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03"
+    },
+    "coverage": {
+      "expected_weeks": 373,
+      "expected_symbols_per_week": 28,
+      "candidate_b_rows": 10444,
+      "candidate_b_weeks": 373,
+      "full_weeks": 373,
+      "duplicate_week_symbol_rows": 0,
+      "warehouse_missing_week_count": 0,
+      "warehouse_duplicate_week_count": 0,
+      "warehouse_point_count": 2484553
+    },
+    "legacy_adr_grid_boundary": {
+      "classification": "coupled_entry_exit_control_only",
+      "can_be_foundation_for_clean_basket_path": false,
+      "can_be_gate71_control": true
+    },
+    "entry_model_exclusions": [
+      "ADR Grid levels",
+      "grid take-profit",
+      "grid reset",
+      "re-entry",
+      "risk filters",
+      "fair-value pruning",
+      "pair-specific exits",
+      "regime-specific exits",
+      "direction mutation"
+    ]
+  },
+  "artifacts": {
+    "bindingAudit": "docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/warehouse-manifest-binding-audit.json",
+    "summaryJson": "docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/gate72a-summary.json",
+    "shaIdentity": "docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/gate72a-sha256.txt",
+    "report": "docs/research/gates/gate72a/GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT_2026-06-28.md"
+  }
+}

@@ -1,0 +1,4 @@
+Gate 99ZS compile results
+repo StateMap: Result: 0 errors, 0 warnings, 4796 msec elapsed, cpu='X64 Regular'
+active StateMap: Result: 0 errors, 0 warnings, 4516 msec elapsed, cpu='X64 Regular'
+Stochastic: source not touched in Gate 99ZS; not recompiled.

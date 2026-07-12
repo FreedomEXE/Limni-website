@@ -1,0 +1,38 @@
+[
+  {
+    "question": "Is the fully hedged result mechanically valid?",
+    "answer": "yes_under_gross_no_cost_replay_semantics",
+    "evidence": "long_short_cycles_not_netted_shared_close_reset_pnl_math_data_end_inventory_visible",
+    "content_hash": "E5A938B792BA6D97A96F468BC502BAC506B93FFED25FE8B2A33A2DB4524B6140"
+  },
+  {
+    "question": "Does the fully hedged system still beat the directional system after fair exposure normalization?",
+    "answer": "yes_on_gross_side_slot_and_risk_budget_proxies",
+    "evidence": "{\"rule_id\":\"FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE\",\"raw_final_equity_adr\":53646.297719,\"raw_max_drawdown_adr\":-705.647194,\"gross_pair_side_slots_proxy\":56,\"gross_exposure_normalized_to_28_pair_side_slots_adr\":26823.14886,\"margin_proxy_denominator_abs_dd_plus_abs_open\":1672.379309,\"margin_proxy_return_per_unit\":32.077829,\"fill_count\":204752,\"fill_ratio_vs_t100\":1.930166,\"final_equity_per_10000_fills_adr\":2620.062208,\"risk_budget_scale_to_t100_dd\":2.819316,\"risk_budget_normalized_final_equity_to_t100_dd_adr\":151245.882955,\"normalized_edge_vs_t100_gross_slots_adr\":13050.149096,\"content_hash\":\"E71A9C5B74A010B3210826A0DC584E3598562766555B7C9F7E74B36742EEEEEC\"}",
+    "content_hash": "C162CF6B6F4BC4E1219729928182514387627DCD331AF306F7564F1EAEB38B12"
+  },
+  {
+    "question": "Is the fully hedged edge large enough to plausibly survive real trading friction?",
+    "answer": "plausibly_yes_but_requires_full_broker_model",
+    "evidence": "{\"rule_id\":\"FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE\",\"fill_count\":204752,\"raw_final_equity_adr\":53646.297719,\"break_even_cost_adr_per_fill\":0.262006,\"cost_adr_per_fill_to_reduce_return_25pct\":0.065502,\"cost_adr_per_fill_to_reduce_return_50pct\":0.131003,\"cost_adr_per_fill_to_make_flat\":0.262006,\"final_equity_after_0_01_adr_per_fill_cost\":51598.777719,\"final_equity_after_0_05_adr_per_fill_cost\":43408.697719,\"equal_0_01_cost_still_beats_directional_t100\":true,\"hedged_vs_directional_equal_cost_crossover_adr_per_fill\":0.404099,\"cost_read\":\"large_gross_edge_buffer_but_full_broker_cost_model_required\",\"content_hash\":\"79FE6523BDE3E544ACB571D71DF500627B4BDAF5BB32DBCB6B9D8F1C2EC4FF86\"}",
+    "content_hash": "639875ADAFE8C069AC050FF752DD65EFFEE2786E409D99F0747468CFF2F33743"
+  },
+  {
+    "question": "Is the fully hedged equity curve genuinely smoother, or does it hide unresolved inventory?",
+    "answer": "smoother_but_open_inventory_visible",
+    "evidence": "{\"rule_id\":\"FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE\",\"final_equity_adr\":53646.297719,\"max_drawdown_adr\":-705.647194,\"equity_curve_smoothness_score\":307.029797,\"weekly_mtm_volatility_adr\":167.99567,\"downside_weekly_volatility_adr\":130.341042,\"time_in_drawdown_weeks\":53,\"longest_drawdown_weeks\":2,\"recovery_duration_from_max_drawdown_weeks_proxy\":2,\"worst_4_week_period_adr\":-280.187081,\"worst_13_week_period_adr\":915.954548,\"worst_26_week_period_adr\":2862.191747,\"monthly_consistency\":0.965116,\"path_skew_proxy_mean_minus_median\":3.060464,\"top5_loss_share_of_total_losses\":0.368374,\"unresolved_inventory_read\":\"open_inventory_visible\",\"content_hash\":\"F7ECEB240107C212F130930DDEBA1B4750258F81170FF5168F52B338F576B640\"}",
+    "content_hash": "E27B25BA7B861BBF59F719F889B05A46883AB3C9B57315A7B27001B4FA151423"
+  },
+  {
+    "question": "Does Candidate B add directional value, reduce risk, increase risk, or mainly introduce flip-loss damage?",
+    "answer": "candidate_b_direction_does_not_beat_non_directional_hedged_harvest_and_introduces_flip_loss",
+    "evidence": "{\"comparison\":\"candidate_b_directional_t100_l3_vs_fully_hedged_t100_l3\",\"left_rule_id\":\"PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK\",\"right_rule_id\":\"FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE\",\"left_final_equity_adr\":13772.999764,\"right_final_equity_adr\":53646.297719,\"left_minus_right_equity_adr\":-39873.297955,\"left_max_drawdown_adr\":-1989.442654,\"right_max_drawdown_adr\":-705.647194,\"left_minus_right_drawdown_adr\":-1283.79546,\"left_flip_loss_adr\":-6297.282489,\"right_flip_loss_adr\":0,\"read\":\"left_does_not_add_enough_edge\",\"content_hash\":\"A06EEA88D19B9403E04CA9098549366B40BB44E85989D9A729AB39467895BF75\"}",
+    "content_hash": "87BC35A668B065763E249F5E1675CC5BE1AF09C8460658B60C846BCDE0F13465"
+  },
+  {
+    "question": "Which family, if any, is realistically closer to Freedom's target?",
+    "answer": "fully_hedged_harvest_family_is_closer_but_not_promotable_until_cost_margin_validation",
+    "evidence": "Gate80 target feasibility uses rough linear ADR scaling only; no promotion or risk layer started",
+    "content_hash": "73241AB4FE6E8127FD26BDC5A76658B072031C76DD21089F3F3E1D3216D43EC7"
+  }
+]

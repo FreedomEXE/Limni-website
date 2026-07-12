@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T23:31:10.405Z
+git_commit ddc665ae2df6c9cdb1ee1f234eddc77f8ef411bb
+summary_json 0761F7D1D0A785280ED7BB23F456819DF312FED1072AB95F3EAB8B1D45032656 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/activation-summary.rows.json
+weekly_json 33FAE04F692DBCB6BC4AD1D4861C9732FD19D91715B5E65557EE19FB9AA7C114 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/weekly-activation-truth.rows.json
+close_events_json 31C361A4BE0918A34189A6D9E93AE4F9C6A0AA5906ADA59D736DFDC837869E8B docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/terminal-inventory.rows.json
+validation_json 0B8191C2CF3B9666754334D270E4CCE0E1764E7F4A29CB9BA48F3AB7D12F4430 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/validation.rows.json
+metric_definitions_json 7C339E1C28184ED286A3BE9F9B444324A0A4EBF5D5444A77F11EF9C541E188C2 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/metric-definitions.rows.json
+command_receipt D0E208F47DD7FF7D2B511C4C44FAF58A31B395F7C3A0BA1DA94371FCD4153445 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/command-receipt.json
+run_summary_json 427B2412C4D42AC19939468725CB5C1DBC99441F5F3391DFF5181EB0EA9CE3F0 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/gate90-run-summary.json
+report 325382D2022C377B61BCA6B270A9AAD81F55AFA43D502A2F224ABC3FA85BE018 docs/research/gates/gate90/artifacts/gate90d-start-trace-oos4-refresh/GATE90D_START_TRACE_OOS4_REFRESH.md

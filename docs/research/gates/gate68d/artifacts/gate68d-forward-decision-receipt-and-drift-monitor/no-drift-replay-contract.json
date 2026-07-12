@@ -1,0 +1,22 @@
+{
+  "gate_id": "Gate 68D: forward-decision-receipt-and-drift-monitor",
+  "contract_version": "gate68d_no_drift_replay_contract_v0",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "replay_inputs": [
+    "mode selector rules",
+    "cell opinion hashes",
+    "source bundle hash",
+    "scenario memory state",
+    "architecture version"
+  ],
+  "mismatch_detection": [
+    "decision_hash mismatch",
+    "selected_mode mismatch",
+    "final_direction mismatch",
+    "reason_code mismatch",
+    "source bundle mismatch"
+  ],
+  "replay_can_change_decision": false,
+  "mismatch_requires_alert": true,
+  "mismatch_requires_future_gate_for_any_rule_change": true
+}

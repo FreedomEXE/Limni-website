@@ -1,0 +1,12 @@
+M	automation/mt5/Experts/Include/Core/BuildInfo.mqh
+M	automation/mt5/Experts/Include/Core/Config.mqh
+M	automation/mt5/Experts/Include/Core/Engine.mqh
+M	automation/mt5/Experts/Include/Core/Types.mqh
+M	automation/mt5/Experts/Include/Portfolio/GridBook.mqh
+M	automation/mt5/Experts/Include/Receipts/ReceiptTypes.mqh
+M	automation/mt5/Experts/Include/Receipts/RunManifest.mqh
+M	automation/mt5/Experts/Include/Strategies/ReversalLane.mqh
+M	automation/mt5/Experts/Include/Strategies/StrategyRegistry.mqh
+M	automation/mt5/Experts/Limni/LimniPortfolioEA.ex5
+M	automation/mt5/Indicators/Include/LimniPairDirectionCore.mqh
+M	automation/mt5/Indicators/Limni/StateMap.ex5

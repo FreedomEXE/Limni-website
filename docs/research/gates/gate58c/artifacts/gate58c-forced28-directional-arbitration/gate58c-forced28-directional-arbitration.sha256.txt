@@ -1,0 +1,10 @@
+# Gate 58C Forced-28 COT x Strength Directional Arbitration identity
+
+2E93104E8D610964A0F07A6CE12A531A83F7C4A2764BDF94EDDF94DDF665EF08  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl
+B0E72B79A19F3FD0A411FBF1D0D1BD36B2763E33F9885145B3AE73958DD0D698  docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.decisions.jsonl
+FF046B64705DFA744085E0954E046E6017104D56CC67FFB2158D13C6DE91149C  docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.summary.json
+5D8ACCBDB54FBFD4A44AC847276D24C473E07EE627CECDBFCCC1391D4C4D82B0  docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.receipt.json
+64E6A6B2FC4296F8CC1C55F012A29D3FD82CA0E6B9CC7619156268F3F8B3074A  docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md.report-text
+
+combined_hash ACABB23D19E937DEBDC4FEC9FE543FF0740DE4C5D535F0FCB69A73619E0D81DC
+rebuild_command npm run engine:gate58c:forced28-directional-arbitration

@@ -1,0 +1,36 @@
+{
+  "gate_id": "Gate 71A: exit-testing-protocol-freeze",
+  "command": "npm run engine:gate71a:exit-testing-protocol-freeze",
+  "generated_at": "2026-06-28T23:20:53.216Z",
+  "git_commit": "d7db6a677eeb46dbf044b23160dd83bd07764384",
+  "verdict": "PASS_GATE71A_EXIT_TESTING_PROTOCOL_FREEZE__CLEAN_BASKET_PATH_REQUIRED",
+  "protocol": {
+    "clean_entry_exposure_model_id": "gate71_clean_weekly_basket_hold_v1",
+    "legacy_adr_grid_role": "coupled_entry_exit_control_only",
+    "path_resolution": "1m",
+    "adr_target_pct": 1
+  },
+  "validation": {
+    "gate70a_passed": true,
+    "candidate_b_hash_locked": true,
+    "candidate_b_forced28_preserved": true,
+    "candidate_c_shadow_only": true,
+    "adr_normalization_confirmed": true,
+    "price_bundle_locked": true,
+    "path_resolution_locked": true,
+    "legacy_adr_grid_coupled": true,
+    "clean_basket_path_required": true,
+    "exit_matrix_execution_started": false,
+    "risk_filters_started": false,
+    "brain_truth_mutated": false
+  },
+  "artifacts": {
+    "protocolFreeze": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/exit-testing-protocol-freeze.json",
+    "entryExposureModel": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/clean-entry-exposure-model.json",
+    "legacyGridCouplingAudit": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/legacy-adr-grid-coupling-audit.json",
+    "rankingPromotionCriteria": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/ranking-and-promotion-criteria.json",
+    "summaryJson": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-summary.json",
+    "shaIdentity": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-sha256.txt",
+    "report": "docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md"
+  }
+}

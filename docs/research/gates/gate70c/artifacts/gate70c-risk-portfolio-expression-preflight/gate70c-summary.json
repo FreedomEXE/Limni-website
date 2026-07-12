@@ -1,0 +1,28 @@
+{
+  "gate_id": "Gate 70C: risk-portfolio-expression-preflight",
+  "command": "npm run engine:gate70c:risk-portfolio-expression-preflight",
+  "generated_at": "2026-06-28T18:14:25.293Z",
+  "git_commit": "461cea86054c1047b0d47a805a9a01ca01a4b0ef",
+  "verdict": "PASS_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT__MAY_REDUCE_EXPRESSION_NOT_BRAIN_TRUTH",
+  "validation": {
+    "gate70a_passed": true,
+    "gate70b_passed": true,
+    "risk_may_reduce_actual_trade_expression_later": true,
+    "risk_may_mutate_brain_truth": false,
+    "risk_may_remove_rows_from_shadow_ledger": false,
+    "candidate_c_shadow_monitoring_only": true,
+    "risk_matrix_scoring_started": false,
+    "portfolio_pruning_started": false,
+    "p_and_l_attribution_started": false,
+    "mt5_live_started": false,
+    "learning_started": false
+  },
+  "artifacts": {
+    "riskExpressionInputSchema": "docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/risk-expression-input.schema.json",
+    "riskExpressionOutputSchema": "docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/risk-expression-output.schema.json",
+    "portfolioExpressionBoundary": "docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/portfolio-expression-boundary.json",
+    "summaryJson": "docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/gate70c-summary.json",
+    "shaIdentity": "docs/research/gates/gate70c/artifacts/gate70c-risk-portfolio-expression-preflight/gate70c-sha256.txt",
+    "report": "docs/research/gates/gate70c/GATE70C_RISK_PORTFOLIO_EXPRESSION_PREFLIGHT_2026-06-28.md"
+  }
+}

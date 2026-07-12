@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T02:24:42.087Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json 2CB781B1A20E0576743B11B819A1EA55012F6A61F2D9F8D3B83056F26F55F929 docs/research/gates/gate90/artifacts/one-year-2020-david_contra/activation-summary.rows.json
+weekly_json C5D7E9338B888365771BEB970EF37A39358DC3DF8B1F9A3EA81CD49A1B115896 docs/research/gates/gate90/artifacts/one-year-2020-david_contra/weekly-activation-truth.rows.json
+close_events_json F888984FB89A70D48DC2027CC8DB686A00DA1F45C4B9E8EEC11A19F0D53AD761 docs/research/gates/gate90/artifacts/one-year-2020-david_contra/close-events.rows.json
+validation_json FB5DCD738D9037BE23689F1CB43A128F8EE05100E70E360B062E524FEE97FADC docs/research/gates/gate90/artifacts/one-year-2020-david_contra/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/one-year-2020-david_contra/metric-definitions.rows.json
+command_receipt FAA996C439462BD393CA2CAB6E6717C1482F7B73E0BB87253CBD6041E36CE94C docs/research/gates/gate90/artifacts/one-year-2020-david_contra/command-receipt.json
+run_summary_json 2E1BDCFFED90A516681D7E6AC38694DFA1ABB89B667F2DB634B06598FD51BC31 docs/research/gates/gate90/artifacts/one-year-2020-david_contra/gate90-run-summary.json
+report B77B81DD31C33ACE85B1051BACFEB5D50919141F531798B3E8FA40B01D754BE9 docs/research/gates/gate90/GATE90_ONE_YEAR_2020_DAVID_CONTRA_ALL_PAIRS_2026-07-02.md

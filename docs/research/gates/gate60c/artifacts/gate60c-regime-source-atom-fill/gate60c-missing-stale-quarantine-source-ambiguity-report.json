@@ -1,0 +1,116 @@
+{
+  "report_version": "gate60c_missing_stale_quarantine_source_ambiguity_report_v1",
+  "currency_atom_rows": 23872,
+  "pair_join_rows": 10444,
+  "pair_rows_with_any_fail_closed_atom": 10444,
+  "by_atom": [
+    {
+      "atom_key": "nominal_rate_3m",
+      "source_state": "SEALED",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    {
+      "atom_key": "cpi_inflation_yoy",
+      "source_state": "SEALED",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    {
+      "atom_key": "rrp_derived",
+      "source_state": "BUILDING",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    {
+      "atom_key": "bpr_futures",
+      "source_state": "QUARANTINED",
+      "rows": 2984,
+      "filled_point_in_time_rows": 0,
+      "fail_closed_rows": 2984,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 2984,
+      "source_ambiguous_rows": 2984,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {
+        "gate52a_source_ambiguity_quarantine": 2984
+      }
+    },
+    {
+      "atom_key": "bpr_futures_and_options",
+      "source_state": "QUARANTINED",
+      "rows": 2984,
+      "filled_point_in_time_rows": 0,
+      "fail_closed_rows": 2984,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 2984,
+      "source_ambiguous_rows": 2984,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {
+        "gate52a_source_ambiguity_quarantine": 2984
+      }
+    },
+    {
+      "atom_key": "ppp",
+      "source_state": "BUILDING",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    {
+      "atom_key": "neer",
+      "source_state": "BUILDING",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    {
+      "atom_key": "reer",
+      "source_state": "BUILDING",
+      "rows": 2984,
+      "filled_point_in_time_rows": 2984,
+      "fail_closed_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_reason_counts": {}
+    }
+  ]
+}

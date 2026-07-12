@@ -1,0 +1,19 @@
+{
+  "candidate_d_accepted_for_next_lock_gate": false,
+  "recommended_default_lock_target": "candidate_b_macro_anchor_with_cot_warning",
+  "recommended_shadow_or_canary": "candidate_c_scenario_memory_guarded",
+  "rationale": "Candidate D is trackable and genuinely new, but it is weaker than Candidate B on ADR Grid R/DD and does not preserve Candidate C zero-negative-year behavior.",
+  "candidate_d_mode_counts": {
+    "CONSERVATIVE": 6762,
+    "NORMAL": 2811,
+    "PROTECTION": 871
+  },
+  "candidate_d_signature_collapse": {
+    "candidate_id": "candidate_d_brain_mode_selector",
+    "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+    "equivalent_gate64c_candidate_id": null,
+    "equivalent_gate65e_candidate_id": null,
+    "equivalent_gate67_candidate_id": null,
+    "genuinely_new_vs_gate64_65_67": true
+  }
+}

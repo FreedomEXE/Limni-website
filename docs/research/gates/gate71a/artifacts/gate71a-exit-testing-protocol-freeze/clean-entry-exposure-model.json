@@ -1,0 +1,21 @@
+{
+  "gate_id": "Gate 71A: exit-testing-protocol-freeze",
+  "model_id": "gate71_clean_weekly_basket_hold_v1",
+  "model_role": "clean_foundation_for_basket_exit_testing",
+  "rows_per_week": 28,
+  "signal_source": "locked Candidate B final_side only",
+  "entry": "one synthetic basket exposure per pair at first loaded path bar open",
+  "mark_to_market": "sum of ADR-normalized pair returns on the 1m close-mark path",
+  "exit_in_gate71b": "none; diagnostics only",
+  "excluded_behavior": [
+    "ADR Grid levels",
+    "grid take-profit",
+    "grid reset",
+    "re-entry",
+    "risk filters",
+    "fair-value pruning",
+    "pair-specific exits",
+    "regime-specific exits",
+    "direction mutation"
+  ]
+}

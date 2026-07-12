@@ -1,0 +1,80 @@
+{
+  "receipt_version": "gate60e_bpr_value_fail_closed_receipt_v1",
+  "verdict": "FAIL_CLOSED_BPR_VALUE_SOURCE_CONTRACT_UNRESOLVED_ROWS_REMAIN__NO_REGIME_SIDE",
+  "matrix_rows": 5968,
+  "matrix_value_present_rows": 2027,
+  "matrix_value_missing_rows": 3941,
+  "matrix_fail_closed_rows": 3969,
+  "matrix_publication_timing_fail_closed_rows": 64,
+  "matrix_value_missing_and_publication_timing_overlap_rows": 36,
+  "source_observation_rows": 1472,
+  "source_observation_value_present_rows": 500,
+  "source_observation_value_missing_rows": 972,
+  "late_2025_publication_timing_source_rows_separate": 32,
+  "unresolved_rows": 4001,
+  "matrix_missing_reason_counts": {
+    "currency_mapping_error": 5,
+    "futures_options_contract_limitation": 2786,
+    "truly_absent_from_cftc_bpr_report": 1150
+  },
+  "source_observation_missing_reason_counts": {
+    "currency_mapping_error": 1,
+    "futures_options_contract_limitation": 686,
+    "truly_absent_from_cftc_bpr_report": 285
+  },
+  "matrix_missing_reason_counts_by_source_currency": {
+    "cftc_bpr_futures|AUD": {
+      "truly_absent_from_cftc_bpr_report": 149
+    },
+    "cftc_bpr_futures|CAD": {
+      "truly_absent_from_cftc_bpr_report": 38
+    },
+    "cftc_bpr_futures|CHF": {
+      "truly_absent_from_cftc_bpr_report": 274
+    },
+    "cftc_bpr_futures|GBP": {
+      "truly_absent_from_cftc_bpr_report": 16
+    },
+    "cftc_bpr_futures|JPY": {
+      "truly_absent_from_cftc_bpr_report": 66
+    },
+    "cftc_bpr_futures|NZD": {
+      "currency_mapping_error": 5,
+      "truly_absent_from_cftc_bpr_report": 234
+    },
+    "cftc_bpr_futures|USD": {
+      "truly_absent_from_cftc_bpr_report": 373
+    },
+    "cftc_bpr_options|AUD": {
+      "futures_options_contract_limitation": 368
+    },
+    "cftc_bpr_options|CAD": {
+      "futures_options_contract_limitation": 373
+    },
+    "cftc_bpr_options|CHF": {
+      "futures_options_contract_limitation": 373
+    },
+    "cftc_bpr_options|EUR": {
+      "futures_options_contract_limitation": 189
+    },
+    "cftc_bpr_options|GBP": {
+      "futures_options_contract_limitation": 373
+    },
+    "cftc_bpr_options|JPY": {
+      "futures_options_contract_limitation": 364
+    },
+    "cftc_bpr_options|NZD": {
+      "futures_options_contract_limitation": 373
+    },
+    "cftc_bpr_options|USD": {
+      "futures_options_contract_limitation": 373
+    }
+  },
+  "repair_candidates_without_source_mutation": {
+    "source_observation_currency_mapping_errors": 1,
+    "matrix_currency_mapping_error_rows": 5,
+    "source_observation_parser_extraction_failures": 0,
+    "matrix_parser_extraction_failure_rows": 0
+  },
+  "stop_line": "Gate 60E stops at BPR value source-contract diagnosis. No Regime transform, broad matrix, Regime side, support/oppose/fade label, P&L, attribution, Alpha v2, risk/execution/MT5/live/app work, or source mutation was run."
+}

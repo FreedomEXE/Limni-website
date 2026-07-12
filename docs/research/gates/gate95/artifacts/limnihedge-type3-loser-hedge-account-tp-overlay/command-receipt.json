@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 95U: limnihedge-type3-loser-hedge-account-tp-overlay",
+  "command": "npm run engine:gate95u:limnihedge-type3-loser-hedge-account-tp-overlay",
+  "args": [],
+  "generated_at": "2026-07-05T05:01:56.157Z",
+  "git_commit": "0fa7ea206e9d99a36f260a0e34c53774840196da",
+  "git_dirty_status": "dirty",
+  "gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "gate95r_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-corrected-accounting-oos-replay",
+  "artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay",
+  "content_hash": "7529E15B174A04DDECDB706D0156252E4D4EE86D31C4EA85CD3D9A952B4774E9"
+}

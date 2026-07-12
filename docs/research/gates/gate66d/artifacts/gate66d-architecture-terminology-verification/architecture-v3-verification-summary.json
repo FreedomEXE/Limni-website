@@ -1,0 +1,22 @@
+{
+  "gate_id": "Gate 66D: architecture-terminology-verification",
+  "architecture_pass": true,
+  "architecture": {
+    "architecture_version": "gate66_brain_cells_atoms_v3",
+    "hierarchy": "Brain -> Cells -> Atoms",
+    "deprecated_terms_removed_from_active_contracts": true,
+    "deprecated_intermediate_layer_present": false,
+    "cells": [
+      "cot",
+      "regime",
+      "strength"
+    ],
+    "final_algorithm_name": null,
+    "final_algorithm_status": "reserved_for_future_gate",
+    "final_algorithm_started": false,
+    "final_algorithm_named": false,
+    "forced28_decision_required": true,
+    "risk_may_reduce_expression_later": true,
+    "risk_may_mutate_forced28_decision_truth": false
+  }
+}

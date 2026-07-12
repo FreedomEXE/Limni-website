@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T19:04:29.997Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json A43B019EAACE5055D14B6A7C7351CF1FDF7119165FFB1DE13E3D7DF76E075928 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/activation-summary.rows.json
+weekly_json C3FF24F2F8D0ABE3DAA8660437B8095FD7C7827978749FB9840626C4698580F9 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json 4F27F114EC76B56D197AE411F5F49CD4D6FDB3D03C34E7B98BCA2D183F9AE9DB docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json 1EE97E6CC0DF7E21EBA2571D765E51E9B44C02D0E5D666A4AA3E393EED924616 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/terminal-inventory.rows.json
+validation_json 5B8B5A2C759E5BB2F015E541672D3C7D7058467F68DDA2ADE651EEA6D74F1C93 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/validation.rows.json
+metric_definitions_json A97992563326D6A71BCD6DFB5B3A5DB2A393ACA065699777DE2C78BF6251961C docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/metric-definitions.rows.json
+command_receipt F0D56CA285E31F0EAC90776533E936C77A79FFBB3135823E029A85066FFFA09B docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/command-receipt.json
+run_summary_json 1E53C7F859A6DB73B864A5AA63C7D6574B6DFA33DF3CACD9F081C8579316EC41 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/gate90-run-summary.json
+report DFF42C8D87733DD0465A381E14EC49D1EACA1E2567886578A9A7F192DE039D74 docs/research/gates/gate90/artifacts/gate90d-2026-open-pain-stop-strict-no-candidate-b/GATE90D_2026_OPEN_PAIN_STOP_STRICT_NO_CANDIDATE_B.md

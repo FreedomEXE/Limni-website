@@ -1,0 +1,9 @@
+gate_id Gate 72C: exit-family-ranking-shortlist
+command npm run engine:gate72c:exit-family-ranking-shortlist
+generated_at 2026-06-29T00:16:59.995Z
+git_commit dc2043d87e8e76763e674ffe2bac31bb313b3fe7
+ranking_rows 43394438E66351F8861E430EF644EF04D95BA66D2BBBB986D8EFAE1E9206DCB0 docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-ranking.rows.json
+review_shortlist 821CC2D4F75881ABC9DDB9BBBD5C1C32CD5495D77AA7C47C8FD4A13354A749CA docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-review-shortlist.json
+ranking_summary 202FF3ED8E322268002595A1A8C2D06422A8C84F9B528281A17F1A3FC1A35F83 docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-ranking-summary.json
+summary_json 7FBEA75BAB715F3DAE5DBDB5CADEEE1AB15809874BCAFD5313696B354963149F docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/gate72c-summary.json
+report 51AA41A55688993B41BA368492C1C037B7E862E40806F57930A1C740799CC952 docs/research/gates/gate72c/GATE72C_EXIT_FAMILY_RANKING_SHORTLIST_2026-06-28.md

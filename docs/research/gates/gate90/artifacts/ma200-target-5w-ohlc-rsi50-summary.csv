@@ -1,0 +1,7 @@
+"spacing_label","activation_rule_id","net_profit_usd","max_equity_drawdown_usd","weekly_equity_profit_factor","entries_opened","total_commission_usd","total_swap_usd","max_open_positions","end_liquidation_positions","target_reset_count","activation_started_long","activation_started_short"
+"s010","raw_both","15192.12","0","","466716","-28002.96","-463.47","568","541","449096","253390","195761"
+"s010","david_contra","7024.33","0","","175556","-10533.36","-316.29","416","387","165899","93944","71983"
+"s010","david_stoch_release","317.4","-424.81","1.539218","3539","-212.34","-71.98","130","5","2785","1280","1506"
+"s020","raw_both","9083.95","0","","299825","-17989.5","-299.65","377","351","294349","174039","120365"
+"s020","david_contra","4495.65","0","","118982","-7138.92","-164.13","300","263","115753","71381","44401"
+"s020","david_stoch_release","232.1","-206.64","1.84069","3037","-182.22","-37.4","67","3","2744","1264","1481"

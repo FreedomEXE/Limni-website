@@ -1,0 +1,298 @@
+{
+  "references": {
+    "gate64c_top_rdd": {
+      "candidate_id": "valuation_gap_relative_inverse_extreme_else_rrp_inverse",
+      "family": "valuation_gap_tiered",
+      "adr_grid": {
+        "adr_sum": 2422.437808,
+        "adr_mean": 0.231945,
+        "max_drawdown": -271.139895,
+        "r_over_drawdown": 8.934273,
+        "row_pf": 1.264195
+      },
+      "weekly_hold": {
+        "adr_sum": 620.140634,
+        "adr_mean": 0.059378,
+        "max_drawdown": -157.534342,
+        "r_over_drawdown": 3.936543,
+        "row_pf": 1.11445
+      },
+      "degraded_row_count": 0,
+      "negative_adr_grid_years": 3,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -134.917366,
+        "weekly_hold_adr": 80.840358
+      },
+      "decision_signature_sha256": "FF6A2D106213CA1AD5C0B6665E3C89D4E170F1694CD46D274C8C6654E2925CF1"
+    },
+    "gate64c_zero_negative_year": {
+      "candidate_id": "cot_strength_tie_breaker_valuation_reer_inverse",
+      "family": "valuation_gap_tie_breaker",
+      "adr_grid": {
+        "adr_sum": 1692.671866,
+        "adr_mean": 0.162071,
+        "max_drawdown": -277.198413,
+        "r_over_drawdown": 6.106355,
+        "row_pf": 1.17065
+      },
+      "weekly_hold": {
+        "adr_sum": 557.170064,
+        "adr_mean": 0.053348,
+        "max_drawdown": -152.707155,
+        "r_over_drawdown": 3.648618,
+        "row_pf": 1.102235
+      },
+      "degraded_row_count": 0,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 30.942457,
+        "weekly_hold_adr": 175.426214
+      },
+      "decision_signature_sha256": "7E60B3C62070DDB5C233AC5D739F5E67ABE33264B08C55C2F9F5C8AB970F75D5"
+    },
+    "gate65e_best_rdd_router": {
+      "candidate_id": "macro_anchor_crowding_warning_rrp_cot_extreme",
+      "family": "macro_anchor_crowding_warning",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01"
+    },
+    "gate65e_highest_pf_router": {
+      "candidate_id": "scenario_memory_confirmation_router_cell_agreement_support112",
+      "family": "scenario_memory_confirmation_router",
+      "adr_grid": {
+        "adr_sum": 2640.245739,
+        "adr_mean": 0.2528,
+        "max_drawdown": -347.238105,
+        "r_over_drawdown": 7.60356,
+        "row_pf": 1.294048
+      },
+      "weekly_hold": {
+        "adr_sum": 746.687556,
+        "adr_mean": 0.071494,
+        "max_drawdown": -87.207752,
+        "r_over_drawdown": 8.56217,
+        "row_pf": 1.139433
+      },
+      "degraded_row_count": 4880,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -124.118254,
+        "weekly_hold_adr": -33.633932
+      },
+      "decision_signature_sha256": "6BD55969AD6A7486BA2C0C1AB65CAA69F9A9EAF8E27674BFBA31D7215793F9C3"
+    },
+    "gate65e_zero_negative_year_router": {
+      "candidate_id": "valuation_confirmation_router_rrp_reer_else_alpha",
+      "family": "valuation_confirmation_router",
+      "adr_grid": {
+        "adr_sum": 2168.117445,
+        "adr_mean": 0.207595,
+        "max_drawdown": -355.359825,
+        "r_over_drawdown": 6.101189,
+        "row_pf": 1.231009
+      },
+      "weekly_hold": {
+        "adr_sum": 831.585556,
+        "adr_mean": 0.079623,
+        "max_drawdown": -123.907358,
+        "r_over_drawdown": 6.711349,
+        "row_pf": 1.156528
+      },
+      "degraded_row_count": 0,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": 0.570542,
+        "weekly_hold_adr": 60.1463
+      },
+      "decision_signature_sha256": "069CBE907A8354B306FDA2DBCD6C1AA31F2E80007AAD6D9A1B39400D119D5B8D"
+    },
+    "rrp_inverse_continuity": {
+      "candidate_id": "gate63_rrp_derived_inverse",
+      "family": "gate63_continuity",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "degraded_row_count": 0,
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "decision_signature_sha256": "9FDD5B67B85B73C39B4F3752C2187D03EC0FB88270BB89C65D477D3E9D132D92"
+    },
+    "alpha_v1_continuity": {
+      "candidate_id": "gate63_alpha_v1_frozen_final_side",
+      "family": "gate63_continuity",
+      "adr_grid": {
+        "adr_sum": 1648.250785,
+        "adr_mean": 0.157818,
+        "max_drawdown": -312.072214,
+        "r_over_drawdown": 5.281633,
+        "row_pf": 1.164255
+      },
+      "weekly_hold": {
+        "adr_sum": 534.366308,
+        "adr_mean": 0.051165,
+        "max_drawdown": -122.661557,
+        "r_over_drawdown": 4.356429,
+        "row_pf": 1.097846
+      },
+      "degraded_row_count": 0,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -32.536985,
+        "weekly_hold_adr": 135.43476
+      },
+      "decision_signature_sha256": "30764E473264A7E32EED4C3E62E5EC10B57BF739ED92210FED4BEF1341C6B7E8"
+    },
+    "gate67_candidate_a_reference": {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2184.300854,
+        "adr_mean": 0.209144,
+        "max_drawdown": -369.470056,
+        "r_over_drawdown": 5.911983,
+        "row_pf": 1.233289
+      },
+      "weekly_hold": {
+        "adr_sum": 787.143516,
+        "adr_mean": 0.075368,
+        "max_drawdown": -137.228044,
+        "r_over_drawdown": 5.736025,
+        "row_pf": 1.147545
+      },
+      "degraded_row_count": 691,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2026,
+        "adr_grid_adr": 25.568882,
+        "weekly_hold_adr": -26.504398
+      },
+      "decision_signature_sha256": "5FD8968F883A461671D7EAAC78B71BF8A3045F594267F2926A48290BC1FF827A"
+    },
+    "gate67_candidate_b_reference": {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2341.080708,
+        "adr_mean": 0.224156,
+        "max_drawdown": -241.508971,
+        "r_over_drawdown": 9.693556,
+        "row_pf": 1.25407
+      },
+      "weekly_hold": {
+        "adr_sum": 638.603176,
+        "adr_mean": 0.061145,
+        "max_drawdown": -116.779755,
+        "r_over_drawdown": 5.468441,
+        "row_pf": 1.118059
+      },
+      "degraded_row_count": 1292,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -127.613437,
+        "weekly_hold_adr": 108.7495
+      },
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01"
+    },
+    "gate67_candidate_c_reference": {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "family": "final_forced28_candidate",
+      "adr_grid": {
+        "adr_sum": 2276.283276,
+        "adr_mean": 0.217951,
+        "max_drawdown": -275.03638,
+        "r_over_drawdown": 8.276299,
+        "row_pf": 1.242893
+      },
+      "weekly_hold": {
+        "adr_sum": 732.900462,
+        "adr_mean": 0.070174,
+        "max_drawdown": -126.241709,
+        "r_over_drawdown": 5.805533,
+        "row_pf": 1.136683
+      },
+      "degraded_row_count": 1813,
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 13.038684,
+        "weekly_hold_adr": 159.647828
+      },
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23"
+    }
+  },
+  "signature_collapse": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "decision_signature_sha256": "5FD8968F883A461671D7EAAC78B71BF8A3045F594267F2926A48290BC1FF827A",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": "candidate_a_macro_anchor_conservative",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": "macro_anchor_crowding_warning_rrp_cot_extreme",
+      "equivalent_gate67_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": "candidate_c_scenario_memory_guarded",
+      "genuinely_new_vs_gate64_65_67": false
+    },
+    {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": null,
+      "genuinely_new_vs_gate64_65_67": true
+    }
+  ]
+}

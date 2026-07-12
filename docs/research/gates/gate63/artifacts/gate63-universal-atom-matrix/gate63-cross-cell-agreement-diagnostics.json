@@ -1,0 +1,263 @@
+{
+  "diagnostic_only": true,
+  "direction_pair_counts": {
+    "cot_vs_strength": {
+      "agree": 6692,
+      "disagree": 3752
+    },
+    "cot_vs_rrp_inverse": {
+      "agree": 4842,
+      "disagree": 5602
+    },
+    "strength_vs_rrp_inverse": {
+      "agree": 4954,
+      "disagree": 5490
+    },
+    "rrp_inverse_vs_bpr": {
+      "agree": 5010,
+      "disagree": 5434
+    }
+  },
+  "cohorts": [
+    {
+      "cohort_id": "cot_strength_agree",
+      "description": "COT and Strength agree.",
+      "rows": 6692,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 730.878633,
+        "adr_mean": 0.109217,
+        "max_drawdown": -307.199758,
+        "r_over_drawdown": 2.379164,
+        "row_pf": 1.110112
+      },
+      "weekly_hold": {
+        "adr_sum": 377.747063,
+        "adr_mean": 0.056448,
+        "max_drawdown": -130.755195,
+        "r_over_drawdown": 2.888964,
+        "row_pf": 1.106997
+      }
+    },
+    {
+      "cohort_id": "cot_strength_disagree",
+      "description": "COT and Strength disagree.",
+      "rows": 3752,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 917.372152,
+        "adr_mean": 0.244502,
+        "max_drawdown": -165.10585,
+        "r_over_drawdown": 5.556267,
+        "row_pf": 1.270044
+      },
+      "weekly_hold": {
+        "adr_sum": 156.619245,
+        "adr_mean": 0.041743,
+        "max_drawdown": -75.456272,
+        "r_over_drawdown": 2.075629,
+        "row_pf": 1.081113
+      }
+    },
+    {
+      "cohort_id": "cot_rrp_inverse_agree",
+      "description": "COT and RRP inverse agree.",
+      "rows": 4842,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 873.594658,
+        "adr_mean": 0.18042,
+        "max_drawdown": -177.508233,
+        "r_over_drawdown": 4.921432,
+        "row_pf": 1.195235
+      },
+      "weekly_hold": {
+        "adr_sum": 521.14273,
+        "adr_mean": 0.10763,
+        "max_drawdown": -90.875365,
+        "r_over_drawdown": 5.734698,
+        "row_pf": 1.215455
+      }
+    },
+    {
+      "cohort_id": "cot_rrp_inverse_disagree",
+      "description": "COT and RRP inverse disagree.",
+      "rows": 5602,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1510.027119,
+        "adr_mean": 0.269551,
+        "max_drawdown": -375.063982,
+        "r_over_drawdown": 4.026052,
+        "row_pf": 1.321162
+      },
+      "weekly_hold": {
+        "adr_sum": 167.173366,
+        "adr_mean": 0.029842,
+        "max_drawdown": -139.898003,
+        "r_over_drawdown": 1.194966,
+        "row_pf": 1.056372
+      }
+    },
+    {
+      "cohort_id": "strength_rrp_inverse_agree",
+      "description": "Strength and RRP inverse agree.",
+      "rows": 4954,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1238.943355,
+        "adr_mean": 0.250089,
+        "max_drawdown": -148.422565,
+        "r_over_drawdown": 8.347406,
+        "row_pf": 1.292864
+      },
+      "weekly_hold": {
+        "adr_sum": 544.920429,
+        "adr_mean": 0.109996,
+        "max_drawdown": -90.260611,
+        "r_over_drawdown": 6.03719,
+        "row_pf": 1.218888
+      }
+    },
+    {
+      "cohort_id": "strength_rrp_inverse_disagree",
+      "description": "Strength and RRP inverse disagree.",
+      "rows": 5490,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1144.678422,
+        "adr_mean": 0.208502,
+        "max_drawdown": -319.188999,
+        "r_over_drawdown": 3.586209,
+        "row_pf": 1.231439
+      },
+      "weekly_hold": {
+        "adr_sum": 143.395667,
+        "adr_mean": 0.026119,
+        "max_drawdown": -185.127573,
+        "r_over_drawdown": 0.774578,
+        "row_pf": 1.049535
+      }
+    },
+    {
+      "cohort_id": "cot_strength_rrp_inverse_all_agree",
+      "description": "COT, Strength, and RRP inverse all agree.",
+      "rows": 3022,
+      "weeks": 365,
+      "adr_grid": {
+        "adr_sum": 452.467677,
+        "adr_mean": 0.149725,
+        "max_drawdown": -133.647041,
+        "r_over_drawdown": 3.385542,
+        "row_pf": 1.159275
+      },
+      "weekly_hold": {
+        "adr_sum": 404.669318,
+        "adr_mean": 0.133908,
+        "max_drawdown": -48.563798,
+        "r_over_drawdown": 8.332736,
+        "row_pf": 1.267332
+      }
+    },
+    {
+      "cohort_id": "cot_strength_agree_rrp_disagrees",
+      "description": "COT and Strength agree while RRP inverse disagrees.",
+      "rows": 3670,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 723.551441,
+        "adr_mean": 0.197153,
+        "max_drawdown": -353.352802,
+        "r_over_drawdown": 2.047674,
+        "row_pf": 1.218455
+      },
+      "weekly_hold": {
+        "adr_sum": 26.922255,
+        "adr_mean": 0.007336,
+        "max_drawdown": -175.44292,
+        "r_over_drawdown": 0.153453,
+        "row_pf": 1.01353
+      }
+    },
+    {
+      "cohort_id": "cot_rrp_agree_strength_disagrees",
+      "description": "COT and RRP inverse agree while Strength disagrees.",
+      "rows": 1820,
+      "weeks": 363,
+      "adr_grid": {
+        "adr_sum": 421.126981,
+        "adr_mean": 0.231388,
+        "max_drawdown": -95.985388,
+        "r_over_drawdown": 4.387407,
+        "row_pf": 1.25776
+      },
+      "weekly_hold": {
+        "adr_sum": 116.473412,
+        "adr_mean": 0.063996,
+        "max_drawdown": -61.750779,
+        "r_over_drawdown": 1.886185,
+        "row_pf": 1.128691
+      }
+    },
+    {
+      "cohort_id": "strength_rrp_agree_cot_disagrees",
+      "description": "Strength and RRP inverse agree while COT disagrees.",
+      "rows": 1932,
+      "weeks": 363,
+      "adr_grid": {
+        "adr_sum": 786.475678,
+        "adr_mean": 0.407079,
+        "max_drawdown": -82.620536,
+        "r_over_drawdown": 9.519131,
+        "row_pf": 1.565957
+      },
+      "weekly_hold": {
+        "adr_sum": 140.251111,
+        "adr_mean": 0.072594,
+        "max_drawdown": -84.167553,
+        "r_over_drawdown": 1.666332,
+        "row_pf": 1.143736
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_bpr_agree",
+      "description": "RRP inverse and BPR agree.",
+      "rows": 5010,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1043.911189,
+        "adr_mean": 0.208366,
+        "max_drawdown": -229.195742,
+        "r_over_drawdown": 4.554671,
+        "row_pf": 1.234619
+      },
+      "weekly_hold": {
+        "adr_sum": 485.578717,
+        "adr_mean": 0.096922,
+        "max_drawdown": -104.898557,
+        "r_over_drawdown": 4.629031,
+        "row_pf": 1.194301
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_bpr_disagree",
+      "description": "RRP inverse and BPR disagree.",
+      "rows": 5434,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1339.710588,
+        "adr_mean": 0.246542,
+        "max_drawdown": -154.287419,
+        "r_over_drawdown": 8.683213,
+        "row_pf": 1.283419
+      },
+      "weekly_hold": {
+        "adr_sum": 202.737379,
+        "adr_mean": 0.037309,
+        "max_drawdown": -101.100727,
+        "r_over_drawdown": 2.005301,
+        "row_pf": 1.070267
+      }
+    }
+  ]
+}

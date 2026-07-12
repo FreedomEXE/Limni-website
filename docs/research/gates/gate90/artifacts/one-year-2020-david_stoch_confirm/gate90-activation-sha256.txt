@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T02:34:41.116Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json F2297FE03116872126C3644E91CE9B135A592E5962AF2CBA567F1E78678599CB docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/activation-summary.rows.json
+weekly_json 39028161383E456ACE112A416199922802F5204A38DFC8410971B8B019A663DD docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/weekly-activation-truth.rows.json
+close_events_json 1340C993A57E09B72F446A92B09480A08C68659EB925CE6B84D997B87BD169DC docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/close-events.rows.json
+validation_json 4A55FA8922E923ED1D712D998A9560F8AED80365EB5982ABB0A4CD28A8F302F5 docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/metric-definitions.rows.json
+command_receipt 349B25FE879104D199BECE0E8FC8B2660F1BC9B601E0F2166AC72E916414F159 docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/command-receipt.json
+run_summary_json F3FA86E6B6664103DA56850ED55E09B952DE4D1103420A235D9E6BA348DFFCDB docs/research/gates/gate90/artifacts/one-year-2020-david_stoch_confirm/gate90-run-summary.json
+report 4C18E178B7BAD2AD83B11EDABC298AC1498273EE718EDEC818C1FA673398F01D docs/research/gates/gate90/GATE90_ONE_YEAR_2020_DAVID_STOCH_CONFIRM_ALL_PAIRS_2026-07-02.md

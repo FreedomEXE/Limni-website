@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 69B: final-forced28-ledger-replay",
+  "final_ledger_hash_from_stored_gate67c_rows": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "final_ledger_hash_from_recomputed_run_a": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "final_ledger_hash_from_recomputed_run_b": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "shadow_ledger_hash_from_stored_gate67c_rows": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "shadow_ledger_hash_from_recomputed_run_a": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "shadow_ledger_hash_from_recomputed_run_b": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "final_decision_hash_mismatches": 0,
+  "shadow_decision_hash_mismatches": 0,
+  "replay_deterministic": true
+}

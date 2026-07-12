@@ -1,0 +1,45 @@
+{
+  "gate_id": "Gate 74A: trade-leg-path-warehouse-protocol-freeze",
+  "contract_id": "gate74_replay_adapter_interface_v1",
+  "input": {
+    "base_warehouse_manifest_id": "required",
+    "policy_id": "required",
+    "policy_version": "required",
+    "policy_config_hash": "required",
+    "crossing_semantics_id": "gate74_intrabar_crossing_semantics_v1"
+  },
+  "replay_outputs_own": [
+    "open and closed state",
+    "policy decisions",
+    "close/reset events",
+    "closed PnL",
+    "mark-to-market equity PnL",
+    "realized drawdown",
+    "unrealized drawdown",
+    "policy-specific performance",
+    "event reason codes"
+  ],
+  "mandatory_metrics": [
+    "closed_total_adr",
+    "equity_total_adr",
+    "closed_profit_factor",
+    "equity_profit_factor",
+    "closed_max_drawdown_adr",
+    "equity_max_drawdown_adr",
+    "worst_open_loss_adr",
+    "max_simultaneous_open_grids",
+    "max_simultaneous_losing_grids",
+    "time_underwater",
+    "recovery_before_flip_rate",
+    "loss_at_flip_distribution"
+  ],
+  "first_sanity_adapters_allowed_after_materialization": [
+    "weekly_forced_close",
+    "legacy_adr_grid_control",
+    "carry_until_flip",
+    "close_profitable_hold_unresolved_until_flip",
+    "fixed_reset_threshold_diagnostics"
+  ],
+  "adapters_forbidden_in_gate74a": true,
+  "content_hash": "7852AAEE057EECE549599F49E896E760A68390454CEF42E07674B01C81F36384"
+}

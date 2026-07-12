@@ -1,0 +1,16 @@
+gate_id Gate 76: pair-directional-two-sided-grid-and-reset-limit-lifecycle-discovery
+command npm run engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery
+generated_at 2026-06-29T20:31:17.715Z
+git_commit 0838a961b65e035350c12257d28edad55d8227f5
+adapter_summary_rows C743E85D94977348461FC33FC6D16F2C6F3CA1255FF601C9F3A2BE706A526C25 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/adapter-summary.rows.json
+weekly_equity_rows ACCC395948F45D82DB1AAA9DD3E17E07BD92216E7FE3DF05F9CE63DD2B88A449 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/weekly-equity-truth.rows.json
+annual_rows BF252FB43110EA02DBFF16D16F90B7E2818C3E0EC639CD1ECF5B963EEB0952B5 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/annual-summary.rows.json
+expansion_attribution_rows 17B3ED53F93AB6A4695F8FC7F26C2DD6D3C06F53A77EF8902844221D84B0D09A docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/expansion-attribution-vs-adverse-focus.rows.json
+fill_side_attribution_rows A8EE4F1B50134F7D3442284DA3E2B8DB6B18AA79C5EA3942659A5D52AE23A0AE docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/fill-side-attribution.rows.json
+reset_count_week_rows CFE32ABE9C51B907E1B507405A5F039A42E9D352E37F1F2997C0D3B0855EB011 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/reset-count-week.rows.json
+reset_count_pair_rows 234BB618A6BDFE3A66A9AA31E6591B02DBA06BAA98D4BBCA5961CEB116E028EF docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/reset-count-pair.rows.json
+tail_concentration_pair_rows 70C65C5F7418F2B74DEED590190C4C4A6DCFC57096469D1C34347680361DE97D docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/tail-concentration-pair.rows.json
+tail_concentration_currency_rows A432735ECB7BA697FC6714BD4E6EB1F700A6E80EB8F3DCC9B0E405A6133DCFB4 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/tail-concentration-currency.rows.json
+command_receipt 9BEEF6D697D4C2EFA7ED106F3B1A9EEA0AE348C37C63B2190B5E9CCA0A7E0790 docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/command-receipt.json
+summary_json 580A978B876E19192B8FED252BA6640AF1AA5C0733C532661534C7E57A4097BE docs/research/gates/gate76/artifacts/gate76-pair-directional-two-sided-grid-reset-limit-lifecycle-discovery/gate76-summary.json
+report 4DCA4A79FF5EFC6BF9E22E56E445A532C3FE837DB9D81242F95B56017910E307 docs/research/gates/gate76/GATE76_PAIR_DIRECTIONAL_TWO_SIDED_GRID_AND_RESET_LIMIT_LIFECYCLE_DISCOVERY_2026-06-29.md

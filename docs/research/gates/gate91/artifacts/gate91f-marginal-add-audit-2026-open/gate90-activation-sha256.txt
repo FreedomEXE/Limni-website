@@ -1,0 +1,16 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-04T01:25:15.810Z
+git_commit ace6f7837d8ca3f5a7f52ddfd926e71f983e98d8
+summary_json DF17AB690BC1DB15E41C5B379AEFFADBF057871009770A43E68EBFF27697DFC9 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/activation-summary.rows.json
+weekly_json 1CEA8ADE79527B7857E8BD7E70CC5C46091E9F8E0417C893C928757DDDE89CBF docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/close-events.rows.json
+add_throttle_events_json D79553FA332E7DC8A529BCED5B2E2D20E53703665AB5E3145C5B5EA6B205D721 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/add-throttle-events.rows.json
+marginal_add_audit_json A26C1459BFFA1B9F81218C4CD8B76401746F9CDC0A30FE982AD91F94EC385E33 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/marginal-add-audit.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/terminal-inventory.rows.json
+validation_json AE63C33A1B3EA4B736B5D162DEFED231B68D446D431FBB7A1462B2EEA1DD3BE4 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/validation.rows.json
+metric_definitions_json 798B6FCAB5957BF0BA07E10585D4D736AC77B1F1AD466F3EE6CEFA3B5A296F08 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/metric-definitions.rows.json
+command_receipt D7A8BDBED5822E02E6585B291060EF7AD11905BB8B82C96E0AA360E4CBAF970F docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/command-receipt.json
+run_summary_json 60BDC4C6FB7275F69B8D515A9CA5827B5F56F0417FB17776281C0727D1CA3A44 docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/gate90-run-summary.json
+report 81E9E7CDE2ABF9C594E288291CB4736432A1A0B87917C99FC3407C26A7F8889E docs/research/gates/gate91/artifacts/gate91f-marginal-add-audit-2026-open/GATE91F_MARGINAL_ADD_AUDIT_2026_OPEN.md

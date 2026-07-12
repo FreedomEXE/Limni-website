@@ -1,0 +1,16 @@
+gate=Gate108A
+status=PASS
+source_files=57
+terminals=94497
+compilers_equivalent=true
+compiler_observed_local_closure_match=true
+compiler_observed_standard_closure_match=true
+repo_terminal_ex5_byte_equal=true
+ex5_sha256=D1AC7BFFD7F14C6E9490FFEA9165D7E4BBC57277E7B7DB4BBB5556E4AF58D57C
+ex5_bytes=904680
+strategy_tester_run=false
+smoke_runner_run=false
+shard_runner_run=false
+benchmark_run=false
+optimization_run=false
+backtest_automation_run=false

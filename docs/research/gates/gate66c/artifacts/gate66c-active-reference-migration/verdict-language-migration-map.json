@@ -1,0 +1,8 @@
+{
+  "READY_FOR_BODY_DESIGN_REVIEW": "READY_FOR_FINAL_FORCED28_ALGORITHM_DESIGN_REVIEW",
+  "NO_BODY": "NO_FINAL_ALGORITHM",
+  "body_algorithm_started": "final_algorithm_started",
+  "body_direction_emitted": "final_algorithm_direction_emitted",
+  "allowed_body_use": "allowed_final_algorithm_use",
+  "Body design": "final forced-28 algorithm design"
+}

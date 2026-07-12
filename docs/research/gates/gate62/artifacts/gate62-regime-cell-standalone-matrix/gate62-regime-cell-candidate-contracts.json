@@ -1,0 +1,396 @@
+{
+  "gate_id": "Gate 62: regime-cell-standalone-matrix",
+  "regime_cell_atoms": [
+    {
+      "atom_id": "bpr_futures",
+      "label": "BPR futures required source atom",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "bpr_futures_and_options",
+      "label": "BPR futures/options shadow source atom",
+      "status": "shadow",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "shadow_atom"
+    },
+    {
+      "atom_id": "bpr_futures_carried_state",
+      "label": "BPR futures carried source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "atom_id": "bpr_futures_synthetic_usd_state",
+      "label": "BPR synthetic USD source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "atom_id": "nominal_rate_3m",
+      "label": "nominal 3m interbank rate",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "cpi_inflation_yoy",
+      "label": "CPI inflation year-over-year",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "rrp_derived",
+      "label": "real-rate-pressure derived atom",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "ppp",
+      "label": "purchasing power parity",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "neer",
+      "label": "nominal effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "atom_id": "reer",
+      "label": "real effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    }
+  ],
+  "candidate_contracts": [
+    {
+      "candidate_id": "bpr_only_forced28_source_direction",
+      "family": "bpr_only",
+      "label": "BPR-only forced-28 source direction",
+      "transform_version": "gate60g_bpr_forced28_source_direction_policy_v1",
+      "atom_keys": [
+        "bpr"
+      ],
+      "polarity": "bpr_source",
+      "tie_rule": "Gate 60G deterministic forced-28 BPR source-direction policy",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rates_nominal_rate_3m_natural",
+      "family": "rates_only",
+      "label": "Rates-only natural polarity",
+      "transform_version": "gate62_nominal_rate_3m_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "nominal_rate_3m"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rates_nominal_rate_3m_inverse",
+      "family": "rates_only",
+      "label": "Rates-only inverse polarity",
+      "transform_version": "gate62_nominal_rate_3m_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "nominal_rate_3m"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "inflation_cpi_yoy_natural",
+      "family": "inflation_only",
+      "label": "CPI/inflation-only natural polarity",
+      "transform_version": "gate62_cpi_inflation_yoy_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "cpi_inflation_yoy"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "inflation_cpi_yoy_inverse",
+      "family": "inflation_only",
+      "label": "CPI/inflation-only inverse polarity",
+      "transform_version": "gate62_cpi_inflation_yoy_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "cpi_inflation_yoy"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rrp_derived_natural",
+      "family": "rrp_only",
+      "label": "RRP-only natural polarity",
+      "transform_version": "gate62_rrp_derived_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rrp_derived_inverse",
+      "family": "rrp_only",
+      "label": "RRP-only inverse polarity",
+      "transform_version": "gate62_rrp_derived_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "ppp_natural",
+      "family": "valuation_single",
+      "label": "PPP-only natural polarity",
+      "transform_version": "gate62_ppp_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "ppp"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "ppp_inverse",
+      "family": "valuation_single",
+      "label": "PPP-only inverse polarity",
+      "transform_version": "gate62_ppp_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "ppp"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "neer_natural",
+      "family": "valuation_single",
+      "label": "NEER-only natural polarity",
+      "transform_version": "gate62_neer_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "neer"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "neer_inverse",
+      "family": "valuation_single",
+      "label": "NEER-only inverse polarity",
+      "transform_version": "gate62_neer_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "neer"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "reer_natural",
+      "family": "valuation_single",
+      "label": "REER-only natural polarity",
+      "transform_version": "gate62_reer_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "reer"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "reer_inverse",
+      "family": "valuation_single",
+      "label": "REER-only inverse polarity",
+      "transform_version": "gate62_reer_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "reer"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "valuation_bundle_ppp_neer_reer_natural",
+      "family": "valuation_bundle",
+      "label": "PPP + NEER + REER natural simple majority",
+      "transform_version": "gate62_valuation_bundle_ppp_neer_reer_natural_natural_simple_majority_v1",
+      "atom_keys": [
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "natural",
+      "tie_rule": "simple majority; no tie expected for odd atom count",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "valuation_bundle_ppp_neer_reer_inverse",
+      "family": "valuation_bundle",
+      "label": "PPP + NEER + REER inverse simple majority",
+      "transform_version": "gate62_valuation_bundle_ppp_neer_reer_inverse_inverse_simple_majority_v1",
+      "atom_keys": [
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "simple majority; no tie expected for odd atom count",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rate_inflation_bundle_rates_cpi_rrp_natural",
+      "family": "rate_inflation_bundle",
+      "label": "Rates + CPI + RRP natural simple majority",
+      "transform_version": "gate62_rate_inflation_bundle_rates_cpi_rrp_natural_natural_simple_majority_v1",
+      "atom_keys": [
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived"
+      ],
+      "polarity": "natural",
+      "tie_rule": "simple majority; no tie expected for odd atom count",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rate_inflation_bundle_rates_cpi_rrp_inverse",
+      "family": "rate_inflation_bundle",
+      "label": "Rates + CPI + RRP inverse simple majority",
+      "transform_version": "gate62_rate_inflation_bundle_rates_cpi_rrp_inverse_inverse_simple_majority_v1",
+      "atom_keys": [
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "simple majority; no tie expected for odd atom count",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "bpr_plus_rate_inflation_bundle_natural",
+      "family": "bpr_plus_rate_inflation_bundle",
+      "label": "BPR + rates/CPI/RRP natural simple majority",
+      "transform_version": "gate62_bpr_plus_rate_inflation_bundle_natural_natural_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived"
+      ],
+      "polarity": "natural",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "bpr_plus_rate_inflation_bundle_inverse",
+      "family": "bpr_plus_rate_inflation_bundle",
+      "label": "BPR + rates/CPI/RRP inverse simple majority",
+      "transform_version": "gate62_bpr_plus_rate_inflation_bundle_inverse_inverse_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "bpr_plus_valuation_bundle_natural",
+      "family": "bpr_plus_valuation_bundle",
+      "label": "BPR + PPP/NEER/REER natural simple majority",
+      "transform_version": "gate62_bpr_plus_valuation_bundle_natural_natural_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "natural",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "bpr_plus_valuation_bundle_inverse",
+      "family": "bpr_plus_valuation_bundle",
+      "label": "BPR + PPP/NEER/REER inverse simple majority",
+      "transform_version": "gate62_bpr_plus_valuation_bundle_inverse_inverse_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "full_regime_simple_composite_natural",
+      "family": "full_regime_simple_composite",
+      "label": "Full Regime simple composite natural numeric polarity plus BPR",
+      "transform_version": "gate62_full_regime_simple_composite_natural_natural_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "natural",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "full_regime_simple_composite_inverse",
+      "family": "full_regime_simple_composite",
+      "label": "Full Regime simple composite inverse numeric polarity plus BPR",
+      "transform_version": "gate62_full_regime_simple_composite_inverse_inverse_simple_majority_v1",
+      "atom_keys": [
+        "bpr",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "simple majority; ties resolve to BPR source direction",
+      "row_policy": "forced_28_rows_preserved"
+    }
+  ],
+  "non_candidate_diagnostics": {
+    "bpr_quality_cohorts": [
+      "bpr_promotion_eligible_pair_direction",
+      "bpr_source_direction_eligible",
+      "bpr_raw_or_fresh_only_both_sides",
+      "bpr_excluding_stale_carried",
+      "bpr_excluding_synthetic_usd",
+      "bpr_promotion_ineligible_pair_direction"
+    ],
+    "note": "BPR cohorts are diagnostics only and do not drop rows from row-complete matrix candidates."
+  }
+}

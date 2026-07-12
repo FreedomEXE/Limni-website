@@ -1,0 +1,22 @@
+{
+  "verdict": "TRADE_LEG_PATH_TIMING_NOT_DURABLY_AVAILABLE_FROM_EXISTING_WAREHOUSE",
+  "available_now": [
+    "week x pair final weekly-hold ADR from pair-week path outcome warehouse",
+    "basket-level MFE/MAE/timestamp anatomy from Gate 71B/Gate 73A",
+    "Gate 72 shortlist weekly exit timestamps and final exit ADR"
+  ],
+  "not_available_without_new_materialization": [
+    "trade-level MFE and MAE timestamps",
+    "trade contribution at basket MFE",
+    "live checkpoint runner identification by pair",
+    "trade-level recovery after adverse threshold",
+    "trade-level source split of green-then-giveback weeks"
+  ],
+  "governance_requirement_before_dynamic_trade_exit_matrix": "Create a versioned trade-leg path warehouse, or restrict Gate 73C to hypotheses answerable by current warehouses. Do not run repeated raw M1 scans for dynamic exit testing.",
+  "raw_path_smoke": {
+    "attempted_this_turn": true,
+    "result": "A two-week direct SQL trade-leg path smoke timed out at the tool limit; this confirms the need for durable materialization before path-timing diagnostics."
+  },
+  "existing_pair_week_outcome_warehouse_id": "gate57a0b_pair_week_path_outcomes_47B8F40AFB3B",
+  "existing_basket_path_warehouse_manifest_id": "gate71bm_basket_path_1A8231225169"
+}

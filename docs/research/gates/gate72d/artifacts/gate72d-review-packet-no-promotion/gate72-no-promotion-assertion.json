@@ -1,0 +1,16 @@
+{
+  "gate_id": "Gate 72D: review-packet-no-promotion",
+  "candidate_b_mutated": false,
+  "candidate_c_shadow_only": true,
+  "exit_promotion_performed": false,
+  "promotion_eligible_exit_count": 0,
+  "shortlist_is_review_only": true,
+  "risk_layer_started": false,
+  "pair_specific_exits_started": false,
+  "regime_specific_exits_started": false,
+  "fair_value_pruning_started": false,
+  "source_mutation_started": false,
+  "mt5_live_runtime_started": false,
+  "alpha_v2_promotion_started": false,
+  "raw_m1_rebuild_performed": false
+}

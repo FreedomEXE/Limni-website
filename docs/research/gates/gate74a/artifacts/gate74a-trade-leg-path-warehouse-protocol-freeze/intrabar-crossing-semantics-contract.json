@@ -1,0 +1,25 @@
+{
+  "gate_id": "Gate 74A: trade-leg-path-warehouse-protocol-freeze",
+  "contract_id": "gate74_intrabar_crossing_semantics_v1",
+  "source_resolution": "1m",
+  "base_storage": "store directed OHLC ADR per path minute and close-mark ADR per path minute",
+  "close_mark_replay_semantics": "timestamped close only; no intrabar ambiguity",
+  "touch_based_replay_semantics": {
+    "primary_review_mode": "conservative ordering when favorable and adverse thresholds are both touched inside the same minute",
+    "required_sensitivity_modes": [
+      "favorable_first",
+      "adverse_first"
+    ],
+    "ambiguous_bar_policy": "flag explicitly; no promotion claim may depend on unresolved ambiguous bars",
+    "tick_data_available": false
+  },
+  "first_touch_rows_must_include": [
+    "threshold_adr",
+    "first_touch_timestamp_utc",
+    "first_touch_bar_open_utc",
+    "touch_source: close|high_low",
+    "ambiguous_same_bar_crossing",
+    "opposite_thresholds_also_touched"
+  ],
+  "content_hash": "8EBE21144928B2D8ADB1AC089E5245F636B6EFFE43E3623FCEC8312F0980D270"
+}

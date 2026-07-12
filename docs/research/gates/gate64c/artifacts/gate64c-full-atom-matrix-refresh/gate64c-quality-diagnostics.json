@@ -1,0 +1,184 @@
+{
+  "diagnostic_only": true,
+  "bpr_quality_counts": {
+    "base": {
+      "carried_fresh": 369,
+      "carried_stale": 668,
+      "raw_present": 7082,
+      "synthetic_usd": 1110,
+      "timing_blocked_carry": 25,
+      "unresolved_no_prior": 1170,
+      "unresolved_source_ambiguous": 20
+    },
+    "quote": {
+      "carried_fresh": 548,
+      "carried_stale": 1369,
+      "raw_present": 5553,
+      "synthetic_usd": 1480,
+      "timing_blocked_carry": 24,
+      "unresolved_no_prior": 1455,
+      "unresolved_source_ambiguous": 15
+    },
+    "promotion_eligible_rows": 5113,
+    "promotion_ineligible_rows": 5331
+  },
+  "candidate_degradation": [
+    {
+      "candidate_id": "gate63_alpha_v1_frozen_final_side",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "gate63_rrp_derived_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "gate63_cot_strength_rrp_inverse_majority",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "bpr_follow_source_direction",
+      "degraded_row_count": 5331,
+      "top_degraded_reasons": {
+        "bpr_pair_direction_promotion_ineligible": 5331,
+        "bpr_pair_source_direction_ineligible": 2401,
+        "bpr:base_currency_state_not_promotion_eligible": 2699,
+        "bpr:base_currency_value_missing": 1190,
+        "bpr:base:currency_state_carried_stale": 668,
+        "bpr:base:currency_state_source_ambiguous": 20,
+        "bpr:base:currency_state_timing_blocked_carry": 25,
+        "bpr:base:currency_state_unresolved_no_prior": 1161
+      }
+    },
+    {
+      "candidate_id": "bpr_fade_source_direction",
+      "degraded_row_count": 5331,
+      "top_degraded_reasons": {
+        "bpr_pair_direction_promotion_ineligible": 5331,
+        "bpr_pair_source_direction_ineligible": 2401,
+        "bpr:base_currency_state_not_promotion_eligible": 2699,
+        "bpr:base_currency_value_missing": 1190,
+        "bpr:base:currency_state_carried_stale": 668,
+        "bpr:base:currency_state_source_ambiguous": 20,
+        "bpr:base:currency_state_timing_blocked_carry": 25,
+        "bpr:base:currency_state_unresolved_no_prior": 1161
+      }
+    },
+    {
+      "candidate_id": "rrp_derived_natural",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_reer_deviation_natural",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_reer_deviation_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_neer_reer_relative_natural",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_neer_reer_relative_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_reer_inverse_extreme_else_rrp_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "valuation_gap_relative_inverse_extreme_else_rrp_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_strength_tie_breaker_valuation_reer_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_strength_tie_breaker_valuation_relative_inverse",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "rrp_inverse_when_agrees_valuation_reer_else_alpha",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "rrp_inverse_when_disagrees_valuation_reer_else_valuation",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "bpr_when_agrees_valuation_reer_else_rrp",
+      "degraded_row_count": 3188,
+      "top_degraded_reasons": {
+        "bpr_pair_direction_promotion_ineligible": 3188,
+        "bpr_pair_source_direction_ineligible": 1404,
+        "bpr:base_currency_state_not_promotion_eligible": 1824,
+        "bpr:base_currency_value_missing": 803,
+        "bpr:base:currency_state_carried_stale": 418,
+        "bpr:base:currency_state_source_ambiguous": 15,
+        "bpr:base:currency_state_timing_blocked_carry": 11,
+        "bpr:base:currency_state_unresolved_no_prior": 779
+      }
+    },
+    {
+      "candidate_id": "cot_when_agrees_valuation_reer_else_rrp",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "strength_when_agrees_valuation_reer_else_rrp",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_strength_rrp_valuation_reer_majority",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_strength_rrp_valuation_relative_majority",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_strength_regime_valuation_bundle_reer",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_extreme_follow_else_alpha",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "cot_extreme_fade_else_alpha",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "strength_persistent_follow_else_alpha",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    },
+    {
+      "candidate_id": "strength_persistent_fade_else_alpha",
+      "degraded_row_count": 0,
+      "top_degraded_reasons": {}
+    }
+  ]
+}

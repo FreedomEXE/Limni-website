@@ -1,0 +1,592 @@
+{
+  "gate_id": "Gate 68B: brain-mode-selector-test-matrix",
+  "candidate_id": "candidate_d_brain_mode_selector",
+  "selected_mode_counts": {
+    "CONSERVATIVE": 6762,
+    "NORMAL": 2811,
+    "PROTECTION": 871
+  },
+  "mode_counts_by_year": [
+    {
+      "year": 2019,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 828
+    },
+    {
+      "year": 2019,
+      "selected_mode": "NORMAL",
+      "rows": 206
+    },
+    {
+      "year": 2019,
+      "selected_mode": "PROTECTION",
+      "rows": 30
+    },
+    {
+      "year": 2020,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 1241
+    },
+    {
+      "year": 2020,
+      "selected_mode": "NORMAL",
+      "rows": 180
+    },
+    {
+      "year": 2020,
+      "selected_mode": "PROTECTION",
+      "rows": 35
+    },
+    {
+      "year": 2021,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 1302
+    },
+    {
+      "year": 2021,
+      "selected_mode": "NORMAL",
+      "rows": 138
+    },
+    {
+      "year": 2021,
+      "selected_mode": "PROTECTION",
+      "rows": 16
+    },
+    {
+      "year": 2022,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 1175
+    },
+    {
+      "year": 2022,
+      "selected_mode": "NORMAL",
+      "rows": 221
+    },
+    {
+      "year": 2022,
+      "selected_mode": "PROTECTION",
+      "rows": 60
+    },
+    {
+      "year": 2023,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 1141
+    },
+    {
+      "year": 2023,
+      "selected_mode": "NORMAL",
+      "rows": 239
+    },
+    {
+      "year": 2023,
+      "selected_mode": "PROTECTION",
+      "rows": 76
+    },
+    {
+      "year": 2024,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 432
+    },
+    {
+      "year": 2024,
+      "selected_mode": "NORMAL",
+      "rows": 867
+    },
+    {
+      "year": 2024,
+      "selected_mode": "PROTECTION",
+      "rows": 185
+    },
+    {
+      "year": 2025,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 427
+    },
+    {
+      "year": 2025,
+      "selected_mode": "NORMAL",
+      "rows": 642
+    },
+    {
+      "year": 2025,
+      "selected_mode": "PROTECTION",
+      "rows": 387
+    },
+    {
+      "year": 2026,
+      "selected_mode": "CONSERVATIVE",
+      "rows": 216
+    },
+    {
+      "year": 2026,
+      "selected_mode": "NORMAL",
+      "rows": 318
+    },
+    {
+      "year": 2026,
+      "selected_mode": "PROTECTION",
+      "rows": 82
+    }
+  ],
+  "mode_counts_by_pair": [
+    {
+      "symbol": "AUDCAD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 240
+    },
+    {
+      "symbol": "AUDCAD",
+      "selected_mode": "NORMAL",
+      "rows": 106
+    },
+    {
+      "symbol": "AUDCAD",
+      "selected_mode": "PROTECTION",
+      "rows": 27
+    },
+    {
+      "symbol": "AUDCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 287
+    },
+    {
+      "symbol": "AUDCHF",
+      "selected_mode": "NORMAL",
+      "rows": 58
+    },
+    {
+      "symbol": "AUDCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 28
+    },
+    {
+      "symbol": "AUDJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 211
+    },
+    {
+      "symbol": "AUDJPY",
+      "selected_mode": "NORMAL",
+      "rows": 119
+    },
+    {
+      "symbol": "AUDJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 43
+    },
+    {
+      "symbol": "AUDNZD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 248
+    },
+    {
+      "symbol": "AUDNZD",
+      "selected_mode": "NORMAL",
+      "rows": 114
+    },
+    {
+      "symbol": "AUDNZD",
+      "selected_mode": "PROTECTION",
+      "rows": 11
+    },
+    {
+      "symbol": "AUDUSD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 312
+    },
+    {
+      "symbol": "AUDUSD",
+      "selected_mode": "NORMAL",
+      "rows": 50
+    },
+    {
+      "symbol": "AUDUSD",
+      "selected_mode": "PROTECTION",
+      "rows": 11
+    },
+    {
+      "symbol": "CADCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 286
+    },
+    {
+      "symbol": "CADCHF",
+      "selected_mode": "NORMAL",
+      "rows": 76
+    },
+    {
+      "symbol": "CADCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 11
+    },
+    {
+      "symbol": "CADJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 155
+    },
+    {
+      "symbol": "CADJPY",
+      "selected_mode": "NORMAL",
+      "rows": 148
+    },
+    {
+      "symbol": "CADJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 70
+    },
+    {
+      "symbol": "CHFJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 280
+    },
+    {
+      "symbol": "CHFJPY",
+      "selected_mode": "NORMAL",
+      "rows": 69
+    },
+    {
+      "symbol": "CHFJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 24
+    },
+    {
+      "symbol": "EURAUD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 208
+    },
+    {
+      "symbol": "EURAUD",
+      "selected_mode": "NORMAL",
+      "rows": 109
+    },
+    {
+      "symbol": "EURAUD",
+      "selected_mode": "PROTECTION",
+      "rows": 56
+    },
+    {
+      "symbol": "EURCAD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 82
+    },
+    {
+      "symbol": "EURCAD",
+      "selected_mode": "NORMAL",
+      "rows": 249
+    },
+    {
+      "symbol": "EURCAD",
+      "selected_mode": "PROTECTION",
+      "rows": 42
+    },
+    {
+      "symbol": "EURCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 293
+    },
+    {
+      "symbol": "EURCHF",
+      "selected_mode": "NORMAL",
+      "rows": 78
+    },
+    {
+      "symbol": "EURCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 2
+    },
+    {
+      "symbol": "EURGBP",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 93
+    },
+    {
+      "symbol": "EURGBP",
+      "selected_mode": "NORMAL",
+      "rows": 212
+    },
+    {
+      "symbol": "EURGBP",
+      "selected_mode": "PROTECTION",
+      "rows": 68
+    },
+    {
+      "symbol": "EURJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 167
+    },
+    {
+      "symbol": "EURJPY",
+      "selected_mode": "NORMAL",
+      "rows": 170
+    },
+    {
+      "symbol": "EURJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 36
+    },
+    {
+      "symbol": "EURNZD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 263
+    },
+    {
+      "symbol": "EURNZD",
+      "selected_mode": "NORMAL",
+      "rows": 62
+    },
+    {
+      "symbol": "EURNZD",
+      "selected_mode": "PROTECTION",
+      "rows": 48
+    },
+    {
+      "symbol": "EURUSD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 283
+    },
+    {
+      "symbol": "EURUSD",
+      "selected_mode": "NORMAL",
+      "rows": 50
+    },
+    {
+      "symbol": "EURUSD",
+      "selected_mode": "PROTECTION",
+      "rows": 40
+    },
+    {
+      "symbol": "GBPAUD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 164
+    },
+    {
+      "symbol": "GBPAUD",
+      "selected_mode": "NORMAL",
+      "rows": 183
+    },
+    {
+      "symbol": "GBPAUD",
+      "selected_mode": "PROTECTION",
+      "rows": 26
+    },
+    {
+      "symbol": "GBPCAD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 179
+    },
+    {
+      "symbol": "GBPCAD",
+      "selected_mode": "NORMAL",
+      "rows": 166
+    },
+    {
+      "symbol": "GBPCAD",
+      "selected_mode": "PROTECTION",
+      "rows": 28
+    },
+    {
+      "symbol": "GBPCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 279
+    },
+    {
+      "symbol": "GBPCHF",
+      "selected_mode": "NORMAL",
+      "rows": 73
+    },
+    {
+      "symbol": "GBPCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 21
+    },
+    {
+      "symbol": "GBPJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 171
+    },
+    {
+      "symbol": "GBPJPY",
+      "selected_mode": "NORMAL",
+      "rows": 176
+    },
+    {
+      "symbol": "GBPJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 26
+    },
+    {
+      "symbol": "GBPNZD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 239
+    },
+    {
+      "symbol": "GBPNZD",
+      "selected_mode": "NORMAL",
+      "rows": 125
+    },
+    {
+      "symbol": "GBPNZD",
+      "selected_mode": "PROTECTION",
+      "rows": 9
+    },
+    {
+      "symbol": "GBPUSD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 306
+    },
+    {
+      "symbol": "GBPUSD",
+      "selected_mode": "NORMAL",
+      "rows": 55
+    },
+    {
+      "symbol": "GBPUSD",
+      "selected_mode": "PROTECTION",
+      "rows": 12
+    },
+    {
+      "symbol": "NZDCAD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 331
+    },
+    {
+      "symbol": "NZDCAD",
+      "selected_mode": "NORMAL",
+      "rows": 16
+    },
+    {
+      "symbol": "NZDCAD",
+      "selected_mode": "PROTECTION",
+      "rows": 26
+    },
+    {
+      "symbol": "NZDCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 284
+    },
+    {
+      "symbol": "NZDCHF",
+      "selected_mode": "NORMAL",
+      "rows": 50
+    },
+    {
+      "symbol": "NZDCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 39
+    },
+    {
+      "symbol": "NZDJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 252
+    },
+    {
+      "symbol": "NZDJPY",
+      "selected_mode": "NORMAL",
+      "rows": 81
+    },
+    {
+      "symbol": "NZDJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 40
+    },
+    {
+      "symbol": "NZDUSD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 287
+    },
+    {
+      "symbol": "NZDUSD",
+      "selected_mode": "NORMAL",
+      "rows": 61
+    },
+    {
+      "symbol": "NZDUSD",
+      "selected_mode": "PROTECTION",
+      "rows": 25
+    },
+    {
+      "symbol": "USDCAD",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 298
+    },
+    {
+      "symbol": "USDCAD",
+      "selected_mode": "NORMAL",
+      "rows": 44
+    },
+    {
+      "symbol": "USDCAD",
+      "selected_mode": "PROTECTION",
+      "rows": 31
+    },
+    {
+      "symbol": "USDCHF",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 282
+    },
+    {
+      "symbol": "USDCHF",
+      "selected_mode": "NORMAL",
+      "rows": 54
+    },
+    {
+      "symbol": "USDCHF",
+      "selected_mode": "PROTECTION",
+      "rows": 37
+    },
+    {
+      "symbol": "USDJPY",
+      "selected_mode": "CONSERVATIVE",
+      "rows": 282
+    },
+    {
+      "symbol": "USDJPY",
+      "selected_mode": "NORMAL",
+      "rows": 57
+    },
+    {
+      "symbol": "USDJPY",
+      "selected_mode": "PROTECTION",
+      "rows": 34
+    }
+  ],
+  "selector_reason_code_counts": {
+    "SELECT_CONSERVATIVE_ON_DEGRADED_OR_AMBIGUOUS_EVIDENCE": 6762,
+    "SELECT_NORMAL_DEFAULT": 2811,
+    "SELECT_PROTECTION_ON_ROBUST_SCENARIO_GUARD": 871
+  },
+  "mode_reason_code_counts": {
+    "MODE_CONSERVATIVE_CELL_QUALITY_CLEAN": 1161,
+    "MODE_CONSERVATIVE_CELL_QUALITY_NOT_CLEAN": 5601,
+    "MODE_CONSERVATIVE_MACRO_ANCHOR_CLEAN": 3894,
+    "MODE_CONSERVATIVE_MACRO_ANCHOR_NOT_CLEAN": 2868,
+    "MODE_CONSERVATIVE_QUALITY_CLEAN": 14439,
+    "MODE_CONSERVATIVE_QUALITY_DEGRADED": 5847,
+    "MODE_NORMAL_DEFAULT": 2811,
+    "MODE_PROTECTION_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871
+  },
+  "warning_counts": {
+    "warning_active": 1353,
+    "warning_inactive": 9091
+  },
+  "fallback_counts": {
+    "fallback_not_used": 5594,
+    "fallback_used": 4850
+  },
+  "veto_counts": {
+    "veto_not_used": 9091,
+    "veto_used": 1353
+  },
+  "scenario_memory_usage_counts": {
+    "scenario_memory_used": 10444
+  },
+  "cell_participation_counts": {
+    "cot": 6947,
+    "regime": 10444,
+    "strength": 6947
+  },
+  "source_quality_exposure": {
+    "CLEAN": 25485,
+    "DEGRADED": 5847
+  }
+}

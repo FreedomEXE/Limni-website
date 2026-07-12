@@ -1,0 +1,9 @@
+StateMap.mq5
+repo   41CC5B3F12DB8A5F244183F23038F9043C7954F9026DEEE6009ED32E025956CE  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\Limni\StateMap.mq5
+active 41CC5B3F12DB8A5F244183F23038F9043C7954F9026DEEE6009ED32E025956CE  C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\Limni\StateMap.mq5
+match  True
+
+Stochastic.mq5
+repo   473701134FF6968DAED9F852F63AE9F0D3814BF64D1075CAAC976FB798568ACB  C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Indicators\Limni\Stochastic.mq5
+active 473701134FF6968DAED9F852F63AE9F0D3814BF64D1075CAAC976FB798568ACB  C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\Limni\Stochastic.mq5
+match  True

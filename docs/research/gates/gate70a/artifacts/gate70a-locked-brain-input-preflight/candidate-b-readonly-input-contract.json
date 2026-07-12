@@ -1,0 +1,30 @@
+{
+  "gate_id": "Gate 70A: locked-brain-input-preflight",
+  "contract_version": "gate70_candidate_b_readonly_input_contract_v0",
+  "input_role": "locked_directional_truth_source",
+  "locked_algorithm_id": "gate69_locked_unnamed_forced28_candidate_b_default",
+  "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+  "final_algorithm_name": null,
+  "read_only": true,
+  "mutable_by_exit_layer": false,
+  "mutable_by_risk_layer": false,
+  "forced28_rows": 10444,
+  "weeks": 373,
+  "pairs_per_week": 28,
+  "semantic_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03",
+  "source_path": "docs/research/gates/gate69b/artifacts/gate69b-final-forced28-ledger-replay/final-forced28-decision-ledger.rows.jsonl",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "frozen_reference_capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+  "allowed_future_consumers_after_explicit_gate": [
+    "exit expression research",
+    "risk / portfolio expression research"
+  ],
+  "forbidden_consumer_actions": [
+    "rewrite direction",
+    "drop pair from Brain truth",
+    "change reason codes",
+    "promote a new direction candidate",
+    "learn new weights"
+  ]
+}

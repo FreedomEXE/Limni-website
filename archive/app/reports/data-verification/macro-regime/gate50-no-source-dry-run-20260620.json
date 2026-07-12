@@ -1,0 +1,107 @@
+{
+  "generatedAtUtc": "2026-06-20T04:12:50.226Z",
+  "write": false,
+  "datasetHash": "ebca8211af2b312f9819be2f593faab66638672c1ffed214aec0e2ec6f747b98",
+  "promotionManifestId": "9940523e996397d049598a18341d3857aabab703b690221805b4eb2846a2f7d5",
+  "contractManifestHash": "dbffb7ef4bde91f946d5d5868edd0334d167cbc6075924fcea083f5fd952763b",
+  "regimeDatasetId": null,
+  "range": {
+    "fromWeekOpenUtc": "2019-01-07T00:00:00.000Z",
+    "toWeekOpenUtc": "2019-01-14T00:00:00.000Z",
+    "weeks": 2
+  },
+  "currencies": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "observations": {
+    "total": 0,
+    "bpr": 0,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0
+  },
+  "artifacts": {
+    "total": 0,
+    "endpoints": {},
+    "payloadBytes": 0
+  },
+  "availabilityEvents": {
+    "total": 0,
+    "precision": {},
+    "retrievalCapabilities": {},
+    "eligibilityPolicies": {}
+  },
+  "weeklySnapshots": {
+    "total": 0,
+    "manifests": 2,
+    "bpr": 0,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0,
+    "realRatePressure": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "bpr": {
+    "attemptedReports": 0,
+    "fetchedReports": 0,
+    "archiveFetchedReports": 0,
+    "failedReports": 0,
+    "localFetchBlockedReports": 0,
+    "failedReportKeys": [],
+    "reportTypes": [
+      "f",
+      "o"
+    ],
+    "exceptionCalendarVersion": "cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday",
+    "availabilityModes": {},
+    "exceptionOrDelayObservations": 0,
+    "promotionBlockedUntilExactPublicationDateObservations": 0,
+    "availabilitySamples": []
+  },
+  "rates": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "inflation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "valuation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "realRatePressure": {
+    "sources": 0,
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "persistedCounts": null,
+  "notes": [
+    "Gate 49 source-contract hardening only. No BPR/rate/inflation/real-rate-pressure regime interpretation, pair filter, stop policy, TP, runner, or grid-entry logic is encoded.",
+    "Weekly snapshots are frozen at the macro weekly signal freeze target, currently week_open_utc; raw rows released after that cutoff are stored but first become eligible in the next weekly snapshot.",
+    "Date-only or approximate availability remains exploratory/latest-vintage research and must roll forward at exact-boundary ties before promotion.",
+    "FRED rate and CPI rows remain promotion-blocked until ALFRED/FRED real-time vintage reconstruction replaces modeled availability.",
+    "BPR report fetches use canonical CFTC artifacts; archived canonical CFTC pages are internal replay evidence for historical fills, not runtime provider fallback.",
+    "Inflation rows compute CPI YoY from index levels and preserve lag observation metadata.",
+    "Valuation rows store OECD annual PPP/exchange-rate inputs and BIS monthly broad NEER/REER inputs only; no PPP gap, support/oppose state, or combined regime logic is derived here.",
+    "Real-rate-pressure rows are derived weekly from 3-month interbank rate minus CPI YoY; BPR remains a separate positioning source.",
+    "Japan CPI is a known v0 source weakness because the FRED/OECD Japan CPI series is stale locally; official Statistics Bureau/e-Stat Table 1-1 all-items is the primary future source, with Table 4-1 all-items as validation-only evidence."
+  ]
+}

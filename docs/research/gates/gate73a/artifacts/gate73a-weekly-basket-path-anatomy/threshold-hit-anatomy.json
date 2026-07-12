@@ -1,0 +1,140 @@
+{
+  "positive_hits": {
+    "plus_025": {
+      "hit_weeks": 366,
+      "hit_rate": 0.981233,
+      "median_first_hit_hours": 0.133333
+    },
+    "plus_050": {
+      "hit_weeks": 360,
+      "hit_rate": 0.965147,
+      "median_first_hit_hours": 0.616667
+    },
+    "plus_075": {
+      "hit_weeks": 352,
+      "hit_rate": 0.9437,
+      "median_first_hit_hours": 1.308334
+    },
+    "plus_100": {
+      "hit_weeks": 346,
+      "hit_rate": 0.927614,
+      "median_first_hit_hours": 2.183334
+    },
+    "plus_125": {
+      "hit_weeks": 340,
+      "hit_rate": 0.911528,
+      "median_first_hit_hours": 4.15
+    },
+    "plus_150": {
+      "hit_weeks": 331,
+      "hit_rate": 0.887399,
+      "median_first_hit_hours": 6.683333
+    },
+    "plus_200": {
+      "hit_weeks": 319,
+      "hit_rate": 0.855228,
+      "median_first_hit_hours": 7.983333
+    }
+  },
+  "adverse_hits": {
+    "minus_050": {
+      "hit_weeks": 348,
+      "hit_rate": 0.932976,
+      "median_first_hit_hours": 1.05
+    },
+    "minus_100": {
+      "hit_weeks": 335,
+      "hit_rate": 0.898123,
+      "median_first_hit_hours": 4.316667
+    },
+    "minus_150": {
+      "hit_weeks": 325,
+      "hit_rate": 0.871314,
+      "median_first_hit_hours": 7.25
+    },
+    "minus_200": {
+      "hit_weeks": 314,
+      "hit_rate": 0.841823,
+      "median_first_hit_hours": 8.866667
+    },
+    "minus_300": {
+      "hit_weeks": 287,
+      "hit_rate": 0.769437,
+      "median_first_hit_hours": 14.05
+    }
+  },
+  "adverse_before_profit_target": {
+    "plus_050": {
+      "minus_050": {
+        "weeks": 145,
+        "rate": 0.38874
+      },
+      "minus_100": {
+        "weeks": 97,
+        "rate": 0.260054
+      },
+      "minus_150": {
+        "weeks": 75,
+        "rate": 0.201072
+      },
+      "minus_200": {
+        "weeks": 58,
+        "rate": 0.155496
+      }
+    },
+    "plus_075": {
+      "minus_050": {
+        "weeks": 177,
+        "rate": 0.474531
+      },
+      "minus_100": {
+        "weeks": 123,
+        "rate": 0.329759
+      },
+      "minus_150": {
+        "weeks": 93,
+        "rate": 0.24933
+      },
+      "minus_200": {
+        "weeks": 72,
+        "rate": 0.193029
+      }
+    },
+    "plus_100": {
+      "minus_050": {
+        "weeks": 190,
+        "rate": 0.509383
+      },
+      "minus_100": {
+        "weeks": 133,
+        "rate": 0.356568
+      },
+      "minus_150": {
+        "weeks": 102,
+        "rate": 0.273458
+      },
+      "minus_200": {
+        "weeks": 80,
+        "rate": 0.214477
+      }
+    },
+    "plus_125": {
+      "minus_050": {
+        "weeks": 205,
+        "rate": 0.549598
+      },
+      "minus_100": {
+        "weeks": 152,
+        "rate": 0.407507
+      },
+      "minus_150": {
+        "weeks": 119,
+        "rate": 0.319035
+      },
+      "minus_200": {
+        "weeks": 94,
+        "rate": 0.252011
+      }
+    }
+  }
+}

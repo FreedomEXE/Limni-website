@@ -1,0 +1,28 @@
+Gate104 six-year speed benchmark partial stop - 2026-07-08
+
+Status: PARTIAL_STOPPED_BY_OPERATOR
+
+Reason:
+- MT5 projected roughly 2 hours for the open-prices-only six-year run.
+- Freedom correctly judged this too slow for the intended research workflow.
+
+Run:
+- Q profile: MEDIUM_50000
+- Tester model: OpenPrices
+- Receipt mode: CompactLongRun
+- Window requested: 2020.01.01..2026.07.01
+- Runtime before stop: 482.364 seconds
+- Process exit code: -1
+- Receipt bytes at stop: 142683832
+- Receipt rows at stop: 112845
+
+Classification:
+- speed benchmark failure / partial output only
+- not strategy evidence
+- not final-flat evidence
+- not promotion evidence
+
+Harness follow-up:
+- `Run-LimniPortfolioEA-FX28Smoke.ps1` was patched so killed or failed benchmark
+  runs no longer report `PASS_BENCHMARK_RECEIPTS_PRESENT` merely because
+  receipt files exist.

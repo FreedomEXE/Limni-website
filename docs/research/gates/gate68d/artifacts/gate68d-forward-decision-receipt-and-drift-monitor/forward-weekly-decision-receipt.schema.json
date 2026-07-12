@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate 68D Forward Weekly Decision Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_open_utc",
+    "symbol",
+    "base_currency",
+    "quote_currency",
+    "final_direction",
+    "selected_mode",
+    "selected_candidate_mode_source",
+    "cell_opinion_hashes",
+    "reason_code",
+    "warning_flags",
+    "fallback_flags",
+    "veto_flags",
+    "source_quality_state",
+    "scenario_memory_state",
+    "algorithm_version",
+    "architecture_version",
+    "frozen_reference_capsule_id",
+    "input_bundle_hash",
+    "decision_hash",
+    "created_at",
+    "no_drift_assertion"
+  ],
+  "properties": {
+    "week_open_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_currency": {
+      "type": "string",
+      "minLength": 1
+    },
+    "quote_currency": {
+      "type": "string",
+      "minLength": 1
+    },
+    "final_direction": {
+      "enum": [
+        "BASE_CURRENCY",
+        "QUOTE_CURRENCY"
+      ]
+    },
+    "selected_mode": {
+      "enum": [
+        "NORMAL",
+        "PROTECTION",
+        "CONSERVATIVE"
+      ]
+    },
+    "selected_candidate_mode_source": {
+      "enum": [
+        "candidate_a_macro_anchor_conservative",
+        "candidate_b_macro_anchor_with_cot_warning",
+        "candidate_c_scenario_memory_guarded"
+      ]
+    },
+    "cell_opinion_hashes": {
+      "type": "object",
+      "required": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "cot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strength": {
+          "type": "string",
+          "minLength": 1
+        },
+        "regime": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "warning_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "fallback_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "veto_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "source_quality_state": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "scenario_memory_state": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "algorithm_version": {
+      "const": "gate68_brain_mode_selector_v0"
+    },
+    "architecture_version": {
+      "const": "gate66_brain_cells_atoms_v3"
+    },
+    "frozen_reference_capsule_id": {
+      "const": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D"
+    },
+    "input_bundle_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "no_drift_assertion": {
+      "type": "object",
+      "required": [
+        "rules_hash_matches_capsule",
+        "source_bundle_matches_capsule",
+        "historical_reference_mutated"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rules_hash_matches_capsule": {
+          "const": true
+        },
+        "source_bundle_matches_capsule": {
+          "const": true
+        },
+        "historical_reference_mutated": {
+          "const": false
+        }
+      }
+    }
+  }
+}

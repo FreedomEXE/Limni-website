@@ -14,11 +14,146 @@ If a new script cannot match canonical app baselines, stop research immediately 
 
 ## Source Of Truth
 
+### Canonical price bundle
+
+All institutional price-derived research must use one shared canonical price
+bundle identity.
+
+Required rule:
+
+- `canonical_price_bars` is the shared bar source.
+- Canonical `1m` bars are the forward price truth for new institutional
+  systems.
+- `pair_period_returns`, ADR maps, ADR Grid/path bars, Weekly Hold outcomes,
+  Strength snapshots, regime-layer joins, execution logs, risk overlays, and
+  future MT5 parity receipts must trace to the same `price_bundle_id`.
+- Local SQLite M1 stores are staging/import repair tools only. They are not
+  final institutional evidence unless their rows have been promoted into the
+  canonical price bundle and included in the bundle hash.
+- Institutional M1 coverage defaults to `100%` of expected tradable session
+  bars. Anything below `100%` is diagnostic-only unless Freedom explicitly
+  approves a named waiver in the active gate receipt.
+- A result that cannot declare its `price_bundle_id` is not promotion-eligible
+  and must be labelled diagnostic-only.
+
+Current frozen FX M1 bundle:
+
+- `price_bundle_id`:
+  `gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953`
+- Gate receipt:
+  `docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md`
+- Final audit receipt:
+  `archive/app/reports/data-verification/gate55/gate55e-canonical-fx-m1-bundle-20260624T232148Z.json`
+- Final audit result: `391` weeks, `10,948/10,948` complete pair-weeks,
+  `0` partial pair-weeks, `0` source-gap weeks, and `100.000000%` lowest
+  coverage.
+
+Do not build a second backtest engine to solve price lineage. Keep the existing
+fast derived artifacts, but bind them to the frozen canonical price bundle.
+
+### Research decision manifest workflow
+
+Gate 55H introduced the forward workflow for future institutional research,
+and Gate 56E proved Gate 55G equivalent-manifest parity:
+
+```text
+ResearchDecisionManifest
+-> shared decision manifest evaluator
+-> result/receipt/hash writer
+-> append-only research run registry
+```
+
+Use this path for future authorized COT restatement, Strength selected/fade,
+Strength buckets, regime-filtered manifests, and future combined manifests:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
+```
+
+For multiple manifests sharing the same price bundle, the evaluator supports
+repeated `--manifest=<path>` inputs. Multi-manifest runs use week-major batch
+evaluation so the shared price/path context is loaded once per week and reused
+across manifests before optional runtime-cache clearing:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<a.json> --manifest=<b.json>
+```
+
+Batch runtime/cache controls are memory and speed controls only. They must not
+be used as signal, strategy, or evaluator variants. Receipts and result JSONs
+must record runtime mode, wall-clock time, manifest count, row count, cache
+statistics, and whether `--clear-runtime-cache-between-weeks` was used.
+
+Gate 56E parity receipt:
+`docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`.
+
+Gate 57A0 runtime-hardening receipt:
+`docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`.
+
+Gate 57A0B adds the forward durable pair-week path outcome layer:
+
+```text
+Gate 55E price bundle
+-> pair_week_path_outcomes
+-> ResearchDecisionManifest warehouse aggregation
+-> result/receipt/hash/registry
+```
+
+Warehouse rows are strategy-agnostic and keyed by price lineage, symbol, week,
+direction, path resolution, evaluator/path contract, and evaluator parameter
+hash. COT, Strength, bucket, regime, or combo labels belong in manifests, not in
+the pair-week outcome table.
+
+Forward warehouse evaluation is explicit:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --path-outcome-warehouse-id=<warehouse_manifest_id>
+```
+
+When `--path-outcome-warehouse-id` is present, the evaluator must validate the
+warehouse manifest, row hash, price bundle, path resolution, evaluator version,
+path contract, evaluator parameter hash, and requested row coverage. Missing or
+hash-invalid outcomes fail closed. The evaluator must not silently fall back to
+M1 path simulation inside warehouse aggregation mode.
+
+Gate 57A0B durable warehouse receipt:
+`docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md`.
+
+The evaluator consumes already-derived weekly decision rows. Signal derivation
+belongs upstream in a manifest builder; ADR Grid and weekly-hold scoring belong
+in the shared evaluator. Do not add new Gate-specific scorer functions when a
+frozen decision manifest can be routed through:
+
+- `engine/src/research/decisionManifest.ts`
+- `engine/src/research/decisionManifestEvaluator.ts`
+- `engine/src/research/researchRunRegistry.ts`
+- `engine/scripts/verification/evaluate-research-decision-manifest.ts`
+
+The command must write a normalized manifest copy, result JSON, Markdown
+receipt, hash JSON, and a registry row. Before scoring, it must check the
+registry for a materially equivalent run and refuse to rerun unless an explicit
+rerun reason is supplied.
+
+Future engine manifest-build and evaluator receipts must also record the
+run-time git commit, artifact commit under review when different, dirty-tree
+status as `clean`, `dirty`, or `unknown`, and a durable repo-relative command.
+Absolute local command paths are diagnostic detail only.
+
+Shared price/path cache keys must include all semantics that can change the
+loaded path context, including `price_bundle_id`, path resolution, source/store
+identity, week/window identity, and normalized symbol set. Strategy labels such
+as COT or Strength must not be included in shared price/path cache keys unless
+the cached object is manifest-level rather than price/path-level.
+
+Gate 56B moved the institutional research core out of `app/src/lib/research`.
+Any remaining `app/src/lib/research` modules are deprecated app research UI/API
+support, not the forward research engine.
+
 ### Weekly dealer / commercial / sentiment bias
 
 The canonical weekly base-model source is:
 
-- [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts)
+- [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts)
 
 This module is the approved source for:
 
@@ -43,17 +178,17 @@ Do not infer research truth from UI wording alone.
 
 Approved engine path:
 
-- [weeklyHoldEngine.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/weeklyHoldEngine.ts)
-- [strategyPageData.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/strategyPageData.ts)
+- [weeklyHoldEngine.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/weeklyHoldEngine.ts)
+- [strategyPageData.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/strategyPageData.ts)
 
 Approved weekly-bias strategy config:
 
-- [strategyConfig.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/strategyConfig.ts)
+- [strategyConfig.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/strategyConfig.ts)
 
-Approved current app comparison surface:
+Archived historical app comparison scripts:
 
-- [compare-weekly-bias-selector-vs-app-baselines.ts](C:/Users/User/Documents/GitHub/limni-website/scripts/compare-weekly-bias-selector-vs-app-baselines.ts)
-- [rank-current-intraday-strategies.ts](C:/Users/User/Documents/GitHub/limni-website/scripts/rank-current-intraday-strategies.ts)
+- [compare-weekly-bias-selector-vs-app-baselines.ts](C:/Users/User/Documents/GitHub/limni-website/archive/app/scripts/compare-weekly-bias-selector-vs-app-baselines.ts)
+- [rank-current-intraday-strategies.ts](C:/Users/User/Documents/GitHub/limni-website/archive/app/scripts/rank-current-intraday-strategies.ts)
 
 ## Validation Gate
 
@@ -83,7 +218,7 @@ If a new research script cannot match these numbers closely enough, do not use i
 Every new weekly-bias or intraday backtest must follow this order:
 
 1. Identify the exact strategy family and comparison window.
-2. Confirm the script is reading canonical weekly directions from [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts) or from an engine path that already depends on it.
+2. Confirm the script is reading canonical weekly directions from [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts) or from an engine path that already depends on it.
 3. Reproduce the relevant canonical baseline first.
 4. Only after parity is confirmed, run the new variant.
 5. Compare the variant against the canonical baseline on the same week set.
@@ -97,12 +232,17 @@ Every new weekly-bias or intraday backtest must follow this order:
 
 These mistakes invalidate results:
 
+- publishing institutional price-derived results without a `price_bundle_id`
+- using local SQLite M1 as final evidence instead of staging/import repair
+- accepting sub-100% M1 coverage as complete without a named waiver
+- adding a new regime, execution, risk, or signal system that reads a separate
+  price path
 - comparing a forced full-basket experiment to an app weekly-hold baseline without saying they are different experiments
 - using Matrix display output as the research source of truth
 - using UI wording alone to infer sentiment direction
 - mixing current or future weeks into a closed-week benchmark without explicitly stating it
 - treating a display mismatch as proof of a strategy mismatch before checking the underlying canonical source
-- building dealer, commercial, or sentiment directions independently from raw snapshots when [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts) already defines them
+- building dealer, commercial, or sentiment directions independently from raw snapshots when [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts) already defines them
 
 ## Practical Notes
 
@@ -116,7 +256,7 @@ Current app logic is contrarian:
 
 That mapping lives in:
 
-- [daily.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/sentiment/daily.ts)
+- [daily.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/sentiment/daily.ts)
 
 ### March 22 / March 23 lesson
 

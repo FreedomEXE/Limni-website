@@ -1,0 +1,32 @@
+{
+  "gate_id": "Gate 77: pair-two-sided-reset-limit-confirmation-and-failure-anatomy",
+  "command": "npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy",
+  "generated_at": "2026-06-29T21:50:35.315Z",
+  "git_commit": "901587399ddb0a3ff61f5f21eae25d052db02d0e",
+  "mode": "implementation_research_confirmation_failure_anatomy_no_promotion",
+  "matrix_contract": {
+    "spacing_adr": 0.2,
+    "pair_two_sided_no_limit_targets": [
+      0.75,
+      1.25,
+      1.5
+    ],
+    "pair_reset_limits_at_target_075": [
+      2,
+      3,
+      5
+    ],
+    "controlled_structure_checks": [
+      {
+        "target": 1,
+        "limit": 3
+      },
+      {
+        "target": 1.25,
+        "limit": 3
+      }
+    ],
+    "account_reset_targets": [],
+    "unbounded_parameter_search_started": false
+  }
+}

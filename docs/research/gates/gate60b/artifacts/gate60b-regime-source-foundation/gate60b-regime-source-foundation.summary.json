@@ -1,0 +1,76 @@
+{
+  "gate_id": "Gate 60B: regime-source-foundation-parity",
+  "verdict": "PASS_RRP_ALPHA_WEEK_SHADOW_REBUILD_FULL_COVERAGE__FULL_FAMILY_STILL_BLOCKED",
+  "command": "npm run engine:gate60b:regime-source-foundation",
+  "denominator": {
+    "input_rows": 10444,
+    "expected_input_rows": 10444,
+    "alpha_weeks": 373,
+    "expected_alpha_weeks": 373,
+    "expected_symbols_per_week": 28,
+    "symbols_per_week_histogram": {
+      "28": 373
+    },
+    "rows_per_week_histogram": {
+      "28": 373
+    },
+    "raw_rows_per_week_histogram": {
+      "28": 373
+    },
+    "full_weeks": 373,
+    "non_full_weeks": [],
+    "duplicate_input_row_keys": 0,
+    "duplicate_input_week_symbol_rows": 0,
+    "output_join_map_rows": 10444,
+    "dropped_rows": 0,
+    "duplicate_output_row_keys": 0,
+    "output_row_keys_match_input_row_keys": true
+  },
+  "source_registry_hash": "9EC1D0877E03A4CAD753015E4A3F2E944F22E6A73F1E6FF008B7786C99D583D8",
+  "source_content_invariant_hash": "E40E207E27FB3461C66DCE07F30601010DB4CA01AC342AE3EA1530EA91695458",
+  "join_map_hash": "AB85E93DCC62CC900ED48751ACD627DDBC142BB695DD92130BF2E566BE308554",
+  "alpha_week_rebuild_version": "gate60b_alpha_week_source_shadow_rebuild_v1",
+  "join_map_version": "gate60b_alpha_v1_macro_source_foundation_join_v1",
+  "rrp_formula_version": "rrp_percent_v1__nominal_3m_interbank_minus_cpi_yoy",
+  "source_family_coverage": {
+    "rrp_shadow": {
+      "mapped_rows": 10444,
+      "missing_rows": 0,
+      "state": "BUILDING_SHADOW",
+      "active_feature_rows": 0,
+      "note": "Alpha-week shadow rebuild proves row coverage only; it is not a promoted ACTIVE feature bundle."
+    },
+    "rate_parent": {
+      "mapped_rows": 10444,
+      "missing_rows": 0,
+      "state": "SEALED_PARENT",
+      "active_feature_rows": 0
+    },
+    "cpi_parent": {
+      "mapped_rows": 10444,
+      "missing_rows": 0,
+      "state": "SEALED_PARENT",
+      "active_feature_rows": 0
+    },
+    "bpr": {
+      "mapped_rows": 0,
+      "missing_rows": 10444,
+      "state": "QUARANTINED",
+      "reason": "Gate 52A quarantine/source ambiguity remains binding."
+    },
+    "valuation": {
+      "mapped_rows": 0,
+      "missing_rows": 10444,
+      "state": "BUILDING_SHADOW",
+      "reason": "PPP/NEER/REER raw sources exist, but valuation formula and promotion are not versioned."
+    }
+  },
+  "source_rows": {
+    "total": 8952,
+    "rate_parent": 2984,
+    "cpi_parent": 2984,
+    "rrp_shadow": 2984,
+    "unavailable": 0
+  },
+  "stop_line": "No Regime side, LONG/SHORT macro decisions, P&L, attribution, Alpha v2, risk, execution, MT5/live, app work, COT/Strength/Alpha v1/Gate 59 row changes, or macro source row mutation."
+}

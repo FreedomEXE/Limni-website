@@ -1,0 +1,12 @@
+gate_id Gate 89: continuous-raw-truth-simulator
+command npm run engine:gate89:continuous-raw-truth-simulator
+generated_at 2026-07-01T22:40:29.118Z
+git_commit 1dd8377993d59e1a94890878f45491f1d69c6dc7
+summary_json D6FB73546EDA5C0768308243DFC66A08293A7B37407BD84032771CA6898B2FF1 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/continuous-truth-summary.rows.json
+weekly_json 188EE64B725C1410446765BA61B8882B34BF1F891946ABA4AB59D07B9EE06642 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/weekly-continuous-truth.rows.json
+close_events_json 9A29983A05DA31EE1C43FD9EDFC014120A1285D990AC813833DD4BF8E975B2C9 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/close-events.rows.json
+validation_json 6F9CABB69698A888FC860DD8AB9803764D9F097A21BF53E032183DE7B6BCC9B7 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/validation.rows.json
+metric_definitions_json 7C1EE35AAB5562DBF13BA2465B0C32F8D357538A7507750F9E006240C00DEE47 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/metric-definitions.rows.json
+command_receipt 44952DC8125F79CE698873D881DF4C8A2704647636B550C7DF01668D62B00C2F docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/command-receipt.json
+run_summary_json D61CAEF29930923B58CC3043EE3EB803ECFCAC7ABAE54525707064C4B0797D19 docs/research/gates/gate89/artifacts/continuous-raw-truth-eurusd-ohlc-high-low/gate89-run-summary.json
+report AA422280BB9AFEEB75E3A7C3F5C43F45DC4DEBA09D7C7F140D10F57CDE41B4F2 docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_EURUSD_OHLC_HIGH_LOW_2026-07-01.md

@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T02:30:24.714Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json ABB514F5A5C0B8644D1C94A45082A168B39FFF1E67A75E2CD3C3EA1A3B1DEF7B docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/activation-summary.rows.json
+weekly_json 16BE456CD53F770A79536D10F6DF12A33183FFEB8711C4B992AAA92D88C65724 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/terminal-inventory.rows.json
+validation_json 50A54D3997558296E0A886AC9ABD331E86FE454C4DF52261CAB932B99DABD7C2 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/validation.rows.json
+metric_definitions_json 6ED1C5F735FE036C2E5595FC128E417AD31B9FF3FDD40222843B5B6E8B96DD9B docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/metric-definitions.rows.json
+command_receipt B109C49663C27CD80FD4497F4451F777C0EBD734AB992D2035477304272A43AA docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/command-receipt.json
+run_summary_json 4B8DEB9E3681BD33A6A558856888D43A36C5EC1653C67814B11EF8479CD6E357 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/gate90-run-summary.json
+report FFB6BB9F4CC64E9C3A953A92712AEA49D4DAEC0362A45F2E8C310A80690D8271 docs/research/gates/gate90/artifacts/gate90d-triangle-v1-compare-2026-26w-adr0025-ma25-s010/GATE90D_TRIANGLE_V1_COMPARE_2026_26W_ADR0025_MA25_S010.md

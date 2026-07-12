@@ -1,0 +1,6 @@
+Repo LimniPortfolioEA: Result: 0 errors, 0 warnings (log: repo-LimniPortfolioEA-compile-log.txt)
+Active terminal LimniPortfolioEA: Result: 0 errors, 0 warnings (log: active-terminal-LimniPortfolioEA-compile-log.txt)
+Repo StateMap compatibility: Result: 0 errors, 0 warnings (log: repo-StateMap-compile-log.txt)
+Active terminal StateMap compatibility: Result: 0 errors, 0 warnings (log: active-terminal-StateMap-compile-log.txt)
+Static scan: Revma-only files have no Katarakti/Q-State/Common snapshot references.
+No backtest or live-trading claim made in this gate.

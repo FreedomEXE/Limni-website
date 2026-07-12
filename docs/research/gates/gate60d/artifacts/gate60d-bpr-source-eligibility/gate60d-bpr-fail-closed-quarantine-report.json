@@ -1,0 +1,75 @@
+{
+  "report_version": "gate60d_bpr_fail_closed_quarantine_report_v1",
+  "publication_timing_rows": 1472,
+  "clean_publication_timing_rows": 1440,
+  "fail_closed_publication_timing_rows": 32,
+  "currency_week_atom_rows": 5968,
+  "filled_currency_week_atom_rows": 1999,
+  "fail_closed_currency_week_atom_rows": 3969,
+  "unresolved_rows": 4001,
+  "reason_counts": {
+    "invalid_availability_confidence:official_not_before_conservative": 96,
+    "invalid_availability_precision:inferred": 96,
+    "invalid_eligibility_policy:first_freeze_strictly_after_date": 96,
+    "invalid_retrieval_capability:capture_before_freeze_required": 96,
+    "latest_vintage_research_approximation": 96,
+    "missing_numeric_value:netShareOfGross": 3941,
+    "observation_invalid_availability_confidence:official_not_before_conservative": 96,
+    "observation_invalid_availability_precision:inferred": 96,
+    "observation_invalid_eligibility_policy:first_freeze_strictly_after_date": 96,
+    "observation_invalid_retrieval_capability:capture_before_freeze_required": 96,
+    "promotion_blocked_until_exact_publication_date": 96,
+    "promotion_blocked_until_point_in_time_availability": 96
+  },
+  "by_atom": [
+    {
+      "atom_key": "bpr_futures",
+      "source_id": "cftc_bpr_futures",
+      "instrument": "bank_participation_futures",
+      "rows": 2984,
+      "filled_rows": 1805,
+      "fail_closed_rows": 1179,
+      "fail_closed_week_count": 373,
+      "first_fail_closed_week": "2019-04-14T23:00:00.000Z",
+      "last_fail_closed_week": "2026-05-31T23:00:00.000Z",
+      "fail_closed_weeks_sample": [
+        "2019-04-14T23:00:00.000Z",
+        "2019-04-21T23:00:00.000Z",
+        "2019-04-28T23:00:00.000Z",
+        "2019-05-05T23:00:00.000Z",
+        "2019-05-12T23:00:00.000Z",
+        "2019-05-19T23:00:00.000Z",
+        "2019-05-26T23:00:00.000Z",
+        "2019-06-02T23:00:00.000Z"
+      ]
+    },
+    {
+      "atom_key": "bpr_futures_and_options",
+      "source_id": "cftc_bpr_options",
+      "instrument": "bank_participation_futures_and_options",
+      "rows": 2984,
+      "filled_rows": 194,
+      "fail_closed_rows": 2790,
+      "fail_closed_week_count": 373,
+      "first_fail_closed_week": "2019-04-14T23:00:00.000Z",
+      "last_fail_closed_week": "2026-05-31T23:00:00.000Z",
+      "fail_closed_weeks_sample": [
+        "2019-04-14T23:00:00.000Z",
+        "2019-04-21T23:00:00.000Z",
+        "2019-04-28T23:00:00.000Z",
+        "2019-05-05T23:00:00.000Z",
+        "2019-05-12T23:00:00.000Z",
+        "2019-05-19T23:00:00.000Z",
+        "2019-05-26T23:00:00.000Z",
+        "2019-06-02T23:00:00.000Z"
+      ]
+    }
+  ],
+  "fail_closed_publication_dates": {
+    "cftc_bpr_futures|bank_participation_futures|2025-10-07": 8,
+    "cftc_bpr_futures|bank_participation_futures|2025-11-04": 8,
+    "cftc_bpr_options|bank_participation_futures_and_options|2025-10-07": 8,
+    "cftc_bpr_options|bank_participation_futures_and_options|2025-11-04": 8
+  },
+  "quarantine_note": "Rows remain fail-closed when BPR publication timing is inferred, requires capture-before-freeze proof, or carries promotion-blocking flags. Older clean reports are not used across a newer unresolved BPR report."
+}

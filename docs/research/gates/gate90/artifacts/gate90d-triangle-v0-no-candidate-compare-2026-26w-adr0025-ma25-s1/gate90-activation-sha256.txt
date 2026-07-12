@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T01:02:17.353Z
+git_commit ddc665ae2df6c9cdb1ee1f234eddc77f8ef411bb
+summary_json CB72FF0BD5F154E900295A46E2016D9625C48B0F29EB64C3BBBB82FA0DB3DC58 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/activation-summary.rows.json
+weekly_json 518278B42BA5FF034B2D6A90760684F18D710BEA99E2E75F685D2F51087CF690 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/terminal-inventory.rows.json
+validation_json F271C15EFDC0FB6A4B81F854E2D996B665251C83BD297646534BF30BDCEE2737 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/validation.rows.json
+metric_definitions_json E7AC7EEDB06EE9AA9F84BF6313EF62B2D74DB171CACD8C4FD1998C487FE62DF1 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/metric-definitions.rows.json
+command_receipt 871BAA66D0F84688E27619368EF32D0F1C3ACA305CAAE83B524B02E1DAC76050 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/command-receipt.json
+run_summary_json F77D87031C242689ECBD4F15DE0092669EC6959F291547AC29B1C19D971F40A7 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/gate90-run-summary.json
+report 4C5596793E1E94F0EF32FC3139471D0D10ABA771DDE5AC24DF3933D1B5346C15 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-no-candidate-compare-2026-26w-adr0025-ma25-s1/GATE90D_TRIANGLE_V0_NO_CANDIDATE_COMPARE_2026_26W_ADR0025_MA25_S1.md

@@ -1,0 +1,16 @@
+{
+  "gate_id": "Gate 85A: eurusd-tail-trail-lifecycle-smoke",
+  "command": "npm run engine:gate85a:eurusd-tail-trail-lifecycle-smoke",
+  "durable_command": "npm run engine:gate85a:eurusd-tail-trail-lifecycle-smoke -- --artifact-dir=docs/research/gates/gate85a/artifacts/eurusd-tail-trail-lifecycle-smoke --report-path=docs/research/gates/gate85a/GATE85A_EURUSD_TAIL_TRAIL_LIFECYCLE_SMOKE_2026-07-01.md",
+  "git_commit": "57130ea6188fcc3bcf950353c9ea34a248abfef3",
+  "generated_at": "2026-07-01T16:33:23.412Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate85a/artifacts/eurusd-tail-trail-lifecycle-smoke",
+    "reportPath": "docs/research/gates/gate85a/GATE85A_EURUSD_TAIL_TRAIL_LIFECYCLE_SMOKE_2026-07-01.md",
+    "manifestId": null,
+    "weekFrom": "2020-01-06",
+    "weekTo": "2026-05-31T23:00:00.000Z",
+    "logProgress": false
+  }
+}

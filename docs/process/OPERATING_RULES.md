@@ -182,6 +182,15 @@ read `docs/BACKTEST_CANONICAL_PROTOCOL.md` and verify parity against
 If a new script cannot reproduce canonical app baselines using the approved
 closed-week window, stop research and fix parity first.
 
+Institutional price-derived work must declare a frozen `price_bundle_id`.
+New Strength, COT restatement, ADR Grid, Weekly Hold, regime, execution, risk,
+or MT5-parity work must trace to the shared canonical price bundle. Canonical
+`1m` coverage defaults to `100%` of expected tradable session bars; sub-100%
+M1 results are diagnostic-only unless Freedom explicitly approves a named
+waiver. Local SQLite M1 is staging/import repair only, not final evidence.
+Current frozen FX M1 bundle:
+`gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953`.
+
 ## 10. Audit And Architecture Fit
 
 When classifying a UI surface as inactive, verify both sides before making the

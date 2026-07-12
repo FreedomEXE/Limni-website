@@ -1,0 +1,28 @@
+{
+  "gate_id": "Gate 68C: frozen-seven-year-reference-capsule",
+  "contract_version": "gate68c_frozen_no_drift_contract_v0",
+  "cannot_drift": [
+    "mode selector rules",
+    "reason-code definitions",
+    "cell opinion packet schema",
+    "source bundle identities",
+    "forced-28 denominator shape",
+    "scoring surfaces",
+    "seven-year decision ledger rows",
+    "seven-year outcome scoring rows"
+  ],
+  "append_only_later": [
+    "new weekly decisions",
+    "new weekly outcomes after close",
+    "forward monitoring observations",
+    "drift reports"
+  ],
+  "forbidden_mutations": [
+    "adaptive learning",
+    "rolling retraining",
+    "silent rule updates",
+    "historical reference rewrite",
+    "risk/exits/execution mutation of Brain truth"
+  ],
+  "any_change_requires_future_versioned_research_gate": true
+}

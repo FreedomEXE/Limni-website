@@ -1,0 +1,11 @@
+status=PASS
+ea_count=9
+ea=Archived\LimniBasketEAAlphaV1.mq5|version=1.000|status=PASS
+ea=Archived\LimniBasketHedgeEAAlphaV3.mq5|version=3.000|status=PASS
+ea=Archived\LimniBeta.mq5|version=1.000|status=PASS
+ea=Archived\LimniHedge_V1.mq5|version=1.00|status=PASS
+ea=Archived\LimniHedgeV1TickTrace.mq5|version=1.000|status=PASS
+ea=Archived\LimniKataraktiEA.mq5|version=1.00|status=PASS
+ea=Archived\LimniTelemetryEA.mq5|version=1.000|status=PASS
+ea=Archived\LimniTrendFollow.mq5|version=1.00|status=PASS
+ea=Limni\LimniPortfolioEA.mq5|version=1.039|status=PASS

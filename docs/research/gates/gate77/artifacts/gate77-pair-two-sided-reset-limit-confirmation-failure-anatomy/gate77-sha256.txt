@@ -1,0 +1,17 @@
+gate_id Gate 77: pair-two-sided-reset-limit-confirmation-and-failure-anatomy
+command npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy
+generated_at 2026-06-29T21:50:38.680Z
+git_commit 901587399ddb0a3ff61f5f21eae25d052db02d0e
+adapter_summary_rows 3DF47B597F103537632EA3B38255A8F33206E828D0891050A676F350E66A8977 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/adapter-summary.rows.json
+weekly_equity_rows 30D1FBBA43F2D81251792C7E45C1CE38E017A1696D6E6A6F487F36CBCC1FE46A docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/weekly-equity-truth.rows.json
+annual_rows D929EB64FEFEA9945F9C9B7797365C3BA47D2B460641E75451F22571DF37B369 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/annual-summary.rows.json
+expansion_attribution_rows 20FC2104751D2587373725140355B0AFCE88514C4FD54E20779EF4D26EAB7CE9 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/expansion-attribution-vs-adverse-focus.rows.json
+fill_side_attribution_rows DF89180EE04A8F5A0C6C487AEF3914EC8A749081271D0F6487CDF07149203A8E docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/fill-side-attribution.rows.json
+failure_anatomy_rows A598E1A532DE9392553E85C29DB1C8B18E48F076A84FD9F90FD21146C18F6F9D docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/failure-anatomy.rows.json
+reset_count_week_rows 6EB3C50EBF9A826714FDFB2C129617B8CA85AE50858D4E24D369751C4D58159F docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/reset-count-week.rows.json
+reset_count_pair_rows 5DE4D88B845EC5BA3C49DA95F34A90E067BAE46339CEB8B3E6C2F414DC38288B docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/reset-count-pair.rows.json
+tail_concentration_pair_rows 868B111256382C3E3BFE424344D7B84CC49601B2BB1F91E5D76575D5721C0C75 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/tail-concentration-pair.rows.json
+tail_concentration_currency_rows ED8A5E6709A0118C99D0504166F045BD21D09317249D613EB7649EC6BDDE2D53 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/tail-concentration-currency.rows.json
+command_receipt C6C8386CFE231E9138F75C63EAE089E1A14AD767755273F68B05C7F33EEC50E2 docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/command-receipt.json
+summary_json 32574C171243C1E0D046D9932AD3D2A0234F6CE0A98AF8E1F43F9917CE3D83CA docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/gate77-summary.json
+report C8A540E8EE2DDD07827031C47F0565F48E30FEFD17681F69E917064F4C254DEC docs/research/gates/gate77/GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY_2026-06-29.md

@@ -1,0 +1,42 @@
+[
+  {
+    "metric": "final_equity_mtm_adr",
+    "definition": "closed PnL after modeled costs plus gross open MTM after modeled entry cost, before open liquidation exit cost",
+    "content_hash": "AF9AA9666BAE404745A8C8AC92E4F576B8FDC4C18D6F0EAC77159F56D37119D1"
+  },
+  {
+    "metric": "liquidation_mtm_after_estimated_exit_cost_adr",
+    "definition": "final equity MTM after subtracting estimated exit cost for all open positions",
+    "content_hash": "E9315DF03699500F00FED64EC91E319CFC7654E96C31FE4CF9DE58B54014A1DD"
+  },
+  {
+    "metric": "closed_pnl_after_cost_adr",
+    "definition": "realized target closes after entry and exit execution-cost stress",
+    "content_hash": "C8C4E5C19689C7B8591DF40B84F64514480ABEF8FC6DF19D6E5DCEB7D6D23256"
+  },
+  {
+    "metric": "cost_fraction",
+    "definition": "round-trip all-in execution cost as a fraction of target ADR",
+    "content_hash": "F8EA9BA81C3BC1A3600C82A8C3E67F924D2A10537932B8618FD57823DF31837A"
+  },
+  {
+    "metric": "weekly_execution_boundary_active",
+    "definition": "false for this runner; no Sunday 20 ET or Friday 11 ET artificial action cutoff is applied",
+    "content_hash": "CC192A67B9DCF02AB66D5CA2C099DEA09F53900C432CAF3C0ACF00E781229577"
+  },
+  {
+    "metric": "week_identity_reporting_only",
+    "definition": "warehouse week key is retained for grouping and output; strategy opens, fills, closes, and resets inside each available row without old cutoff checks",
+    "content_hash": "57BE28FDA1AAFA1A924D20A7BBCA81DCD05673ACC9A2EA541FD7F5C14EEC8409"
+  },
+  {
+    "metric": "max_equity_drawdown_adr",
+    "definition": "peak-to-trough drawdown over weekly mark-to-market snapshots before open liquidation exit cost",
+    "content_hash": "09D36C5839655128B348333B6229A99C6765D9AA2FF56B6D5D3795240185CAFB"
+  },
+  {
+    "metric": "max_balance_drawdown_adr",
+    "definition": "peak-to-trough drawdown over realized balance after modeled costs; secondary to MTM drawdown",
+    "content_hash": "C7FD80BDDB7B3FFF39AE8557A75B34E9AED8BF91E3F693EADAF8524BCCBBFCE3"
+  }
+]

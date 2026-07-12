@@ -1,0 +1,5 @@
+status=PASS
+case=source_changed_version_unchanged|PASS
+case=source_unchanged_version_unchanged|PASS
+case=source_changed_version_incremented|PASS
+case=repo_terminal_ex5_mismatch|PASS

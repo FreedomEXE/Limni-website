@@ -1,0 +1,10 @@
+{
+  "gate_id": "Gate 95R: limnihedge-type3-corrected-accounting-oos-replay",
+  "verdict": "FAIL_GATE95R_NO_CORRECTED_ROW_SURVIVES",
+  "source_gate95_trade_rows": 615015,
+  "source_gate95_open_inventory_rows": 28917,
+  "variant_rows": 25,
+  "continuation_rows": 0,
+  "validation_failures": 0,
+  "content_hash": "7ED8206166E25BC545A6F1737C6CEB094E50C408091AFC7396953C6F0FE3C69D"
+}

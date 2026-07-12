@@ -1,0 +1,9 @@
+gate_id Gate 68F: review-packet-completeness
+command npm run engine:gate68f:review-packet-completeness
+generated_at 2026-06-28T04:54:20.684Z
+git_commit 6172086c453c76161de917669e4159540a2c848b
+repo_visible_artifact_check FCD5481638F7C136FFEADC3A76107C16F2FCF643E7A85F065202A1F052D50861 docs/research/gates/gate68f/artifacts/gate68f-review-packet-completeness/repo-visible-artifact-check.json
+pr_update_summary 4EF6124109BA24D14E4959CCAA53717A132F1CE4261E65FE74EAA59F74E1BDB4 docs/research/gates/gate68f/artifacts/gate68f-review-packet-completeness/pr-update-summary.json
+recovery_state_summary 88EA3C22B1ABBA9DE38705DBA2A6A3C5F822EBF840857D62B12A6B54F9B4A0AA docs/research/gates/gate68f/artifacts/gate68f-review-packet-completeness/recovery-state-summary.json
+summary_json 240D8BF4798C71EEBD0053B140CC3566FBE99BC602AAF4B7A01DA2BBD8808CF6 docs/research/gates/gate68f/artifacts/gate68f-review-packet-completeness/gate68f-summary.json
+report 3967D7E5320F21D036E6F35E041822F27B8A468B16847B3238C9F3CCEC0C8978 docs/research/gates/gate68f/GATE68F_REVIEW_PACKET_COMPLETENESS_2026-06-28.md

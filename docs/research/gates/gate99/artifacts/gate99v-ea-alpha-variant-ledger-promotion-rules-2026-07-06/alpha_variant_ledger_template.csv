@@ -1,0 +1,2 @@
+variant_id,parent_variant_id,gate_id,status,lane,family,signal_semantics,market_mode_rule,entry_rule,grid_add_rule,exit_rule,harvest_interaction,risk_assumptions,test_window,data_lineage,command,artifact_path,result_hash,verdict,scrap_reason,promotion_eligibility,reviewer,updated_at,notes
+g99w-qstate-v001,,Gate 99W,idea,tbd,q_state_machine,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,tbd,,not_eligible_until_defined,Freedom+Codex,2026-07-06,placeholder for first system design; not implemented in Gate 99V

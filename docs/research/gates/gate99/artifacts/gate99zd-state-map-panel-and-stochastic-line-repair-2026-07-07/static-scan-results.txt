@@ -1,0 +1,13 @@
+automation\mt5\Indicators\Limni\StateMap.mq5
+CAppDialog=False
+CPanel=False
+CLabel=False
+OBJ_BUTTON=True
+CHARTEVENT_OBJECT_DRAG=True
+ChartRedraw=False
+panel_prints_visual_only=False
+panel_prints_local_fallback=False
+panel_prints_g_stack_source=False
+stochastic_histogram_Seg_prefix=False
+stochastic_line_prefix=True
+stochastic_strip_bottom_left=True

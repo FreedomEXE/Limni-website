@@ -1,0 +1,562 @@
+[
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 108.759255,
+    "equity_total_adr": 108.759255,
+    "closed_weekly_profit_factor": 1.576939,
+    "equity_profit_factor": 1.576939,
+    "profitable_equity_week_rate": 0.578947
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 74.599792,
+    "equity_total_adr": 74.599792,
+    "closed_weekly_profit_factor": 1.296582,
+    "equity_profit_factor": 1.296582,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 190.335592,
+    "equity_total_adr": 190.335592,
+    "closed_weekly_profit_factor": 2.444507,
+    "equity_profit_factor": 2.444507,
+    "profitable_equity_week_rate": 0.653846
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 57.417719,
+    "equity_total_adr": 57.417719,
+    "closed_weekly_profit_factor": 1.279087,
+    "equity_profit_factor": 1.279087,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 154.576088,
+    "equity_total_adr": 154.576088,
+    "closed_weekly_profit_factor": 1.926272,
+    "equity_profit_factor": 1.926272,
+    "profitable_equity_week_rate": 0.557692
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 50.006054,
+    "equity_total_adr": 50.006054,
+    "closed_weekly_profit_factor": 1.18554,
+    "equity_profit_factor": 1.18554,
+    "profitable_equity_week_rate": 0.45283
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 25.398039,
+    "equity_total_adr": 25.398039,
+    "closed_weekly_profit_factor": 1.115121,
+    "equity_profit_factor": 1.115121,
+    "profitable_equity_week_rate": 0.461538
+  },
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -22.977134,
+    "equity_total_adr": -22.977134,
+    "closed_weekly_profit_factor": 0.783416,
+    "equity_profit_factor": 0.783416,
+    "profitable_equity_week_rate": 0.363636
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 130.749087,
+    "equity_total_adr": 93.885354,
+    "closed_weekly_profit_factor": 10.162662,
+    "equity_profit_factor": 1.456724,
+    "profitable_equity_week_rate": 0.526316
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 101.376887,
+    "equity_total_adr": 121.360419,
+    "closed_weekly_profit_factor": 2.008917,
+    "equity_profit_factor": 1.515082,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 116.233122,
+    "equity_total_adr": 181.909885,
+    "closed_weekly_profit_factor": 2.482626,
+    "equity_profit_factor": 2.424067,
+    "profitable_equity_week_rate": 0.596154
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 190.752547,
+    "equity_total_adr": 130.608984,
+    "closed_weekly_profit_factor": 3.124774,
+    "equity_profit_factor": 1.522449,
+    "profitable_equity_week_rate": 0.557692
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 83.290824,
+    "equity_total_adr": 125.811657,
+    "closed_weekly_profit_factor": 2.59425,
+    "equity_profit_factor": 1.788204,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 62.208778,
+    "equity_total_adr": 33.457224,
+    "closed_weekly_profit_factor": 2.031659,
+    "equity_profit_factor": 1.1231,
+    "profitable_equity_week_rate": 0.415094
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 58.095581,
+    "equity_total_adr": -34.999961,
+    "closed_weekly_profit_factor": 1.578194,
+    "equity_profit_factor": 0.886307,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -48.01868,
+    "equity_total_adr": -54.513716,
+    "closed_weekly_profit_factor": 0.427142,
+    "equity_profit_factor": 0.636777,
+    "profitable_equity_week_rate": 0.363636
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 2571.2904,
+    "equity_total_adr": 1508.178069,
+    "closed_weekly_profit_factor": 201.606198,
+    "equity_profit_factor": 1.252661,
+    "profitable_equity_week_rate": 0.473684
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 1634.998163,
+    "equity_total_adr": 2124.86324,
+    "closed_weekly_profit_factor": 2.348016,
+    "equity_profit_factor": 1.625254,
+    "profitable_equity_week_rate": 0.576923
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 2834.581412,
+    "equity_total_adr": 2891.538277,
+    "closed_weekly_profit_factor": 37.049941,
+    "equity_profit_factor": 2.238661,
+    "profitable_equity_week_rate": 0.692308
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 2286.157611,
+    "equity_total_adr": 2615.981697,
+    "closed_weekly_profit_factor": 6.96066,
+    "equity_profit_factor": 1.399778,
+    "profitable_equity_week_rate": 0.557692
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 2098.788827,
+    "equity_total_adr": 1770.44938,
+    "closed_weekly_profit_factor": 6.144989,
+    "equity_profit_factor": 1.630586,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 2062.237214,
+    "equity_total_adr": 1680.776023,
+    "closed_weekly_profit_factor": 7.223843,
+    "equity_profit_factor": 1.320959,
+    "profitable_equity_week_rate": 0.471698
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 2463.755664,
+    "equity_total_adr": -727.596342,
+    "closed_weekly_profit_factor": 9.812477,
+    "equity_profit_factor": 0.855652,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -2792.708026,
+    "equity_total_adr": -4352.307268,
+    "closed_weekly_profit_factor": 0.245738,
+    "equity_profit_factor": 0.556644,
+    "profitable_equity_week_rate": 0.454545
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 2618.912638,
+    "equity_total_adr": 1708.472948,
+    "closed_weekly_profit_factor": 367.491695,
+    "equity_profit_factor": 1.298404,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 2117.56743,
+    "equity_total_adr": 2465.584056,
+    "closed_weekly_profit_factor": 3.754558,
+    "equity_profit_factor": 1.98775,
+    "profitable_equity_week_rate": 0.634615
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 2810.060305,
+    "equity_total_adr": 2749.839976,
+    "closed_weekly_profit_factor": 36.173696,
+    "equity_profit_factor": 2.119137,
+    "profitable_equity_week_rate": 0.653846
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 2294.040273,
+    "equity_total_adr": 2743.323459,
+    "closed_weekly_profit_factor": 6.84042,
+    "equity_profit_factor": 1.381311,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 2123.185889,
+    "equity_total_adr": 1786.450074,
+    "closed_weekly_profit_factor": 6.45686,
+    "equity_profit_factor": 1.603763,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 2098.205235,
+    "equity_total_adr": 1788.169362,
+    "closed_weekly_profit_factor": 7.188491,
+    "equity_profit_factor": 1.347115,
+    "profitable_equity_week_rate": 0.45283
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 2314.799101,
+    "equity_total_adr": -958.957116,
+    "closed_weekly_profit_factor": 8.169424,
+    "equity_profit_factor": 0.813238,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -2753.880186,
+    "equity_total_adr": -4308.743935,
+    "closed_weekly_profit_factor": 0.251334,
+    "equity_profit_factor": 0.557615,
+    "profitable_equity_week_rate": 0.454545
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 2596.103021,
+    "equity_total_adr": 1776.339504,
+    "closed_weekly_profit_factor": 288.549917,
+    "equity_profit_factor": 1.319726,
+    "profitable_equity_week_rate": 0.473684
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 2121.245872,
+    "equity_total_adr": 2373.398982,
+    "closed_weekly_profit_factor": 3.549459,
+    "equity_profit_factor": 1.848582,
+    "profitable_equity_week_rate": 0.596154
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 2904.87742,
+    "equity_total_adr": 2860.658347,
+    "closed_weekly_profit_factor": 62.305198,
+    "equity_profit_factor": 2.22757,
+    "profitable_equity_week_rate": 0.634615
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 2326.09426,
+    "equity_total_adr": 2757.888993,
+    "closed_weekly_profit_factor": 8.49291,
+    "equity_profit_factor": 1.453051,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 2179.912105,
+    "equity_total_adr": 1854.072498,
+    "closed_weekly_profit_factor": 6.292995,
+    "equity_profit_factor": 1.693274,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 2077.591843,
+    "equity_total_adr": 1755.604923,
+    "closed_weekly_profit_factor": 7.11687,
+    "equity_profit_factor": 1.3411,
+    "profitable_equity_week_rate": 0.396226
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 2229.521586,
+    "equity_total_adr": -990.056118,
+    "closed_weekly_profit_factor": 7.29325,
+    "equity_profit_factor": 0.811797,
+    "profitable_equity_week_rate": 0.480769
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -2966.295663,
+    "equity_total_adr": -4513.228624,
+    "closed_weekly_profit_factor": 0.221673,
+    "equity_profit_factor": 0.553162,
+    "profitable_equity_week_rate": 0.454545
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 2450.240208,
+    "equity_total_adr": 1195.632299,
+    "closed_weekly_profit_factor": 164.963577,
+    "equity_profit_factor": 1.194223,
+    "profitable_equity_week_rate": 0.473684
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 1425.677746,
+    "equity_total_adr": 2126.510401,
+    "closed_weekly_profit_factor": 2.08548,
+    "equity_profit_factor": 1.627375,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 2918.996129,
+    "equity_total_adr": 2851.054673,
+    "closed_weekly_profit_factor": 123.314858,
+    "equity_profit_factor": 2.261785,
+    "profitable_equity_week_rate": 0.653846
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 2518.375681,
+    "equity_total_adr": 2934.454802,
+    "closed_weekly_profit_factor": 10.105704,
+    "equity_profit_factor": 1.423898,
+    "profitable_equity_week_rate": 0.576923
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 2162.580117,
+    "equity_total_adr": 1862.397044,
+    "closed_weekly_profit_factor": 6.361632,
+    "equity_profit_factor": 1.669447,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 2138.138271,
+    "equity_total_adr": 1850.033542,
+    "closed_weekly_profit_factor": 8.038188,
+    "equity_profit_factor": 1.368745,
+    "profitable_equity_week_rate": 0.45283
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 2294.244548,
+    "equity_total_adr": 199.294751,
+    "closed_weekly_profit_factor": 8.122817,
+    "equity_profit_factor": 1.046687,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -1526.940086,
+    "equity_total_adr": -3118.221504,
+    "closed_weekly_profit_factor": 0.377607,
+    "equity_profit_factor": 0.616768,
+    "profitable_equity_week_rate": 0.454545
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2019,
+    "weeks": 38,
+    "closed_total_adr": 2495.062506,
+    "equity_total_adr": 1428.329424,
+    "closed_weekly_profit_factor": 88.191843,
+    "equity_profit_factor": 1.329144,
+    "profitable_equity_week_rate": 0.5
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2020,
+    "weeks": 52,
+    "closed_total_adr": 1497.769879,
+    "equity_total_adr": 1962.299038,
+    "closed_weekly_profit_factor": 2.295679,
+    "equity_profit_factor": 1.554581,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2021,
+    "weeks": 52,
+    "closed_total_adr": 2803.461249,
+    "equity_total_adr": 2796.82745,
+    "closed_weekly_profit_factor": 67.498229,
+    "equity_profit_factor": 2.218537,
+    "profitable_equity_week_rate": 0.653846
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2022,
+    "weeks": 52,
+    "closed_total_adr": 2654.652925,
+    "equity_total_adr": 3065.414955,
+    "closed_weekly_profit_factor": 18.418435,
+    "equity_profit_factor": 1.545755,
+    "profitable_equity_week_rate": 0.576923
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2023,
+    "weeks": 52,
+    "closed_total_adr": 2143.743826,
+    "equity_total_adr": 1864.488351,
+    "closed_weekly_profit_factor": 6.194894,
+    "equity_profit_factor": 1.681595,
+    "profitable_equity_week_rate": 0.538462
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2024,
+    "weeks": 53,
+    "closed_total_adr": 2140.541365,
+    "equity_total_adr": 1642.631625,
+    "closed_weekly_profit_factor": 7.371964,
+    "equity_profit_factor": 1.356168,
+    "profitable_equity_week_rate": 0.415094
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2025,
+    "weeks": 52,
+    "closed_total_adr": 2250.003866,
+    "equity_total_adr": -72.653753,
+    "closed_weekly_profit_factor": 8.342141,
+    "equity_profit_factor": 0.984599,
+    "profitable_equity_week_rate": 0.519231
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "year": 2026,
+    "weeks": 22,
+    "closed_total_adr": -2551.023728,
+    "equity_total_adr": -3557.634592,
+    "closed_weekly_profit_factor": 0.266002,
+    "equity_profit_factor": 0.577925,
+    "profitable_equity_week_rate": 0.454545
+  }
+]

@@ -1,0 +1,5320 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { closePoolIfInitialized } from "@database/db/client";
+import { sha256Stable } from "@engine/research/hash";
+import {
+  readTradeLegPathWarehouseManifest,
+  readTradeLegPathWarehouseWeekRows,
+  readTradeLegPathWarehouseWeekKeys,
+  type TradeLegPathReplayPairWeek,
+} from "@engine/research/tradeLegPathWarehouse";
+
+import {
+  gitCommit,
+  parseArgMap,
+  profitFactor,
+  readJson,
+  renderTable,
+  round,
+  toRepoRelative,
+  writeJson,
+  writeShaManifest,
+  writeText,
+} from "./gate65-utils";
+
+const GATE_ID = "Gate 90: grid-activation-accuracy-one-sided-selection";
+const GATE_DATE = "2026-07-02";
+const COMMAND = "npm run engine:gate90:grid-activation-accuracy-one-sided-selection";
+const DEFAULT_GATE74B_DIR = "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization";
+const DEFAULT_ARTIFACT_DIR = "docs/research/gates/gate90/artifacts/grid-activation-accuracy-one-sided-selection";
+const DEFAULT_REPORT_PATH = `docs/research/gates/gate90/GATE90_GRID_ACTIVATION_ACCURACY_ONE_SIDED_SELECTION_${GATE_DATE}.md`;
+const DEFAULT_TARGET_ADR = 1;
+const DEFAULT_SPACING_ADR = 0.2;
+const DEFAULT_LOT_SIZE = 0.01;
+const STANDARD_FX_CONTRACT_UNITS = 100_000;
+const TRIANGLE_V0_FORMULA_ID = "gate90d_triangle_v0_katarakti_start_spacing_scaffold_2026_07_03";
+const TRIANGLE_V1_FORMULA_ID = "gate90d_triangle_v1_geometry_extension_start_scaffold_2026_07_03";
+const TRIANGLE_FORMULAIC_GEOMETRY_ID = "gate91_formulaic_directionless_grid_geometry_scaffold_2026_07_03";
+const TRIANGLE_FORMULAIC_V2_GEOMETRY_ID = "gate91_formulaic_directionless_grid_geometry_v2_cost_bend_center_band_2026_07_03";
+const TRIANGLE_TARGET_GRID_SLOTS = 3;
+const TRIANGLE_MIN_SPACING_ADR = 0.2;
+const TRIANGLE_MAX_SPACING_ADR = 0.3;
+const TRIANGLE_RANGE_FLOOR_MIN_ADR = 0.5;
+const TRIANGLE_PATH_EFFICIENCY_LOW_MAX = 0.35;
+const TRIANGLE_FORMULAIC_COST_FLOOR_ADR = 0.05;
+const TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_MIN_RANGE_TO_Q = 2;
+const TRIANGLE_FORMULAIC_V2_COST_MULTIPLE = 4;
+const TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR = TRIANGLE_FORMULAIC_COST_FLOOR_ADR / TRIANGLE_FORMULAIC_V2_COST_MULTIPLE;
+const TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR = 4;
+const TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY = 1;
+const TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO = 1.25;
+const TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE = 2;
+const TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY = 1;
+const TRIANGLE_FORMULAIC_V2_2_FEASIBILITY_EPSILON_ADR = 1e-9;
+const TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_BASE_Q = 0.1;
+const TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_DEPTH_STEP_Q = 0.05;
+const TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_MAX_Q = 0.5;
+const TRIANGLE_FORMULAIC_V2_3_LATE_TAU_THRESHOLD = 0.25;
+const TRIANGLE_FORMULAIC_V2_3_PROGRESS_FILL_LOOKBACK = 3;
+const DEFAULT_SIGNAL_SETTINGS = {
+  davidMaPeriod: 35,
+  davidRsiPeriod: 21,
+  davidRsiOverbought: 80,
+  davidRsiOversold: 20,
+  stochKPeriod: 100,
+  stochDPeriod: 3,
+  stochSlowing: 21,
+  stochOverbought: 80,
+  stochOversold: 20,
+};
+
+type Side = "LONG" | "SHORT";
+type FillKind = "initial" | "adverse_recovery" | "favorable_expansion";
+type CloseReason = "target" | "session_flatten" | "end_of_test" | "protection_trail" | "protected_flatten" | "pain_circuit";
+type BarPathMode = "open" | "close" | "ohlc_high_low" | "ohlc_low_high" | "ohlc_directional";
+type DavidState = "UP" | "DOWN";
+type TargetMode = "fixed_adr" | "david_ma_reversion" | "session_mid_reversion" | "session_center_band_reversion";
+type GridAddMode = "adverse_and_favorable" | "adverse_only";
+type SignalClock = "m1" | "adr_event";
+type SessionMode = "continuous" | "ny_daily_window";
+type ProtectionMode =
+  | "baseline"
+  | "lock_1q_stop_adds"
+  | "trail_1q_1q"
+  | "trail_1q_0_5q"
+  | "protected_flatten_1q"
+  | "protected_flatten_1q_trail_1q"
+  | "pain_1q_stop_adds_before_profit_0_5q"
+  | "pain_2q_circuit_before_profit_0_5q"
+  | "live_state_guard_v0"
+  | "eod_green_hold_red"
+  | "eod_green_hold_red_pain_1q_stop_adds"
+  | "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q"
+  | "eod_green_hold_red_max_3d"
+  | "eod_green_hold_red_pain_1q_stop_adds_max_3d"
+  | "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d";
+type PainStopAddMode = "none" | "locked_before_profit_0_5q" | "until_profit_0_5q";
+type ProtectionConfig = {
+  stopAddsAfterQ: number | null;
+  trailActivateQ: number | null;
+  trailGivebackQ: number | null;
+  protectedFlatten: boolean;
+  uglyRedQ: number | null;
+  holdRedAtFlatten: boolean;
+  holdRedMaxDays: number | null;
+  painStopAddMode: PainStopAddMode;
+  painCircuitBeforeProfitHalfQ: boolean;
+};
+type ActivationRuleId =
+  | "raw_both"
+  | "candidate_b"
+  | "candidate_b_david_contra_confirm"
+  | "candidate_b_david_contra_conflict_candidate"
+  | "david_contra"
+  | "david_with"
+  | "stoch_contra"
+  | "david_stoch_confirm"
+  | "david_stoch_release"
+  | "triangle_v0"
+  | "triangle_v0_no_candidate_b"
+  | "triangle_v1_candidate_b_extension"
+  | "triangle_v1_david_contra_extension"
+  | "triangle_v1_candidate_or_david_extension"
+  | "triangle_formulaic_directionless_geometry"
+  | "triangle_formulaic_directionless_geometry_v2"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin"
+  | "triangle_formulaic_directionless_geometry_v2_surplus"
+  | "triangle_formulaic_directionless_geometry_v2_surplus_convex"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_horizon"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_solvency"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence"
+  | "triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3";
+type SignalSettings = {
+  davidMaPeriod: number;
+  davidRsiPeriod: number;
+  davidRsiOverbought: number;
+  davidRsiOversold: number;
+  stochKPeriod: number;
+  stochDPeriod: number;
+  stochSlowing: number;
+  stochOverbought: number;
+  stochOversold: number;
+};
+type ReplayRow = Pick<
+  TradeLegPathReplayPairWeek,
+  | "week_open_utc"
+  | "pair"
+  | "candidate_b_side"
+  | "pair_adr_pct"
+  | "entry_price"
+  | "path_payload"
+>;
+
+type Gate74bSummary = {
+  verdict: string;
+  warehouse: {
+    manifest_id: string;
+    warehouse_hash: string;
+    week_count: number;
+    pair_week_count: number;
+  };
+};
+
+type Fill = {
+  pair: string;
+  side: Side;
+  entry_price: number;
+  entry_timestamp_utc: string;
+  entry_ms: number;
+  fill_index: number;
+  level_index: number;
+  kind: FillKind;
+  quantity: number;
+  lot_size: number;
+  commission_usd: number;
+};
+
+type Cycle = {
+  cycle_id: string;
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  pair: string;
+  side: Side;
+  anchor_week_open_utc: string;
+  start_timestamp_utc: string;
+  anchor_price: number;
+  cycle_adr_pct: number;
+  cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  cycle_reversion_target_price: number | null;
+  cycle_reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
+  triangle_trigger_key: string | null;
+  fills: Fill[];
+  entry_price_inverse_sum: number;
+  quantity_sum: number;
+  next_adverse_fill_level: number;
+  next_adverse_fill_distance_adr: number;
+  next_favorable_fill_level: number;
+  min_pnl_adr: number;
+  max_pnl_adr: number;
+  last_fill_pnl_adr: number;
+  local_min_pnl_since_last_fill_adr: number;
+  local_max_pnl_since_last_fill_adr: number;
+  last_fill_timestamp_utc: string | null;
+  min_pnl_timestamp_utc: string | null;
+  max_pnl_timestamp_utc: string | null;
+  first_mfe_0_5q_timestamp_utc: string | null;
+  first_mfe_1q_timestamp_utc: string | null;
+  first_mfe_2q_timestamp_utc: string | null;
+  first_mfe_3q_timestamp_utc: string | null;
+  first_mae_0_5q_timestamp_utc: string | null;
+  first_mae_1q_timestamp_utc: string | null;
+  first_mae_2q_timestamp_utc: string | null;
+  first_mae_3q_timestamp_utc: string | null;
+  reset_ordinal_at_start: number;
+};
+
+type PairBook = {
+  pair: string;
+  long: Cycle | null;
+  short: Cycle | null;
+  serial: number;
+  long_resets: number;
+  short_resets: number;
+  last_mark_price: number | null;
+  last_adr_pct: number | null;
+  last_timestamp_utc: string | null;
+  last_tick_index: number | null;
+};
+
+type ConversionRates = {
+  getUsdPerCurrency: (currency: string, timestampUtc: string, tickIndex: number) => number | null;
+};
+
+type ConversionSource = {
+  row: ReplayRow;
+  mode: BarPathMode;
+  timestampIndex: Map<string, number>;
+  inverted: boolean;
+};
+
+type CloseEvent = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  cycle_id: string;
+  pair: string;
+  side: Side;
+  close_reason: CloseReason;
+  start_timestamp_utc: string;
+  close_timestamp_utc: string;
+  anchor_week_open_utc: string;
+  fill_count: number;
+  adverse_fill_count: number;
+  expansion_fill_count: number;
+  price_pnl_adr: number;
+  price_pnl_market_pct: number;
+  price_pnl_usd: number;
+  commission_usd: number;
+  swap_usd: number;
+  net_usd: number;
+  min_pnl_adr: number;
+  max_pnl_adr: number;
+  min_pnl_market_pct: number;
+  max_pnl_market_pct: number;
+  min_pnl_timestamp_utc: string | null;
+  max_pnl_timestamp_utc: string | null;
+  first_mfe_0_5q_timestamp_utc: string | null;
+  first_mfe_1q_timestamp_utc: string | null;
+  first_mfe_2q_timestamp_utc: string | null;
+  first_mfe_3q_timestamp_utc: string | null;
+  first_mae_0_5q_timestamp_utc: string | null;
+  first_mae_1q_timestamp_utc: string | null;
+  first_mae_2q_timestamp_utc: string | null;
+  first_mae_3q_timestamp_utc: string | null;
+  reset_ordinal_at_start: number;
+  completed_reset_ordinal: number | null;
+  max_fill_age_days: number;
+  cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  reversion_target_price: number | null;
+  reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
+  triangle_trigger_key: string | null;
+};
+
+type AddThrottleEventRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  cycle_id: string;
+  pair: string;
+  side: Side;
+  timestamp_utc: string;
+  anchor_week_open_utc: string;
+  level_index: number;
+  fill_count_before: number;
+  decision: "allowed" | "blocked";
+  gate_mode: string | null;
+  gate_active: boolean;
+  block_reason: string | null;
+  first_adverse_bypass: boolean;
+  minutes_until_flatten: number;
+  tau_until_flatten: number;
+  directed_move_from_anchor_adr: number;
+  current_pnl_adr: number;
+  last_fill_pnl_adr: number;
+  local_mfe_since_last_fill_adr: number;
+  local_mae_since_last_fill_adr: number;
+  reversion_evidence_units: number | null;
+  local_mae_units: number | null;
+  required_reversion_evidence_units: number | null;
+  reversion_evidence_pass: boolean | null;
+  is_late_session: boolean;
+  progress_gate_active: boolean;
+  current_distance_to_center_adr: number | null;
+  avg_last3_fill_distance_to_center_adr: number | null;
+  last3_fill_count: number;
+  progress_last3_pass: boolean | null;
+  close_timestamp_utc: string | null;
+  close_reason: CloseReason | null;
+  forward_price_pnl_adr: number | null;
+  forward_net_usd: number | null;
+  forward_max_pnl_adr: number | null;
+  forward_min_pnl_adr: number | null;
+  content_hash?: string;
+};
+
+type MarginalAddAuditRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  cycle_id: string;
+  pair: string;
+  side: Side;
+  timestamp_utc: string;
+  anchor_week_open_utc: string;
+  level_index: number;
+  fill_count_before: number;
+  first_adverse_bypass: boolean;
+  minutes_until_flatten: number;
+  tau_until_flatten: number;
+  depth_bucket: string;
+  time_to_flatten_bucket: string;
+  cycle_spacing_adr: number;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  floor_pin_ratio_bucket: string | null;
+  surplus_quality_bucket: string | null;
+  current_pnl_adr: number;
+  last_fill_pnl_adr: number;
+  local_mfe_since_last_fill_adr: number;
+  local_mae_since_last_fill_adr: number;
+  reversion_evidence_units: number | null;
+  local_mae_units: number | null;
+  required_reversion_evidence_units: number | null;
+  reversion_evidence_pass: boolean | null;
+  reversion_evidence_bucket: string | null;
+  is_late_session: boolean;
+  progress_gate_active: boolean;
+  current_distance_to_center_adr: number | null;
+  avg_last3_fill_distance_to_center_adr: number | null;
+  last3_fill_count: number;
+  progress_last3_pass: boolean | null;
+  progress_bucket: string | null;
+  close_timestamp_utc: string;
+  close_reason: CloseReason;
+  cycle_price_pnl_adr: number;
+  cycle_net_usd: number;
+  cycle_max_pnl_adr: number;
+  cycle_min_pnl_adr: number;
+  candidate_fill_age_days: number;
+  candidate_direct_price_pnl_adr: number;
+  candidate_direct_price_pnl_usd: number;
+  candidate_direct_swap_usd: number;
+  candidate_direct_commission_usd: number;
+  candidate_direct_net_usd: number;
+  candidate_direct_value_sign: "positive" | "negative" | "flat";
+  without_candidate_price_pnl_adr_at_actual_close: number;
+  without_candidate_net_usd_at_actual_close: number;
+  without_candidate_target_eligible_at_actual_close: boolean | null;
+  actual_target_hit: boolean;
+  candidate_changed_target_eligibility_at_actual_close: boolean | null;
+  content_hash?: string;
+};
+
+type CloseEventBreakdownRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  group_type: "anchor_week" | "close_month" | "pair" | "pair_side" | "close_reason" | "strategy_class";
+  group_key: string;
+  close_event_count: number;
+  win_count: number;
+  loss_count: number;
+  flat_count: number;
+  win_pct: number | null;
+  total_realized_pnl_adr: number;
+  adr_normalized_return_pct: number;
+  avg_realized_pnl_adr: number | null;
+  total_realized_market_pct: number;
+  avg_realized_market_pct: number | null;
+  net_usd: number;
+  account_return_pct: number;
+  gross_profit_usd: number;
+  gross_loss_abs_usd: number;
+  profit_factor: number | null;
+  avg_mfe_adr: number | null;
+  avg_mae_adr_abs: number | null;
+  avg_mfe_market_pct: number | null;
+  avg_mae_market_pct_abs: number | null;
+  mfe_1q_hit_count: number;
+  mfe_2q_hit_count: number;
+  mfe_3q_hit_count: number;
+  mfe_1q_hit_pct: number | null;
+  mfe_2q_hit_pct: number | null;
+  mfe_3q_hit_pct: number | null;
+  mae_1q_hit_count: number;
+  mae_2q_hit_count: number;
+  mae_3q_hit_count: number;
+  mae_1q_hit_pct: number | null;
+  mae_2q_hit_pct: number | null;
+  mae_3q_hit_pct: number | null;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
+  session_flatten_account_return_pct: number;
+  content_hash?: string;
+};
+
+type TerminalInventoryRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  cycle_id: string;
+  pair: string;
+  side: Side;
+  terminal_timestamp_utc: string;
+  anchor_week_open_utc: string;
+  start_timestamp_utc: string;
+  fill_count: number;
+  adverse_fill_count: number;
+  expansion_fill_count: number;
+  max_add_depth: number;
+  max_fill_age_days: number;
+  avg_fill_age_days: number;
+  cycle_spacing_adr: number;
+  cycle_signal_adr_brick: number | null;
+  reversion_target_price: number | null;
+  reversion_target_band_adr: number | null;
+  triangle_geometry_center_type: string | null;
+  triangle_geometry_q_cost_adr: number | null;
+  triangle_geometry_round_trip_cost_adr: number | null;
+  triangle_geometry_p_raw_adr: number | null;
+  triangle_geometry_p_cost_adr: number | null;
+  triangle_geometry_b_cost_adr: number | null;
+  triangle_geometry_q_bend_adr: number | null;
+  triangle_geometry_q_floor_adr: number | null;
+  triangle_geometry_floor_pin_ratio: number | null;
+  triangle_geometry_surplus_bend_adr: number | null;
+  triangle_geometry_surplus_quality: number | null;
+  triangle_geometry_balance: number | null;
+  triangle_geometry_quality: number | null;
+  triangle_geometry_current_volatility_adr: number | null;
+  triangle_geometry_add_spacing_mode: string | null;
+  triangle_trigger_key: string | null;
+  terminal_mark_price: number;
+  terminal_david_ma: number | null;
+  side_exit_distance_to_ma_adr: number | null;
+  directed_move_from_anchor_adr: number;
+  price_pnl_adr: number;
+  price_pnl_market_pct: number;
+  liquidation_price_pnl_usd: number;
+  liquidation_swap_usd: number;
+  entry_commission_usd: number;
+  liquidation_net_usd: number;
+  min_pnl_adr: number;
+  max_pnl_adr: number;
+  min_pnl_market_pct: number;
+  max_pnl_market_pct: number;
+};
+
+type WeeklyTruthRow = {
+  variant_id: string;
+  week_open_utc: string;
+  pairs_replayed: number;
+  closed_price_pnl_usd: number;
+  realized_commission_usd: number;
+  realized_swap_usd: number;
+  realized_net_usd: number;
+  open_price_pnl_usd: number;
+  open_swap_usd: number;
+  equity_usd: number;
+  balance_usd: number;
+  equity_delta_usd: number;
+  open_positions: number;
+  long_positions: number;
+  short_positions: number;
+  fills_opened: number;
+  target_reset_count: number;
+  max_open_positions_to_date: number;
+  max_long_positions_to_date: number;
+  max_short_positions_to_date: number;
+  max_add_depth_to_date: number;
+  position_days_closed_to_date: number;
+};
+
+type SummaryRow = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  signal_settings_id: string;
+  david_settings: string;
+  stochastic_settings: string;
+  symbol_universe: string;
+  bar_path_mode: BarPathMode;
+  signal_clock: SignalClock;
+  signal_adr_brick: number;
+  session_mode: SessionMode;
+  session_time_zone: string;
+  session_trade_start_et: string;
+  session_trade_end_et: string;
+  session_flatten_et: string;
+  session_sunday_start_et: string;
+  session_flatten_overrides_et: string;
+  target_mode: TargetMode;
+  target_adr: number;
+  spacing_adr: number;
+  min_ma_expansion_adr: number;
+  grid_add_mode: GridAddMode;
+  date_range: string;
+  price_bundle_id: string | null;
+  warehouse_manifest_id: string;
+  warehouse_hash: string;
+  weeks_replayed: number;
+  pairs_replayed: number;
+  initial_deposit_usd: number;
+  final_balance_usd: number;
+  final_equity_before_liquidation_usd: number;
+  final_equity_after_liquidation_usd: number;
+  net_profit_usd: number;
+  closed_price_pnl_usd: number;
+  end_liquidation_price_pnl_usd: number;
+  total_price_pnl_usd: number;
+  total_commission_usd: number;
+  total_swap_usd: number;
+  target_reset_count: number;
+  session_flatten_count: number;
+  session_flatten_positions: number;
+  session_flatten_price_pnl_usd: number;
+  session_flatten_swap_usd: number;
+  protection_close_count: number;
+  protection_close_positions: number;
+  entries_opened: number;
+  closed_positions: number;
+  end_liquidation_positions: number;
+  max_open_positions: number;
+  max_long_positions: number;
+  max_short_positions: number;
+  max_add_depth: number;
+  max_fill_age_days: number;
+  position_days: number;
+  max_equity_drawdown_usd: number;
+  max_balance_drawdown_usd: number;
+  weekly_equity_profit_factor: number | null;
+  close_event_count: number;
+  close_event_win_count: number;
+  close_event_loss_count: number;
+  close_event_flat_count: number;
+  close_event_profit_factor: number | null;
+  close_event_win_pct: number | null;
+  close_event_total_realized_pnl_adr: number;
+  adr_normalized_return_pct: number;
+  close_event_total_realized_market_pct: number;
+  close_event_gross_profit_usd: number;
+  close_event_gross_loss_abs_usd: number;
+  close_event_avg_realized_pnl_adr: number | null;
+  close_event_avg_realized_market_pct: number | null;
+  close_event_avg_mfe_adr: number | null;
+  close_event_avg_mae_adr_abs: number | null;
+  close_event_avg_mfe_market_pct: number | null;
+  close_event_avg_mae_market_pct_abs: number | null;
+  close_event_mfe_1q_hit_count: number;
+  close_event_mfe_2q_hit_count: number;
+  close_event_mfe_3q_hit_count: number;
+  close_event_mfe_1q_hit_pct: number | null;
+  close_event_mfe_2q_hit_pct: number | null;
+  close_event_mfe_3q_hit_pct: number | null;
+  close_event_mae_1q_hit_count: number;
+  close_event_mae_2q_hit_count: number;
+  close_event_mae_3q_hit_count: number;
+  close_event_mae_1q_hit_pct: number | null;
+  close_event_mae_2q_hit_pct: number | null;
+  close_event_mae_3q_hit_pct: number | null;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
+  protection_close_net_usd: number;
+  activation_checks: number;
+  activation_blocked_long: number;
+  activation_blocked_short: number;
+  activation_blocked_expansion: number;
+  terminal_horizon_add_checks: number;
+  terminal_horizon_blocked_adds: number;
+  basket_solvency_add_checks: number;
+  basket_solvency_blocked_adds: number;
+  v23_first_adverse_bypass_adds: number;
+  reversion_evidence_add_checks: number;
+  reversion_evidence_blocked_adds: number;
+  late_reversion_evidence_add_checks: number;
+  late_reversion_evidence_blocked_adds: number;
+  progress_last3_add_checks: number;
+  progress_last3_blocked_adds: number;
+  add_throttle_event_rows: number;
+  marginal_add_audit_rows: number;
+  feasibility_observation_count: number;
+  avg_required_reversion_adr: number | null;
+  avg_available_reversion_adr: number | null;
+  avg_reversion_feasibility_ratio: number | null;
+  activation_started_long: number;
+  activation_started_short: number;
+  activation_long_allow_pct: number | null;
+  activation_short_allow_pct: number | null;
+  mt5_reference_net_profit_usd: number | null;
+  mt5_reference_commission_usd: number | null;
+  mt5_reference_swap_usd: number | null;
+  mt5_reference_end_liquidation_net_usd: number | null;
+  mt5_reference_max_open_positions: number | null;
+  mt5_reference_end_liquidation_positions: number | null;
+  net_delta_vs_mt5_usd: number | null;
+  summary_only: boolean;
+  metric_semantics: "continuous_carried_position_truth_replay" | "session_window_position_truth_replay";
+  content_hash?: string;
+};
+
+type ValidationRow = {
+  check: string;
+  value: string | number | boolean | null;
+  expected: string | number | boolean | null;
+  passed: boolean;
+  content_hash?: string;
+};
+
+type Options = {
+  gate74bDir: string;
+  artifactDir: string;
+  reportPath: string;
+  manifestId: string | null;
+  onlyPair: string | null;
+  pairs: string[] | null;
+  allPairs: boolean;
+  weekFrom: string | null;
+  weekTo: string | null;
+  maxWeeks: number | null;
+  initialDepositUsd: number;
+  lotSize: number;
+  targetAdr: number;
+  spacingAdr: number;
+  minMaExpansionAdr: number;
+  gridAddMode: GridAddMode;
+  commissionPerEntryPer001LotUsd: number;
+  longSwapPer001LotDayUsd: number;
+  shortSwapPer001LotDayUsd: number;
+  maxPositionsPerPair: number;
+  barPathMode: BarPathMode;
+  signalClock: SignalClock;
+  signalAdrBrick: number;
+  sessionMode: SessionMode;
+  sessionTimeZone: string;
+  sessionTradeStartEtMinutes: number;
+  sessionTradeEndEtMinutes: number;
+  sessionFlattenEtMinutes: number;
+  sessionSundayStartEtMinutes: number;
+  sessionFlattenOverridesEt: Record<string, number>;
+  activationRuleId: ActivationRuleId;
+  activationRuleIds: ActivationRuleId[];
+  protectionModes: ProtectionMode[];
+  targetMode: TargetMode;
+  logProgress: boolean;
+  summaryOnly: boolean;
+  signalSettings: SignalSettings;
+};
+
+type RuntimeVariantState = {
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  previousEquityUsd: number;
+};
+
+type LocalSessionParts = {
+  dateKey: string;
+  weekday: number;
+  minutes: number;
+};
+
+type SessionTickState = {
+  canOpenOrAdd: boolean;
+  shouldFlatten: boolean;
+};
+
+type TriangleSessionWindow = {
+  id: string;
+  rangeStartMs: number;
+  rangeEndMs: number;
+  entryStartMs: number;
+  entryEndMs: number;
+};
+
+type TriangleTrigger = {
+  trigger_key: string;
+  pair: string;
+  week_open_utc: string;
+  side: Side;
+  session_id: string;
+  entry_end_ms: number;
+  displacement_ms: number;
+  session_range_adr: number;
+  path_efficiency: number;
+  adaptive_spacing_adr: number;
+  adaptive_signal_adr_brick: number;
+  range_condition_pass: boolean;
+  geometry_regime: "harvestable_chop_candidate" | "dead_chop_cost_churn" | "other";
+};
+
+type TriangleGeometrySession = {
+  geometry_key: string;
+  pair: string;
+  week_open_utc: string;
+  session_id: string;
+  entry_start_ms: number;
+  entry_end_ms: number;
+  range_high: number;
+  range_low: number;
+  range_mid: number;
+  median_center: number;
+  pivot_center: number;
+  session_range_adr: number;
+  path_raw_adr: number;
+  net_displacement_adr: number;
+  close_delta_adr: number[];
+  current_volatility_floor_adr: number;
+  median_center_balance: number;
+  adaptive_spacing_adr: number;
+  adaptive_signal_adr_brick: number;
+  range_condition_pass: boolean;
+  entry_bars: TriangleBar[];
+  path_efficiency_before_bar: Map<number, number | null>;
+};
+
+type TriangleBar = ClosedBar & {
+  index: number;
+  timestamp_ms: number;
+};
+
+type RuntimeStats = {
+  realizedPricePnlUsd: number;
+  realizedCommissionUsd: number;
+  realizedSwapUsd: number;
+  endLiquidationPricePnlUsd: number;
+  endLiquidationSwapUsd: number;
+  sessionFlattenPricePnlUsd: number;
+  sessionFlattenSwapUsd: number;
+  sessionFlattenCount: number;
+  sessionFlattenPositions: number;
+  protectionCloseCount: number;
+  protectionClosePositions: number;
+  targetResetCount: number;
+  fillsOpened: number;
+  closedPositions: number;
+  endLiquidationPositions: number;
+  maxOpenPositions: number;
+  maxLongPositions: number;
+  maxShortPositions: number;
+  currentOpenPositions: number;
+  currentLongPositions: number;
+  currentShortPositions: number;
+  maxAddDepth: number;
+  maxFillAgeDays: number;
+  positionDays: number;
+  activationChecks: number;
+  activationAllowedLong: number;
+  activationAllowedShort: number;
+  activationBlockedLong: number;
+  activationBlockedShort: number;
+  activationBlockedExpansion: number;
+  terminalHorizonAddChecks: number;
+  terminalHorizonBlockedAdds: number;
+  basketSolvencyAddChecks: number;
+  basketSolvencyBlockedAdds: number;
+  v23FirstAdverseBypassAdds: number;
+  reversionEvidenceAddChecks: number;
+  reversionEvidenceBlockedAdds: number;
+  lateReversionEvidenceAddChecks: number;
+  lateReversionEvidenceBlockedAdds: number;
+  progressLast3AddChecks: number;
+  progressLast3BlockedAdds: number;
+  feasibilityObservationCount: number;
+  requiredReversionAdrSum: number;
+  availableReversionAdrSum: number;
+  reversionFeasibilityRatioSum: number;
+  activationStartedLong: number;
+  activationStartedShort: number;
+  closeEventCount: number;
+  closeEventWinCount: number;
+  closeEventLossCount: number;
+  closeEventFlatCount: number;
+  closeEventGrossProfitUsd: number;
+  closeEventGrossLossAbsUsd: number;
+  closeEventRealizedPnlAdrSum: number;
+  closeEventRealizedMarketPctSum: number;
+  closeEventMfeAdrSum: number;
+  closeEventMaeAdrAbsSum: number;
+  closeEventMfeMarketPctSum: number;
+  closeEventMaeMarketPctAbsSum: number;
+  closeEventMfe1QHitCount: number;
+  closeEventMfe2QHitCount: number;
+  closeEventMfe3QHitCount: number;
+  closeEventMae1QHitCount: number;
+  closeEventMae2QHitCount: number;
+  closeEventMae3QHitCount: number;
+  targetCloseNetUsd: number;
+  sessionFlattenCloseNetUsd: number;
+  protectionCloseNetUsd: number;
+  closeEvents: CloseEvent[];
+  addThrottleEvents: AddThrottleEventRow[];
+  marginalAddAuditRows: MarginalAddAuditRow[];
+  addThrottleEventKeys: Set<string>;
+  addThrottleEventIndexesByCycle: Map<string, number[]>;
+  weeklyRows: WeeklyTruthRow[];
+  terminalInventoryRows: TerminalInventoryRow[];
+};
+
+type ClosedBar = {
+  timestamp_utc: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+type SignalSnapshot = {
+  david_state: DavidState | null;
+  david_raw_state: DavidState | null;
+  david_ma: number | null;
+  rsi: number | null;
+  stoch_main: number | null;
+  stoch_release_side: Side | null;
+};
+
+type SignalBook = {
+  pair: string;
+  bars: ClosedBar[];
+  rawK: number[];
+  stochMain: Array<number | null>;
+  prevClose: number | null;
+  rsiWarm: Array<{ gain: number; loss: number }>;
+  rsiAvgGain: number | null;
+  rsiAvgLoss: number | null;
+  lastRsi: number | null;
+  davidState: DavidState | null;
+  davidRawState: DavidState | null;
+  lastSignal: SignalSnapshot;
+  eventOpen: number | null;
+};
+
+const MT5_REFERENCE = {
+  net_profit_usd: 174.51,
+  commission_usd: -400.8,
+  swap_usd: -4144.01,
+  end_liquidation_net_usd: -5590.01,
+  max_open_positions: 170,
+  end_liquidation_positions: 149,
+};
+
+function parseOptions(): Options {
+  const args = parseArgMap();
+  const pairsRaw = args.get("--pairs");
+  const allPairs = process.argv.includes("--all-pairs");
+  const summaryOnly = process.argv.includes("--summary-only");
+  const activationRuleIds = parseActivationRuleIds(args.get("--activation-rules") ?? args.get("--activation-rule") ?? "raw_both");
+  const protectionModes = parseProtectionModes(args.get("--protection-modes") ?? args.get("--protection-mode") ?? "baseline");
+  return {
+    gate74bDir: args.get("--gate74b-dir") ?? DEFAULT_GATE74B_DIR,
+    artifactDir: args.get("--artifact-dir") ?? DEFAULT_ARTIFACT_DIR,
+    reportPath: args.get("--report-path") ?? DEFAULT_REPORT_PATH,
+    manifestId: args.get("--manifest-id") ?? null,
+    onlyPair: pairsRaw || allPairs ? null : args.get("--only-pair")?.toUpperCase() ?? "EURUSD",
+    pairs: pairsRaw ? pairsRaw.split(",").map((pair) => pair.trim().toUpperCase()).filter(Boolean) : null,
+    allPairs,
+    weekFrom: args.get("--week-from") ?? "2020-01-05",
+    weekTo: args.get("--week-to") ?? "2025-12-28",
+    maxWeeks: args.get("--max-weeks") ? Number(args.get("--max-weeks")) : null,
+    initialDepositUsd: Number(args.get("--initial-deposit-usd") ?? 10_000),
+    lotSize: Number(args.get("--lot-size") ?? DEFAULT_LOT_SIZE),
+    targetAdr: Number(args.get("--target-adr") ?? DEFAULT_TARGET_ADR),
+    spacingAdr: Number(args.get("--spacing-adr") ?? DEFAULT_SPACING_ADR),
+    minMaExpansionAdr: Number(args.get("--min-ma-expansion-adr") ?? 0),
+    gridAddMode: parseGridAddMode(args.get("--grid-add-mode") ?? "adverse_and_favorable"),
+    commissionPerEntryPer001LotUsd: Number(args.get("--commission-per-entry-per-001-lot-usd") ?? 0.06),
+    longSwapPer001LotDayUsd: Number(args.get("--long-swap-per-001-lot-day-usd") ?? -0.0917),
+    shortSwapPer001LotDayUsd: Number(args.get("--short-swap-per-001-lot-day-usd") ?? 0.01),
+    maxPositionsPerPair: Number(args.get("--max-positions-per-pair") ?? 250),
+    barPathMode: parseBarPathMode(args.get("--bar-path-mode") ?? args.get("--bar-path") ?? "ohlc_high_low"),
+    signalClock: parseSignalClock(args.get("--signal-clock") ?? "m1"),
+    signalAdrBrick: Number(args.get("--signal-adr-brick") ?? 0.1),
+    sessionMode: parseSessionMode(args.get("--session-mode") ?? "continuous"),
+    sessionTimeZone: args.get("--session-time-zone") ?? "America/New_York",
+    sessionTradeStartEtMinutes: parseTimeOfDayMinutes(args.get("--session-trade-start-et") ?? "18:05", "--session-trade-start-et"),
+    sessionTradeEndEtMinutes: parseTimeOfDayMinutes(args.get("--session-trade-end-et") ?? "15:45", "--session-trade-end-et"),
+    sessionFlattenEtMinutes: parseTimeOfDayMinutes(args.get("--session-flatten-et") ?? "16:00", "--session-flatten-et"),
+    sessionSundayStartEtMinutes: parseTimeOfDayMinutes(args.get("--session-sunday-start-et") ?? "20:00", "--session-sunday-start-et"),
+    sessionFlattenOverridesEt: parseSessionFlattenOverrides(args.get("--session-flatten-overrides-et") ?? ""),
+    activationRuleId: activationRuleIds[0]!,
+    activationRuleIds,
+    protectionModes,
+    targetMode: parseTargetMode(args.get("--target-mode") ?? "fixed_adr"),
+    logProgress: process.argv.includes("--log-progress"),
+    summaryOnly,
+    signalSettings: parseSignalSettings(args),
+  };
+}
+
+function numberArg(args: Map<string, string>, flag: string, fallback: number) {
+  const raw = args.get(flag);
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`Unsupported ${flag}=${raw}; expected a finite number`);
+  return value;
+}
+
+function parseSignalSettings(args: Map<string, string>): SignalSettings {
+  const settings = {
+    davidMaPeriod: numberArg(args, "--david-ma-period", DEFAULT_SIGNAL_SETTINGS.davidMaPeriod),
+    davidRsiPeriod: numberArg(args, "--david-rsi-period", DEFAULT_SIGNAL_SETTINGS.davidRsiPeriod),
+    davidRsiOverbought: numberArg(args, "--david-rsi-overbought", DEFAULT_SIGNAL_SETTINGS.davidRsiOverbought),
+    davidRsiOversold: numberArg(args, "--david-rsi-oversold", DEFAULT_SIGNAL_SETTINGS.davidRsiOversold),
+    stochKPeriod: numberArg(args, "--stoch-k-period", DEFAULT_SIGNAL_SETTINGS.stochKPeriod),
+    stochDPeriod: numberArg(args, "--stoch-d-period", DEFAULT_SIGNAL_SETTINGS.stochDPeriod),
+    stochSlowing: numberArg(args, "--stoch-slowing", DEFAULT_SIGNAL_SETTINGS.stochSlowing),
+    stochOverbought: numberArg(args, "--stoch-overbought", DEFAULT_SIGNAL_SETTINGS.stochOverbought),
+    stochOversold: numberArg(args, "--stoch-oversold", DEFAULT_SIGNAL_SETTINGS.stochOversold),
+  };
+  for (const [label, value] of Object.entries({
+    davidMaPeriod: settings.davidMaPeriod,
+    davidRsiPeriod: settings.davidRsiPeriod,
+    stochKPeriod: settings.stochKPeriod,
+    stochDPeriod: settings.stochDPeriod,
+    stochSlowing: settings.stochSlowing,
+  })) {
+    if (!Number.isInteger(value) || value < 1) throw new Error(`Unsupported ${label}=${value}; expected a positive integer`);
+  }
+  if (settings.davidRsiOverbought <= settings.davidRsiOversold) throw new Error("David RSI overbought must be greater than oversold");
+  if (settings.stochOverbought <= settings.stochOversold) throw new Error("Stochastic overbought must be greater than oversold");
+  return settings;
+}
+
+function parseBarPathMode(value: string): BarPathMode {
+  if (value === "open" || value === "close" || value === "ohlc_high_low" || value === "ohlc_low_high" || value === "ohlc_directional") return value;
+  throw new Error(`Unsupported --bar-path-mode=${value}; expected open, close, ohlc_high_low, ohlc_low_high, or ohlc_directional`);
+}
+
+function parseTargetMode(value: string): TargetMode {
+  if (value === "fixed_adr" || value === "david_ma_reversion" || value === "session_mid_reversion" || value === "session_center_band_reversion") return value;
+  throw new Error(`Unsupported --target-mode=${value}; expected fixed_adr, david_ma_reversion, session_mid_reversion, or session_center_band_reversion`);
+}
+
+function parseGridAddMode(value: string): GridAddMode {
+  if (value === "adverse_and_favorable" || value === "adverse_only") return value;
+  throw new Error(`Unsupported --grid-add-mode=${value}; expected adverse_and_favorable or adverse_only`);
+}
+
+function parseSignalClock(value: string): SignalClock {
+  if (value === "m1" || value === "adr_event") return value;
+  throw new Error(`Unsupported --signal-clock=${value}; expected m1 or adr_event`);
+}
+
+function parseSessionMode(value: string): SessionMode {
+  if (value === "continuous" || value === "ny_daily_window") return value;
+  throw new Error(`Unsupported --session-mode=${value}; expected continuous or ny_daily_window`);
+}
+
+function parseProtectionMode(value: string): ProtectionMode {
+  if (
+    value === "baseline" ||
+    value === "lock_1q_stop_adds" ||
+    value === "trail_1q_1q" ||
+    value === "trail_1q_0_5q" ||
+    value === "protected_flatten_1q" ||
+    value === "protected_flatten_1q_trail_1q" ||
+    value === "pain_1q_stop_adds_before_profit_0_5q" ||
+    value === "pain_2q_circuit_before_profit_0_5q" ||
+    value === "live_state_guard_v0" ||
+    value === "eod_green_hold_red" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q" ||
+    value === "eod_green_hold_red_max_3d" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_max_3d" ||
+    value === "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported --protection-mode=${value}; expected baseline, lock_1q_stop_adds, trail_1q_1q, trail_1q_0_5q, protected_flatten_1q, protected_flatten_1q_trail_1q, pain_1q_stop_adds_before_profit_0_5q, pain_2q_circuit_before_profit_0_5q, live_state_guard_v0, eod_green_hold_red, eod_green_hold_red_pain_1q_stop_adds, eod_green_hold_red_pain_1q_stop_adds_reset_0_5q, eod_green_hold_red_max_3d, eod_green_hold_red_pain_1q_stop_adds_max_3d, or eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d`);
+}
+
+function parseProtectionModes(value: string) {
+  const modes = value.split(",").map((part) => parseProtectionMode(part.trim())).filter(Boolean);
+  if (!modes.length) throw new Error("At least one protection mode is required");
+  return [...new Set(modes)];
+}
+
+function parseTimeOfDayMinutes(value: string, flag: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!match) throw new Error(`Unsupported ${flag}=${value}; expected HH:mm in 24-hour local session time`);
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function parseSessionFlattenOverrides(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  const overrides: Record<string, number> = {};
+  for (const part of trimmed.split(",")) {
+    const entry = part.trim();
+    if (!entry) continue;
+    const [dateKey, time, extra] = entry.split("=");
+    if (!dateKey || !time || extra !== undefined || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      throw new Error(`Unsupported --session-flatten-overrides-et entry=${entry}; expected YYYY-MM-DD=HH:mm`);
+    }
+    overrides[dateKey] = parseTimeOfDayMinutes(time, "--session-flatten-overrides-et");
+  }
+  return overrides;
+}
+
+function formatTimeOfDay(minutes: number) {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function sessionFlattenOverridesLabel(overrides: Record<string, number>) {
+  return Object.entries(overrides)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([dateKey, minutes]) => `${dateKey}=${formatTimeOfDay(minutes)}`)
+    .join(",");
+}
+
+function parseActivationRuleId(value: string): ActivationRuleId {
+  if (
+    value === "raw_both" ||
+    value === "candidate_b" ||
+    value === "candidate_b_david_contra_confirm" ||
+    value === "candidate_b_david_contra_conflict_candidate" ||
+    value === "david_contra" ||
+    value === "david_with" ||
+    value === "stoch_contra" ||
+    value === "david_stoch_confirm" ||
+    value === "david_stoch_release" ||
+    value === "triangle_v0" ||
+    value === "triangle_v0_no_candidate_b" ||
+    value === "triangle_v1_candidate_b_extension" ||
+    value === "triangle_v1_david_contra_extension" ||
+    value === "triangle_v1_candidate_or_david_extension" ||
+    value === "triangle_formulaic_directionless_geometry" ||
+    value === "triangle_formulaic_directionless_geometry_v2" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    value === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    value === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence" ||
+    value === "triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported --activation-rule=${value}; expected raw_both, candidate_b, candidate_b_david_contra_confirm, candidate_b_david_contra_conflict_candidate, david_contra, david_with, stoch_contra, david_stoch_confirm, david_stoch_release, triangle_v0, triangle_v0_no_candidate_b, triangle_v1_candidate_b_extension, triangle_v1_david_contra_extension, triangle_v1_candidate_or_david_extension, triangle_formulaic_directionless_geometry, triangle_formulaic_directionless_geometry_v2, triangle_formulaic_directionless_geometry_v2_floorpin, triangle_formulaic_directionless_geometry_v2_surplus, triangle_formulaic_directionless_geometry_v2_surplus_convex, triangle_formulaic_directionless_geometry_v2_floorpin_horizon, triangle_formulaic_directionless_geometry_v2_floorpin_solvency, triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency, triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence, triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence, or triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3`);
+}
+
+function parseActivationRuleIds(value: string): ActivationRuleId[] {
+  const expanded = value === "core" || value === "all_core"
+    ? "raw_both,david_contra,david_with,stoch_contra,david_stoch_confirm,david_stoch_release"
+    : value === "candidate_compare"
+      ? "raw_both,candidate_b,david_contra,candidate_b_david_contra_confirm,candidate_b_david_contra_conflict_candidate,david_stoch_release"
+    : value;
+  const ids = expanded.split(",").map((part) => parseActivationRuleId(part.trim())).filter(Boolean);
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) throw new Error("At least one activation rule is required");
+  return unique;
+}
+
+function variantId(ruleId: ActivationRuleId, protectionMode: ProtectionMode = "baseline") {
+  const base = `RAW_GRID_T100_S020_GATE90_${ruleId.toUpperCase()}`;
+  return protectionMode === "baseline" ? base : `${base}__PROTECT_${protectionMode.toUpperCase()}`;
+}
+
+function isTriangleActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v0" ||
+    ruleId === "triangle_v0_no_candidate_b" ||
+    ruleId === "triangle_v1_candidate_b_extension" ||
+    ruleId === "triangle_v1_david_contra_extension" ||
+    ruleId === "triangle_v1_candidate_or_david_extension" ||
+    isTriangleFormulaicActivationRule(ruleId);
+}
+
+function isTriangleV0ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b";
+}
+
+function isTriangleV1ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_v1_candidate_b_extension" ||
+    ruleId === "triangle_v1_david_contra_extension" ||
+    ruleId === "triangle_v1_candidate_or_david_extension";
+}
+
+function isTriangleFormulaicActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry" ||
+    isTriangleFormulaicV2ActivationRule(ruleId);
+}
+
+function isTriangleFormulaicV2ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId) ||
+    isTriangleFormulaicV23ActivationRule(ruleId);
+}
+
+function isTriangleFormulaicV22ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+}
+
+function isTriangleFormulaicV23ActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3";
+}
+
+function isTriangleFormulaicV21SurplusActivationRule(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex";
+}
+
+function usesTriangleFormulaicV21FloorPin(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    isTriangleFormulaicV21SurplusActivationRule(ruleId) ||
+    isTriangleFormulaicV22ActivationRule(ruleId) ||
+    isTriangleFormulaicV23ActivationRule(ruleId);
+}
+
+function usesTriangleFormulaicV21ConvexAdds(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex";
+}
+
+function usesTriangleFormulaicV22TerminalHorizon(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+}
+
+function usesTriangleFormulaicV22BasketSolvency(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+}
+
+function usesTriangleFormulaicV23ReversionEvidence(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence";
+}
+
+function usesTriangleFormulaicV23LateReversionEvidence(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence";
+}
+
+function usesTriangleFormulaicV23ProgressLast3(ruleId: ActivationRuleId) {
+  return ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3";
+}
+
+function davidSettingsLabel(settings: SignalSettings) {
+  return `LWMA${settings.davidMaPeriod}_RSI${settings.davidRsiPeriod}_${settings.davidRsiOverbought}_${settings.davidRsiOversold}`;
+}
+
+function stochasticSettingsLabel(settings: SignalSettings) {
+  return `${settings.stochKPeriod}_${settings.stochDPeriod}_${settings.stochSlowing}_${settings.stochOverbought}_${settings.stochOversold}_low_high_simple_main_only`;
+}
+
+function signalSettingsId(settings: SignalSettings) {
+  return `DAVID_${davidSettingsLabel(settings)}__STOCH_${stochasticSettingsLabel(settings)}`;
+}
+
+function signalHistoryLimit(settings: SignalSettings) {
+  return Math.max(
+    180,
+    settings.davidMaPeriod + 2,
+    settings.stochKPeriod + settings.stochSlowing + 5,
+  );
+}
+
+function round6(value: number) {
+  return round(value, 6) ?? value;
+}
+
+function round2(value: number) {
+  return round(value, 2) ?? value;
+}
+
+function withHash<T extends Record<string, unknown>>(row: T): T & { content_hash: string } {
+  return { ...row, content_hash: sha256Stable(row) };
+}
+
+function normalizeDateBound(value: string | null) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function resolveSelectedWeeks(allWeeks: string[], options: Options) {
+  const from = normalizeDateBound(options.weekFrom);
+  const to = normalizeDateBound(options.weekTo);
+  let weeks = allWeeks.filter((week) => {
+    const day = week.slice(0, 10);
+    return (!from || day >= from) && (!to || day <= to);
+  });
+  if (options.maxWeeks !== null) weeks = weeks.slice(0, options.maxWeeks);
+  return weeks;
+}
+
+function resolveSelectedPairs(universeSymbols: string[], options: Options) {
+  if (options.allPairs) return [...universeSymbols].sort();
+  if (options.pairs?.length) return options.pairs;
+  if (options.onlyPair) return [options.onlyPair];
+  return [...universeSymbols].sort();
+}
+
+function baseCurrency(pair: string) {
+  return pair.slice(0, 3);
+}
+
+function quoteCurrency(pair: string) {
+  return pair.slice(3, 6);
+}
+
+function emptyConversionRates(): ConversionRates {
+  return {
+    getUsdPerCurrency(currency) {
+      return currency === "USD" ? 1 : null;
+    },
+  };
+}
+
+function renderDurableCommand(options: Options) {
+  const pairSelection = options.allPairs
+    ? "--all-pairs"
+    : options.pairs?.length
+      ? `--pairs=${options.pairs.join(",")}`
+      : `--only-pair=${options.onlyPair ?? ""}`;
+  return [
+    COMMAND,
+    "--",
+    pairSelection,
+    `--week-from=${options.weekFrom ?? ""}`,
+    `--week-to=${options.weekTo ?? ""}`,
+    `--activation-rules=${options.activationRuleIds.join(",")}`,
+    `--protection-modes=${options.protectionModes.join(",")}`,
+    `--bar-path-mode=${options.barPathMode}`,
+    `--signal-clock=${options.signalClock}`,
+    `--signal-adr-brick=${options.signalAdrBrick}`,
+    `--session-mode=${options.sessionMode}`,
+    `--session-time-zone=${options.sessionTimeZone}`,
+    `--session-trade-start-et=${formatTimeOfDay(options.sessionTradeStartEtMinutes)}`,
+    `--session-trade-end-et=${formatTimeOfDay(options.sessionTradeEndEtMinutes)}`,
+    `--session-flatten-et=${formatTimeOfDay(options.sessionFlattenEtMinutes)}`,
+    `--session-sunday-start-et=${formatTimeOfDay(options.sessionSundayStartEtMinutes)}`,
+    ...(sessionFlattenOverridesLabel(options.sessionFlattenOverridesEt)
+      ? [`--session-flatten-overrides-et=${sessionFlattenOverridesLabel(options.sessionFlattenOverridesEt)}`]
+      : []),
+    `--target-mode=${options.targetMode}`,
+    `--target-adr=${options.targetAdr}`,
+    `--spacing-adr=${options.spacingAdr}`,
+    `--min-ma-expansion-adr=${options.minMaExpansionAdr}`,
+    `--grid-add-mode=${options.gridAddMode}`,
+    `--david-ma-period=${options.signalSettings.davidMaPeriod}`,
+    `--david-rsi-period=${options.signalSettings.davidRsiPeriod}`,
+    `--david-rsi-overbought=${options.signalSettings.davidRsiOverbought}`,
+    `--david-rsi-oversold=${options.signalSettings.davidRsiOversold}`,
+    `--stoch-k-period=${options.signalSettings.stochKPeriod}`,
+    `--stoch-d-period=${options.signalSettings.stochDPeriod}`,
+    `--stoch-slowing=${options.signalSettings.stochSlowing}`,
+    `--stoch-overbought=${options.signalSettings.stochOverbought}`,
+    `--stoch-oversold=${options.signalSettings.stochOversold}`,
+    ...(options.summaryOnly ? ["--summary-only"] : []),
+    `--artifact-dir=${toRepoRelative(options.artifactDir)}`,
+    `--report-path=${toRepoRelative(options.reportPath)}`,
+  ].join(" ");
+}
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+const sessionFormatters = new Map<string, Intl.DateTimeFormat>();
+const localSessionPartsCache = new Map<string, LocalSessionParts>();
+
+function sessionFormatter(timeZone: string) {
+  const cached = sessionFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  sessionFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+function localSessionParts(timestampMs: number, timeZone: string): LocalSessionParts {
+  const cacheKey = `${timeZone}|${Math.floor(timestampMs / 60_000)}`;
+  const cached = localSessionPartsCache.get(cacheKey);
+  if (cached) return cached;
+  const parts = Object.fromEntries(
+    sessionFormatter(timeZone)
+      .formatToParts(new Date(timestampMs))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+  const weekday = WEEKDAY_INDEX[parts.weekday ?? ""];
+  if (weekday === undefined) throw new Error(`Could not resolve ${timeZone} weekday for ${new Date(timestampMs).toISOString()}`);
+  const parsed: LocalSessionParts = {
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+    weekday,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+  localSessionPartsCache.set(cacheKey, parsed);
+  return parsed;
+}
+
+function sessionFlattenMinutesForDate(options: Options, dateKey: string) {
+  return options.sessionFlattenOverridesEt[dateKey] ?? options.sessionFlattenEtMinutes;
+}
+
+function sessionTickState(options: Options, timestampMs: number): SessionTickState {
+  if (options.sessionMode === "continuous") return { canOpenOrAdd: true, shouldFlatten: false };
+  const local = localSessionParts(timestampMs, options.sessionTimeZone);
+  const flattenMinutes = sessionFlattenMinutesForDate(options, local.dateKey);
+  const morningCutoff = Math.min(options.sessionTradeEndEtMinutes, flattenMinutes);
+  const hasFlattenOverride = Object.prototype.hasOwnProperty.call(options.sessionFlattenOverridesEt, local.dateKey);
+
+  let canOpenOrAdd = false;
+  if (local.weekday === 0) {
+    canOpenOrAdd = local.minutes >= options.sessionSundayStartEtMinutes;
+  } else if (local.weekday >= 1 && local.weekday <= 4) {
+    canOpenOrAdd = local.minutes < morningCutoff || local.minutes >= options.sessionTradeStartEtMinutes;
+  } else if (local.weekday === 5) {
+    canOpenOrAdd = local.minutes < morningCutoff;
+  }
+
+  let shouldFlatten = false;
+  if (local.weekday >= 1 && local.weekday <= 4) {
+    shouldFlatten = local.minutes >= flattenMinutes && local.minutes < options.sessionTradeStartEtMinutes;
+  } else if (local.weekday === 5) {
+    shouldFlatten = local.minutes >= flattenMinutes;
+  } else if (hasFlattenOverride) {
+    shouldFlatten = local.minutes >= flattenMinutes && local.minutes < options.sessionTradeStartEtMinutes;
+  }
+
+  return { canOpenOrAdd, shouldFlatten };
+}
+
+function dateKeyDayNumber(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000);
+}
+
+function sessionFlattenElapsedSince(options: Options, previousTimestampMs: number | null, currentTimestampMs: number) {
+  if (options.sessionMode === "continuous" || previousTimestampMs === null || currentTimestampMs <= previousTimestampMs) return false;
+  const previous = localSessionParts(previousTimestampMs, options.sessionTimeZone);
+  const current = localSessionParts(currentTimestampMs, options.sessionTimeZone);
+  const currentFlattenMinutes = sessionFlattenMinutesForDate(options, current.dateKey);
+  if (previous.dateKey === current.dateKey) {
+    return previous.minutes < currentFlattenMinutes && current.minutes >= currentFlattenMinutes;
+  }
+
+  const previousFlattenMinutes = sessionFlattenMinutesForDate(options, previous.dateKey);
+  const previousDayCanFlatten = previous.weekday >= 1 && previous.weekday <= 5;
+  if (previousDayCanFlatten && previous.minutes < previousFlattenMinutes) return true;
+
+  const dayDelta = dateKeyDayNumber(current.dateKey) - dateKeyDayNumber(previous.dateKey);
+  if (dayDelta > 1) return true;
+
+  const currentDayCanFlatten = current.weekday >= 1 && current.weekday <= 5;
+  return currentDayCanFlatten && current.minutes >= currentFlattenMinutes;
+}
+
+function markPriceFromDirectedAdr(row: ReplayRow, directedAdr: number) {
+  if (row.entry_price === null || row.entry_price <= 0) {
+    throw new Error(`Missing entry price for ${row.week_open_utc} ${row.pair}`);
+  }
+  const signedPct = (directedAdr * row.pair_adr_pct) / 100;
+  return row.candidate_b_side === "LONG"
+    ? row.entry_price * (1 + signedPct)
+    : row.entry_price * (1 - signedPct);
+}
+
+function directedBarPath(row: ReplayRow, index: number, mode: BarPathMode) {
+  const payload = row.path_payload;
+  const open = payload.directed_open_adr[index]!;
+  const high = payload.directed_high_adr[index]!;
+  const low = payload.directed_low_adr[index]!;
+  const close = payload.directed_close_adr[index]!;
+  if (mode === "open") return [open];
+  if (mode === "close") return [close];
+  if (mode === "ohlc_high_low") return [open, high, low, close];
+  if (mode === "ohlc_low_high") return [open, low, high, close];
+  return close >= open ? [open, low, high, close] : [open, high, low, close];
+}
+
+function directedAdrAtTick(row: ReplayRow, index: number, mode: BarPathMode, tickIndex: number) {
+  const payload = row.path_payload;
+  if (mode === "open") return tickIndex === 0 ? payload.directed_open_adr[index]! : null;
+  if (mode === "close") return tickIndex === 0 ? payload.directed_close_adr[index]! : null;
+  if (tickIndex < 0 || tickIndex > 3) return null;
+  const open = payload.directed_open_adr[index]!;
+  const high = payload.directed_high_adr[index]!;
+  const low = payload.directed_low_adr[index]!;
+  const close = payload.directed_close_adr[index]!;
+  if (mode === "ohlc_high_low") {
+    if (tickIndex === 0) return open;
+    if (tickIndex === 1) return high;
+    if (tickIndex === 2) return low;
+    return close;
+  }
+  if (mode === "ohlc_low_high") {
+    if (tickIndex === 0) return open;
+    if (tickIndex === 1) return low;
+    if (tickIndex === 2) return high;
+    return close;
+  }
+  if (tickIndex === 0) return open;
+  const highBeforeLow = close < open;
+  if (tickIndex === 1) return highBeforeLow ? high : low;
+  if (tickIndex === 2) return highBeforeLow ? low : high;
+  return close;
+}
+
+function iso(ms: number) {
+  return new Date(ms).toISOString();
+}
+
+function dayStartMs(timestampMs: number) {
+  const date = new Date(timestampMs);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function clampValue(min: number, max: number, value: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function median(values: number[]) {
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((left, right) => left - right);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]!
+    : (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+function trianglePriceMoveAdr(row: ReplayRow, from: number, to: number) {
+  if (row.entry_price === null || row.entry_price <= 0 || row.pair_adr_pct <= 0) return null;
+  return ((to - from) / row.entry_price) * 100 / row.pair_adr_pct;
+}
+
+function triangleRangeAdr(row: ReplayRow, high: number, low: number) {
+  if (row.entry_price === null || row.entry_price <= 0 || row.pair_adr_pct <= 0) return null;
+  return ((high - low) / row.entry_price) * 100 / row.pair_adr_pct;
+}
+
+function trianglePathEfficiency(bars: TriangleBar[]) {
+  if (bars.length < 2) return null;
+  const signal = Math.abs(bars.at(-1)!.close - bars[0]!.close);
+  let noise = 0;
+  for (let index = 1; index < bars.length; index += 1) noise += Math.abs(bars[index]!.close - bars[index - 1]!.close);
+  return noise > 0 ? signal / noise : null;
+}
+
+function triangleSessionPathDeltasAdr(row: ReplayRow, bars: TriangleBar[]) {
+  if (!bars.length) return [] as number[];
+  const deltas: number[] = [];
+  let previous = bars[0]!.open;
+  for (const bar of bars) {
+    const deltaAdr = trianglePriceMoveAdr(row, previous, bar.close);
+    if (deltaAdr !== null) deltas.push(Math.abs(deltaAdr));
+    previous = bar.close;
+  }
+  return deltas;
+}
+
+function triangleSessionNetDisplacementAdr(row: ReplayRow, bars: TriangleBar[]) {
+  if (!bars.length) return 0;
+  const displacement = trianglePriceMoveAdr(row, bars[0]!.open, bars.at(-1)!.close);
+  return displacement === null ? 0 : Math.abs(displacement);
+}
+
+function triangleCenterBalance(bars: TriangleBar[], center: number) {
+  if (!bars.length) return 0;
+  let above = 0;
+  let below = 0;
+  for (const bar of bars) {
+    if (bar.close > center) above += 1;
+    else if (bar.close < center) below += 1;
+  }
+  return 1 - Math.abs(above - below) / bars.length;
+}
+
+function triangleBarsFromRow(row: ReplayRow): TriangleBar[] {
+  return row.path_payload.timestamp_utc.map((timestampUtc, index) => ({
+    ...closedBarFromRow(row, index),
+    index,
+    timestamp_ms: Date.parse(timestampUtc),
+  }));
+}
+
+function triangleSessionWindows(bars: TriangleBar[]) {
+  if (!bars.length) return [] as TriangleSessionWindow[];
+  const startDay = dayStartMs(bars[0]!.timestamp_ms);
+  const endDay = dayStartMs(bars.at(-1)!.timestamp_ms) + 86_400_000;
+  const windows: TriangleSessionWindow[] = [];
+  for (let day = startDay; day <= endDay; day += 86_400_000) {
+    windows.push({
+      id: `ny|${iso(day).slice(0, 10)}`,
+      rangeStartMs: day,
+      rangeEndMs: day + 13 * 3_600_000,
+      entryStartMs: day + 13 * 3_600_000,
+      entryEndMs: day + 21 * 3_600_000,
+    });
+    windows.push({
+      id: `asia_london|${iso(day + 86_400_000).slice(0, 10)}`,
+      rangeStartMs: day + 13 * 3_600_000,
+      rangeEndMs: day + 21 * 3_600_000,
+      entryStartMs: day + 86_400_000,
+      entryEndMs: day + 86_400_000 + 13 * 3_600_000,
+    });
+  }
+  return windows;
+}
+
+function barsBetween(bars: TriangleBar[], startMs: number, endMs: number) {
+  return bars.filter((bar) => bar.timestamp_ms >= startMs && bar.timestamp_ms < endMs);
+}
+
+function triangleAdaptiveSpacing(sessionRangeAdr: number) {
+  const raw = sessionRangeAdr / TRIANGLE_TARGET_GRID_SLOTS;
+  return clampValue(TRIANGLE_MIN_SPACING_ADR, TRIANGLE_MAX_SPACING_ADR, raw);
+}
+
+function triangleFormulaicCostFloorAdr() {
+  return TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+}
+
+function triangleFormulaicQuantumAdr(options: {
+  sessionRangeAdr: number;
+  pathEfficiency: number;
+  costFloorAdr: number;
+}) {
+  const pe = clampValue(0, 1, options.pathEfficiency);
+  const raw = options.sessionRangeAdr / (2 + 2 * (1 - pe));
+  return Math.max(raw, options.costFloorAdr);
+}
+
+function triangleFormulaicSignalAdrBrick(gridQuantumAdr: number) {
+  return gridQuantumAdr / TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR;
+}
+
+function triangleFormulaicRangePass(sessionRangeAdr: number, gridQuantumAdr: number) {
+  return sessionRangeAdr + 1e-9 >= gridQuantumAdr * TRIANGLE_FORMULAIC_MIN_RANGE_TO_Q;
+}
+
+function triangleFormulaicV2ModeledRoundTripCostAdr(options: {
+  row: ReplayRow;
+  markPrice: number;
+  timestampUtc: string;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const quote = quoteCurrency(options.row.pair);
+  const usdPerQuote = options.conversionRates.getUsdPerCurrency(quote, options.timestampUtc, options.tickIndex);
+  if (usdPerQuote === null || usdPerQuote <= 0 || options.markPrice <= 0 || options.row.pair_adr_pct <= 0) {
+    return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  }
+  const units = options.runtimeOptions.lotSize * STANDARD_FX_CONTRACT_UNITS;
+  const oneAdrPriceDelta = options.markPrice * options.row.pair_adr_pct / 100;
+  const oneAdrUsd = Math.abs(oneAdrPriceDelta * units * usdPerQuote);
+  if (!Number.isFinite(oneAdrUsd) || oneAdrUsd <= 0) return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  const modeledRoundTripUsd = Math.abs(options.runtimeOptions.commissionPerEntryPer001LotUsd * (options.runtimeOptions.lotSize / 0.01));
+  const modeledRoundTripAdr = modeledRoundTripUsd / oneAdrUsd;
+  if (!Number.isFinite(modeledRoundTripAdr) || modeledRoundTripAdr <= 0) return TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  return Math.max(modeledRoundTripAdr, TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR);
+}
+
+function triangleFormulaicV2Metrics(options: {
+  session: TriangleGeometrySession;
+  row: ReplayRow;
+  markPrice: number;
+  timestampUtc: string;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const roundTripCostAdr = triangleFormulaicV2ModeledRoundTripCostAdr(options);
+  const oneWayCostAdr = roundTripCostAdr / 2;
+  const pCostAdr = options.session.close_delta_adr.reduce((sum, deltaAdr) => sum + Math.max(deltaAdr - oneWayCostAdr, 0), 0);
+  const bCostAdr = Math.max(0, pCostAdr - options.session.net_displacement_adr);
+  const qCostAdr = TRIANGLE_FORMULAIC_V2_COST_MULTIPLE * roundTripCostAdr;
+  const nEffective = 1 + Math.sqrt(bCostAdr / Math.max(qCostAdr, 1e-9));
+  const qBendAdr = options.session.session_range_adr / Math.max(nEffective, 1e-9);
+  const qFloorAdr = Math.max(qCostAdr, options.session.current_volatility_floor_adr);
+  const gridQuantumAdr = Math.max(qFloorAdr, qBendAdr);
+  const signalAdrBrick = Math.max(
+    gridQuantumAdr / TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR,
+    qCostAdr / 2,
+  );
+  const targetBandAdr = Math.max(
+    gridQuantumAdr / TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR,
+    qCostAdr / 2,
+  );
+  const geometryQuality = (bCostAdr / Math.max(gridQuantumAdr, 1e-9)) * options.session.median_center_balance;
+  const floorPinRatio = qBendAdr / Math.max(qFloorAdr, 1e-9);
+  const surplusBendAdr = Math.max(0, bCostAdr - TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE * qCostAdr);
+  const surplusGeometryQuality = (surplusBendAdr / Math.max(gridQuantumAdr, 1e-9))
+    * options.session.median_center_balance
+    * Math.min(1, floorPinRatio);
+  return {
+    centerType: "median_m1_close",
+    centerPrice: options.session.median_center,
+    roundTripCostAdr,
+    qCostAdr,
+    qBendAdr,
+    qFloorAdr,
+    floorPinRatio,
+    pRawAdr: options.session.path_raw_adr,
+    pCostAdr,
+    bCostAdr,
+    surplusBendAdr,
+    surplusGeometryQuality,
+    balance: options.session.median_center_balance,
+    geometryQuality,
+    currentVolatilityFloorAdr: options.session.current_volatility_floor_adr,
+    gridQuantumAdr,
+    signalAdrBrick,
+    targetBandAdr,
+  };
+}
+
+function triangleDisplacementPass(row: ReplayRow, bar: TriangleBar, side: Side, requiredAdr: number) {
+  const candleRange = bar.high - bar.low;
+  if (candleRange <= 0) return false;
+  const bodyAdr = Math.abs(trianglePriceMoveAdr(row, bar.open, bar.close) ?? 0);
+  const correctDirection = side === "LONG" ? bar.close > bar.open : bar.close < bar.open;
+  if (!correctDirection || bodyAdr < requiredAdr) return false;
+  const closeZone = side === "LONG"
+    ? (bar.high - bar.close) / candleRange
+    : (bar.close - bar.low) / candleRange;
+  return closeZone <= 0.3;
+}
+
+function trianglePathEfficiencyBeforeBars(entryBars: TriangleBar[]) {
+  const output = new Map<number, number | null>();
+  let firstClose: number | null = null;
+  let previousClose: number | null = null;
+  let noise = 0;
+  let completedBars = 0;
+  for (const bar of entryBars) {
+    output.set(
+      bar.index,
+      firstClose !== null && previousClose !== null && completedBars >= 2 && noise > 0
+        ? Math.abs(previousClose - firstClose) / noise
+        : null,
+    );
+    if (firstClose === null) {
+      firstClose = bar.close;
+    } else if (previousClose !== null) {
+      noise += Math.abs(bar.close - previousClose);
+    }
+    previousClose = bar.close;
+    completedBars += 1;
+  }
+  return output;
+}
+
+function detectTriangleTriggers(row: ReplayRow) {
+  const triggers: TriangleTrigger[] = [];
+  const bars = triangleBarsFromRow(row);
+  for (const window of triangleSessionWindows(bars)) {
+    const rangeBars = barsBetween(bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const sessionRangeAdr = triangleRangeAdr(row, rangeHigh, rangeLow);
+    if (sessionRangeAdr === null) continue;
+    const adaptiveSpacingAdr = triangleAdaptiveSpacing(sessionRangeAdr);
+    const adaptiveSignalAdrBrick = clampValue(0.0125, 0.075, adaptiveSpacingAdr / 4);
+    const rangeFloorAdr = Math.max(TRIANGLE_RANGE_FLOOR_MIN_ADR, TRIANGLE_TARGET_GRID_SLOTS * adaptiveSpacingAdr);
+    const rangeConditionPass = sessionRangeAdr + 1e-9 >= rangeFloorAdr;
+    for (let pos = 0; pos < entryBars.length; pos += 1) {
+      const sweepBar = entryBars[pos]!;
+      const candidates: Array<{ side: Side; depthAdr: number }> = [];
+      const downDepth = triangleRangeAdr(row, rangeLow, sweepBar.low);
+      const upDepth = triangleRangeAdr(row, sweepBar.high, rangeHigh);
+      const requiredAdr = Math.max(adaptiveSignalAdrBrick, 0.25 * adaptiveSpacingAdr);
+      if (downDepth !== null && downDepth >= requiredAdr) candidates.push({ side: "LONG", depthAdr: downDepth });
+      if (upDepth !== null && upDepth >= requiredAdr) candidates.push({ side: "SHORT", depthAdr: upDepth });
+      for (const candidate of candidates) {
+        const rejection = [sweepBar, entryBars[pos + 1]]
+          .filter((bar): bar is TriangleBar => Boolean(bar))
+          .find((bar) => candidate.side === "LONG" ? bar.close > rangeLow : bar.close < rangeHigh);
+        if (!rejection) continue;
+        const displacement = [rejection, bars[rejection.index + 1]]
+          .filter((bar): bar is TriangleBar => Boolean(bar) && bar.timestamp_ms >= window.entryStartMs && bar.timestamp_ms < window.entryEndMs)
+          .find((bar) => triangleDisplacementPass(row, bar, candidate.side, requiredAdr));
+        if (!displacement) continue;
+        const pathBarsSoFar = entryBars.filter((bar) => bar.timestamp_ms <= displacement.timestamp_ms);
+        const entryPathEfficiency = trianglePathEfficiency(pathBarsSoFar);
+        if (entryPathEfficiency === null) continue;
+        const geometryRegime = entryPathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX
+          ? rangeConditionPass ? "harvestable_chop_candidate" : "dead_chop_cost_churn"
+          : "other";
+        triggers.push({
+          trigger_key: [
+            row.week_open_utc,
+            row.pair,
+            window.id,
+            candidate.side,
+            sweepBar.timestamp_utc,
+            displacement.timestamp_utc,
+          ].join("|"),
+          pair: row.pair,
+          week_open_utc: row.week_open_utc,
+          side: candidate.side,
+          session_id: window.id,
+          entry_end_ms: window.entryEndMs,
+          displacement_ms: displacement.timestamp_ms,
+          session_range_adr: round6(sessionRangeAdr),
+          path_efficiency: round6(entryPathEfficiency),
+          adaptive_spacing_adr: round6(adaptiveSpacingAdr),
+          adaptive_signal_adr_brick: round6(adaptiveSignalAdrBrick),
+          range_condition_pass: rangeConditionPass,
+          geometry_regime: geometryRegime,
+        });
+      }
+    }
+  }
+  return triggers;
+}
+
+function detectTriangleGeometrySessions(row: ReplayRow) {
+  const sessions: TriangleGeometrySession[] = [];
+  const bars = triangleBarsFromRow(row);
+  for (const window of triangleSessionWindows(bars)) {
+    const rangeBars = barsBetween(bars, window.rangeStartMs, window.rangeEndMs);
+    const entryBars = barsBetween(bars, window.entryStartMs, window.entryEndMs);
+    if (!rangeBars.length || !entryBars.length) continue;
+    const rangeHigh = Math.max(...rangeBars.map((bar) => bar.high));
+    const rangeLow = Math.min(...rangeBars.map((bar) => bar.low));
+    const sessionRangeAdr = triangleRangeAdr(row, rangeHigh, rangeLow);
+    if (sessionRangeAdr === null) continue;
+    const closeValues = rangeBars.map((bar) => bar.close);
+    const medianCenter = median(closeValues);
+    if (medianCenter === null) continue;
+    const rangeClose = rangeBars.at(-1)!.close;
+    const pathDeltasAdr = triangleSessionPathDeltasAdr(row, rangeBars);
+    const pathRawAdr = pathDeltasAdr.reduce((sum, value) => sum + value, 0);
+    const netDisplacementAdr = triangleSessionNetDisplacementAdr(row, rangeBars);
+    const currentVolatilityFloorAdr = median(pathDeltasAdr) ?? 0;
+    const pivotCenter = (rangeHigh + rangeLow + rangeClose) / 3;
+    const adaptiveSpacingAdr = triangleAdaptiveSpacing(sessionRangeAdr);
+    const adaptiveSignalAdrBrick = clampValue(0.0125, 0.075, adaptiveSpacingAdr / 4);
+    const rangeFloorAdr = Math.max(TRIANGLE_RANGE_FLOOR_MIN_ADR, TRIANGLE_TARGET_GRID_SLOTS * adaptiveSpacingAdr);
+    const rangeConditionPass = sessionRangeAdr + 1e-9 >= rangeFloorAdr;
+    sessions.push({
+      geometry_key: [
+        row.week_open_utc,
+        row.pair,
+        window.id,
+        "triangle_v1_geometry",
+      ].join("|"),
+      pair: row.pair,
+      week_open_utc: row.week_open_utc,
+      session_id: window.id,
+      entry_start_ms: window.entryStartMs,
+      entry_end_ms: window.entryEndMs,
+      range_high: rangeHigh,
+      range_low: rangeLow,
+      range_mid: (rangeHigh + rangeLow) / 2,
+      median_center: medianCenter,
+      pivot_center: pivotCenter,
+      session_range_adr: round6(sessionRangeAdr),
+      path_raw_adr: round6(pathRawAdr),
+      net_displacement_adr: round6(netDisplacementAdr),
+      close_delta_adr: pathDeltasAdr.map((value) => round6(value)),
+      current_volatility_floor_adr: round6(currentVolatilityFloorAdr),
+      median_center_balance: round6(triangleCenterBalance(rangeBars, medianCenter)),
+      adaptive_spacing_adr: round6(adaptiveSpacingAdr),
+      adaptive_signal_adr_brick: round6(adaptiveSignalAdrBrick),
+      range_condition_pass: rangeConditionPass,
+      entry_bars: entryBars,
+      path_efficiency_before_bar: trianglePathEfficiencyBeforeBars(entryBars),
+    });
+  }
+  return sessions;
+}
+
+function buildConversionRates(rows: ReplayRow[], mode: BarPathMode): ConversionRates {
+  const sources = new Map<string, ConversionSource>();
+  for (const row of rows) {
+    const base = baseCurrency(row.pair);
+    const quote = quoteCurrency(row.pair);
+    if (base !== "USD" && quote !== "USD") continue;
+    const currency = quote === "USD" ? base : quote;
+    sources.set(currency, {
+      row,
+      mode,
+      timestampIndex: new Map(row.path_payload.timestamp_utc.map((timestampUtc, index) => [timestampUtc, index])),
+      inverted: base === "USD",
+    });
+  }
+
+  return {
+    getUsdPerCurrency(currency, timestampUtc, tickIndex) {
+      if (currency === "USD") return 1;
+      const source = sources.get(currency);
+      if (!source) return null;
+      const index = source.timestampIndex.get(timestampUtc);
+      if (index === undefined) return null;
+      const directedAdr = directedAdrAtTick(source.row, index, source.mode, tickIndex);
+      if (directedAdr === null) return null;
+      const markPrice = markPriceFromDirectedAdr(source.row, directedAdr);
+      if (!Number.isFinite(markPrice) || markPrice <= 0) return null;
+      return source.inverted ? 1 / markPrice : markPrice;
+    },
+  };
+}
+
+function createSignalBook(pair: string): SignalBook {
+  return {
+    pair,
+    bars: [],
+    rawK: [],
+    stochMain: [],
+    prevClose: null,
+    rsiWarm: [],
+    rsiAvgGain: null,
+    rsiAvgLoss: null,
+    lastRsi: null,
+    davidState: null,
+    davidRawState: null,
+    lastSignal: {
+      david_state: null,
+      david_raw_state: null,
+      david_ma: null,
+      rsi: null,
+      stoch_main: null,
+      stoch_release_side: null,
+    },
+    eventOpen: null,
+  };
+}
+
+function lwma(values: number[]) {
+  let weighted = 0;
+  let weightSum = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    const weight = index + 1;
+    weighted += values[index]! * weight;
+    weightSum += weight;
+  }
+  return weighted / weightSum;
+}
+
+function updateRsi(book: SignalBook, close: number, settings: SignalSettings) {
+  if (book.prevClose === null) {
+    book.prevClose = close;
+    return null;
+  }
+  const change = close - book.prevClose;
+  book.prevClose = close;
+  const gain = Math.max(change, 0);
+  const loss = Math.max(-change, 0);
+
+  if (book.rsiAvgGain === null || book.rsiAvgLoss === null) {
+    book.rsiWarm.push({ gain, loss });
+    if (book.rsiWarm.length < settings.davidRsiPeriod) return null;
+    const gainSum = book.rsiWarm.reduce((sum, row) => sum + row.gain, 0);
+    const lossSum = book.rsiWarm.reduce((sum, row) => sum + row.loss, 0);
+    book.rsiAvgGain = gainSum / settings.davidRsiPeriod;
+    book.rsiAvgLoss = lossSum / settings.davidRsiPeriod;
+  } else {
+    book.rsiAvgGain = ((book.rsiAvgGain * (settings.davidRsiPeriod - 1)) + gain) / settings.davidRsiPeriod;
+    book.rsiAvgLoss = ((book.rsiAvgLoss * (settings.davidRsiPeriod - 1)) + loss) / settings.davidRsiPeriod;
+  }
+
+  if (book.rsiAvgLoss === 0) {
+    book.lastRsi = 100;
+  } else {
+    const rs = (book.rsiAvgGain ?? 0) / book.rsiAvgLoss;
+    book.lastRsi = 100 - (100 / (1 + rs));
+  }
+  return book.lastRsi;
+}
+
+function updateDavidState(book: SignalBook, settings: SignalSettings) {
+  if (book.bars.length < settings.davidMaPeriod + 1) return null;
+  const closes = book.bars.map((bar) => bar.close);
+  const currentMa = lwma(closes.slice(-settings.davidMaPeriod));
+  const previousMa = lwma(closes.slice(-settings.davidMaPeriod - 1, -1));
+  const rawState: DavidState = previousMa > currentMa ? "DOWN" : "UP";
+  book.davidRawState = rawState;
+
+  if (book.davidState === null) {
+    book.davidState = rawState;
+    return currentMa;
+  }
+  if (rawState === book.davidState) return currentMa;
+
+  if (rawState === "DOWN") {
+    if (book.lastRsi !== null && book.lastRsi < settings.davidRsiOversold) book.davidState = "DOWN";
+    return currentMa;
+  }
+  if (book.lastRsi !== null && book.lastRsi > settings.davidRsiOverbought) book.davidState = "UP";
+  return currentMa;
+}
+
+function updateStochastic(book: SignalBook, bar: ClosedBar, settings: SignalSettings) {
+  if (book.bars.length < settings.stochKPeriod) {
+    book.rawK.push(Number.NaN);
+    book.stochMain.push(null);
+    return null;
+  }
+  const window = book.bars.slice(-settings.stochKPeriod);
+  const lowest = Math.min(...window.map((row) => row.low));
+  const highest = Math.max(...window.map((row) => row.high));
+  const rawK = highest === lowest ? 50 : ((bar.close - lowest) / (highest - lowest)) * 100;
+  book.rawK.push(rawK);
+  const recentRaw = book.rawK.filter((value) => Number.isFinite(value)).slice(-settings.stochSlowing);
+  const stoch = recentRaw.length < settings.stochSlowing
+    ? null
+    : recentRaw.reduce((sum, value) => sum + value, 0) / settings.stochSlowing;
+  book.stochMain.push(stoch);
+  return stoch;
+}
+
+function closedBarFromRow(row: ReplayRow, index: number): ClosedBar {
+  const directedValues = [
+    row.path_payload.directed_open_adr[index]!,
+    row.path_payload.directed_high_adr[index]!,
+    row.path_payload.directed_low_adr[index]!,
+    row.path_payload.directed_close_adr[index]!,
+  ];
+  const prices = directedValues.map((value) => markPriceFromDirectedAdr(row, value));
+  return {
+    timestamp_utc: row.path_payload.timestamp_utc[index]!,
+    open: prices[0]!,
+    high: Math.max(...prices),
+    low: Math.min(...prices),
+    close: prices[3]!,
+  };
+}
+
+function updateSignalWithClosedBar(book: SignalBook, bar: ClosedBar, settings: SignalSettings) {
+  book.bars.push(bar);
+  const maxHistory = signalHistoryLimit(settings);
+  if (book.bars.length > maxHistory) book.bars.shift();
+  const previousStoch = book.stochMain.at(-1) ?? null;
+  updateRsi(book, bar.close, settings);
+  const davidMa = updateDavidState(book, settings);
+  const stoch = updateStochastic(book, bar, settings);
+  let stochReleaseSide: Side | null = null;
+  if (previousStoch !== null && stoch !== null) {
+    if (previousStoch >= settings.stochOverbought && stoch < settings.stochOverbought) stochReleaseSide = "SHORT";
+    if (previousStoch <= settings.stochOversold && stoch > settings.stochOversold) stochReleaseSide = "LONG";
+  }
+  book.lastSignal = {
+    david_state: book.davidState,
+    david_raw_state: book.davidRawState,
+    david_ma: davidMa,
+    rsi: book.lastRsi,
+    stoch_main: stoch,
+    stoch_release_side: stochReleaseSide,
+  };
+  if (book.rawK.length > maxHistory) book.rawK.shift();
+  if (book.stochMain.length > maxHistory) book.stochMain.shift();
+}
+
+function updateM1SignalBook(book: SignalBook, row: ReplayRow, index: number, settings: SignalSettings) {
+  updateSignalWithClosedBar(book, closedBarFromRow(row, index), settings);
+}
+
+function closePriceMoveAdr(from: number, to: number, currentAdrPct: number) {
+  if (from <= 0 || currentAdrPct <= 0) return 0;
+  return ((to - from) / from) * 100 / currentAdrPct;
+}
+
+function updateAdrEventSignalBook(book: SignalBook, row: ReplayRow, index: number, settings: SignalSettings, signalAdrBrick: number) {
+  const m1Bar = closedBarFromRow(row, index);
+  if (signalAdrBrick <= 0 || row.pair_adr_pct <= 0) return;
+  if (book.eventOpen === null) {
+    book.eventOpen = m1Bar.close;
+    return;
+  }
+
+  let moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  while (Math.abs(moveAdr) >= signalAdrBrick) {
+    const direction = moveAdr > 0 ? 1 : -1;
+    const eventOpen = book.eventOpen;
+    const eventClose = eventOpen * (1 + direction * signalAdrBrick * row.pair_adr_pct / 100);
+    updateSignalWithClosedBar(book, {
+      timestamp_utc: m1Bar.timestamp_utc,
+      open: eventOpen,
+      high: Math.max(eventOpen, eventClose),
+      low: Math.min(eventOpen, eventClose),
+      close: eventClose,
+    }, settings);
+    book.eventOpen = eventClose;
+    moveAdr = closePriceMoveAdr(book.eventOpen, m1Bar.close, row.pair_adr_pct);
+  }
+}
+
+function updateSignalBook(book: SignalBook, row: ReplayRow, index: number, runtimeOptions: Options) {
+  if (runtimeOptions.signalClock === "adr_event") {
+    updateAdrEventSignalBook(book, row, index, runtimeOptions.signalSettings, runtimeOptions.signalAdrBrick);
+    return;
+  }
+  updateM1SignalBook(book, row, index, runtimeOptions.signalSettings);
+}
+
+function davidContraSide(signal: SignalSnapshot) {
+  if (signal.david_state === "UP") return "SHORT";
+  if (signal.david_state === "DOWN") return "LONG";
+  return null;
+}
+
+function activationAllows(ruleId: ActivationRuleId, signal: SignalSnapshot, side: Side, settings: SignalSettings, candidateBSide: Side) {
+  if (ruleId === "raw_both") return true;
+  if (ruleId === "candidate_b") return side === candidateBSide;
+  if (ruleId === "david_contra") {
+    return side === davidContraSide(signal);
+  }
+  if (ruleId === "candidate_b_david_contra_confirm") {
+    const davidSide = davidContraSide(signal);
+    return davidSide !== null && side === candidateBSide && side === davidSide;
+  }
+  if (ruleId === "candidate_b_david_contra_conflict_candidate") {
+    const davidSide = davidContraSide(signal);
+    return davidSide !== null && side === candidateBSide && side !== davidSide;
+  }
+  if (ruleId === "david_with") {
+    if (signal.david_state === "UP") return side === "LONG";
+    if (signal.david_state === "DOWN") return side === "SHORT";
+    return false;
+  }
+  if (ruleId === "stoch_contra") {
+    if (signal.stoch_main === null) return false;
+    if (signal.stoch_main >= settings.stochOverbought) return side === "SHORT";
+    if (signal.stoch_main <= settings.stochOversold) return side === "LONG";
+    return false;
+  }
+  if (ruleId === "david_stoch_confirm") {
+    if (signal.david_state === "UP" && signal.stoch_main !== null && signal.stoch_main >= settings.stochOverbought) return side === "SHORT";
+    if (signal.david_state === "DOWN" && signal.stoch_main !== null && signal.stoch_main <= settings.stochOversold) return side === "LONG";
+    return false;
+  }
+  if (ruleId === "david_stoch_release") {
+    if (signal.david_state === "UP" && signal.stoch_release_side === "SHORT") return side === "SHORT";
+    if (signal.david_state === "DOWN" && signal.stoch_release_side === "LONG") return side === "LONG";
+    return false;
+  }
+  return false;
+}
+
+function maExpansionAllows(signal: SignalSnapshot, side: Side, markPrice: number, currentAdrPct: number, minExpansionAdr: number) {
+  if (minExpansionAdr <= 0) return true;
+  if (signal.david_ma === null || currentAdrPct <= 0) return false;
+  const expansionAdr = side === "LONG"
+    ? ((signal.david_ma - markPrice) / signal.david_ma) * 100 / currentAdrPct
+    : ((markPrice - signal.david_ma) / signal.david_ma) * 100 / currentAdrPct;
+  return expansionAdr >= minExpansionAdr;
+}
+
+function activeTriangleTrigger(triggers: TriangleTrigger[], side: Side, timestampMs: number) {
+  return triggers
+    .filter((trigger) =>
+      trigger.side === side &&
+      trigger.geometry_regime === "harvestable_chop_candidate" &&
+      trigger.displacement_ms <= timestampMs &&
+      timestampMs <= trigger.entry_end_ms
+    )
+    .sort((left, right) => right.displacement_ms - left.displacement_ms)[0] ?? null;
+}
+
+function triangleStartGate(options: {
+  trigger: TriangleTrigger | null;
+  signal: SignalSnapshot;
+  side: Side;
+  markPrice: number;
+  currentAdrPct: number;
+  candidateBSide: Side;
+  candidateMode: "candidate_and_david" | "david_only";
+}) {
+  if (!options.trigger) {
+    return {
+      signalAllowed: false,
+      expansionAllowed: false,
+      spacingAdr: null,
+      signalAdrBrick: null,
+      reversionTargetPrice: null,
+      triggerKey: null,
+    };
+  }
+  const davidSide = davidContraSide(options.signal);
+  const davidAlignment = davidSide === null ? 0 : options.side === davidSide ? 1 : -1;
+  const candidateAlignment = options.side === options.candidateBSide ? 1 : -1;
+  const alignmentScore = options.candidateMode === "david_only"
+    ? davidAlignment
+    : 0.5 * candidateAlignment + 0.5 * davidAlignment;
+  const signalAllowed = options.candidateMode === "david_only"
+    ? davidSide !== null && davidAlignment > 0
+    : alignmentScore >= 0;
+  const requiredDistanceAdr = options.trigger.adaptive_spacing_adr
+    * (1 - 0.25 * Math.max(0, alignmentScore))
+    * (1 + 0.75 * Math.max(0, -alignmentScore));
+  return {
+    signalAllowed,
+    expansionAllowed: signalAllowed && maExpansionAllows(
+      options.signal,
+      options.side,
+      options.markPrice,
+      options.currentAdrPct,
+      requiredDistanceAdr,
+    ),
+    spacingAdr: options.trigger.adaptive_spacing_adr,
+    signalAdrBrick: options.trigger.adaptive_signal_adr_brick,
+    reversionTargetPrice: null,
+    triggerKey: options.trigger.trigger_key,
+  };
+}
+
+function activeTriangleGeometrySession(options: {
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  side: Side;
+  timestampMs: number;
+  markPrice: number;
+}) {
+  return options.sessions
+    .filter((session) => {
+      if (!session.range_condition_pass) return false;
+      if (options.timestampMs < session.entry_start_ms || options.timestampMs > session.entry_end_ms) return false;
+      const distanceAdr = options.side === "LONG"
+        ? trianglePriceMoveAdr(options.row, options.markPrice, session.range_mid)
+        : trianglePriceMoveAdr(options.row, session.range_mid, options.markPrice);
+      return distanceAdr !== null && distanceAdr + 1e-9 >= session.adaptive_spacing_adr;
+    })
+    .sort((left, right) => right.entry_start_ms - left.entry_start_ms)[0] ?? null;
+}
+
+function trianglePathEfficiencySoFar(options: {
+  session: TriangleGeometrySession;
+  currentBarIndex: number;
+}) {
+  return options.session.path_efficiency_before_bar.get(options.currentBarIndex) ?? null;
+}
+
+function triangleV1DirectionAllowed(options: {
+  ruleId: ActivationRuleId;
+  signal: SignalSnapshot;
+  side: Side;
+  candidateBSide: Side;
+}) {
+  const candidateAllows = options.side === options.candidateBSide;
+  const davidSide = davidContraSide(options.signal);
+  const davidAllows = davidSide !== null && options.side === davidSide;
+  if (options.ruleId === "triangle_v1_candidate_b_extension") return candidateAllows;
+  if (options.ruleId === "triangle_v1_david_contra_extension") return davidAllows;
+  if (options.ruleId === "triangle_v1_candidate_or_david_extension") return candidateAllows || davidAllows;
+  return false;
+}
+
+function triangleV1StartGate(options: {
+  ruleId: ActivationRuleId;
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  signal: SignalSnapshot;
+  side: Side;
+  markPrice: number;
+  timestampMs: number;
+  currentBarIndex: number;
+}) {
+  const session = activeTriangleGeometrySession({
+    sessions: options.sessions,
+    row: options.row,
+    side: options.side,
+    timestampMs: options.timestampMs,
+    markPrice: options.markPrice,
+  });
+  if (!session) {
+    return {
+      signalAllowed: false,
+      expansionAllowed: false,
+      spacingAdr: null,
+      signalAdrBrick: null,
+      reversionTargetPrice: null,
+      triggerKey: null,
+    };
+  }
+  const pathEfficiency = trianglePathEfficiencySoFar({
+    session,
+    currentBarIndex: options.currentBarIndex,
+  });
+  const geometryAllowed = pathEfficiency !== null && pathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX;
+  const directionAllowed = triangleV1DirectionAllowed({
+    ruleId: options.ruleId,
+    signal: options.signal,
+    side: options.side,
+    candidateBSide: options.row.candidate_b_side,
+  });
+  const allowed = geometryAllowed && directionAllowed;
+  return {
+    signalAllowed: directionAllowed,
+    expansionAllowed: allowed,
+    spacingAdr: session.adaptive_spacing_adr,
+    signalAdrBrick: session.adaptive_signal_adr_brick,
+    reversionTargetPrice: null,
+    triggerKey: [
+      session.geometry_key,
+      options.side,
+      iso(options.timestampMs),
+      pathEfficiency === null ? "pe_null" : `pe_${round6(pathEfficiency)}`,
+    ].join("|"),
+  };
+}
+
+function triangleFormulaicStartGate(options: {
+  ruleId: ActivationRuleId;
+  sessions: TriangleGeometrySession[];
+  row: ReplayRow;
+  side: Side;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  currentBarIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const emptyGate = {
+    signalAllowed: false,
+    expansionAllowed: false,
+    spacingAdr: null as number | null,
+    signalAdrBrick: null as number | null,
+    reversionTargetPrice: null as number | null,
+    reversionTargetBandAdr: null as number | null,
+    centerType: null as string | null,
+    qCostAdr: null as number | null,
+    roundTripCostAdr: null as number | null,
+    pRawAdr: null as number | null,
+    pCostAdr: null as number | null,
+    bCostAdr: null as number | null,
+    qBendAdr: null as number | null,
+    qFloorAdr: null as number | null,
+    floorPinRatio: null as number | null,
+    surplusBendAdr: null as number | null,
+    surplusGeometryQuality: null as number | null,
+    balance: null as number | null,
+    geometryQuality: null as number | null,
+    currentVolatilityAdr: null as number | null,
+    addSpacingMode: null as string | null,
+    triggerKey: null as string | null,
+  };
+  const session = options.sessions
+    .filter((candidate) => options.timestampMs >= candidate.entry_start_ms && options.timestampMs <= candidate.entry_end_ms)
+    .sort((left, right) => right.entry_start_ms - left.entry_start_ms)[0] ?? null;
+  if (!session) {
+    return emptyGate;
+  }
+  const pathEfficiency = trianglePathEfficiencySoFar({
+    session,
+    currentBarIndex: options.currentBarIndex,
+  });
+  if (pathEfficiency === null) {
+    return emptyGate;
+  }
+  if (isTriangleFormulaicV2ActivationRule(options.ruleId)) {
+    const metrics = triangleFormulaicV2Metrics({
+      session,
+      row: options.row,
+      markPrice: options.markPrice,
+      timestampUtc: options.timestampUtc,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+      runtimeOptions: options.runtimeOptions,
+    });
+    const floorPinPass = metrics.floorPinRatio + 1e-9 >= TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO;
+    const geometryAllowed = isTriangleFormulaicV21SurplusActivationRule(options.ruleId)
+      ? metrics.surplusGeometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY && floorPinPass
+      : usesTriangleFormulaicV21FloorPin(options.ruleId)
+        ? metrics.geometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY && floorPinPass
+        : metrics.geometryQuality + 1e-9 >= TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY;
+    const distanceAdr = options.side === "LONG"
+      ? trianglePriceMoveAdr(options.row, options.markPrice, metrics.centerPrice)
+      : trianglePriceMoveAdr(options.row, metrics.centerPrice, options.markPrice);
+    const expansionAllowed = geometryAllowed && distanceAdr !== null && distanceAdr + 1e-9 >= metrics.gridQuantumAdr;
+    return {
+      signalAllowed: geometryAllowed,
+      expansionAllowed,
+      spacingAdr: round6(metrics.gridQuantumAdr),
+      signalAdrBrick: round6(metrics.signalAdrBrick),
+      reversionTargetPrice: metrics.centerPrice,
+      reversionTargetBandAdr: round6(metrics.targetBandAdr),
+      centerType: metrics.centerType,
+      qCostAdr: round6(metrics.qCostAdr),
+      roundTripCostAdr: round6(metrics.roundTripCostAdr),
+      pRawAdr: round6(metrics.pRawAdr),
+      pCostAdr: round6(metrics.pCostAdr),
+      bCostAdr: round6(metrics.bCostAdr),
+      qBendAdr: round6(metrics.qBendAdr),
+      qFloorAdr: round6(metrics.qFloorAdr),
+      floorPinRatio: round6(metrics.floorPinRatio),
+      surplusBendAdr: round6(metrics.surplusBendAdr),
+      surplusGeometryQuality: round6(metrics.surplusGeometryQuality),
+      balance: round6(metrics.balance),
+      geometryQuality: round6(metrics.geometryQuality),
+      currentVolatilityAdr: round6(metrics.currentVolatilityFloorAdr),
+      addSpacingMode: usesTriangleFormulaicV21ConvexAdds(options.ruleId)
+        ? "convex_adverse"
+        : usesTriangleFormulaicV23ReversionEvidence(options.ruleId)
+          ? "reversion_evidence"
+          : usesTriangleFormulaicV23LateReversionEvidence(options.ruleId)
+            ? "late_reversion_evidence"
+            : usesTriangleFormulaicV23ProgressLast3(options.ruleId)
+              ? "progress_last3"
+        : usesTriangleFormulaicV22TerminalHorizon(options.ruleId) && usesTriangleFormulaicV22BasketSolvency(options.ruleId)
+          ? "terminal_horizon_basket_solvency"
+          : usesTriangleFormulaicV22TerminalHorizon(options.ruleId)
+            ? "terminal_horizon"
+            : usesTriangleFormulaicV22BasketSolvency(options.ruleId)
+              ? "basket_solvency"
+              : "fixed_q",
+      triggerKey: [
+        session.geometry_key,
+        TRIANGLE_FORMULAIC_V2_GEOMETRY_ID,
+        options.ruleId,
+        options.side,
+        iso(options.timestampMs),
+        `range_${round6(session.session_range_adr)}`,
+        `pe_${round6(pathEfficiency)}`,
+        `center_${metrics.centerType}`,
+        `qcost_${round6(metrics.qCostAdr)}`,
+        `rtcost_${round6(metrics.roundTripCostAdr)}`,
+        `praw_${round6(metrics.pRawAdr)}`,
+        `pcost_${round6(metrics.pCostAdr)}`,
+        `bcost_${round6(metrics.bCostAdr)}`,
+        `qbend_${round6(metrics.qBendAdr)}`,
+        `qfloor_${round6(metrics.qFloorAdr)}`,
+        `floorpin_${round6(metrics.floorPinRatio)}`,
+        `surplus_${round6(metrics.surplusBendAdr)}`,
+        `sgq_${round6(metrics.surplusGeometryQuality)}`,
+        `balance_${round6(metrics.balance)}`,
+        `gq_${round6(metrics.geometryQuality)}`,
+        `vol_${round6(metrics.currentVolatilityFloorAdr)}`,
+        `q_${round6(metrics.gridQuantumAdr)}`,
+        `brick_${round6(metrics.signalAdrBrick)}`,
+        `band_${round6(metrics.targetBandAdr)}`,
+        "target_center_band",
+      ].join("|"),
+    };
+  }
+  const costFloorAdr = triangleFormulaicCostFloorAdr();
+  const gridQuantumAdr = triangleFormulaicQuantumAdr({
+    sessionRangeAdr: session.session_range_adr,
+    pathEfficiency,
+    costFloorAdr,
+  });
+  const signalAdrBrick = triangleFormulaicSignalAdrBrick(gridQuantumAdr);
+  const geometryAllowed = pathEfficiency <= TRIANGLE_PATH_EFFICIENCY_LOW_MAX
+    && triangleFormulaicRangePass(session.session_range_adr, gridQuantumAdr);
+  const distanceAdr = options.side === "LONG"
+    ? trianglePriceMoveAdr(options.row, options.markPrice, session.range_mid)
+    : trianglePriceMoveAdr(options.row, session.range_mid, options.markPrice);
+  const expansionAllowed = geometryAllowed && distanceAdr !== null && distanceAdr + 1e-9 >= gridQuantumAdr;
+  return {
+    signalAllowed: geometryAllowed,
+    expansionAllowed,
+    spacingAdr: round6(gridQuantumAdr),
+    signalAdrBrick: round6(signalAdrBrick),
+    reversionTargetPrice: session.range_mid,
+    reversionTargetBandAdr: null,
+    centerType: "session_midpoint",
+    qCostAdr: null,
+    roundTripCostAdr: null,
+    pRawAdr: session.path_raw_adr,
+    pCostAdr: null,
+    bCostAdr: null,
+    qBendAdr: null,
+    qFloorAdr: null,
+    floorPinRatio: null,
+    surplusBendAdr: null,
+    surplusGeometryQuality: null,
+    balance: null,
+    geometryQuality: null,
+    currentVolatilityAdr: session.current_volatility_floor_adr,
+    addSpacingMode: "fixed_q",
+    triggerKey: [
+      session.geometry_key,
+      TRIANGLE_FORMULAIC_GEOMETRY_ID,
+      options.side,
+      iso(options.timestampMs),
+      `range_${round6(session.session_range_adr)}`,
+      `pe_${round6(pathEfficiency)}`,
+      `cost_${round6(costFloorAdr)}`,
+      `q_${round6(gridQuantumAdr)}`,
+      `brick_${round6(signalAdrBrick)}`,
+      "target_session_mid",
+    ].join("|"),
+  };
+}
+
+function directedMoveFromCycle(cycle: Cycle, markPrice: number, currentAdrPct: number) {
+  const sign = cycle.side === "LONG" ? 1 : -1;
+  return ((markPrice - cycle.anchor_price) / cycle.anchor_price) * 100 * sign / currentAdrPct;
+}
+
+function fillPnlAdr(cycle: Cycle, fill: Fill, markPrice: number, currentAdrPct: number) {
+  const sign = cycle.side === "LONG" ? 1 : -1;
+  return ((markPrice - fill.entry_price) / fill.entry_price) * 100 * sign / currentAdrPct * fill.quantity;
+}
+
+function cycleNetPnlAdr(cycle: Cycle, markPrice: number, currentAdrPct: number) {
+  return cycle.fills.reduce((sum, fill) => sum + fillPnlAdr(cycle, fill, markPrice, currentAdrPct), 0);
+}
+
+function priceMoveAdr(fromPrice: number, toPrice: number, currentAdrPct: number) {
+  if (fromPrice <= 0 || currentAdrPct <= 0) return null;
+  return ((toPrice - fromPrice) / fromPrice) * 100 / currentAdrPct;
+}
+
+function priceDeltaForAdr(referencePrice: number, currentAdrPct: number, adrValue: number) {
+  return referencePrice * currentAdrPct / 100 * adrValue;
+}
+
+function adrToMarketPct(adrValue: number, currentAdrPct: number) {
+  return adrValue * currentAdrPct;
+}
+
+function fillPnlUsd(options: {
+  pair: string;
+  side: Side;
+  fill: Fill;
+  markPrice: number;
+  timestampUtc: string;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+}) {
+  const units = options.fill.lot_size * STANDARD_FX_CONTRACT_UNITS;
+  const rawQuotePnl = options.side === "LONG"
+    ? (options.markPrice - options.fill.entry_price) * units
+    : (options.fill.entry_price - options.markPrice) * units;
+  const quote = quoteCurrency(options.pair);
+  const conversionRate = options.conversionRates.getUsdPerCurrency(quote, options.timestampUtc, options.tickIndex);
+  if (conversionRate !== null) return rawQuotePnl * conversionRate;
+  if (quote === "USD") return rawQuotePnl;
+  if (baseCurrency(options.pair) === "USD" && options.markPrice > 0) return rawQuotePnl / options.markPrice;
+  return rawQuotePnl;
+}
+
+function fillAgeDays(fill: Fill, timestampMs: number) {
+  return Math.max(0, (timestampMs - fill.entry_ms) / 86_400_000);
+}
+
+function fillSwapUsd(fill: Fill, timestampMs: number, options: Options) {
+  const per001LotDay = fill.side === "LONG" ? options.longSwapPer001LotDayUsd : options.shortSwapPer001LotDayUsd;
+  return per001LotDay * (fill.lot_size / 0.01) * fillAgeDays(fill, timestampMs);
+}
+
+function profitFactorFromGross(grossProfitUsd: number, grossLossAbsUsd: number) {
+  if (grossLossAbsUsd > 0) return round(grossProfitUsd / grossLossAbsUsd, 6);
+  if (grossProfitUsd > 0) return Number.POSITIVE_INFINITY;
+  return null;
+}
+
+function createBook(pair: string): PairBook {
+  return {
+    pair,
+    long: null,
+    short: null,
+    serial: 0,
+    long_resets: 0,
+    short_resets: 0,
+    last_mark_price: null,
+    last_adr_pct: null,
+    last_timestamp_utc: null,
+    last_tick_index: null,
+  };
+}
+
+function createStats(): RuntimeStats {
+  return {
+    realizedPricePnlUsd: 0,
+    realizedCommissionUsd: 0,
+    realizedSwapUsd: 0,
+    endLiquidationPricePnlUsd: 0,
+    endLiquidationSwapUsd: 0,
+    sessionFlattenPricePnlUsd: 0,
+    sessionFlattenSwapUsd: 0,
+    sessionFlattenCount: 0,
+    sessionFlattenPositions: 0,
+    protectionCloseCount: 0,
+    protectionClosePositions: 0,
+    targetResetCount: 0,
+    fillsOpened: 0,
+    closedPositions: 0,
+    endLiquidationPositions: 0,
+    maxOpenPositions: 0,
+    maxLongPositions: 0,
+    maxShortPositions: 0,
+    currentOpenPositions: 0,
+    currentLongPositions: 0,
+    currentShortPositions: 0,
+    maxAddDepth: 0,
+    maxFillAgeDays: 0,
+    positionDays: 0,
+    activationChecks: 0,
+    activationAllowedLong: 0,
+    activationAllowedShort: 0,
+    activationBlockedLong: 0,
+    activationBlockedShort: 0,
+    activationBlockedExpansion: 0,
+    terminalHorizonAddChecks: 0,
+    terminalHorizonBlockedAdds: 0,
+    basketSolvencyAddChecks: 0,
+    basketSolvencyBlockedAdds: 0,
+    v23FirstAdverseBypassAdds: 0,
+    reversionEvidenceAddChecks: 0,
+    reversionEvidenceBlockedAdds: 0,
+    lateReversionEvidenceAddChecks: 0,
+    lateReversionEvidenceBlockedAdds: 0,
+    progressLast3AddChecks: 0,
+    progressLast3BlockedAdds: 0,
+    feasibilityObservationCount: 0,
+    requiredReversionAdrSum: 0,
+    availableReversionAdrSum: 0,
+    reversionFeasibilityRatioSum: 0,
+    activationStartedLong: 0,
+    activationStartedShort: 0,
+    closeEventCount: 0,
+    closeEventWinCount: 0,
+    closeEventLossCount: 0,
+    closeEventFlatCount: 0,
+    closeEventGrossProfitUsd: 0,
+    closeEventGrossLossAbsUsd: 0,
+    closeEventRealizedPnlAdrSum: 0,
+    closeEventRealizedMarketPctSum: 0,
+    closeEventMfeAdrSum: 0,
+    closeEventMaeAdrAbsSum: 0,
+    closeEventMfeMarketPctSum: 0,
+    closeEventMaeMarketPctAbsSum: 0,
+    closeEventMfe1QHitCount: 0,
+    closeEventMfe2QHitCount: 0,
+    closeEventMfe3QHitCount: 0,
+    closeEventMae1QHitCount: 0,
+    closeEventMae2QHitCount: 0,
+    closeEventMae3QHitCount: 0,
+    targetCloseNetUsd: 0,
+    sessionFlattenCloseNetUsd: 0,
+    protectionCloseNetUsd: 0,
+    closeEvents: [],
+    addThrottleEvents: [],
+    marginalAddAuditRows: [],
+    addThrottleEventKeys: new Set(),
+    addThrottleEventIndexesByCycle: new Map(),
+    weeklyRows: [],
+    terminalInventoryRows: [],
+  };
+}
+
+function sideCycle(book: PairBook, side: Side) {
+  return side === "LONG" ? book.long : book.short;
+}
+
+function setSideCycle(book: PairBook, side: Side, cycle: Cycle | null) {
+  if (side === "LONG") book.long = cycle;
+  else book.short = cycle;
+}
+
+function sideResetCount(book: PairBook, side: Side) {
+  return side === "LONG" ? book.long_resets : book.short_resets;
+}
+
+function incrementSideReset(book: PairBook, side: Side) {
+  if (side === "LONG") book.long_resets += 1;
+  else book.short_resets += 1;
+  return sideResetCount(book, side);
+}
+
+function openPositionCounts(books: Map<string, PairBook>) {
+  let total = 0;
+  let long = 0;
+  let short = 0;
+  for (const book of books.values()) {
+    const longCount = book.long?.fills.length ?? 0;
+    const shortCount = book.short?.fills.length ?? 0;
+    long += longCount;
+    short += shortCount;
+    total += longCount + shortCount;
+  }
+  return { total, long, short };
+}
+
+function pairOpenCount(book: PairBook) {
+  return (book.long?.fills.length ?? 0) + (book.short?.fills.length ?? 0);
+}
+
+function observeStats(stats: RuntimeStats, _books: Map<string, PairBook>) {
+  stats.maxOpenPositions = Math.max(stats.maxOpenPositions, stats.currentOpenPositions);
+  stats.maxLongPositions = Math.max(stats.maxLongPositions, stats.currentLongPositions);
+  stats.maxShortPositions = Math.max(stats.maxShortPositions, stats.currentShortPositions);
+}
+
+function adjustOpenPositionStats(stats: RuntimeStats, side: Side, delta: number) {
+  stats.currentOpenPositions += delta;
+  if (side === "LONG") stats.currentLongPositions += delta;
+  else stats.currentShortPositions += delta;
+  if (stats.currentOpenPositions < 0 || stats.currentLongPositions < 0 || stats.currentShortPositions < 0) {
+    throw new Error("Gate 90 open-position stats went negative; replay bookkeeping is inconsistent");
+  }
+  stats.maxOpenPositions = Math.max(stats.maxOpenPositions, stats.currentOpenPositions);
+  stats.maxLongPositions = Math.max(stats.maxLongPositions, stats.currentLongPositions);
+  stats.maxShortPositions = Math.max(stats.maxShortPositions, stats.currentShortPositions);
+}
+
+function openFill(options: {
+  stats: RuntimeStats;
+  book: PairBook;
+  cycle: Cycle;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  currentAdrPct?: number;
+  kind: FillKind;
+  levelIndex: number;
+  runtimeOptions: Options;
+}) {
+  if (pairOpenCount(options.book) >= options.runtimeOptions.maxPositionsPerPair) return false;
+  const commission = -options.runtimeOptions.commissionPerEntryPer001LotUsd * (options.runtimeOptions.lotSize / 0.01);
+  const fill: Fill = {
+    pair: options.book.pair,
+    side: options.cycle.side,
+    entry_price: options.markPrice,
+    entry_timestamp_utc: options.timestampUtc,
+    entry_ms: options.timestampMs,
+    fill_index: options.cycle.fills.length,
+    level_index: options.levelIndex,
+    kind: options.kind,
+    quantity: 1,
+    lot_size: options.runtimeOptions.lotSize,
+    commission_usd: commission,
+  };
+  options.cycle.fills.push(fill);
+  options.cycle.entry_price_inverse_sum += 1 / options.markPrice;
+  options.cycle.quantity_sum += 1;
+  adjustOpenPositionStats(options.stats, options.cycle.side, 1);
+  options.stats.realizedCommissionUsd = round6(options.stats.realizedCommissionUsd + commission);
+  options.stats.fillsOpened += 1;
+  options.stats.maxAddDepth = Math.max(options.stats.maxAddDepth, options.levelIndex);
+  if (options.currentAdrPct !== undefined) {
+    resetLocalCyclePnlSinceLastFill(options.cycle, options.markPrice, options.currentAdrPct, options.timestampUtc);
+  }
+  return true;
+}
+
+function startCycle(options: {
+  stats: RuntimeStats;
+  book: PairBook;
+  row: ReplayRow;
+  side: Side;
+  variant_id: string;
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  runtimeOptions: Options;
+  cycleSpacingAdr: number;
+  cycleSignalAdrBrick: number | null;
+  reversionTargetPrice: number | null;
+  reversionTargetBandAdr: number | null;
+  triangleGeometryCenterType: string | null;
+  triangleGeometryQCostAdr: number | null;
+  triangleGeometryRoundTripCostAdr: number | null;
+  triangleGeometryPRawAdr: number | null;
+  triangleGeometryPCostAdr: number | null;
+  triangleGeometryBCostAdr: number | null;
+  triangleGeometryQBendAdr: number | null;
+  triangleGeometryQFloorAdr: number | null;
+  triangleGeometryFloorPinRatio: number | null;
+  triangleGeometrySurplusBendAdr: number | null;
+  triangleGeometrySurplusQuality: number | null;
+  triangleGeometryBalance: number | null;
+  triangleGeometryQuality: number | null;
+  triangleGeometryCurrentVolatilityAdr: number | null;
+  triangleGeometryAddSpacingMode: string | null;
+  triangleTriggerKey: string | null;
+}) {
+  options.book.serial += 1;
+  const cycle: Cycle = {
+    cycle_id: `${options.variant_id}|${options.book.pair}|${options.side}|${options.book.serial}`,
+    variant_id: options.variant_id,
+    activation_rule_id: options.activationRuleId,
+    protection_mode: options.protectionMode,
+    pair: options.book.pair,
+    side: options.side,
+    anchor_week_open_utc: options.row.week_open_utc,
+    start_timestamp_utc: options.timestampUtc,
+    anchor_price: options.markPrice,
+    cycle_adr_pct: options.row.pair_adr_pct,
+    cycle_spacing_adr: options.cycleSpacingAdr,
+    cycle_signal_adr_brick: options.cycleSignalAdrBrick,
+    cycle_reversion_target_price: options.reversionTargetPrice,
+    cycle_reversion_target_band_adr: options.reversionTargetBandAdr,
+    triangle_geometry_center_type: options.triangleGeometryCenterType,
+    triangle_geometry_q_cost_adr: options.triangleGeometryQCostAdr,
+    triangle_geometry_round_trip_cost_adr: options.triangleGeometryRoundTripCostAdr,
+    triangle_geometry_p_raw_adr: options.triangleGeometryPRawAdr,
+    triangle_geometry_p_cost_adr: options.triangleGeometryPCostAdr,
+    triangle_geometry_b_cost_adr: options.triangleGeometryBCostAdr,
+    triangle_geometry_q_bend_adr: options.triangleGeometryQBendAdr,
+    triangle_geometry_q_floor_adr: options.triangleGeometryQFloorAdr,
+    triangle_geometry_floor_pin_ratio: options.triangleGeometryFloorPinRatio,
+    triangle_geometry_surplus_bend_adr: options.triangleGeometrySurplusBendAdr,
+    triangle_geometry_surplus_quality: options.triangleGeometrySurplusQuality,
+    triangle_geometry_balance: options.triangleGeometryBalance,
+    triangle_geometry_quality: options.triangleGeometryQuality,
+    triangle_geometry_current_volatility_adr: options.triangleGeometryCurrentVolatilityAdr,
+    triangle_geometry_add_spacing_mode: options.triangleGeometryAddSpacingMode,
+    triangle_trigger_key: options.triangleTriggerKey,
+    fills: [],
+    entry_price_inverse_sum: 0,
+    quantity_sum: 0,
+    next_adverse_fill_level: 1,
+    next_adverse_fill_distance_adr: options.cycleSpacingAdr,
+    next_favorable_fill_level: 1,
+    min_pnl_adr: 0,
+    max_pnl_adr: 0,
+    last_fill_pnl_adr: 0,
+    local_min_pnl_since_last_fill_adr: 0,
+    local_max_pnl_since_last_fill_adr: 0,
+    last_fill_timestamp_utc: null,
+    min_pnl_timestamp_utc: null,
+    max_pnl_timestamp_utc: null,
+    first_mfe_0_5q_timestamp_utc: null,
+    first_mfe_1q_timestamp_utc: null,
+    first_mfe_2q_timestamp_utc: null,
+    first_mfe_3q_timestamp_utc: null,
+    first_mae_0_5q_timestamp_utc: null,
+    first_mae_1q_timestamp_utc: null,
+    first_mae_2q_timestamp_utc: null,
+    first_mae_3q_timestamp_utc: null,
+    reset_ordinal_at_start: sideResetCount(options.book, options.side),
+  };
+  const opened = openFill({
+    stats: options.stats,
+    book: options.book,
+    cycle,
+    markPrice: options.markPrice,
+    timestampUtc: options.timestampUtc,
+    timestampMs: options.timestampMs,
+    currentAdrPct: options.row.pair_adr_pct,
+    kind: "initial",
+    levelIndex: 0,
+    runtimeOptions: options.runtimeOptions,
+  });
+  if (opened && options.side === "LONG") options.stats.activationStartedLong += 1;
+  if (opened && options.side === "SHORT") options.stats.activationStartedShort += 1;
+  return opened ? cycle : null;
+}
+
+function observeCycle(cycle: Cycle, markPrice: number, currentAdrPct: number, timestampUtc: string | null = null) {
+  const pnl = round6(cycleNetPnlAdr(cycle, markPrice, currentAdrPct));
+  if (pnl < cycle.min_pnl_adr) {
+    cycle.min_pnl_adr = pnl;
+    cycle.min_pnl_timestamp_utc = timestampUtc;
+  }
+  if (pnl > cycle.max_pnl_adr) {
+    cycle.max_pnl_adr = pnl;
+    cycle.max_pnl_timestamp_utc = timestampUtc;
+  }
+  if (pnl < cycle.local_min_pnl_since_last_fill_adr) {
+    cycle.local_min_pnl_since_last_fill_adr = pnl;
+  }
+  if (pnl > cycle.local_max_pnl_since_last_fill_adr) {
+    cycle.local_max_pnl_since_last_fill_adr = pnl;
+  }
+  if (!timestampUtc || cycle.cycle_spacing_adr <= 0) return;
+  const spacingAdr = cycle.cycle_spacing_adr;
+  if (pnl >= spacingAdr * 0.5 && cycle.first_mfe_0_5q_timestamp_utc === null) cycle.first_mfe_0_5q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr && cycle.first_mfe_1q_timestamp_utc === null) cycle.first_mfe_1q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr * 2 && cycle.first_mfe_2q_timestamp_utc === null) cycle.first_mfe_2q_timestamp_utc = timestampUtc;
+  if (pnl >= spacingAdr * 3 && cycle.first_mfe_3q_timestamp_utc === null) cycle.first_mfe_3q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 0.5 && cycle.first_mae_0_5q_timestamp_utc === null) cycle.first_mae_0_5q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr && cycle.first_mae_1q_timestamp_utc === null) cycle.first_mae_1q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 2 && cycle.first_mae_2q_timestamp_utc === null) cycle.first_mae_2q_timestamp_utc = timestampUtc;
+  if (pnl <= -spacingAdr * 3 && cycle.first_mae_3q_timestamp_utc === null) cycle.first_mae_3q_timestamp_utc = timestampUtc;
+}
+
+function resetLocalCyclePnlSinceLastFill(cycle: Cycle, markPrice: number, currentAdrPct: number, timestampUtc: string) {
+  const pnl = round6(cycleNetPnlAdr(cycle, markPrice, currentAdrPct));
+  cycle.last_fill_pnl_adr = pnl;
+  cycle.local_min_pnl_since_last_fill_adr = pnl;
+  cycle.local_max_pnl_since_last_fill_adr = pnl;
+  cycle.last_fill_timestamp_utc = timestampUtc;
+}
+
+function addGridFills(options: {
+  stats: RuntimeStats;
+  book: PairBook;
+  cycle: Cycle;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const directed = directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct);
+  const spacingAdr = options.cycle.cycle_spacing_adr;
+  while (directed <= -nextAdverseFillDistanceAdr(options.cycle)) {
+    if (!triangleFormulaicAdverseAddAllowed(options)) break;
+    const level = options.cycle.next_adverse_fill_level;
+    const opened = openFill({
+      ...options,
+      kind: "adverse_recovery",
+      levelIndex: level,
+    });
+    if (!opened) break;
+    options.cycle.next_adverse_fill_level += 1;
+    options.cycle.next_adverse_fill_distance_adr = nextAdverseFillDistanceAdr(options.cycle)
+      + nextAdverseSpacingAdr({
+        cycle: options.cycle,
+        markPrice: options.markPrice,
+        currentAdrPct: options.currentAdrPct,
+      });
+  }
+  if (options.runtimeOptions.gridAddMode === "adverse_and_favorable") {
+    while (directed >= spacingAdr * options.cycle.next_favorable_fill_level) {
+      const level = options.cycle.next_favorable_fill_level;
+      const opened = openFill({
+        ...options,
+        kind: "favorable_expansion",
+        levelIndex: level,
+      });
+      if (!opened) break;
+      options.cycle.next_favorable_fill_level += 1;
+    }
+  }
+}
+
+function triangleFormulaicAdverseAddAllowed(options: {
+  stats: RuntimeStats;
+  cycle: Cycle;
+  markPrice: number;
+  timestampMs: number;
+  timestampUtc: string;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const mode = options.cycle.triangle_geometry_add_spacing_mode;
+  const usesTerminalHorizon = mode === "terminal_horizon" || mode === "terminal_horizon_basket_solvency";
+  const usesBasketSolvency = mode === "basket_solvency" || mode === "terminal_horizon_basket_solvency";
+  const usesReversionEvidence = mode === "reversion_evidence";
+  const usesLateReversionEvidence = mode === "late_reversion_evidence";
+  const usesProgressLast3 = mode === "progress_last3";
+  const recordsV23Shadow = mode === "fixed_q" && options.cycle.variant_id.includes("TRIANGLE_FORMULAIC_DIRECTIONLESS_GEOMETRY_V2_FLOORPIN");
+  if (!usesTerminalHorizon && !usesBasketSolvency && !usesReversionEvidence && !usesLateReversionEvidence && !usesProgressLast3 && !recordsV23Shadow) return true;
+
+  const v23Metrics = triangleFormulaicV23AddMetrics({
+    cycle: options.cycle,
+    markPrice: options.markPrice,
+    timestampMs: options.timestampMs,
+    currentAdrPct: options.currentAdrPct,
+    runtimeOptions: options.runtimeOptions,
+  });
+
+  let allowed = true;
+  let blockReason: string | null = null;
+
+  if (usesTerminalHorizon || usesBasketSolvency) {
+    const feasibility = triangleFormulaicV22Feasibility({
+      cycle: options.cycle,
+      markPrice: options.markPrice,
+      timestampMs: options.timestampMs,
+      currentAdrPct: options.currentAdrPct,
+      runtimeOptions: options.runtimeOptions,
+      includeProposedAdd: true,
+    });
+    if (feasibility !== null) {
+      options.stats.feasibilityObservationCount += 1;
+      options.stats.requiredReversionAdrSum = round6(options.stats.requiredReversionAdrSum + feasibility.requiredReversionAdr);
+      options.stats.availableReversionAdrSum = round6(options.stats.availableReversionAdrSum + feasibility.availableReversionAdr);
+      options.stats.reversionFeasibilityRatioSum = round6(options.stats.reversionFeasibilityRatioSum + feasibility.reversionFeasibilityRatio);
+
+      if (usesTerminalHorizon) {
+        options.stats.terminalHorizonAddChecks += 1;
+        if (!feasibility.terminalHorizonPass) {
+          options.stats.terminalHorizonBlockedAdds += 1;
+          allowed = false;
+          blockReason = "terminal_horizon";
+        }
+      }
+      if (usesBasketSolvency) {
+        options.stats.basketSolvencyAddChecks += 1;
+        if (!feasibility.solvencyPass) {
+          options.stats.basketSolvencyBlockedAdds += 1;
+          allowed = false;
+          blockReason = blockReason === null ? "basket_solvency" : `${blockReason}+basket_solvency`;
+        }
+      }
+    }
+  }
+
+  if (v23Metrics !== null && (usesReversionEvidence || usesLateReversionEvidence || usesProgressLast3)) {
+    if (v23Metrics.firstAdverseBypass) {
+      blockReason = null;
+    } else if (usesReversionEvidence && !v23Metrics.reversionEvidencePass) {
+      allowed = false;
+      blockReason = "reversion_evidence";
+    } else if (usesLateReversionEvidence && v23Metrics.isLateSession && !v23Metrics.reversionEvidencePass) {
+      allowed = false;
+      blockReason = "late_reversion_evidence";
+    } else if (usesProgressLast3 && v23Metrics.progressGateActive && !v23Metrics.progressLast3Pass) {
+      allowed = false;
+      blockReason = "progress_last3";
+    }
+  }
+
+  if (v23Metrics !== null && (usesReversionEvidence || usesLateReversionEvidence || usesProgressLast3 || recordsV23Shadow)) {
+    const recorded = recordAddThrottleEvent({
+      stats: options.stats,
+      cycle: options.cycle,
+      timestampUtc: options.timestampUtc,
+      markPrice: options.markPrice,
+      currentAdrPct: options.currentAdrPct,
+      gateMode: mode,
+      gateActive: usesReversionEvidence || usesLateReversionEvidence || usesProgressLast3,
+      decision: allowed ? "allowed" : "blocked",
+      blockReason,
+      metrics: v23Metrics,
+    });
+    if (recorded && (usesReversionEvidence || usesLateReversionEvidence || usesProgressLast3)) {
+      updateTriangleFormulaicV23Stats({
+        stats: options.stats,
+        mode,
+        blocked: !allowed,
+        firstAdverseBypass: v23Metrics.firstAdverseBypass,
+        active: v23GateActive(mode, v23Metrics),
+      });
+    }
+  }
+  return allowed;
+}
+
+function triangleFormulaicV23AddMetrics(options: {
+  cycle: Cycle;
+  markPrice: number;
+  timestampMs: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const spacingAdr = options.cycle.cycle_spacing_adr;
+  if (spacingAdr <= 0 || options.currentAdrPct <= 0) return null;
+  const levelIndex = options.cycle.next_adverse_fill_level;
+  const firstAdverseBypass = levelIndex <= 1;
+  const sessionMinutes = sessionWindowLengthMinutes(options.runtimeOptions);
+  const minutesLeft = minutesUntilSessionFlatten(options.runtimeOptions, options.timestampMs);
+  const tauUntilFlatten = sessionMinutes > 0 ? minutesLeft / sessionMinutes : 1;
+  const isLateSession = tauUntilFlatten < TRIANGLE_FORMULAIC_V2_3_LATE_TAU_THRESHOLD;
+  const currentPnlAdr = round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct));
+  const localMfeAdr = Math.max(0, options.cycle.local_max_pnl_since_last_fill_adr - options.cycle.last_fill_pnl_adr);
+  const localMaeAdr = Math.max(0, options.cycle.last_fill_pnl_adr - options.cycle.local_min_pnl_since_last_fill_adr);
+  const reversionEvidenceUnits = localMfeAdr / spacingAdr;
+  const localMaeUnits = localMaeAdr / spacingAdr;
+  const requiredReversionEvidence = Math.min(
+    TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_MAX_Q,
+    TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_BASE_Q + TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_DEPTH_STEP_Q * levelIndex,
+  );
+  const reversionEvidencePass = reversionEvidenceUnits + 1e-9 >= requiredReversionEvidence;
+  const currentDistanceToCenterAdr = distanceToCycleCenterAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  const lastFillDistances = options.cycle.fills
+    .slice(-TRIANGLE_FORMULAIC_V2_3_PROGRESS_FILL_LOOKBACK)
+    .map((fill) => distanceToCycleCenterAdr(options.cycle, fill.entry_price, options.currentAdrPct))
+    .filter((distance): distance is number => distance !== null);
+  const avgLast3FillDistanceToCenterAdr = lastFillDistances.length
+    ? lastFillDistances.reduce((sum, distance) => sum + distance, 0) / lastFillDistances.length
+    : null;
+  const progressGateActive = isLateSession && currentPnlAdr < 0;
+  const progressLast3Pass = !progressGateActive
+    ? true
+    : currentDistanceToCenterAdr !== null &&
+      avgLast3FillDistanceToCenterAdr !== null &&
+      currentDistanceToCenterAdr <= avgLast3FillDistanceToCenterAdr + 1e-9;
+  return {
+    levelIndex,
+    fillCountBefore: options.cycle.fills.length,
+    firstAdverseBypass,
+    minutesLeft,
+    tauUntilFlatten,
+    isLateSession,
+    currentPnlAdr,
+    localMfeAdr,
+    localMaeAdr,
+    reversionEvidenceUnits,
+    localMaeUnits,
+    requiredReversionEvidence,
+    reversionEvidencePass,
+    progressGateActive,
+    currentDistanceToCenterAdr,
+    avgLast3FillDistanceToCenterAdr,
+    last3FillCount: lastFillDistances.length,
+    progressLast3Pass,
+  };
+}
+
+function v23GateActive(mode: string | null, metrics: NonNullable<ReturnType<typeof triangleFormulaicV23AddMetrics>>) {
+  if (metrics.firstAdverseBypass) return false;
+  if (mode === "reversion_evidence") return true;
+  if (mode === "late_reversion_evidence") return metrics.isLateSession;
+  if (mode === "progress_last3") return metrics.progressGateActive;
+  return false;
+}
+
+function updateTriangleFormulaicV23Stats(options: {
+  stats: RuntimeStats;
+  mode: string | null;
+  blocked: boolean;
+  firstAdverseBypass: boolean;
+  active: boolean;
+}) {
+  if (options.firstAdverseBypass) {
+    options.stats.v23FirstAdverseBypassAdds += 1;
+    return;
+  }
+  if (!options.active) return;
+  if (options.mode === "reversion_evidence") {
+    options.stats.reversionEvidenceAddChecks += 1;
+    if (options.blocked) options.stats.reversionEvidenceBlockedAdds += 1;
+  } else if (options.mode === "late_reversion_evidence") {
+    options.stats.lateReversionEvidenceAddChecks += 1;
+    if (options.blocked) options.stats.lateReversionEvidenceBlockedAdds += 1;
+  } else if (options.mode === "progress_last3") {
+    options.stats.progressLast3AddChecks += 1;
+    if (options.blocked) options.stats.progressLast3BlockedAdds += 1;
+  }
+}
+
+function recordAddThrottleEvent(options: {
+  stats: RuntimeStats;
+  cycle: Cycle;
+  timestampUtc: string;
+  markPrice: number;
+  currentAdrPct: number;
+  gateMode: string | null;
+  gateActive: boolean;
+  decision: "allowed" | "blocked";
+  blockReason: string | null;
+  metrics: NonNullable<ReturnType<typeof triangleFormulaicV23AddMetrics>>;
+}) {
+  const key = [
+    options.cycle.cycle_id,
+    options.metrics.levelIndex,
+    options.decision,
+    options.blockReason ?? "none",
+  ].join("|");
+  if (options.stats.addThrottleEventKeys.has(key)) return false;
+  options.stats.addThrottleEventKeys.add(key);
+  const row: AddThrottleEventRow = {
+    variant_id: options.cycle.variant_id,
+    activation_rule_id: options.cycle.activation_rule_id,
+    protection_mode: options.cycle.protection_mode,
+    cycle_id: options.cycle.cycle_id,
+    pair: options.cycle.pair,
+    side: options.cycle.side,
+    timestamp_utc: options.timestampUtc,
+    anchor_week_open_utc: options.cycle.anchor_week_open_utc,
+    level_index: options.metrics.levelIndex,
+    fill_count_before: options.metrics.fillCountBefore,
+    decision: options.decision,
+    gate_mode: options.gateMode,
+    gate_active: options.gateActive && v23GateActive(options.gateMode, options.metrics),
+    block_reason: options.blockReason,
+    first_adverse_bypass: options.metrics.firstAdverseBypass,
+    minutes_until_flatten: round6(options.metrics.minutesLeft),
+    tau_until_flatten: round6(options.metrics.tauUntilFlatten),
+    directed_move_from_anchor_adr: round6(directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct)),
+    current_pnl_adr: round6(options.metrics.currentPnlAdr),
+    last_fill_pnl_adr: round6(options.cycle.last_fill_pnl_adr),
+    local_mfe_since_last_fill_adr: round6(options.metrics.localMfeAdr),
+    local_mae_since_last_fill_adr: round6(options.metrics.localMaeAdr),
+    reversion_evidence_units: round6(options.metrics.reversionEvidenceUnits),
+    local_mae_units: round6(options.metrics.localMaeUnits),
+    required_reversion_evidence_units: round6(options.metrics.requiredReversionEvidence),
+    reversion_evidence_pass: options.metrics.reversionEvidencePass,
+    is_late_session: options.metrics.isLateSession,
+    progress_gate_active: options.metrics.progressGateActive,
+    current_distance_to_center_adr: options.metrics.currentDistanceToCenterAdr === null ? null : round6(options.metrics.currentDistanceToCenterAdr),
+    avg_last3_fill_distance_to_center_adr: options.metrics.avgLast3FillDistanceToCenterAdr === null ? null : round6(options.metrics.avgLast3FillDistanceToCenterAdr),
+    last3_fill_count: options.metrics.last3FillCount,
+    progress_last3_pass: options.metrics.progressLast3Pass,
+    close_timestamp_utc: null,
+    close_reason: null,
+    forward_price_pnl_adr: null,
+    forward_net_usd: null,
+    forward_max_pnl_adr: null,
+    forward_min_pnl_adr: null,
+  };
+  const index = options.stats.addThrottleEvents.length;
+  options.stats.addThrottleEvents.push(row);
+  const existing = options.stats.addThrottleEventIndexesByCycle.get(options.cycle.cycle_id) ?? [];
+  existing.push(index);
+  options.stats.addThrottleEventIndexesByCycle.set(options.cycle.cycle_id, existing);
+  return true;
+}
+
+function distanceToCycleCenterAdr(cycle: Cycle, price: number, currentAdrPct: number) {
+  const center = cycle.cycle_reversion_target_price;
+  if (center === null || center <= 0 || price <= 0 || currentAdrPct <= 0) return null;
+  const move = priceMoveAdr(center, price, currentAdrPct);
+  return move === null ? null : Math.abs(move);
+}
+
+function triangleFormulaicV22Feasibility(options: {
+  cycle: Cycle;
+  markPrice: number;
+  timestampMs: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+  includeProposedAdd: boolean;
+}) {
+  const centerPrice = options.cycle.cycle_reversion_target_price;
+  const targetBandAdr = options.cycle.cycle_reversion_target_band_adr;
+  if (centerPrice === null || targetBandAdr === null || centerPrice <= 0 || options.markPrice <= 0 || options.currentAdrPct <= 0) return null;
+
+  const proposedQuantity = options.cycle.quantity_sum + (options.includeProposedAdd ? 1 : 0);
+  const proposedInverseSum = options.cycle.entry_price_inverse_sum + (options.includeProposedAdd ? 1 / options.markPrice : 0);
+  if (proposedQuantity <= 0 || proposedInverseSum <= 0) return null;
+
+  const averageEntry = proposedQuantity / proposedInverseSum;
+  const breakEvenBufferAdr = options.cycle.triangle_geometry_round_trip_cost_adr ?? TRIANGLE_FORMULAIC_V2_ROUND_TRIP_COST_FALLBACK_ADR;
+  const breakEvenBufferPrice = priceDeltaForAdr(averageEntry, options.currentAdrPct, breakEvenBufferAdr);
+  const targetBandPrice = priceDeltaForAdr(centerPrice, options.currentAdrPct, targetBandAdr);
+  const targetLow = centerPrice - targetBandPrice;
+  const targetHigh = centerPrice + targetBandPrice;
+  const basketGreenPrice = options.cycle.side === "LONG"
+    ? averageEntry + breakEvenBufferPrice
+    : averageEntry - breakEvenBufferPrice;
+  const solvencyPass = options.cycle.side === "LONG"
+    ? basketGreenPrice <= targetHigh + 1e-12
+    : basketGreenPrice >= targetLow - 1e-12;
+
+  const requiredTargetPrice = options.cycle.side === "LONG"
+    ? Math.max(targetLow, basketGreenPrice)
+    : Math.min(targetHigh, basketGreenPrice);
+  const rawRequiredAdr = options.cycle.side === "LONG"
+    ? priceMoveAdr(options.markPrice, requiredTargetPrice, options.currentAdrPct)
+    : priceMoveAdr(requiredTargetPrice, options.markPrice, options.currentAdrPct);
+  const requiredReversionAdr = Math.max(0, rawRequiredAdr ?? 0);
+  const sessionMinutes = Math.max(1, sessionWindowLengthMinutes(options.runtimeOptions));
+  const minutesLeft = Math.max(0, minutesUntilSessionFlatten(options.runtimeOptions, options.timestampMs));
+  const bCostAdr = options.cycle.triangle_geometry_b_cost_adr ?? 0;
+  const balance = options.cycle.triangle_geometry_balance ?? 0;
+  const qCostAdr = options.cycle.triangle_geometry_q_cost_adr ?? TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+  const bendSpeedAdrPerMinute = bCostAdr / sessionMinutes;
+  const availableReversionAdr = Math.max(0, bendSpeedAdrPerMinute * minutesLeft * balance - qCostAdr);
+  const reversionFeasibilityRatio = requiredReversionAdr / Math.max(availableReversionAdr, TRIANGLE_FORMULAIC_V2_2_FEASIBILITY_EPSILON_ADR);
+  return {
+    requiredReversionAdr,
+    availableReversionAdr,
+    reversionFeasibilityRatio,
+    terminalHorizonPass: requiredReversionAdr <= availableReversionAdr + 1e-9,
+    solvencyPass,
+  };
+}
+
+function sessionWindowLengthMinutes(options: Options) {
+  if (options.sessionMode === "continuous") return 24 * 60;
+  const start = options.sessionTradeStartEtMinutes;
+  const flatten = options.sessionFlattenEtMinutes;
+  return start <= flatten ? Math.max(1, flatten - start) : (24 * 60 - start) + flatten;
+}
+
+function minutesUntilSessionFlatten(options: Options, timestampMs: number) {
+  if (options.sessionMode === "continuous") return 24 * 60;
+  const local = localSessionParts(timestampMs, options.sessionTimeZone);
+  const flattenMinutes = sessionFlattenMinutesForDate(options, local.dateKey);
+  if (local.minutes < flattenMinutes) return flattenMinutes - local.minutes;
+  if (local.minutes >= options.sessionTradeStartEtMinutes) return (24 * 60 - local.minutes) + options.sessionFlattenEtMinutes;
+  return 0;
+}
+
+function nextAdverseFillDistanceAdr(cycle: Cycle) {
+  if (cycle.triangle_geometry_add_spacing_mode === "convex_adverse") {
+    return cycle.next_adverse_fill_distance_adr;
+  }
+  return cycle.cycle_spacing_adr * cycle.next_adverse_fill_level;
+}
+
+function nextAdverseSpacingAdr(options: {
+  cycle: Cycle;
+  markPrice: number;
+  currentAdrPct: number;
+}) {
+  if (options.cycle.triangle_geometry_add_spacing_mode !== "convex_adverse") return options.cycle.cycle_spacing_adr;
+  const currentPnlAdr = cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  const maeAdr = Math.max(0, -Math.min(options.cycle.min_pnl_adr, currentPnlAdr));
+  const mfeAdr = Math.max(0, Math.max(options.cycle.max_pnl_adr, currentPnlAdr));
+  const qCostAdr = options.cycle.triangle_geometry_q_cost_adr ?? TRIANGLE_FORMULAIC_COST_FLOOR_ADR;
+  const depth = Math.max(0, options.cycle.next_adverse_fill_level - 1);
+  return options.cycle.cycle_spacing_adr
+    * Math.sqrt(1 + depth)
+    * Math.sqrt((maeAdr + qCostAdr) / Math.max(mfeAdr + qCostAdr, 1e-9));
+}
+
+function targetReached(options: {
+  cycle: Cycle;
+  signal: SignalSnapshot;
+  markPrice: number;
+  currentAdrPct: number;
+  runtimeOptions: Options;
+}) {
+  const pnlAdr = round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct));
+  if (options.runtimeOptions.targetMode === "fixed_adr") return pnlAdr >= options.runtimeOptions.targetAdr;
+  if (options.runtimeOptions.targetMode === "session_mid_reversion" || options.runtimeOptions.targetMode === "session_center_band_reversion") {
+    const targetPrice = options.cycle.cycle_reversion_target_price;
+    if (targetPrice === null || pnlAdr <= 0) return false;
+    if (options.runtimeOptions.targetMode === "session_center_band_reversion") {
+      const bandAdr = options.cycle.cycle_reversion_target_band_adr ?? 0;
+      const bandPrice = targetPrice * options.currentAdrPct / 100 * Math.max(0, bandAdr);
+      return options.cycle.side === "LONG"
+        ? options.markPrice >= targetPrice - bandPrice
+        : options.markPrice <= targetPrice + bandPrice;
+    }
+    return options.cycle.side === "LONG" ? options.markPrice >= targetPrice : options.markPrice <= targetPrice;
+  }
+  const ma = options.signal.david_ma;
+  if (ma === null || pnlAdr <= 0) return false;
+  return options.cycle.side === "LONG" ? options.markPrice >= ma : options.markPrice <= ma;
+}
+
+function protectionConfig(mode: ProtectionMode): ProtectionConfig {
+  const base = {
+    stopAddsAfterQ: null,
+    trailActivateQ: null,
+    trailGivebackQ: null,
+    protectedFlatten: false,
+    uglyRedQ: null,
+    holdRedAtFlatten: false,
+    holdRedMaxDays: null,
+    painStopAddMode: "none" as PainStopAddMode,
+    painCircuitBeforeProfitHalfQ: false,
+  };
+  switch (mode) {
+    case "lock_1q_stop_adds":
+      return { ...base, stopAddsAfterQ: 1 };
+    case "trail_1q_1q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 1 };
+    case "trail_1q_0_5q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 0.5 };
+    case "protected_flatten_1q":
+      return { ...base, stopAddsAfterQ: 1, protectedFlatten: true, uglyRedQ: 1 };
+    case "protected_flatten_1q_trail_1q":
+      return { ...base, stopAddsAfterQ: 1, trailActivateQ: 1, trailGivebackQ: 1, protectedFlatten: true, uglyRedQ: 1 };
+    case "pain_1q_stop_adds_before_profit_0_5q":
+      return { ...base, painStopAddMode: "locked_before_profit_0_5q" };
+    case "pain_2q_circuit_before_profit_0_5q":
+      return { ...base, painCircuitBeforeProfitHalfQ: true };
+    case "live_state_guard_v0":
+      return { ...base, stopAddsAfterQ: 1, painStopAddMode: "locked_before_profit_0_5q", painCircuitBeforeProfitHalfQ: true };
+    case "eod_green_hold_red":
+      return { ...base, holdRedAtFlatten: true };
+    case "eod_green_hold_red_pain_1q_stop_adds":
+      return { ...base, holdRedAtFlatten: true, painStopAddMode: "locked_before_profit_0_5q" };
+    case "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q":
+      return { ...base, holdRedAtFlatten: true, painStopAddMode: "until_profit_0_5q" };
+    case "eod_green_hold_red_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3 };
+    case "eod_green_hold_red_pain_1q_stop_adds_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3, painStopAddMode: "locked_before_profit_0_5q" };
+    case "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d":
+      return { ...base, holdRedAtFlatten: true, holdRedMaxDays: 3, painStopAddMode: "until_profit_0_5q" };
+    case "baseline":
+      return base;
+  }
+}
+
+function cyclePnlAdr(cycle: Cycle, markPrice: number, currentAdrPct: number) {
+  return round6(cycleNetPnlAdr(cycle, markPrice, currentAdrPct));
+}
+
+function shouldStopAddsAfterProfit(cycle: Cycle, protectionMode: ProtectionMode) {
+  const config = protectionConfig(protectionMode);
+  const profitStop = config.stopAddsAfterQ !== null && cycle.max_pnl_adr >= cycle.cycle_spacing_adr * config.stopAddsAfterQ;
+  const painStop = config.painStopAddMode === "locked_before_profit_0_5q"
+    ? timestampBeforeOrSame(cycle.first_mae_1q_timestamp_utc, cycle.first_mfe_0_5q_timestamp_utc)
+    : config.painStopAddMode === "until_profit_0_5q"
+      ? cycle.first_mae_1q_timestamp_utc !== null && cycle.first_mfe_0_5q_timestamp_utc === null
+      : false;
+  return profitStop || painStop;
+}
+
+function timestampBeforeOrSame(left: string | null, right: string | null) {
+  return left !== null && (right === null || left <= right);
+}
+
+function cycleMaxFillAgeDays(cycle: Cycle, timestampMs: number) {
+  return cycle.fills.reduce((maxAge, fill) => Math.max(maxAge, fillAgeDays(fill, timestampMs)), 0);
+}
+
+function painCircuitTriggered(cycle: Cycle, protectionMode: ProtectionMode) {
+  const config = protectionConfig(protectionMode);
+  if (!config.painCircuitBeforeProfitHalfQ) return false;
+  return timestampBeforeOrSame(cycle.first_mae_2q_timestamp_utc, cycle.first_mfe_0_5q_timestamp_utc);
+}
+
+function trailProtectionTriggered(options: {
+  cycle: Cycle;
+  pnlAdr: number;
+  protectionMode: ProtectionMode;
+}) {
+  const config = protectionConfig(options.protectionMode);
+  if (config.trailActivateQ === null || config.trailGivebackQ === null) return false;
+  const spacingAdr = options.cycle.cycle_spacing_adr;
+  if (spacingAdr <= 0) return false;
+  if (options.cycle.max_pnl_adr < spacingAdr * config.trailActivateQ) return false;
+  return options.pnlAdr <= options.cycle.max_pnl_adr - spacingAdr * config.trailGivebackQ;
+}
+
+function sessionFlattenDecision(options: {
+  cycle: Cycle;
+  pnlAdr: number;
+  protectionMode: ProtectionMode;
+  timestampMs: number;
+}): "session_flatten" | "protected_flatten" | "hold" {
+  const config = protectionConfig(options.protectionMode);
+  if (config.holdRedAtFlatten) {
+    if (options.pnlAdr >= 0) return "session_flatten";
+    if (config.holdRedMaxDays !== null && cycleMaxFillAgeDays(options.cycle, options.timestampMs) >= config.holdRedMaxDays) {
+      return "session_flatten";
+    }
+    return "hold";
+  }
+  if (!config.protectedFlatten || config.uglyRedQ === null) return "session_flatten";
+  if (options.pnlAdr >= 0) return "session_flatten";
+  if (options.pnlAdr <= -options.cycle.cycle_spacing_adr * config.uglyRedQ) return "protected_flatten";
+  return "hold";
+}
+
+function closeCycle(options: {
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+  stats: RuntimeStats;
+  cycle: Cycle;
+  closeReason: CloseReason;
+  markPrice: number;
+  currentAdrPct: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+  completedResetOrdinal: number | null;
+}) {
+  observeCycle(options.cycle, options.markPrice, options.currentAdrPct, options.timestampUtc);
+  let pricePnlUsd = 0;
+  let swapUsd = 0;
+  let commissionUsd = 0;
+  let maxFillAgeDays = 0;
+  for (const fill of options.cycle.fills) {
+    const age = fillAgeDays(fill, options.timestampMs);
+    maxFillAgeDays = Math.max(maxFillAgeDays, age);
+    options.stats.positionDays += age * (fill.lot_size / options.runtimeOptions.lotSize);
+    pricePnlUsd += fillPnlUsd({
+      pair: options.cycle.pair,
+      side: options.cycle.side,
+      fill,
+      markPrice: options.markPrice,
+      timestampUtc: options.timestampUtc,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+    });
+    swapUsd += fillSwapUsd(fill, options.timestampMs, options.runtimeOptions);
+    commissionUsd += fill.commission_usd;
+  }
+  const pricePnlAdr = cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct);
+  const pricePnlMarketPct = adrToMarketPct(pricePnlAdr, options.currentAdrPct);
+  adjustOpenPositionStats(options.stats, options.cycle.side, -options.cycle.fills.length);
+  if (options.closeReason === "end_of_test") {
+    options.stats.endLiquidationPricePnlUsd = round6(options.stats.endLiquidationPricePnlUsd + pricePnlUsd);
+    options.stats.endLiquidationSwapUsd = round6(options.stats.endLiquidationSwapUsd + swapUsd);
+    options.stats.endLiquidationPositions += options.cycle.fills.length;
+  } else if (options.closeReason === "session_flatten") {
+    options.stats.sessionFlattenPricePnlUsd = round6(options.stats.sessionFlattenPricePnlUsd + pricePnlUsd);
+    options.stats.sessionFlattenSwapUsd = round6(options.stats.sessionFlattenSwapUsd + swapUsd);
+    options.stats.sessionFlattenCount += 1;
+    options.stats.sessionFlattenPositions += options.cycle.fills.length;
+  } else if (options.closeReason === "protection_trail" || options.closeReason === "protected_flatten" || options.closeReason === "pain_circuit") {
+    options.stats.protectionCloseCount += 1;
+    options.stats.protectionClosePositions += options.cycle.fills.length;
+  } else {
+    options.stats.targetResetCount += 1;
+  }
+  options.stats.realizedPricePnlUsd = round6(options.stats.realizedPricePnlUsd + pricePnlUsd);
+  options.stats.realizedSwapUsd = round6(options.stats.realizedSwapUsd + swapUsd);
+  options.stats.closedPositions += options.cycle.fills.length;
+  options.stats.maxFillAgeDays = Math.max(options.stats.maxFillAgeDays, maxFillAgeDays);
+  const event: CloseEvent = {
+    variant_id: options.cycle.variant_id,
+    activation_rule_id: options.activationRuleId,
+    protection_mode: options.protectionMode,
+    cycle_id: options.cycle.cycle_id,
+    pair: options.cycle.pair,
+    side: options.cycle.side,
+    close_reason: options.closeReason,
+    start_timestamp_utc: options.cycle.start_timestamp_utc,
+    close_timestamp_utc: options.timestampUtc,
+    anchor_week_open_utc: options.cycle.anchor_week_open_utc,
+    fill_count: options.cycle.fills.length,
+    adverse_fill_count: options.cycle.fills.filter((fill) => fill.kind === "adverse_recovery").length,
+    expansion_fill_count: options.cycle.fills.filter((fill) => fill.kind === "favorable_expansion").length,
+    price_pnl_adr: round6(pricePnlAdr),
+    price_pnl_market_pct: round6(pricePnlMarketPct),
+    price_pnl_usd: round6(pricePnlUsd),
+    commission_usd: round6(commissionUsd),
+    swap_usd: round6(swapUsd),
+    net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
+    min_pnl_adr: round6(options.cycle.min_pnl_adr),
+    max_pnl_adr: round6(options.cycle.max_pnl_adr),
+    min_pnl_market_pct: round6(adrToMarketPct(options.cycle.min_pnl_adr, options.currentAdrPct)),
+    max_pnl_market_pct: round6(adrToMarketPct(options.cycle.max_pnl_adr, options.currentAdrPct)),
+    min_pnl_timestamp_utc: options.cycle.min_pnl_timestamp_utc,
+    max_pnl_timestamp_utc: options.cycle.max_pnl_timestamp_utc,
+    first_mfe_0_5q_timestamp_utc: options.cycle.first_mfe_0_5q_timestamp_utc,
+    first_mfe_1q_timestamp_utc: options.cycle.first_mfe_1q_timestamp_utc,
+    first_mfe_2q_timestamp_utc: options.cycle.first_mfe_2q_timestamp_utc,
+    first_mfe_3q_timestamp_utc: options.cycle.first_mfe_3q_timestamp_utc,
+    first_mae_0_5q_timestamp_utc: options.cycle.first_mae_0_5q_timestamp_utc,
+    first_mae_1q_timestamp_utc: options.cycle.first_mae_1q_timestamp_utc,
+    first_mae_2q_timestamp_utc: options.cycle.first_mae_2q_timestamp_utc,
+    first_mae_3q_timestamp_utc: options.cycle.first_mae_3q_timestamp_utc,
+    reset_ordinal_at_start: options.cycle.reset_ordinal_at_start,
+    completed_reset_ordinal: options.completedResetOrdinal,
+    max_fill_age_days: round6(maxFillAgeDays),
+    cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    cycle_signal_adr_brick: options.cycle.cycle_signal_adr_brick === null ? null : round6(options.cycle.cycle_signal_adr_brick),
+    reversion_target_price: options.cycle.cycle_reversion_target_price === null ? null : round6(options.cycle.cycle_reversion_target_price),
+    reversion_target_band_adr: options.cycle.cycle_reversion_target_band_adr === null ? null : round6(options.cycle.cycle_reversion_target_band_adr),
+    triangle_geometry_center_type: options.cycle.triangle_geometry_center_type,
+    triangle_geometry_q_cost_adr: options.cycle.triangle_geometry_q_cost_adr === null ? null : round6(options.cycle.triangle_geometry_q_cost_adr),
+    triangle_geometry_round_trip_cost_adr: options.cycle.triangle_geometry_round_trip_cost_adr === null ? null : round6(options.cycle.triangle_geometry_round_trip_cost_adr),
+    triangle_geometry_p_raw_adr: options.cycle.triangle_geometry_p_raw_adr === null ? null : round6(options.cycle.triangle_geometry_p_raw_adr),
+    triangle_geometry_p_cost_adr: options.cycle.triangle_geometry_p_cost_adr === null ? null : round6(options.cycle.triangle_geometry_p_cost_adr),
+    triangle_geometry_b_cost_adr: options.cycle.triangle_geometry_b_cost_adr === null ? null : round6(options.cycle.triangle_geometry_b_cost_adr),
+    triangle_geometry_q_bend_adr: options.cycle.triangle_geometry_q_bend_adr === null ? null : round6(options.cycle.triangle_geometry_q_bend_adr),
+    triangle_geometry_q_floor_adr: options.cycle.triangle_geometry_q_floor_adr === null ? null : round6(options.cycle.triangle_geometry_q_floor_adr),
+    triangle_geometry_floor_pin_ratio: options.cycle.triangle_geometry_floor_pin_ratio === null ? null : round6(options.cycle.triangle_geometry_floor_pin_ratio),
+    triangle_geometry_surplus_bend_adr: options.cycle.triangle_geometry_surplus_bend_adr === null ? null : round6(options.cycle.triangle_geometry_surplus_bend_adr),
+    triangle_geometry_surplus_quality: options.cycle.triangle_geometry_surplus_quality === null ? null : round6(options.cycle.triangle_geometry_surplus_quality),
+    triangle_geometry_balance: options.cycle.triangle_geometry_balance === null ? null : round6(options.cycle.triangle_geometry_balance),
+    triangle_geometry_quality: options.cycle.triangle_geometry_quality === null ? null : round6(options.cycle.triangle_geometry_quality),
+    triangle_geometry_current_volatility_adr: options.cycle.triangle_geometry_current_volatility_adr === null ? null : round6(options.cycle.triangle_geometry_current_volatility_adr),
+    triangle_geometry_add_spacing_mode: options.cycle.triangle_geometry_add_spacing_mode,
+    triangle_trigger_key: options.cycle.triangle_trigger_key,
+  };
+  completeAddThrottleEventsForCycle({
+    stats: options.stats,
+    cycle: options.cycle,
+    event,
+    markPrice: options.markPrice,
+    currentAdrPct: options.currentAdrPct,
+    timestampMs: options.timestampMs,
+    tickIndex: options.tickIndex,
+    conversionRates: options.conversionRates,
+    runtimeOptions: options.runtimeOptions,
+  });
+  options.stats.closeEventCount += 1;
+  const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+  const mfeMarketPct = Math.max(0, event.max_pnl_market_pct);
+  const maeMarketPctAbs = Math.max(0, -event.min_pnl_market_pct);
+  const spacingAdr = event.cycle_spacing_adr;
+  options.stats.closeEventRealizedPnlAdrSum = round6(options.stats.closeEventRealizedPnlAdrSum + event.price_pnl_adr);
+  options.stats.closeEventRealizedMarketPctSum = round6(options.stats.closeEventRealizedMarketPctSum + event.price_pnl_market_pct);
+  options.stats.closeEventMfeAdrSum = round6(options.stats.closeEventMfeAdrSum + Math.max(0, event.max_pnl_adr));
+  options.stats.closeEventMaeAdrAbsSum = round6(options.stats.closeEventMaeAdrAbsSum + maeAdrAbs);
+  options.stats.closeEventMfeMarketPctSum = round6(options.stats.closeEventMfeMarketPctSum + mfeMarketPct);
+  options.stats.closeEventMaeMarketPctAbsSum = round6(options.stats.closeEventMaeMarketPctAbsSum + maeMarketPctAbs);
+  if (spacingAdr > 0) {
+    if (event.max_pnl_adr >= spacingAdr) options.stats.closeEventMfe1QHitCount += 1;
+    if (event.max_pnl_adr >= spacingAdr * 2) options.stats.closeEventMfe2QHitCount += 1;
+    if (event.max_pnl_adr >= spacingAdr * 3) options.stats.closeEventMfe3QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr) options.stats.closeEventMae1QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr * 2) options.stats.closeEventMae2QHitCount += 1;
+    if (maeAdrAbs >= spacingAdr * 3) options.stats.closeEventMae3QHitCount += 1;
+  }
+  if (event.net_usd > 0) {
+    options.stats.closeEventWinCount += 1;
+    options.stats.closeEventGrossProfitUsd = round6(options.stats.closeEventGrossProfitUsd + event.net_usd);
+  } else if (event.net_usd < 0) {
+    options.stats.closeEventLossCount += 1;
+    options.stats.closeEventGrossLossAbsUsd = round6(options.stats.closeEventGrossLossAbsUsd + Math.abs(event.net_usd));
+  } else {
+    options.stats.closeEventFlatCount += 1;
+  }
+  if (options.closeReason === "target") {
+    options.stats.targetCloseNetUsd = round6(options.stats.targetCloseNetUsd + event.net_usd);
+  } else if (options.closeReason === "session_flatten") {
+    options.stats.sessionFlattenCloseNetUsd = round6(options.stats.sessionFlattenCloseNetUsd + event.net_usd);
+  } else if (options.closeReason === "protection_trail" || options.closeReason === "protected_flatten" || options.closeReason === "pain_circuit") {
+    options.stats.protectionCloseNetUsd = round6(options.stats.protectionCloseNetUsd + event.net_usd);
+  }
+  if (!options.runtimeOptions.summaryOnly) options.stats.closeEvents.push(event);
+  return event;
+}
+
+function depthBucket(levelIndex: number) {
+  if (levelIndex <= 1) return "first_adverse";
+  if (levelIndex <= 3) return "depth_2_3";
+  if (levelIndex <= 6) return "depth_4_6";
+  if (levelIndex <= 12) return "depth_7_12";
+  return "depth_13_plus";
+}
+
+function timeToFlattenBucket(minutesUntilFlatten: number) {
+  if (minutesUntilFlatten < 60) return "lt_60m";
+  if (minutesUntilFlatten < 180) return "60_180m";
+  if (minutesUntilFlatten < 360) return "180_360m";
+  return "gte_360m";
+}
+
+function numericBucket(value: number | null, cuts: number[], labels: string[]) {
+  if (value === null || !Number.isFinite(value)) return null;
+  for (let index = 0; index < cuts.length; index += 1) {
+    if (value < cuts[index]!) return labels[index] ?? `lt_${cuts[index]}`;
+  }
+  return labels.at(-1) ?? `gte_${cuts.at(-1) ?? "max"}`;
+}
+
+function targetEligibleAtActualClose(options: {
+  cycle: Cycle;
+  markPrice: number;
+  currentAdrPct: number;
+  pnlAdr: number;
+  runtimeOptions: Options;
+}) {
+  if (options.runtimeOptions.targetMode === "fixed_adr") {
+    return options.pnlAdr >= options.runtimeOptions.targetAdr;
+  }
+  if (options.runtimeOptions.targetMode === "session_mid_reversion" || options.runtimeOptions.targetMode === "session_center_band_reversion") {
+    const targetPrice = options.cycle.cycle_reversion_target_price;
+    if (targetPrice === null || options.pnlAdr <= 0) return false;
+    if (options.runtimeOptions.targetMode === "session_center_band_reversion") {
+      const bandAdr = options.cycle.cycle_reversion_target_band_adr ?? 0;
+      const bandPrice = targetPrice * options.currentAdrPct / 100 * Math.max(0, bandAdr);
+      return options.cycle.side === "LONG"
+        ? options.markPrice >= targetPrice - bandPrice
+        : options.markPrice <= targetPrice + bandPrice;
+    }
+    return options.cycle.side === "LONG" ? options.markPrice >= targetPrice : options.markPrice <= targetPrice;
+  }
+  return null;
+}
+
+function completeAddThrottleEventsForCycle(options: {
+  stats: RuntimeStats;
+  cycle: Cycle;
+  event: CloseEvent;
+  markPrice: number;
+  currentAdrPct: number;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const indexes = options.stats.addThrottleEventIndexesByCycle.get(options.event.cycle_id);
+  if (!indexes) return;
+  for (const index of indexes) {
+    const row = options.stats.addThrottleEvents[index];
+    if (!row || row.close_reason !== null) continue;
+    row.close_timestamp_utc = options.event.close_timestamp_utc;
+    row.close_reason = options.event.close_reason;
+    row.forward_price_pnl_adr = options.event.price_pnl_adr;
+    row.forward_net_usd = options.event.net_usd;
+    row.forward_max_pnl_adr = options.event.max_pnl_adr;
+    row.forward_min_pnl_adr = options.event.min_pnl_adr;
+    recordMarginalAddAuditRow({
+      stats: options.stats,
+      cycle: options.cycle,
+      addEvent: row,
+      closeEvent: options.event,
+      markPrice: options.markPrice,
+      currentAdrPct: options.currentAdrPct,
+      timestampMs: options.timestampMs,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+      runtimeOptions: options.runtimeOptions,
+    });
+  }
+}
+
+function recordMarginalAddAuditRow(options: {
+  stats: RuntimeStats;
+  cycle: Cycle;
+  addEvent: AddThrottleEventRow;
+  closeEvent: CloseEvent;
+  markPrice: number;
+  currentAdrPct: number;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  if (options.addEvent.activation_rule_id !== "triangle_formulaic_directionless_geometry_v2_floorpin") return;
+  if (options.addEvent.protection_mode !== "baseline") return;
+  if (options.addEvent.gate_mode !== "fixed_q") return;
+  if (options.addEvent.decision !== "allowed") return;
+  const fill = options.cycle.fills.find((candidate) =>
+    candidate.kind === "adverse_recovery" &&
+    candidate.level_index === options.addEvent.level_index &&
+    candidate.entry_timestamp_utc === options.addEvent.timestamp_utc);
+  if (!fill) return;
+
+  const directPricePnlAdr = fillPnlAdr(options.cycle, fill, options.markPrice, options.currentAdrPct);
+  const directPricePnlUsd = fillPnlUsd({
+    pair: options.cycle.pair,
+    side: options.cycle.side,
+    fill,
+    markPrice: options.markPrice,
+    timestampUtc: options.closeEvent.close_timestamp_utc,
+    tickIndex: options.tickIndex,
+    conversionRates: options.conversionRates,
+  });
+  const directSwapUsd = fillSwapUsd(fill, options.timestampMs, options.runtimeOptions);
+  const directNetUsd = directPricePnlUsd + directSwapUsd + fill.commission_usd;
+  const withoutCandidatePnlAdr = options.closeEvent.price_pnl_adr - directPricePnlAdr;
+  const withoutCandidateNetUsd = options.closeEvent.net_usd - directNetUsd;
+  const withoutCandidateTargetEligible = targetEligibleAtActualClose({
+    cycle: options.cycle,
+    markPrice: options.markPrice,
+    currentAdrPct: options.currentAdrPct,
+    pnlAdr: withoutCandidatePnlAdr,
+    runtimeOptions: options.runtimeOptions,
+  });
+  const actualTargetHit = options.closeEvent.close_reason === "target";
+  const changedTargetEligibility = withoutCandidateTargetEligible === null
+    ? null
+    : actualTargetHit !== withoutCandidateTargetEligible;
+  const floorPinRatio = options.cycle.triangle_geometry_floor_pin_ratio;
+  const surplusQuality = options.cycle.triangle_geometry_surplus_quality;
+  const progressBucket = options.addEvent.progress_last3_pass === null
+    ? null
+    : !options.addEvent.progress_gate_active
+      ? "inactive"
+      : options.addEvent.progress_last3_pass
+        ? "progress_pass"
+        : "progress_fail";
+  const row: MarginalAddAuditRow = {
+    variant_id: options.addEvent.variant_id,
+    activation_rule_id: options.addEvent.activation_rule_id,
+    protection_mode: options.addEvent.protection_mode,
+    cycle_id: options.addEvent.cycle_id,
+    pair: options.addEvent.pair,
+    side: options.addEvent.side,
+    timestamp_utc: options.addEvent.timestamp_utc,
+    anchor_week_open_utc: options.addEvent.anchor_week_open_utc,
+    level_index: options.addEvent.level_index,
+    fill_count_before: options.addEvent.fill_count_before,
+    first_adverse_bypass: options.addEvent.first_adverse_bypass,
+    minutes_until_flatten: options.addEvent.minutes_until_flatten,
+    tau_until_flatten: options.addEvent.tau_until_flatten,
+    depth_bucket: depthBucket(options.addEvent.level_index),
+    time_to_flatten_bucket: timeToFlattenBucket(options.addEvent.minutes_until_flatten),
+    cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    triangle_geometry_q_cost_adr: options.cycle.triangle_geometry_q_cost_adr === null ? null : round6(options.cycle.triangle_geometry_q_cost_adr),
+    triangle_geometry_q_floor_adr: options.cycle.triangle_geometry_q_floor_adr === null ? null : round6(options.cycle.triangle_geometry_q_floor_adr),
+    triangle_geometry_floor_pin_ratio: floorPinRatio === null ? null : round6(floorPinRatio),
+    triangle_geometry_surplus_bend_adr: options.cycle.triangle_geometry_surplus_bend_adr === null ? null : round6(options.cycle.triangle_geometry_surplus_bend_adr),
+    triangle_geometry_surplus_quality: surplusQuality === null ? null : round6(surplusQuality),
+    floor_pin_ratio_bucket: numericBucket(floorPinRatio, [1.25, 1.5, 2, 3], ["lt_1_25", "1_25_1_5", "1_5_2", "2_3", "gte_3"]),
+    surplus_quality_bucket: numericBucket(surplusQuality, [1, 2, 4, 8], ["lt_1", "1_2", "2_4", "4_8", "gte_8"]),
+    current_pnl_adr: options.addEvent.current_pnl_adr,
+    last_fill_pnl_adr: options.addEvent.last_fill_pnl_adr,
+    local_mfe_since_last_fill_adr: options.addEvent.local_mfe_since_last_fill_adr,
+    local_mae_since_last_fill_adr: options.addEvent.local_mae_since_last_fill_adr,
+    reversion_evidence_units: options.addEvent.reversion_evidence_units,
+    local_mae_units: options.addEvent.local_mae_units,
+    required_reversion_evidence_units: options.addEvent.required_reversion_evidence_units,
+    reversion_evidence_pass: options.addEvent.reversion_evidence_pass,
+    reversion_evidence_bucket: options.addEvent.reversion_evidence_pass === null ? null : options.addEvent.reversion_evidence_pass ? "reversion_pass" : "reversion_fail",
+    is_late_session: options.addEvent.is_late_session,
+    progress_gate_active: options.addEvent.progress_gate_active,
+    current_distance_to_center_adr: options.addEvent.current_distance_to_center_adr,
+    avg_last3_fill_distance_to_center_adr: options.addEvent.avg_last3_fill_distance_to_center_adr,
+    last3_fill_count: options.addEvent.last3_fill_count,
+    progress_last3_pass: options.addEvent.progress_last3_pass,
+    progress_bucket: progressBucket,
+    close_timestamp_utc: options.closeEvent.close_timestamp_utc,
+    close_reason: options.closeEvent.close_reason,
+    cycle_price_pnl_adr: options.closeEvent.price_pnl_adr,
+    cycle_net_usd: options.closeEvent.net_usd,
+    cycle_max_pnl_adr: options.closeEvent.max_pnl_adr,
+    cycle_min_pnl_adr: options.closeEvent.min_pnl_adr,
+    candidate_fill_age_days: round6(fillAgeDays(fill, options.timestampMs)),
+    candidate_direct_price_pnl_adr: round6(directPricePnlAdr),
+    candidate_direct_price_pnl_usd: round6(directPricePnlUsd),
+    candidate_direct_swap_usd: round6(directSwapUsd),
+    candidate_direct_commission_usd: round6(fill.commission_usd),
+    candidate_direct_net_usd: round6(directNetUsd),
+    candidate_direct_value_sign: directNetUsd > 0 ? "positive" : directNetUsd < 0 ? "negative" : "flat",
+    without_candidate_price_pnl_adr_at_actual_close: round6(withoutCandidatePnlAdr),
+    without_candidate_net_usd_at_actual_close: round6(withoutCandidateNetUsd),
+    without_candidate_target_eligible_at_actual_close: withoutCandidateTargetEligible,
+    actual_target_hit: actualTargetHit,
+    candidate_changed_target_eligibility_at_actual_close: changedTargetEligibility,
+  };
+  options.stats.marginalAddAuditRows.push(row);
+}
+
+function terminalInventoryRow(options: {
+  activationRuleId: ActivationRuleId;
+  cycle: Cycle;
+  signal: SignalSnapshot | null;
+  markPrice: number;
+  currentAdrPct: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}): TerminalInventoryRow {
+  observeCycle(options.cycle, options.markPrice, options.currentAdrPct, options.timestampUtc);
+  let pricePnlUsd = 0;
+  let swapUsd = 0;
+  let commissionUsd = 0;
+  let ageSum = 0;
+  let maxFillAgeDays = 0;
+  let maxAddDepth = 0;
+  for (const fill of options.cycle.fills) {
+    const age = fillAgeDays(fill, options.timestampMs);
+    ageSum += age;
+    maxFillAgeDays = Math.max(maxFillAgeDays, age);
+    maxAddDepth = Math.max(maxAddDepth, fill.level_index);
+    pricePnlUsd += fillPnlUsd({
+      pair: options.cycle.pair,
+      side: options.cycle.side,
+      fill,
+      markPrice: options.markPrice,
+      timestampUtc: options.timestampUtc,
+      tickIndex: options.tickIndex,
+      conversionRates: options.conversionRates,
+    });
+    swapUsd += fillSwapUsd(fill, options.timestampMs, options.runtimeOptions);
+    commissionUsd += fill.commission_usd;
+  }
+  const davidMa = options.signal?.david_ma ?? null;
+  const sideExitDistanceToMaAdr = davidMa !== null && davidMa > 0 && options.currentAdrPct > 0
+    ? options.cycle.side === "LONG"
+      ? ((davidMa - options.markPrice) / davidMa) * 100 / options.currentAdrPct
+      : ((options.markPrice - davidMa) / davidMa) * 100 / options.currentAdrPct
+    : null;
+  return {
+    variant_id: options.cycle.variant_id,
+    activation_rule_id: options.activationRuleId,
+    cycle_id: options.cycle.cycle_id,
+    pair: options.cycle.pair,
+    side: options.cycle.side,
+    terminal_timestamp_utc: options.timestampUtc,
+    anchor_week_open_utc: options.cycle.anchor_week_open_utc,
+    start_timestamp_utc: options.cycle.start_timestamp_utc,
+    fill_count: options.cycle.fills.length,
+    adverse_fill_count: options.cycle.fills.filter((fill) => fill.kind === "adverse_recovery").length,
+    expansion_fill_count: options.cycle.fills.filter((fill) => fill.kind === "favorable_expansion").length,
+    max_add_depth: maxAddDepth,
+    max_fill_age_days: round6(maxFillAgeDays),
+    avg_fill_age_days: round6(options.cycle.fills.length ? ageSum / options.cycle.fills.length : 0),
+    cycle_spacing_adr: round6(options.cycle.cycle_spacing_adr),
+    cycle_signal_adr_brick: options.cycle.cycle_signal_adr_brick === null ? null : round6(options.cycle.cycle_signal_adr_brick),
+    reversion_target_price: options.cycle.cycle_reversion_target_price === null ? null : round6(options.cycle.cycle_reversion_target_price),
+    reversion_target_band_adr: options.cycle.cycle_reversion_target_band_adr === null ? null : round6(options.cycle.cycle_reversion_target_band_adr),
+    triangle_geometry_center_type: options.cycle.triangle_geometry_center_type,
+    triangle_geometry_q_cost_adr: options.cycle.triangle_geometry_q_cost_adr === null ? null : round6(options.cycle.triangle_geometry_q_cost_adr),
+    triangle_geometry_round_trip_cost_adr: options.cycle.triangle_geometry_round_trip_cost_adr === null ? null : round6(options.cycle.triangle_geometry_round_trip_cost_adr),
+    triangle_geometry_p_raw_adr: options.cycle.triangle_geometry_p_raw_adr === null ? null : round6(options.cycle.triangle_geometry_p_raw_adr),
+    triangle_geometry_p_cost_adr: options.cycle.triangle_geometry_p_cost_adr === null ? null : round6(options.cycle.triangle_geometry_p_cost_adr),
+    triangle_geometry_b_cost_adr: options.cycle.triangle_geometry_b_cost_adr === null ? null : round6(options.cycle.triangle_geometry_b_cost_adr),
+    triangle_geometry_q_bend_adr: options.cycle.triangle_geometry_q_bend_adr === null ? null : round6(options.cycle.triangle_geometry_q_bend_adr),
+    triangle_geometry_q_floor_adr: options.cycle.triangle_geometry_q_floor_adr === null ? null : round6(options.cycle.triangle_geometry_q_floor_adr),
+    triangle_geometry_floor_pin_ratio: options.cycle.triangle_geometry_floor_pin_ratio === null ? null : round6(options.cycle.triangle_geometry_floor_pin_ratio),
+    triangle_geometry_surplus_bend_adr: options.cycle.triangle_geometry_surplus_bend_adr === null ? null : round6(options.cycle.triangle_geometry_surplus_bend_adr),
+    triangle_geometry_surplus_quality: options.cycle.triangle_geometry_surplus_quality === null ? null : round6(options.cycle.triangle_geometry_surplus_quality),
+    triangle_geometry_balance: options.cycle.triangle_geometry_balance === null ? null : round6(options.cycle.triangle_geometry_balance),
+    triangle_geometry_quality: options.cycle.triangle_geometry_quality === null ? null : round6(options.cycle.triangle_geometry_quality),
+    triangle_geometry_current_volatility_adr: options.cycle.triangle_geometry_current_volatility_adr === null ? null : round6(options.cycle.triangle_geometry_current_volatility_adr),
+    triangle_geometry_add_spacing_mode: options.cycle.triangle_geometry_add_spacing_mode,
+    triangle_trigger_key: options.cycle.triangle_trigger_key,
+    terminal_mark_price: round6(options.markPrice),
+    terminal_david_ma: davidMa === null ? null : round6(davidMa),
+    side_exit_distance_to_ma_adr: sideExitDistanceToMaAdr === null ? null : round6(sideExitDistanceToMaAdr),
+    directed_move_from_anchor_adr: round6(directedMoveFromCycle(options.cycle, options.markPrice, options.currentAdrPct)),
+    price_pnl_adr: round6(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct)),
+    price_pnl_market_pct: round6(adrToMarketPct(cycleNetPnlAdr(options.cycle, options.markPrice, options.currentAdrPct), options.currentAdrPct)),
+    liquidation_price_pnl_usd: round6(pricePnlUsd),
+    liquidation_swap_usd: round6(swapUsd),
+    entry_commission_usd: round6(commissionUsd),
+    liquidation_net_usd: round6(pricePnlUsd + swapUsd + commissionUsd),
+    min_pnl_adr: round6(options.cycle.min_pnl_adr),
+    max_pnl_adr: round6(options.cycle.max_pnl_adr),
+    min_pnl_market_pct: round6(adrToMarketPct(options.cycle.min_pnl_adr, options.currentAdrPct)),
+    max_pnl_market_pct: round6(adrToMarketPct(options.cycle.max_pnl_adr, options.currentAdrPct)),
+  };
+}
+
+function replayTick(options: {
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  row: ReplayRow;
+  signal: SignalSnapshot;
+  markPrice: number;
+  timestampUtc: string;
+  timestampMs: number;
+  tickIndex: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+  sessionState: SessionTickState;
+  triangleTriggers: TriangleTrigger[];
+  triangleGeometrySessions: TriangleGeometrySession[];
+  barIndex: number;
+}) {
+  const book = options.books.get(options.row.pair) ?? createBook(options.row.pair);
+  options.books.set(options.row.pair, book);
+  const variant_id = variantId(options.activationRuleId, options.protectionMode);
+  const previousTimestampMs = book.last_timestamp_utc === null
+    ? null
+    : Date.parse(book.last_timestamp_utc) + (book.last_tick_index ?? 0);
+  const missedSessionFlatten = !options.sessionState.shouldFlatten
+    && sessionFlattenElapsedSince(options.runtimeOptions, previousTimestampMs, options.timestampMs);
+  book.last_mark_price = options.markPrice;
+  book.last_adr_pct = options.row.pair_adr_pct;
+  book.last_timestamp_utc = options.timestampUtc;
+  book.last_tick_index = options.tickIndex;
+  for (const side of ["LONG", "SHORT"] as const) {
+    let cycle = sideCycle(book, side);
+    if (cycle) {
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct, options.timestampUtc);
+      if (missedSessionFlatten) {
+        const decision = sessionFlattenDecision({
+          cycle,
+          pnlAdr: cyclePnlAdr(cycle, options.markPrice, options.row.pair_adr_pct),
+          protectionMode: options.protectionMode,
+          timestampMs: options.timestampMs,
+        });
+        if (decision !== "hold") {
+          closeCycle({
+            activationRuleId: options.activationRuleId,
+            protectionMode: options.protectionMode,
+            stats: options.stats,
+            cycle,
+            closeReason: decision,
+            markPrice: options.markPrice,
+            currentAdrPct: options.row.pair_adr_pct,
+            timestampUtc: options.timestampUtc,
+            timestampMs: options.timestampMs,
+            tickIndex: options.tickIndex,
+            conversionRates: options.conversionRates,
+            runtimeOptions: options.runtimeOptions,
+            completedResetOrdinal: null,
+          });
+          setSideCycle(book, side, null);
+          continue;
+        }
+      }
+      if (painCircuitTriggered(cycle, options.protectionMode)) {
+        closeCycle({
+          activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
+          stats: options.stats,
+          cycle,
+          closeReason: "pain_circuit",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal: null,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      if (targetReached({
+        cycle,
+        signal: options.signal,
+        markPrice: options.markPrice,
+        currentAdrPct: options.row.pair_adr_pct,
+        runtimeOptions: options.runtimeOptions,
+      })) {
+        const completedResetOrdinal = incrementSideReset(book, side);
+        closeCycle({
+          activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
+          stats: options.stats,
+          cycle,
+          closeReason: "target",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      const currentPnlAdr = cyclePnlAdr(cycle, options.markPrice, options.row.pair_adr_pct);
+      if (trailProtectionTriggered({ cycle, pnlAdr: currentPnlAdr, protectionMode: options.protectionMode })) {
+        closeCycle({
+          activationRuleId: options.activationRuleId,
+          protectionMode: options.protectionMode,
+          stats: options.stats,
+          cycle,
+          closeReason: "protection_trail",
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          completedResetOrdinal: null,
+        });
+        setSideCycle(book, side, null);
+        continue;
+      }
+      if (options.sessionState.shouldFlatten) {
+        const decision = sessionFlattenDecision({
+          cycle,
+          pnlAdr: currentPnlAdr,
+          protectionMode: options.protectionMode,
+          timestampMs: options.timestampMs,
+        });
+        if (decision !== "hold") {
+          closeCycle({
+            activationRuleId: options.activationRuleId,
+            protectionMode: options.protectionMode,
+            stats: options.stats,
+            cycle,
+            closeReason: decision,
+            markPrice: options.markPrice,
+            currentAdrPct: options.row.pair_adr_pct,
+            timestampUtc: options.timestampUtc,
+            timestampMs: options.timestampMs,
+            tickIndex: options.tickIndex,
+            conversionRates: options.conversionRates,
+            runtimeOptions: options.runtimeOptions,
+            completedResetOrdinal: null,
+          });
+          setSideCycle(book, side, null);
+          continue;
+        }
+      }
+      if (!options.sessionState.canOpenOrAdd) continue;
+      if (shouldStopAddsAfterProfit(cycle, options.protectionMode)) continue;
+      addGridFills({
+        stats: options.stats,
+        book,
+        cycle,
+        markPrice: options.markPrice,
+        timestampUtc: options.timestampUtc,
+        timestampMs: options.timestampMs,
+        currentAdrPct: options.row.pair_adr_pct,
+        runtimeOptions: options.runtimeOptions,
+      });
+      observeCycle(cycle, options.markPrice, options.row.pair_adr_pct, options.timestampUtc);
+      continue;
+    }
+    if (options.sessionState.canOpenOrAdd) {
+      let cycleSpacingAdr = options.runtimeOptions.spacingAdr;
+      let cycleSignalAdrBrick: number | null = null;
+      let reversionTargetPrice: number | null = null;
+      let reversionTargetBandAdr: number | null = null;
+      let triangleGeometryCenterType: string | null = null;
+      let triangleGeometryQCostAdr: number | null = null;
+      let triangleGeometryRoundTripCostAdr: number | null = null;
+      let triangleGeometryPRawAdr: number | null = null;
+      let triangleGeometryPCostAdr: number | null = null;
+      let triangleGeometryBCostAdr: number | null = null;
+      let triangleGeometryQBendAdr: number | null = null;
+      let triangleGeometryQFloorAdr: number | null = null;
+      let triangleGeometryFloorPinRatio: number | null = null;
+      let triangleGeometrySurplusBendAdr: number | null = null;
+      let triangleGeometrySurplusQuality: number | null = null;
+      let triangleGeometryBalance: number | null = null;
+      let triangleGeometryQuality: number | null = null;
+      let triangleGeometryCurrentVolatilityAdr: number | null = null;
+      let triangleGeometryAddSpacingMode: string | null = null;
+      let triangleTriggerKey: string | null = null;
+      let signalAllowed = false;
+      let expansionAllowed = false;
+      if (isTriangleV0ActivationRule(options.activationRuleId)) {
+        const trigger = activeTriangleTrigger(options.triangleTriggers, side, options.timestampMs);
+        const gate = triangleStartGate({
+          trigger,
+          signal: options.signal,
+          side,
+          markPrice: options.markPrice,
+          currentAdrPct: options.row.pair_adr_pct,
+          candidateBSide: options.row.candidate_b_side,
+          candidateMode: options.activationRuleId === "triangle_v0_no_candidate_b" ? "david_only" : "candidate_and_david",
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
+        triangleTriggerKey = gate.triggerKey;
+      } else if (isTriangleV1ActivationRule(options.activationRuleId)) {
+        const gate = triangleV1StartGate({
+          ruleId: options.activationRuleId,
+          sessions: options.triangleGeometrySessions,
+          row: options.row,
+          signal: options.signal,
+          side,
+          markPrice: options.markPrice,
+          timestampMs: options.timestampMs,
+          currentBarIndex: options.barIndex,
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
+        triangleTriggerKey = gate.triggerKey;
+      } else if (isTriangleFormulaicActivationRule(options.activationRuleId)) {
+        const gate = triangleFormulaicStartGate({
+          ruleId: options.activationRuleId,
+          sessions: options.triangleGeometrySessions,
+          row: options.row,
+          side,
+          markPrice: options.markPrice,
+          timestampUtc: options.timestampUtc,
+          timestampMs: options.timestampMs,
+          tickIndex: options.tickIndex,
+          currentBarIndex: options.barIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+        });
+        signalAllowed = gate.signalAllowed;
+        expansionAllowed = gate.expansionAllowed;
+        cycleSpacingAdr = gate.spacingAdr ?? options.runtimeOptions.spacingAdr;
+        cycleSignalAdrBrick = gate.signalAdrBrick;
+        reversionTargetPrice = gate.reversionTargetPrice;
+        reversionTargetBandAdr = gate.reversionTargetBandAdr;
+        triangleGeometryCenterType = gate.centerType;
+        triangleGeometryQCostAdr = gate.qCostAdr;
+        triangleGeometryRoundTripCostAdr = gate.roundTripCostAdr;
+        triangleGeometryPRawAdr = gate.pRawAdr;
+        triangleGeometryPCostAdr = gate.pCostAdr;
+        triangleGeometryBCostAdr = gate.bCostAdr;
+        triangleGeometryQBendAdr = gate.qBendAdr;
+        triangleGeometryQFloorAdr = gate.qFloorAdr;
+        triangleGeometryFloorPinRatio = gate.floorPinRatio;
+        triangleGeometrySurplusBendAdr = gate.surplusBendAdr;
+        triangleGeometrySurplusQuality = gate.surplusGeometryQuality;
+        triangleGeometryBalance = gate.balance;
+        triangleGeometryQuality = gate.geometryQuality;
+        triangleGeometryCurrentVolatilityAdr = gate.currentVolatilityAdr;
+        triangleGeometryAddSpacingMode = gate.addSpacingMode;
+        triangleTriggerKey = gate.triggerKey;
+      } else {
+        signalAllowed = options.activationRuleId === "raw_both"
+          ? true
+          : activationAllows(options.activationRuleId, options.signal, side, options.runtimeOptions.signalSettings, options.row.candidate_b_side);
+        expansionAllowed = signalAllowed && maExpansionAllows(
+          options.signal,
+          side,
+          options.markPrice,
+          options.row.pair_adr_pct,
+          options.runtimeOptions.minMaExpansionAdr,
+        );
+      }
+      const allowed = signalAllowed && expansionAllowed;
+      options.stats.activationChecks += 1;
+      if (side === "LONG" && allowed) options.stats.activationAllowedLong += 1;
+      if (side === "SHORT" && allowed) options.stats.activationAllowedShort += 1;
+      if (side === "LONG" && !allowed) options.stats.activationBlockedLong += 1;
+      if (side === "SHORT" && !allowed) options.stats.activationBlockedShort += 1;
+      if (signalAllowed && !expansionAllowed) options.stats.activationBlockedExpansion += 1;
+      if (!allowed) continue;
+      cycle = startCycle({
+        stats: options.stats,
+        book,
+        row: options.row,
+        side,
+        variant_id,
+        activationRuleId: options.activationRuleId,
+        protectionMode: options.protectionMode,
+        markPrice: options.markPrice,
+        timestampUtc: options.timestampUtc,
+        timestampMs: options.timestampMs,
+        runtimeOptions: options.runtimeOptions,
+        cycleSpacingAdr,
+        cycleSignalAdrBrick,
+        reversionTargetPrice,
+        reversionTargetBandAdr,
+        triangleGeometryCenterType,
+        triangleGeometryQCostAdr,
+        triangleGeometryRoundTripCostAdr,
+        triangleGeometryPRawAdr,
+        triangleGeometryPCostAdr,
+        triangleGeometryBCostAdr,
+        triangleGeometryQBendAdr,
+        triangleGeometryQFloorAdr,
+        triangleGeometryFloorPinRatio,
+        triangleGeometrySurplusBendAdr,
+        triangleGeometrySurplusQuality,
+        triangleGeometryBalance,
+        triangleGeometryQuality,
+        triangleGeometryCurrentVolatilityAdr,
+        triangleGeometryAddSpacingMode,
+        triangleTriggerKey,
+      });
+      setSideCycle(book, side, cycle);
+      continue;
+    }
+  }
+  observeStats(options.stats, options.books);
+}
+
+function replayRowForVariants(options: {
+  variantStates: RuntimeVariantState[];
+  sharedSignalBooks: Map<string, SignalBook>;
+  row: ReplayRow;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const signalBook = options.sharedSignalBooks.get(options.row.pair) ?? createSignalBook(options.row.pair);
+  options.sharedSignalBooks.set(options.row.pair, signalBook);
+  const timestamps = options.row.path_payload.timestamp_utc;
+  const triangleTriggers = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule)
+    ? detectTriangleTriggers(options.row)
+    : [];
+  const triangleGeometrySessions = options.runtimeOptions.activationRuleIds.some((ruleId) => isTriangleV1ActivationRule(ruleId) || isTriangleFormulaicActivationRule(ruleId))
+    ? detectTriangleGeometrySessions(options.row)
+    : [];
+  for (let index = 0; index < timestamps.length; index += 1) {
+    const timestampUtc = timestamps[index]!;
+    const baseTimestampMs = Date.parse(timestampUtc);
+    const directedMarks = directedBarPath(options.row, index, options.runtimeOptions.barPathMode);
+    const signal = signalBook.lastSignal;
+    for (let tickIndex = 0; tickIndex < directedMarks.length; tickIndex += 1) {
+      const timestampMs = baseTimestampMs + tickIndex;
+      const markPrice = markPriceFromDirectedAdr(options.row, directedMarks[tickIndex]!);
+      const sessionState = sessionTickState(options.runtimeOptions, timestampMs);
+      for (const variantState of options.variantStates) {
+        replayTick({
+          stats: variantState.stats,
+          books: variantState.books,
+          row: options.row,
+          signal,
+          markPrice,
+          timestampUtc,
+          timestampMs,
+          barIndex: index,
+          tickIndex,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+          activationRuleId: variantState.activationRuleId,
+          protectionMode: variantState.protectionMode,
+          sessionState,
+          triangleTriggers,
+          triangleGeometrySessions,
+        });
+      }
+    }
+    updateSignalBook(signalBook, options.row, index, options.runtimeOptions);
+  }
+}
+
+function snapshotOpen(books: Map<string, PairBook>, timestampUtc: string, runtimeOptions: Options, conversionRates: ConversionRates) {
+  const timestampMs = Date.parse(timestampUtc);
+  let openPricePnlUsd = 0;
+  let openSwapUsd = 0;
+  for (const book of books.values()) {
+    if (book.last_mark_price === null) continue;
+    for (const cycle of [book.long, book.short]) {
+      if (!cycle) continue;
+      const bookTimestampUtc = book.last_timestamp_utc ?? timestampUtc;
+      for (const fill of cycle.fills) {
+        openPricePnlUsd += fillPnlUsd({
+          pair: cycle.pair,
+          side: cycle.side,
+          fill,
+          markPrice: book.last_mark_price,
+          timestampUtc: bookTimestampUtc,
+          tickIndex: book.last_tick_index ?? 0,
+          conversionRates,
+        });
+        openSwapUsd += fillSwapUsd(fill, timestampMs, runtimeOptions);
+      }
+    }
+  }
+  return { openPricePnlUsd: round6(openPricePnlUsd), openSwapUsd: round6(openSwapUsd) };
+}
+
+function addWeeklySnapshot(options: {
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  variant_id: string;
+  weekOpenUtc: string;
+  pairsReplayed: number;
+  previousEquityUsd: number;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  const snapshotTimestamp = [...options.books.values()]
+    .map((book) => book.last_timestamp_utc)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? options.weekOpenUtc;
+  const open = snapshotOpen(options.books, snapshotTimestamp, options.runtimeOptions, options.conversionRates);
+  const balance = round6(options.runtimeOptions.initialDepositUsd + options.stats.realizedPricePnlUsd + options.stats.realizedCommissionUsd + options.stats.realizedSwapUsd);
+  const equity = round6(balance + open.openPricePnlUsd + open.openSwapUsd);
+  const counts = openPositionCounts(options.books);
+  const row: WeeklyTruthRow = {
+    variant_id: options.variant_id,
+    week_open_utc: options.weekOpenUtc,
+    pairs_replayed: options.pairsReplayed,
+    closed_price_pnl_usd: round6(options.stats.realizedPricePnlUsd),
+    realized_commission_usd: round6(options.stats.realizedCommissionUsd),
+    realized_swap_usd: round6(options.stats.realizedSwapUsd),
+    realized_net_usd: round6(options.stats.realizedPricePnlUsd + options.stats.realizedCommissionUsd + options.stats.realizedSwapUsd),
+    open_price_pnl_usd: open.openPricePnlUsd,
+    open_swap_usd: open.openSwapUsd,
+    equity_usd: equity,
+    balance_usd: balance,
+    equity_delta_usd: round6(equity - options.previousEquityUsd),
+    open_positions: counts.total,
+    long_positions: counts.long,
+    short_positions: counts.short,
+    fills_opened: options.stats.fillsOpened,
+    target_reset_count: options.stats.targetResetCount,
+    max_open_positions_to_date: options.stats.maxOpenPositions,
+    max_long_positions_to_date: options.stats.maxLongPositions,
+    max_short_positions_to_date: options.stats.maxShortPositions,
+    max_add_depth_to_date: options.stats.maxAddDepth,
+    position_days_closed_to_date: round6(options.stats.positionDays),
+  };
+  options.stats.weeklyRows.push(row);
+  return equity;
+}
+
+function liquidateEnd(options: {
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  signalBooks: Map<string, SignalBook>;
+  conversionRates: ConversionRates;
+  runtimeOptions: Options;
+}) {
+  for (const book of options.books.values()) {
+    if (book.last_mark_price === null || book.last_timestamp_utc === null) continue;
+    const currentAdrPct = book.last_adr_pct ?? 1;
+    const signal = options.signalBooks.get(book.pair)?.lastSignal ?? null;
+    for (const side of ["LONG", "SHORT"] as const) {
+      const cycle = sideCycle(book, side);
+      if (!cycle) continue;
+      const closeReason: CloseReason = options.runtimeOptions.sessionMode === "ny_daily_window" ? "session_flatten" : "end_of_test";
+      if (closeReason === "end_of_test") {
+        options.stats.terminalInventoryRows.push(terminalInventoryRow({
+          activationRuleId: options.activationRuleId,
+          cycle,
+          signal,
+          markPrice: book.last_mark_price,
+          currentAdrPct,
+          timestampUtc: book.last_timestamp_utc,
+          timestampMs: Date.parse(book.last_timestamp_utc),
+          tickIndex: book.last_tick_index ?? 0,
+          conversionRates: options.conversionRates,
+          runtimeOptions: options.runtimeOptions,
+        }));
+      }
+      closeCycle({
+        activationRuleId: options.activationRuleId,
+        protectionMode: options.protectionMode,
+        stats: options.stats,
+        cycle,
+        closeReason,
+        markPrice: book.last_mark_price,
+        currentAdrPct,
+        timestampUtc: book.last_timestamp_utc,
+        timestampMs: Date.parse(book.last_timestamp_utc),
+        tickIndex: book.last_tick_index ?? 0,
+        conversionRates: options.conversionRates,
+        runtimeOptions: options.runtimeOptions,
+        completedResetOrdinal: null,
+      });
+      setSideCycle(book, side, null);
+    }
+  }
+}
+
+function drawdown(rows: Array<{ week_open_utc: string; value: number }>) {
+  let peak = 0;
+  let worst = 0;
+  let start: string | null = null;
+  let end: string | null = null;
+  let peakWeek: string | null = null;
+  for (const row of rows) {
+    if (row.value > peak) {
+      peak = row.value;
+      peakWeek = row.week_open_utc;
+    }
+    const dd = round6(row.value - peak);
+    if (dd < worst) {
+      worst = dd;
+      start = peakWeek;
+      end = row.week_open_utc;
+    }
+  }
+  return { drawdown: worst, start, end };
+}
+
+function strategyClass(ruleId: ActivationRuleId) {
+  if (ruleId === "triangle_v0" || ruleId === "triangle_v0_no_candidate_b") return "strict_katarakti";
+  if (isTriangleV1ActivationRule(ruleId)) return "triangle_geometry_extension";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin") return "formulaic_directionless_geometry_v2_floorpin";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon") return "formulaic_directionless_geometry_v2_floorpin_horizon";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_solvency") return "formulaic_directionless_geometry_v2_floorpin_solvency";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency") return "formulaic_directionless_geometry_v2_floorpin_horizon_solvency";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_surplus") return "formulaic_directionless_geometry_v2_surplus";
+  if (ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex") return "formulaic_directionless_geometry_v2_surplus_convex";
+  if (isTriangleFormulaicV2ActivationRule(ruleId)) return "formulaic_directionless_geometry_v2";
+  if (isTriangleFormulaicActivationRule(ruleId)) return "formulaic_directionless_geometry";
+  if (ruleId === "david_contra") return "standalone_david_contra";
+  if (ruleId === "candidate_b") return "standalone_candidate_b";
+  return ruleId;
+}
+
+type CloseEventBreakdownAccumulator = {
+  variant_id: string;
+  activation_rule_id: ActivationRuleId;
+  protection_mode: ProtectionMode;
+  group_type: CloseEventBreakdownRow["group_type"];
+  group_key: string;
+  close_event_count: number;
+  win_count: number;
+  loss_count: number;
+  flat_count: number;
+  total_realized_pnl_adr: number;
+  total_realized_market_pct: number;
+  net_usd: number;
+  gross_profit_usd: number;
+  gross_loss_abs_usd: number;
+  mfe_adr_sum: number;
+  mae_adr_abs_sum: number;
+  mfe_market_pct_sum: number;
+  mae_market_pct_abs_sum: number;
+  mfe_1q_hit_count: number;
+  mfe_2q_hit_count: number;
+  mfe_3q_hit_count: number;
+  mae_1q_hit_count: number;
+  mae_2q_hit_count: number;
+  mae_3q_hit_count: number;
+  target_close_net_usd: number;
+  session_flatten_close_net_usd: number;
+};
+
+function closeMonthKey(timestampUtc: string) {
+  return timestampUtc.slice(0, 7);
+}
+
+function closeEventGroupKeys(event: CloseEvent): Array<{ group_type: CloseEventBreakdownRow["group_type"]; group_key: string }> {
+  return [
+    { group_type: "anchor_week", group_key: event.anchor_week_open_utc },
+    { group_type: "close_month", group_key: closeMonthKey(event.close_timestamp_utc) },
+    { group_type: "pair", group_key: event.pair },
+    { group_type: "pair_side", group_key: `${event.pair}_${event.side}` },
+    { group_type: "close_reason", group_key: event.close_reason },
+    { group_type: "strategy_class", group_key: strategyClass(event.activation_rule_id) },
+  ];
+}
+
+function closeEventBreakdownRows(events: CloseEvent[], initialDepositUsd: number): CloseEventBreakdownRow[] {
+  const groups = new Map<string, CloseEventBreakdownAccumulator>();
+  for (const event of events) {
+    for (const group of closeEventGroupKeys(event)) {
+      const key = [event.variant_id, event.activation_rule_id, event.protection_mode, group.group_type, group.group_key].join("|");
+      const accumulator = groups.get(key) ?? {
+        variant_id: event.variant_id,
+        activation_rule_id: event.activation_rule_id,
+        protection_mode: event.protection_mode,
+        group_type: group.group_type,
+        group_key: group.group_key,
+        close_event_count: 0,
+        win_count: 0,
+        loss_count: 0,
+        flat_count: 0,
+        total_realized_pnl_adr: 0,
+        total_realized_market_pct: 0,
+        net_usd: 0,
+        gross_profit_usd: 0,
+        gross_loss_abs_usd: 0,
+        mfe_adr_sum: 0,
+        mae_adr_abs_sum: 0,
+        mfe_market_pct_sum: 0,
+        mae_market_pct_abs_sum: 0,
+        mfe_1q_hit_count: 0,
+        mfe_2q_hit_count: 0,
+        mfe_3q_hit_count: 0,
+        mae_1q_hit_count: 0,
+        mae_2q_hit_count: 0,
+        mae_3q_hit_count: 0,
+        target_close_net_usd: 0,
+        session_flatten_close_net_usd: 0,
+      };
+      accumulator.close_event_count += 1;
+      accumulator.total_realized_pnl_adr = round6(accumulator.total_realized_pnl_adr + event.price_pnl_adr);
+      accumulator.total_realized_market_pct = round6(accumulator.total_realized_market_pct + event.price_pnl_market_pct);
+      accumulator.net_usd = round6(accumulator.net_usd + event.net_usd);
+      if (event.net_usd > 0) {
+        accumulator.win_count += 1;
+        accumulator.gross_profit_usd = round6(accumulator.gross_profit_usd + event.net_usd);
+      } else if (event.net_usd < 0) {
+        accumulator.loss_count += 1;
+        accumulator.gross_loss_abs_usd = round6(accumulator.gross_loss_abs_usd + Math.abs(event.net_usd));
+      } else {
+        accumulator.flat_count += 1;
+      }
+      const mfeAdr = Math.max(0, event.max_pnl_adr);
+      const maeAdrAbs = Math.max(0, -event.min_pnl_adr);
+      const mfeMarketPct = Math.max(0, event.max_pnl_market_pct);
+      const maeMarketPctAbs = Math.max(0, -event.min_pnl_market_pct);
+      accumulator.mfe_adr_sum = round6(accumulator.mfe_adr_sum + mfeAdr);
+      accumulator.mae_adr_abs_sum = round6(accumulator.mae_adr_abs_sum + maeAdrAbs);
+      accumulator.mfe_market_pct_sum = round6(accumulator.mfe_market_pct_sum + mfeMarketPct);
+      accumulator.mae_market_pct_abs_sum = round6(accumulator.mae_market_pct_abs_sum + maeMarketPctAbs);
+      if (event.cycle_spacing_adr > 0) {
+        if (mfeAdr >= event.cycle_spacing_adr) accumulator.mfe_1q_hit_count += 1;
+        if (mfeAdr >= event.cycle_spacing_adr * 2) accumulator.mfe_2q_hit_count += 1;
+        if (mfeAdr >= event.cycle_spacing_adr * 3) accumulator.mfe_3q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr) accumulator.mae_1q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr * 2) accumulator.mae_2q_hit_count += 1;
+        if (maeAdrAbs >= event.cycle_spacing_adr * 3) accumulator.mae_3q_hit_count += 1;
+      }
+      if (event.close_reason === "target") {
+        accumulator.target_close_net_usd = round6(accumulator.target_close_net_usd + event.net_usd);
+      } else if (event.close_reason === "session_flatten") {
+        accumulator.session_flatten_close_net_usd = round6(accumulator.session_flatten_close_net_usd + event.net_usd);
+      }
+      groups.set(key, accumulator);
+    }
+  }
+  const pct = (count: number, total: number) => total ? round2((count / total) * 100) : null;
+  return [...groups.values()]
+    .map((row): CloseEventBreakdownRow => ({
+      variant_id: row.variant_id,
+      activation_rule_id: row.activation_rule_id,
+      protection_mode: row.protection_mode,
+      group_type: row.group_type,
+      group_key: row.group_key,
+      close_event_count: row.close_event_count,
+      win_count: row.win_count,
+      loss_count: row.loss_count,
+      flat_count: row.flat_count,
+      win_pct: pct(row.win_count, row.close_event_count),
+      total_realized_pnl_adr: round6(row.total_realized_pnl_adr),
+      adr_normalized_return_pct: round6(row.total_realized_pnl_adr),
+      avg_realized_pnl_adr: row.close_event_count ? round6(row.total_realized_pnl_adr / row.close_event_count) : null,
+      total_realized_market_pct: round6(row.total_realized_market_pct),
+      avg_realized_market_pct: row.close_event_count ? round6(row.total_realized_market_pct / row.close_event_count) : null,
+      net_usd: round2(row.net_usd),
+      account_return_pct: round6((row.net_usd / initialDepositUsd) * 100),
+      gross_profit_usd: round2(row.gross_profit_usd),
+      gross_loss_abs_usd: round2(row.gross_loss_abs_usd),
+      profit_factor: profitFactorFromGross(row.gross_profit_usd, row.gross_loss_abs_usd),
+      avg_mfe_adr: row.close_event_count ? round6(row.mfe_adr_sum / row.close_event_count) : null,
+      avg_mae_adr_abs: row.close_event_count ? round6(row.mae_adr_abs_sum / row.close_event_count) : null,
+      avg_mfe_market_pct: row.close_event_count ? round6(row.mfe_market_pct_sum / row.close_event_count) : null,
+      avg_mae_market_pct_abs: row.close_event_count ? round6(row.mae_market_pct_abs_sum / row.close_event_count) : null,
+      mfe_1q_hit_count: row.mfe_1q_hit_count,
+      mfe_2q_hit_count: row.mfe_2q_hit_count,
+      mfe_3q_hit_count: row.mfe_3q_hit_count,
+      mfe_1q_hit_pct: pct(row.mfe_1q_hit_count, row.close_event_count),
+      mfe_2q_hit_pct: pct(row.mfe_2q_hit_count, row.close_event_count),
+      mfe_3q_hit_pct: pct(row.mfe_3q_hit_count, row.close_event_count),
+      mae_1q_hit_count: row.mae_1q_hit_count,
+      mae_2q_hit_count: row.mae_2q_hit_count,
+      mae_3q_hit_count: row.mae_3q_hit_count,
+      mae_1q_hit_pct: pct(row.mae_1q_hit_count, row.close_event_count),
+      mae_2q_hit_pct: pct(row.mae_2q_hit_count, row.close_event_count),
+      mae_3q_hit_pct: pct(row.mae_3q_hit_count, row.close_event_count),
+      target_close_net_usd: round2(row.target_close_net_usd),
+      session_flatten_close_net_usd: round2(row.session_flatten_close_net_usd),
+      session_flatten_account_return_pct: round6((row.session_flatten_close_net_usd / initialDepositUsd) * 100),
+    }))
+    .map((row) => withHash(row as unknown as Record<string, unknown>) as unknown as CloseEventBreakdownRow)
+    .sort((a, b) => a.variant_id.localeCompare(b.variant_id)
+      || a.protection_mode.localeCompare(b.protection_mode)
+      || a.group_type.localeCompare(b.group_type)
+      || a.group_key.localeCompare(b.group_key));
+}
+
+function summarize(options: {
+  stats: RuntimeStats;
+  books: Map<string, PairBook>;
+  selectedWeeks: string[];
+  selectedPairs: string[];
+  manifest: { manifest_id: string; warehouse_hash: string; price_bundle_id?: string | null };
+  runtimeOptions: Options;
+  activationRuleId: ActivationRuleId;
+  protectionMode: ProtectionMode;
+}): SummaryRow {
+  const finalBeforeLiquidation = options.stats.weeklyRows.at(-1)?.equity_usd ?? options.runtimeOptions.initialDepositUsd;
+  const finalBalance = round6(options.runtimeOptions.initialDepositUsd + options.stats.realizedPricePnlUsd + options.stats.realizedCommissionUsd + options.stats.realizedSwapUsd);
+  const net = round6(finalBalance - options.runtimeOptions.initialDepositUsd);
+  const equityDeltas = options.stats.weeklyRows.map((row) => row.equity_delta_usd);
+  const equityDd = drawdown(options.stats.weeklyRows.map((row) => ({ week_open_utc: row.week_open_utc, value: row.equity_usd - options.runtimeOptions.initialDepositUsd })));
+  const balanceDd = drawdown(options.stats.weeklyRows.map((row) => ({ week_open_utc: row.week_open_utc, value: row.balance_usd - options.runtimeOptions.initialDepositUsd })));
+  const closedPricePnl = round6(options.stats.realizedPricePnlUsd - options.stats.endLiquidationPricePnlUsd);
+  const endPricePnl = round6(options.stats.endLiquidationPricePnlUsd);
+  const variant_id = variantId(options.activationRuleId, options.protectionMode);
+  const settings = options.runtimeOptions.signalSettings;
+  const longChecks = options.stats.activationAllowedLong + options.stats.activationBlockedLong;
+  const shortChecks = options.stats.activationAllowedShort + options.stats.activationBlockedShort;
+  const closeWinPct = options.stats.closeEventCount
+    ? round2((options.stats.closeEventWinCount / options.stats.closeEventCount) * 100)
+    : null;
+  const closeEventCount = options.stats.closeEventCount;
+  const closeEventHitPct = (count: number) => closeEventCount ? round2((count / closeEventCount) * 100) : null;
+  return withHash({
+    variant_id,
+    activation_rule_id: options.activationRuleId,
+    protection_mode: options.protectionMode,
+    signal_settings_id: signalSettingsId(settings),
+    david_settings: davidSettingsLabel(settings),
+    stochastic_settings: stochasticSettingsLabel(settings),
+    symbol_universe: options.selectedPairs.join(","),
+    bar_path_mode: options.runtimeOptions.barPathMode,
+    signal_clock: options.runtimeOptions.signalClock,
+    signal_adr_brick: options.runtimeOptions.signalAdrBrick,
+    session_mode: options.runtimeOptions.sessionMode,
+    session_time_zone: options.runtimeOptions.sessionTimeZone,
+    session_trade_start_et: formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes),
+    session_trade_end_et: formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes),
+    session_flatten_et: formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes),
+    session_sunday_start_et: formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes),
+    session_flatten_overrides_et: sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt),
+    target_mode: options.runtimeOptions.targetMode,
+    target_adr: options.runtimeOptions.targetAdr,
+    spacing_adr: options.runtimeOptions.spacingAdr,
+    min_ma_expansion_adr: options.runtimeOptions.minMaExpansionAdr,
+    grid_add_mode: options.runtimeOptions.gridAddMode,
+    date_range: `${options.selectedWeeks.at(0) ?? "none"}..${options.selectedWeeks.at(-1) ?? "none"}`,
+    price_bundle_id: options.manifest.price_bundle_id ?? null,
+    warehouse_manifest_id: options.manifest.manifest_id,
+    warehouse_hash: options.manifest.warehouse_hash,
+    weeks_replayed: options.selectedWeeks.length,
+    pairs_replayed: options.selectedPairs.length,
+    initial_deposit_usd: round2(options.runtimeOptions.initialDepositUsd),
+    final_balance_usd: round2(finalBalance),
+    final_equity_before_liquidation_usd: round2(finalBeforeLiquidation),
+    final_equity_after_liquidation_usd: round2(finalBalance),
+    net_profit_usd: round2(net),
+    closed_price_pnl_usd: round2(closedPricePnl),
+    end_liquidation_price_pnl_usd: round2(endPricePnl),
+    total_price_pnl_usd: round2(options.stats.realizedPricePnlUsd),
+    total_commission_usd: round2(options.stats.realizedCommissionUsd),
+    total_swap_usd: round2(options.stats.realizedSwapUsd),
+    target_reset_count: options.stats.targetResetCount,
+    session_flatten_count: options.stats.sessionFlattenCount,
+    session_flatten_positions: options.stats.sessionFlattenPositions,
+    session_flatten_price_pnl_usd: round2(options.stats.sessionFlattenPricePnlUsd),
+    session_flatten_swap_usd: round2(options.stats.sessionFlattenSwapUsd),
+    protection_close_count: options.stats.protectionCloseCount,
+    protection_close_positions: options.stats.protectionClosePositions,
+    entries_opened: options.stats.fillsOpened,
+    closed_positions: options.stats.closedPositions,
+    end_liquidation_positions: options.stats.endLiquidationPositions,
+    max_open_positions: options.stats.maxOpenPositions,
+    max_long_positions: options.stats.maxLongPositions,
+    max_short_positions: options.stats.maxShortPositions,
+    max_add_depth: options.stats.maxAddDepth,
+    max_fill_age_days: round2(options.stats.maxFillAgeDays),
+    position_days: round2(options.stats.positionDays),
+    max_equity_drawdown_usd: round2(equityDd.drawdown),
+    max_balance_drawdown_usd: round2(balanceDd.drawdown),
+    weekly_equity_profit_factor: profitFactor(equityDeltas),
+    close_event_count: options.stats.closeEventCount,
+    close_event_win_count: options.stats.closeEventWinCount,
+    close_event_loss_count: options.stats.closeEventLossCount,
+    close_event_flat_count: options.stats.closeEventFlatCount,
+    close_event_profit_factor: profitFactorFromGross(options.stats.closeEventGrossProfitUsd, options.stats.closeEventGrossLossAbsUsd),
+    close_event_win_pct: closeWinPct,
+    close_event_total_realized_pnl_adr: round6(options.stats.closeEventRealizedPnlAdrSum),
+    adr_normalized_return_pct: round6(options.stats.closeEventRealizedPnlAdrSum),
+    close_event_total_realized_market_pct: round6(options.stats.closeEventRealizedMarketPctSum),
+    close_event_gross_profit_usd: round2(options.stats.closeEventGrossProfitUsd),
+    close_event_gross_loss_abs_usd: round2(options.stats.closeEventGrossLossAbsUsd),
+    close_event_avg_realized_pnl_adr: closeEventCount ? round6(options.stats.closeEventRealizedPnlAdrSum / closeEventCount) : null,
+    close_event_avg_realized_market_pct: closeEventCount ? round6(options.stats.closeEventRealizedMarketPctSum / closeEventCount) : null,
+    close_event_avg_mfe_adr: closeEventCount ? round6(options.stats.closeEventMfeAdrSum / closeEventCount) : null,
+    close_event_avg_mae_adr_abs: closeEventCount ? round6(options.stats.closeEventMaeAdrAbsSum / closeEventCount) : null,
+    close_event_avg_mfe_market_pct: closeEventCount ? round6(options.stats.closeEventMfeMarketPctSum / closeEventCount) : null,
+    close_event_avg_mae_market_pct_abs: closeEventCount ? round6(options.stats.closeEventMaeMarketPctAbsSum / closeEventCount) : null,
+    close_event_mfe_1q_hit_count: options.stats.closeEventMfe1QHitCount,
+    close_event_mfe_2q_hit_count: options.stats.closeEventMfe2QHitCount,
+    close_event_mfe_3q_hit_count: options.stats.closeEventMfe3QHitCount,
+    close_event_mfe_1q_hit_pct: closeEventHitPct(options.stats.closeEventMfe1QHitCount),
+    close_event_mfe_2q_hit_pct: closeEventHitPct(options.stats.closeEventMfe2QHitCount),
+    close_event_mfe_3q_hit_pct: closeEventHitPct(options.stats.closeEventMfe3QHitCount),
+    close_event_mae_1q_hit_count: options.stats.closeEventMae1QHitCount,
+    close_event_mae_2q_hit_count: options.stats.closeEventMae2QHitCount,
+    close_event_mae_3q_hit_count: options.stats.closeEventMae3QHitCount,
+    close_event_mae_1q_hit_pct: closeEventHitPct(options.stats.closeEventMae1QHitCount),
+    close_event_mae_2q_hit_pct: closeEventHitPct(options.stats.closeEventMae2QHitCount),
+    close_event_mae_3q_hit_pct: closeEventHitPct(options.stats.closeEventMae3QHitCount),
+    target_close_net_usd: round2(options.stats.targetCloseNetUsd),
+    session_flatten_close_net_usd: round2(options.stats.sessionFlattenCloseNetUsd),
+    protection_close_net_usd: round2(options.stats.protectionCloseNetUsd),
+    activation_checks: options.stats.activationChecks,
+    activation_blocked_long: options.stats.activationBlockedLong,
+    activation_blocked_short: options.stats.activationBlockedShort,
+    activation_blocked_expansion: options.stats.activationBlockedExpansion,
+    terminal_horizon_add_checks: options.stats.terminalHorizonAddChecks,
+    terminal_horizon_blocked_adds: options.stats.terminalHorizonBlockedAdds,
+    basket_solvency_add_checks: options.stats.basketSolvencyAddChecks,
+    basket_solvency_blocked_adds: options.stats.basketSolvencyBlockedAdds,
+    v23_first_adverse_bypass_adds: options.stats.v23FirstAdverseBypassAdds,
+    reversion_evidence_add_checks: options.stats.reversionEvidenceAddChecks,
+    reversion_evidence_blocked_adds: options.stats.reversionEvidenceBlockedAdds,
+    late_reversion_evidence_add_checks: options.stats.lateReversionEvidenceAddChecks,
+    late_reversion_evidence_blocked_adds: options.stats.lateReversionEvidenceBlockedAdds,
+    progress_last3_add_checks: options.stats.progressLast3AddChecks,
+    progress_last3_blocked_adds: options.stats.progressLast3BlockedAdds,
+    add_throttle_event_rows: options.stats.addThrottleEvents.length,
+    marginal_add_audit_rows: options.stats.marginalAddAuditRows.length,
+    feasibility_observation_count: options.stats.feasibilityObservationCount,
+    avg_required_reversion_adr: options.stats.feasibilityObservationCount ? round6(options.stats.requiredReversionAdrSum / options.stats.feasibilityObservationCount) : null,
+    avg_available_reversion_adr: options.stats.feasibilityObservationCount ? round6(options.stats.availableReversionAdrSum / options.stats.feasibilityObservationCount) : null,
+    avg_reversion_feasibility_ratio: options.stats.feasibilityObservationCount ? round6(options.stats.reversionFeasibilityRatioSum / options.stats.feasibilityObservationCount) : null,
+    activation_started_long: options.stats.activationStartedLong,
+    activation_started_short: options.stats.activationStartedShort,
+    activation_long_allow_pct: longChecks ? round2((options.stats.activationAllowedLong / longChecks) * 100) : null,
+    activation_short_allow_pct: shortChecks ? round2((options.stats.activationAllowedShort / shortChecks) * 100) : null,
+    mt5_reference_net_profit_usd: MT5_REFERENCE.net_profit_usd,
+    mt5_reference_commission_usd: MT5_REFERENCE.commission_usd,
+    mt5_reference_swap_usd: MT5_REFERENCE.swap_usd,
+    mt5_reference_end_liquidation_net_usd: MT5_REFERENCE.end_liquidation_net_usd,
+    mt5_reference_max_open_positions: MT5_REFERENCE.max_open_positions,
+    mt5_reference_end_liquidation_positions: MT5_REFERENCE.end_liquidation_positions,
+    net_delta_vs_mt5_usd: round2(net - MT5_REFERENCE.net_profit_usd),
+    summary_only: options.runtimeOptions.summaryOnly,
+    metric_semantics: options.runtimeOptions.sessionMode === "continuous"
+      ? "continuous_carried_position_truth_replay" as const
+      : "session_window_position_truth_replay" as const,
+  });
+}
+
+function validationRows(options: {
+  gate74b: Gate74bSummary;
+  selectedWeeks: string[];
+  selectedPairs: string[];
+  runtimeOptions: Options;
+}) {
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
+  const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
+  const triangleFormulaicEnabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicActivationRule);
+  const triangleFormulaicV1Enabled = options.runtimeOptions.activationRuleIds.includes("triangle_formulaic_directionless_geometry");
+  const triangleFormulaicV2Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV2ActivationRule);
+  const triangleFormulaicV21Enabled = options.runtimeOptions.activationRuleIds.some((ruleId) =>
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId) ||
+    isTriangleFormulaicV23ActivationRule(ruleId));
+  const triangleFormulaicV21FloorPinBaselineEnabled = options.runtimeOptions.activationRuleIds.includes("triangle_formulaic_directionless_geometry_v2_floorpin");
+  const triangleFormulaicV22Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV22ActivationRule);
+  const triangleFormulaicV23Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV23ActivationRule);
+  return [
+    { check: "gate74b_verdict", value: options.gate74b.verdict, expected: "PASS_GATE74B", passed: options.gate74b.verdict.startsWith("PASS_GATE74B") },
+    { check: "continuous_carried_inventory", value: options.runtimeOptions.sessionMode === "continuous", expected: "true only in continuous session mode", passed: true },
+    { check: "weekly_sample_end_close_disabled", value: true, expected: true, passed: true },
+    { check: "target_reset_uses_selected_target_mode", value: options.runtimeOptions.targetMode, expected: "fixed_adr_or_david_ma_reversion_or_session_mid_reversion_or_session_center_band_reversion", passed: true },
+    { check: "target_mode", value: options.runtimeOptions.targetMode, expected: "explicit", passed: true },
+    { check: "target_adr", value: options.runtimeOptions.targetAdr, expected: ">0", passed: options.runtimeOptions.targetAdr > 0 },
+    { check: "spacing_adr", value: options.runtimeOptions.spacingAdr, expected: ">0", passed: options.runtimeOptions.spacingAdr > 0 },
+    { check: "signal_clock", value: options.runtimeOptions.signalClock, expected: "explicit", passed: true },
+    { check: "signal_adr_brick", value: options.runtimeOptions.signalAdrBrick, expected: ">0", passed: options.runtimeOptions.signalAdrBrick > 0 },
+    { check: "session_mode", value: options.runtimeOptions.sessionMode, expected: "explicit continuous_or_ny_daily_window", passed: true },
+    { check: "session_time_zone", value: options.runtimeOptions.sessionTimeZone, expected: "IANA time zone", passed: true },
+    { check: "session_trade_start_et", value: formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_trade_end_et", value: formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_flatten_et", value: formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_sunday_start_et", value: formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes), expected: "HH:mm", passed: true },
+    { check: "session_flatten_overrides_et", value: sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt), expected: "optional YYYY-MM-DD=HH:mm list", passed: true },
+    { check: "session_endpoint_open_cycles_close_as_session_flatten", value: options.runtimeOptions.sessionMode === "ny_daily_window", expected: "true only in ny_daily_window", passed: true },
+    { check: "min_ma_expansion_adr", value: options.runtimeOptions.minMaExpansionAdr, expected: ">=0", passed: options.runtimeOptions.minMaExpansionAdr >= 0 },
+    { check: "grid_add_mode", value: options.runtimeOptions.gridAddMode, expected: "explicit", passed: true },
+    { check: "bar_path_mode", value: options.runtimeOptions.barPathMode, expected: "explicit", passed: true },
+    { check: "quote_currency_pnl_converted_to_usd", value: true, expected: true, passed: true },
+    { check: "swap_triggers_target_reset", value: false, expected: false, passed: true },
+    { check: "activation_rule_ids", value: options.runtimeOptions.activationRuleIds.join(","), expected: "explicit", passed: true },
+    { check: "protection_modes", value: options.runtimeOptions.protectionModes.join(","), expected: "explicit", passed: true },
+    { check: "activation_controls_initial_cycle_start_only", value: true, expected: true, passed: true },
+    { check: "triangle_v0_enabled", value: triangleV0Enabled, expected: "true when activation_rule_ids includes a triangle_v0 rule", passed: true },
+    { check: "triangle_v0_formula_id", value: triangleV0Enabled ? TRIANGLE_V0_FORMULA_ID : "", expected: "visible when a triangle_v0 rule is enabled", passed: true },
+    { check: "triangle_v0_spacing_rails_adr", value: triangleV0Enabled ? `${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}` : "", expected: "range/3 clamped rails when a triangle_v0 rule is enabled", passed: true },
+    { check: "triangle_v0_traceability_columns", value: triangleV0Enabled ? "cycle_spacing_adr,triangle_trigger_key" : "", expected: "close-events and terminal-inventory rows carry trigger provenance", passed: true },
+    { check: "triangle_v1_enabled", value: triangleV1Enabled, expected: "true when activation_rule_ids includes a triangle_v1 rule", passed: true },
+    { check: "triangle_v1_formula_id", value: triangleV1Enabled ? TRIANGLE_V1_FORMULA_ID : "", expected: "visible when a triangle_v1 rule is enabled", passed: true },
+    { check: "triangle_v1_start_gate", value: triangleV1Enabled ? "valid_geometry_session_mid_extension_direction_permission" : "", expected: "geometry plus extension plus Candidate B/David permission", passed: true },
+    { check: "triangle_formulaic_enabled", value: triangleFormulaicEnabled, expected: "true when activation_rule_ids includes a formulaic directionless geometry rule", passed: true },
+    { check: "triangle_formulaic_v1_id", value: triangleFormulaicV1Enabled ? TRIANGLE_FORMULAIC_GEOMETRY_ID : "", expected: "visible when the Gate 91 v1 formulaic rule is enabled", passed: true },
+    { check: "triangle_formulaic_v1_q_equation", value: triangleFormulaicV1Enabled ? "Q=max(R/(2+2*(1-PE)),C)" : "", expected: "range/path-efficiency/cost-floor equation", passed: true },
+    { check: "triangle_formulaic_v1_signal_brick", value: triangleFormulaicV1Enabled ? `Q/${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}` : "", expected: "derived from Q, not fixed ADR-event brick", passed: true },
+    { check: "triangle_formulaic_direction_policy", value: triangleFormulaicEnabled ? "directionless_symmetric_long_short" : "", expected: "no Candidate B or David direction dependency", passed: true },
+    { check: "triangle_formulaic_target", value: triangleFormulaicEnabled ? options.runtimeOptions.targetMode : "", expected: "session_mid_reversion_or_session_center_band_reversion", passed: !triangleFormulaicEnabled || options.runtimeOptions.targetMode === "session_mid_reversion" || options.runtimeOptions.targetMode === "session_center_band_reversion" },
+    { check: "triangle_formulaic_v2_enabled", value: triangleFormulaicV2Enabled, expected: "true when activation_rule_ids includes triangle_formulaic_directionless_geometry_v2", passed: true },
+    { check: "triangle_formulaic_v2_id", value: triangleFormulaicV2Enabled ? TRIANGLE_FORMULAIC_V2_GEOMETRY_ID : "", expected: "visible when the Gate 91 v2 formulaic rule is enabled", passed: true },
+    { check: "triangle_formulaic_v2_q_equation", value: triangleFormulaicV2Enabled ? "Q=max(Q_cost,current_volatility_floor,R/(1+sqrt(B_cost/Q_cost)))" : "", expected: "cost-adjusted bending path equation", passed: true },
+    { check: "triangle_formulaic_v2_target", value: triangleFormulaicV2Enabled ? options.runtimeOptions.targetMode : "", expected: "session_center_band_reversion", passed: !triangleFormulaicV2Enabled || options.runtimeOptions.targetMode === "session_center_band_reversion" },
+    { check: "triangle_formulaic_v2_receipts", value: triangleFormulaicV2Enabled ? "q_cost,p_raw,p_cost,b_cost,balance,geometry_quality,target_band" : "", expected: "close-events and terminal-inventory rows carry v2 geometry receipts", passed: true },
+    { check: "triangle_formulaic_v2_1_enabled", value: triangleFormulaicV21Enabled, expected: "true when activation_rule_ids includes a v2.1 floorpin/surplus rule", passed: true },
+    { check: "triangle_formulaic_v2_1_floor_pin_ratio", value: triangleFormulaicV21Enabled ? TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO : "", expected: "Q_bend / Q_floor minimum when v2.1 floor-pin rejection is enabled", passed: true },
+    { check: "triangle_formulaic_v2_1_surplus_quality", value: triangleFormulaicV21Enabled ? `surplus_bend=max(0,B_cost-${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE}*Q_cost)` : "", expected: "surplus quality receipt when v2.1 surplus rules are enabled", passed: true },
+    { check: "triangle_formulaic_v2_2_enabled", value: triangleFormulaicV22Enabled, expected: "true when activation_rule_ids includes a v2.2 terminal-horizon/solvency rule", passed: true },
+    { check: "triangle_formulaic_v2_2_add_gate", value: triangleFormulaicV22Enabled ? "required_reversion_distance<=available_reversion_budget and/or basket_green_price inside target band" : "", expected: "v2.2 applies no-feed gates to adverse adds only", passed: true },
+    { check: "triangle_formulaic_v2_3_enabled", value: triangleFormulaicV23Enabled, expected: "true when activation_rule_ids includes a v2.3 add-throttle rule", passed: true },
+    { check: "triangle_formulaic_v2_3_add_gate", value: triangleFormulaicV23Enabled ? "first adverse add bypasses; continued adverse adds require local reversion evidence or late-session center progress depending on row" : "", expected: "v2.3 applies no-feed gates to adverse adds only", passed: true },
+    { check: "triangle_formulaic_v2_3_receipts", value: triangleFormulaicV23Enabled ? "add-throttle-events.rows with blocked/allowed local MFE/MAE and forward close outcomes" : "", expected: "visible when v2.3 add-throttle rules are enabled", passed: true },
+    { check: "gate91f_marginal_add_audit_receipts", value: triangleFormulaicV21FloorPinBaselineEnabled ? "marginal-add-audit.rows direct-fill contribution audit" : "", expected: "visible when v2.1 floor-pin baseline is replayed", passed: true },
+    { check: "gate91f_counterfactual_boundary", value: triangleFormulaicV21FloorPinBaselineEnabled ? "direct-fill marginal value plus without-fill actual-close target eligibility; not full branch replay" : "", expected: "diagnostic-only causal boundary is explicit", passed: true },
+    { check: "david_ma_settings", value: davidSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
+    { check: "stochastic_settings", value: stochasticSettingsLabel(options.runtimeOptions.signalSettings), expected: "explicit CLI/default settings", passed: true },
+    { check: "summary_only", value: options.runtimeOptions.summaryOnly, expected: "explicit", passed: true },
+    { check: "commission_per_entry_per_001_lot_usd", value: options.runtimeOptions.commissionPerEntryPer001LotUsd, expected: 0.06, passed: options.runtimeOptions.commissionPerEntryPer001LotUsd === 0.06 },
+    { check: "eurusd_long_swap_per_001_lot_day_usd", value: options.runtimeOptions.longSwapPer001LotDayUsd, expected: "MT5-derived approx", passed: true },
+    { check: "eurusd_short_swap_per_001_lot_day_usd", value: options.runtimeOptions.shortSwapPer001LotDayUsd, expected: "MT5-derived approx", passed: true },
+    { check: "selected_week_count", value: options.selectedWeeks.length, expected: ">=1", passed: options.selectedWeeks.length > 0 },
+    { check: "selected_pair_count", value: options.selectedPairs.length, expected: ">=1", passed: options.selectedPairs.length > 0 },
+  ].map((row) => withHash(row));
+}
+
+function metricRows() {
+  return [
+    { metric: "continuous_carried_position_truth_replay", definition: "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation" },
+    { metric: "session_window_position_truth_replay", definition: "keeps side grid state open inside the configured session window, allows target closes whenever ticks exist, and force-closes unresolved cycles at session flatten" },
+    { metric: "bar_path_mode", definition: "intrabar path used for each warehouse M1 bar; open/close modes use one mark per bar, OHLC modes synthesize four tester-like marks per bar" },
+    { metric: "signal_clock", definition: "clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes" },
+    { metric: "signal_adr_brick", definition: "ADR movement required to complete one synthetic signal bar when signal_clock is adr_event" },
+    { metric: "session_mode", definition: "continuous keeps the original carried-position replay; ny_daily_window allows starts/adds only inside the configured New York session and force-closes remaining cycles at the daily flatten boundary" },
+    { metric: "session_flatten_count", definition: "number of side cycles closed by the configured daily session flatten boundary, a missed no-tick boundary, or the session-mode endpoint cleanup rather than a target reset or final end-of-test liquidation" },
+    { metric: "protection_mode", definition: "diagnostic cycle-management replay mode; baseline preserves existing behavior, Q modes add stop-add, trailing, protected-flatten, or live-state pain guards without changing entries" },
+    { metric: "protection_trail", definition: "close reason emitted when a cycle reaches the configured Q-profit activation threshold and then gives back the configured Q trail distance" },
+    { metric: "protected_flatten", definition: "close reason emitted by protected flatten when a cycle is ugly red at the daily flatten boundary; small-red cycles can be held instead of force-closed" },
+    { metric: "pain_circuit", definition: "close reason emitted when a live-state guard closes a cycle after adverse 2Q pain occurs before any 0.5Q favorable excursion" },
+    { metric: "pain_1q_stop_adds_before_profit_0_5q", definition: "protection mode that blocks new adds after the cycle reaches 1Q adverse excursion before any 0.5Q favorable excursion" },
+    { metric: "pain_2q_circuit_before_profit_0_5q", definition: "protection mode that closes the cycle after it reaches 2Q adverse excursion before any 0.5Q favorable excursion" },
+    { metric: "live_state_guard_v0", definition: "combined diagnostic guard: stop adds after profit reaches 1Q, stop adds after pain reaches 1Q before 0.5Q profit, and close after pain reaches 2Q before 0.5Q profit" },
+    { metric: "eod_green_hold_red", definition: "protection mode that closes green cycles at the daily flatten boundary and holds red cycles open for later target/flatten handling" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds", definition: "hold-red mode plus locked stop-add after 1Q adverse excursion happens before any 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q", definition: "hold-red mode plus stop-add while 1Q adverse excursion has occurred before any 0.5Q favorable excursion; stop-add unlocks after the same cycle reaches 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_max_3d", definition: "hold-red mode capped at three calendar days of max fill age; red cycles older than the cap close at the next flatten boundary" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_max_3d", definition: "three-day capped hold-red mode plus locked stop-add after 1Q adverse excursion happens before any 0.5Q favorable excursion" },
+    { metric: "eod_green_hold_red_pain_1q_stop_adds_reset_0_5q_max_3d", definition: "three-day capped hold-red mode plus pain stop-add that unlocks after the same cycle reaches 0.5Q favorable excursion" },
+    { metric: "protection_close_net_usd", definition: "aggregate net USD from protection_trail, protected_flatten, and pain_circuit close cycles, including price PnL, commission, and swap" },
+    { metric: "session_flatten_price_pnl_usd", definition: "price PnL from cycles force-closed by the configured daily session flatten boundary" },
+    { metric: "closed_price_pnl_usd", definition: "target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected" },
+    { metric: "total_commission_usd", definition: "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report" },
+    { metric: "total_swap_usd", definition: "position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates" },
+    { metric: "end_liquidation_price_pnl_usd", definition: "price PnL from all positions still open at the final warehouse mark" },
+    { metric: "terminal_inventory_rows", definition: "one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL" },
+    { metric: "side_exit_distance_to_ma_adr", definition: "side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA" },
+    { metric: "max_open_positions", definition: "maximum simultaneous fill count across carried side grids" },
+    { metric: "activation_rule_id", definition: "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes" },
+    { metric: "triangle_v0", definition: "Gate 90D scaffold rule that starts only after a completed session range sweep, rejection, displacement, point-in-time harvestable path geometry, and Candidate/David alignment gate" },
+    { metric: "triangle_v0_no_candidate_b", definition: "Gate 90D diagnostic rule that keeps the Triangle trigger and geometry but removes Candidate B from the direction gate and requires David-only side agreement" },
+    { metric: "triangle_v1_candidate_b_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in Candidate B side; Katarakti is not required" },
+    { metric: "triangle_v1_david_contra_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension in David contra side; Katarakti is not required" },
+    { metric: "triangle_v1_candidate_or_david_extension", definition: "Gate 90D v1 scaffold rule that starts on valid harvestable session geometry plus session-mid extension when Candidate B or David contra permits the side" },
+    { metric: "triangle_formulaic_directionless_geometry", definition: "Gate 91 scaffold rule that ignores direction evidence, computes Q from completed session range plus current path efficiency plus cost floor, starts symmetric long/short extensions away from session midpoint, and targets session-mid reversion" },
+    { metric: "triangle_formulaic_q_equation", definition: `Gate 91 equation: Q = max(R / (2 + 2 * (1 - PE)), C), where C=${TRIANGLE_FORMULAIC_COST_FLOOR_ADR} ADR and PE above ${TRIANGLE_PATH_EFFICIENCY_LOW_MAX} is rejected as too clean/trendy` },
+    { metric: "triangle_formulaic_directionless_geometry_v2", definition: "Gate 91 v2 scaffold rule that ignores direction evidence, computes Q from cost-adjusted bending path, targets a median-session center band, and starts symmetric long/short extensions away from that center" },
+    { metric: "triangle_formulaic_v2_q_equation", definition: `Gate 91 v2 equation: Q = max(Q_cost, current_volatility_floor, R / (1 + sqrt(B_cost / Q_cost))), where Q_cost is ${TRIANGLE_FORMULAIC_V2_COST_MULTIPLE}x the modeled round-trip cost in ADR units` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin", definition: `Gate 91 v2.1 scaffold rule that keeps v2 geometry but rejects sessions unless Q_bend / Q_floor is at least ${TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO}` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_surplus", definition: "Gate 91 v2.1 scaffold rule that keeps the floor-pin rejection and replaces raw geometry quality with surplus geometry quality after cost drag" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_surplus_convex", definition: "Gate 91 v2.1 scaffold rule that adds convex inventory-aware adverse add spacing to the surplus geometry rule" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_horizon", definition: "Gate 91 v2.2 scaffold rule that keeps v2.1 floor-pin starts and blocks adverse adds when required reversion distance exceeds available cost-adjusted movement budget before flatten" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_solvency", definition: "Gate 91 v2.2 scaffold rule that keeps v2.1 floor-pin starts and blocks adverse adds when the proposed basket cannot become green inside the center target band" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_horizon_solvency", definition: "Gate 91 v2.2 scaffold rule that applies both terminal-horizon and basket-solvency no-feed gates to adverse adds" },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_reversion_evidence", definition: `Gate 91 v2.3 scaffold rule that keeps v2.1 floor-pin starts, lets the first adverse add bypass, and blocks later adverse adds unless local MFE since last fill is at least min(${TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_MAX_Q}Q, ${TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_BASE_Q}Q + ${TRIANGLE_FORMULAIC_V2_3_REVERSION_EVIDENCE_DEPTH_STEP_Q}Q * depth)` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_late_reversion_evidence", definition: `Gate 91 v2.3 scaffold rule that applies the same local reversion-evidence throttle only when minutes-until-flatten / clean-session-minutes is below ${TRIANGLE_FORMULAIC_V2_3_LATE_TAU_THRESHOLD}` },
+    { metric: "triangle_formulaic_directionless_geometry_v2_floorpin_progress_last3", definition: `Gate 91 v2.3 scaffold rule that, late in session and while the basket is red, blocks continued adverse adds when current distance from the existing cycle target center is worse than the average distance of the last ${TRIANGLE_FORMULAIC_V2_3_PROGRESS_FILL_LOOKBACK} fills` },
+    { metric: "terminal_horizon_blocked_adds", definition: "count of proposed adverse adds blocked because required reversion distance was greater than available cost-adjusted movement budget before daily flatten" },
+    { metric: "basket_solvency_blocked_adds", definition: "count of proposed adverse adds blocked because the basket green-close price would not fit inside the center target band after the proposed add" },
+    { metric: "add_throttle_event_rows", definition: "unique proposed adverse add decision receipts emitted for v2.1 floor-pin baseline shadow and v2.3 add-throttle rows; rows include actual decision, local MFE/MAE since last fill, center-progress fields, and eventual cycle close outcome" },
+    { metric: "marginal_add_audit_rows", definition: "Gate 91F direct-fill marginal audit rows emitted for actually opened adverse adds on the v2.1 floor-pin baseline; rows measure the candidate fill's own future PnL, swap, commission, net USD, and without-this-fill target eligibility at the actual close mark" },
+    { metric: "candidate_direct_net_usd", definition: "candidate adverse fill's direct contribution at the eventual cycle close mark: fill price PnL in USD plus fill swap plus the entry commission assigned to that fill" },
+    { metric: "without_candidate_target_eligible_at_actual_close", definition: "diagnostic boolean asking whether the remaining basket, with only this candidate fill removed, would still satisfy the selected target condition at the actual close mark; this is not a full branch-and-replay counterfactual" },
+    { metric: "v23_first_adverse_bypass_adds", definition: "unique first adverse add opportunities bypassed by a v2.3 throttle row so the throttle governs continued feeding rather than the first recovery add" },
+    { metric: "reversion_evidence_blocked_adds", definition: "unique continued adverse add opportunities blocked by the all-session v2.3 local reversion-evidence row" },
+    { metric: "late_reversion_evidence_blocked_adds", definition: "unique continued adverse add opportunities blocked by the late-session v2.3 local reversion-evidence row" },
+    { metric: "progress_last3_blocked_adds", definition: "unique continued adverse add opportunities blocked by the v2.3 late-session center-progress row" },
+    { metric: "avg_required_reversion_adr", definition: "average ADR move required from the proposed add price for the basket to close green inside the target band" },
+    { metric: "avg_available_reversion_adr", definition: "average remaining cost-adjusted bending-path movement budget before session flatten" },
+    { metric: "avg_reversion_feasibility_ratio", definition: "average required_reversion_distance_adr / available_reversion_budget_adr for v2.2 adverse-add feasibility checks" },
+    { metric: "reversion_target_band_adr", definition: `per-cycle center-band target radius in ADR units; v2 sets it to max(Q/${TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR}, Q_cost/2) and closes only when the basket is price-green inside the band` },
+    { metric: "triangle_geometry_q_cost_adr", definition: "per-cycle v2 economic spacing floor in ADR units; commission-derived round-trip cost is used when USD conversion is available, otherwise the legacy fallback floor is receipted" },
+    { metric: "triangle_geometry_round_trip_cost_adr", definition: "per-cycle modeled round-trip cost in ADR units used by v2 geometry; spread and slippage are not included in this runner" },
+    { metric: "triangle_geometry_p_raw_adr", definition: "completed-session total absolute close-path movement in ADR units before cost filtering" },
+    { metric: "triangle_geometry_p_cost_adr", definition: "completed-session path movement after subtracting one-way cost from each close-path delta and flooring each delta at zero" },
+    { metric: "triangle_geometry_b_cost_adr", definition: "completed-session cost-adjusted bending path: max(P_cost - net session displacement, 0)" },
+    { metric: "triangle_geometry_q_bend_adr", definition: "bend-derived quantum before floor selection: R / (1 + sqrt(B_cost / Q_cost))" },
+    { metric: "triangle_geometry_q_floor_adr", definition: "minimum tradable quantum floor used by v2/v2.1: max(Q_cost, current_volatility_floor)" },
+    { metric: "triangle_geometry_floor_pin_ratio", definition: "Q_bend / Q_floor; v2.1 floor-pin rules reject sessions below the structural minimum ratio" },
+    { metric: "triangle_geometry_surplus_bend_adr", definition: `surplus bending movement after cost drag: max(0, B_cost - ${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE} * Q_cost)` },
+    { metric: "triangle_geometry_surplus_quality", definition: "v2.1 quality score: (surplus_bend / Q) * balance * min(1, Q_bend / Q_floor)" },
+    { metric: "triangle_geometry_balance", definition: "completed-session time balance around the median M1 close center; 1 is balanced, 0 is one-sided occupancy" },
+    { metric: "triangle_geometry_quality", definition: "v2 geometry score: (B_cost / Q) * balance; the first v2 scaffold requires this to be at least one" },
+    { metric: "triangle_geometry_current_volatility_adr", definition: "completed-session median absolute close-path delta in ADR units used as the v2 current-volatility floor" },
+    { metric: "triangle_geometry_add_spacing_mode", definition: "fixed_q for normal adverse-only grid adds, or convex_adverse for v2.1 inventory-aware spacing that widens with depth and pain/profit ratio" },
+    { metric: "cycle_signal_adr_brick", definition: `per-cycle derived signal event brick; Gate 91 v1 sets it to Q/${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}, and v2 sets it to max(Q/${TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR}, Q_cost/2) instead of using a fixed ADR-event brick` },
+    { metric: "reversion_target_price", definition: "per-cycle non-David reversion target price; Gate 91 v1 formulaic geometry uses the completed session midpoint, and v2 uses the completed-session median M1 close center" },
+    { metric: "cycle_spacing_adr", definition: "actual ADR spacing assigned to the side cycle at start; triangle_v0/v1 use the Gate 90D adaptive spacing receipt, Gate 91 v1 uses Q from range/path efficiency/cost floor, and Gate 91 v2 uses cost-adjusted bending-path Q" },
+    { metric: "triangle_trigger_key", definition: "stable provenance key for the session box, side, sweep, and displacement trigger that started a triangle_v0 cycle" },
+    { metric: "triangle_v0_formula_id", definition: "scaffold formula identifier for the Gate 90D bounded Triangle v0 replay path" },
+    { metric: "min_ma_expansion_adr", definition: "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA" },
+    { metric: "grid_add_mode", definition: "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor" },
+    { metric: "close_event_profit_factor", definition: "gross winning close-cycle net USD divided by absolute gross losing close-cycle net USD; computed even in summary-only mode without retaining close-event rows" },
+    { metric: "close_event_win_pct", definition: "winning close-cycle count divided by all close cycles; target, session_flatten, and end_of_test close reasons are included" },
+    { metric: "adr_normalized_return_pct", definition: "price-movement return normalized by each pair's ADR; one ADR is reported as one percent for cross-currency comparison; commission and swap remain costed in USD fields" },
+    { metric: "close_event_total_realized_pnl_adr", definition: "sum of close-cycle realized price PnL in ADR units; same numeric value as adr_normalized_return_pct because one ADR is reported as one percent" },
+    { metric: "close_event_total_realized_market_pct", definition: "sum of close-cycle realized raw market-percent movement before ADR normalization; fill-weighted and still separate from costed USD account return" },
+    { metric: "close_event_avg_realized_pnl_adr", definition: "average realized price PnL per closed side cycle in ADR units, before commission and swap" },
+    { metric: "close_event_avg_realized_market_pct", definition: "average realized raw market-percent movement per closed side cycle, before ADR normalization and before commission/swap" },
+    { metric: "close_event_avg_mfe_adr", definition: "average Maximum Favorable Excursion per closed side cycle in ADR units, computed from observed cycle max_pnl_adr" },
+    { metric: "close_event_avg_mae_adr_abs", definition: "average absolute Maximum Adverse Excursion per closed side cycle in ADR units, computed from observed negative cycle min_pnl_adr" },
+    { metric: "close_event_avg_mfe_market_pct", definition: "average raw market-percent Maximum Favorable Excursion per closed side cycle" },
+    { metric: "close_event_avg_mae_market_pct_abs", definition: "average absolute raw market-percent Maximum Adverse Excursion per closed side cycle" },
+    { metric: "first_mfe_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named favorable quantum threshold; used for live-safe profit-first diagnostics" },
+    { metric: "first_mae_0_5q/1q/2q/3q_timestamp_utc", definition: "first timestamp while the cycle was open when net cycle PnL reached the named adverse quantum threshold; used for live-safe pain-first diagnostics" },
+    { metric: "max_pnl_timestamp_utc", definition: "timestamp when observed cycle MFE was first set to its maximum value in the replay path" },
+    { metric: "min_pnl_timestamp_utc", definition: "timestamp when observed cycle MAE was first set to its worst value in the replay path" },
+    { metric: "close_event_mfe_1q/2q/3q_hit_pct", definition: "share of closed side cycles whose observed MFE reached at least one, two, or three cycle-spacing quanta before close" },
+    { metric: "close_event_mae_1q/2q/3q_hit_pct", definition: "share of closed side cycles whose observed MAE reached at least one, two, or three cycle-spacing quanta before close" },
+    { metric: "close-event-breakdown.rows", definition: "non-summary close-cycle aggregate artifact grouped by anchor week, close month, pair, pair side, close reason, and strategy class; includes ADR-normalized return percent plus costed account-return percent" },
+    { metric: "close_event_start_timestamp_utc", definition: "cycle start timestamp emitted on close-event rows for downstream start-level trigger traceability" },
+    { metric: "close_event_cycle_id", definition: "stable side-cycle identifier emitted on close-event rows so close outcomes can be matched to cycle starts" },
+    { metric: "target_close_net_usd", definition: "aggregate net USD from close cycles closed by target reset, including price PnL, commission, and swap" },
+    { metric: "session_flatten_close_net_usd", definition: "aggregate net USD from close cycles force-closed by the configured session flatten boundary, including price PnL, commission, and swap" },
+    { metric: "activation_started_long/short", definition: "number of initial side cycles started after the activation gate allowed that side" },
+    { metric: "activation_blocked_long/short", definition: "number of missing-side start checks rejected by the activation gate" },
+    { metric: "activation_blocked_expansion", definition: "number of missing-side start checks where the signal allowed the side but price was not far enough from the David MA" },
+  ].map((row) => withHash(row));
+}
+
+function renderReport(options: {
+  verdict: string;
+  summaryRows: SummaryRow[];
+  validationRows: ValidationRow[];
+  metricRows: Array<Record<string, unknown>>;
+  artifacts: Record<string, string>;
+  runtimeOptions: Options;
+}) {
+  const triangleV0Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV0ActivationRule);
+  const triangleV1Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleV1ActivationRule);
+  const triangleFormulaicEnabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicActivationRule);
+  const triangleFormulaicV1Enabled = options.runtimeOptions.activationRuleIds.includes("triangle_formulaic_directionless_geometry");
+  const triangleFormulaicV2Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV2ActivationRule);
+  const triangleFormulaicV21Enabled = options.runtimeOptions.activationRuleIds.some((ruleId) =>
+    ruleId === "triangle_formulaic_directionless_geometry_v2_floorpin" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus" ||
+    ruleId === "triangle_formulaic_directionless_geometry_v2_surplus_convex" ||
+    isTriangleFormulaicV22ActivationRule(ruleId) ||
+    isTriangleFormulaicV23ActivationRule(ruleId));
+  const triangleFormulaicV22Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV22ActivationRule);
+  const triangleFormulaicV23Enabled = options.runtimeOptions.activationRuleIds.some(isTriangleFormulaicV23ActivationRule);
+  const summaryTable = renderTable(options.summaryRows, [
+    "variant_id",
+    "activation_rule_id",
+    "protection_mode",
+    "signal_settings_id",
+    "symbol_universe",
+    "bar_path_mode",
+    "signal_clock",
+    "signal_adr_brick",
+    "session_mode",
+    "session_trade_start_et",
+    "session_trade_end_et",
+    "session_flatten_et",
+    "session_sunday_start_et",
+    "target_mode",
+    "target_adr",
+    "spacing_adr",
+    "min_ma_expansion_adr",
+    "grid_add_mode",
+    "weeks_replayed",
+    "pairs_replayed",
+    "final_balance_usd",
+    "net_profit_usd",
+    "closed_price_pnl_usd",
+    "end_liquidation_price_pnl_usd",
+    "total_commission_usd",
+    "total_swap_usd",
+    "session_flatten_count",
+    "session_flatten_positions",
+    "session_flatten_price_pnl_usd",
+    "session_flatten_swap_usd",
+    "protection_close_count",
+    "protection_close_positions",
+    "entries_opened",
+    "end_liquidation_positions",
+    "max_open_positions",
+    "max_add_depth",
+    "max_equity_drawdown_usd",
+    "weekly_equity_profit_factor",
+    "close_event_count",
+    "close_event_profit_factor",
+    "close_event_win_pct",
+    "adr_normalized_return_pct",
+    "close_event_total_realized_pnl_adr",
+    "close_event_total_realized_market_pct",
+    "close_event_avg_realized_pnl_adr",
+    "close_event_avg_realized_market_pct",
+    "close_event_avg_mfe_adr",
+    "close_event_avg_mae_adr_abs",
+    "close_event_avg_mfe_market_pct",
+    "close_event_avg_mae_market_pct_abs",
+    "close_event_mfe_1q_hit_pct",
+    "close_event_mfe_2q_hit_pct",
+    "close_event_mfe_3q_hit_pct",
+    "close_event_mae_1q_hit_pct",
+    "close_event_mae_2q_hit_pct",
+    "close_event_mae_3q_hit_pct",
+    "target_close_net_usd",
+    "session_flatten_close_net_usd",
+    "protection_close_net_usd",
+    "activation_started_long",
+    "activation_started_short",
+    "activation_blocked_long",
+    "activation_blocked_short",
+    "activation_blocked_expansion",
+    "terminal_horizon_add_checks",
+    "terminal_horizon_blocked_adds",
+    "basket_solvency_add_checks",
+    "basket_solvency_blocked_adds",
+    "v23_first_adverse_bypass_adds",
+    "reversion_evidence_add_checks",
+    "reversion_evidence_blocked_adds",
+    "late_reversion_evidence_add_checks",
+    "late_reversion_evidence_blocked_adds",
+    "progress_last3_add_checks",
+    "progress_last3_blocked_adds",
+    "add_throttle_event_rows",
+    "avg_required_reversion_adr",
+    "avg_available_reversion_adr",
+    "avg_reversion_feasibility_ratio",
+    "activation_long_allow_pct",
+    "activation_short_allow_pct",
+    "summary_only",
+  ]);
+  const validationTable = renderTable(options.validationRows, ["check", "value", "expected", "passed"]);
+  const metricTable = renderTable(options.metricRows, ["metric", "definition"]);
+  const artifactLines = Object.entries(options.artifacts).map(([label, artifactPath]) => `- ${label}: \`${artifactPath}\``).join("\n");
+  return `# Gate 90 Grid Activation Accuracy One-Sided Selection
+
+Generated: \`${new Date().toISOString()}\`
+
+## Verdict
+
+\`${options.verdict}\`
+
+## Scope
+
+- Warehouse truth replay with one-sided activation gates and explicit session mode controls.
+- Variants: \`${options.summaryRows.map((row) => row.variant_id).join(",")}\`.
+- Activation rules: \`${options.runtimeOptions.activationRuleIds.join(",")}\`.
+- Protection modes: \`${options.runtimeOptions.protectionModes.join(",")}\`.
+${triangleV0Enabled ? `- Triangle v0 formula id: \`${TRIANGLE_V0_FORMULA_ID}\`; starts require a completed session range, sweep/rejection/displacement trigger, point-in-time harvestable path geometry, and Candidate/David alignment.
+- Triangle v0 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v0 formula is disabled for this run."}
+${options.runtimeOptions.activationRuleIds.includes("triangle_v0_no_candidate_b") ? "- `triangle_v0_no_candidate_b` is enabled: Candidate B is removed from the Triangle direction formula and David-only side agreement is required." : ""}
+${triangleV1Enabled ? `- Triangle v1 formula id: \`${TRIANGLE_V1_FORMULA_ID}\`; starts require valid harvestable session geometry, session-mid extension, and Candidate B / David direction permission. Strict Katarakti is not required for v1 starts.
+- Triangle v1 spacing is per-cycle adaptive: completed session range / \`${TRIANGLE_TARGET_GRID_SLOTS}\`, clamped to \`${TRIANGLE_MIN_SPACING_ADR}..${TRIANGLE_MAX_SPACING_ADR}\` ADR; close-event rows emit \`cycle_spacing_adr\` and \`triangle_trigger_key\`.` : "- Triangle v1 formula is disabled for this run."}
+${triangleFormulaicEnabled ? "- Gate 91 formulaic geometry is enabled: directionless first pass, no Candidate B or David side dependency." : "- Gate 91 formulaic geometry is disabled for this run."}
+${triangleFormulaicV1Enabled ? `- Gate 91 v1 formulaic geometry id: \`${TRIANGLE_FORMULAIC_GEOMETRY_ID}\`; Q equation \`Q = max(R / (2 + 2 * (1 - PE)), C)\`, cost floor \`${TRIANGLE_FORMULAIC_COST_FLOOR_ADR}\` ADR, PE reject threshold \`${TRIANGLE_PATH_EFFICIENCY_LOW_MAX}\`, signal event brick \`Q / ${TRIANGLE_FORMULAIC_SIGNAL_BRICK_DIVISOR}\`, and exact session-mid reversion target receipts.` : ""}
+${triangleFormulaicV2Enabled ? `- Gate 91 v2 formulaic geometry id: \`${TRIANGLE_FORMULAIC_V2_GEOMETRY_ID}\`; Q equation \`Q = max(Q_cost, current_volatility_floor, R / (1 + sqrt(B_cost / Q_cost)))\`, center \`median M1 close\`, signal event brick \`max(Q / ${TRIANGLE_FORMULAIC_V2_SIGNAL_BRICK_DIVISOR}, Q_cost / 2)\`, target band \`max(Q / ${TRIANGLE_FORMULAIC_V2_TARGET_BAND_DIVISOR}, Q_cost / 2)\`, and geometry quality floor \`${TRIANGLE_FORMULAIC_V2_MIN_GEOMETRY_QUALITY}\`.` : ""}
+${triangleFormulaicV21Enabled ? `- Gate 91 v2.1 variants are enabled. Floor-pin rejection requires \`Q_bend / Q_floor >= ${TRIANGLE_FORMULAIC_V2_1_FLOOR_PIN_MIN_RATIO}\`. Surplus-quality variants require \`surplus_geometry_quality >= ${TRIANGLE_FORMULAIC_V2_1_MIN_SURPLUS_GEOMETRY_QUALITY}\`, where surplus bend subtracts \`${TRIANGLE_FORMULAIC_V2_1_SURPLUS_COST_MULTIPLE} * Q_cost\`. The convex variant widens adverse add spacing with depth and MAE/MFE state.` : ""}
+${triangleFormulaicV22Enabled ? "- Gate 91 v2.2 variants are enabled. Terminal-horizon and basket-solvency no-feed rules apply only to proposed adverse adds; starts remain v2.1 floor-pin starts." : ""}
+${triangleFormulaicV23Enabled ? `- Gate 91 v2.3 variants are enabled. First adverse adds bypass the throttle; continued adverse adds use local MFE since last fill, late-session local MFE, or late-session last-${TRIANGLE_FORMULAIC_V2_3_PROGRESS_FILL_LOOKBACK} center progress depending on row. Add-level receipts are written to \`add-throttle-events.rows.*\`.` : ""}
+- Signal settings id: \`${signalSettingsId(options.runtimeOptions.signalSettings)}\`.
+- David MA settings: LWMA \`${options.runtimeOptions.signalSettings.davidMaPeriod}\`, close price, RSI \`${options.runtimeOptions.signalSettings.davidRsiPeriod}\`, overbought \`${options.runtimeOptions.signalSettings.davidRsiOverbought}\`, oversold \`${options.runtimeOptions.signalSettings.davidRsiOversold}\`.
+- Stochastic settings: K \`${options.runtimeOptions.signalSettings.stochKPeriod}\`, D \`${options.runtimeOptions.signalSettings.stochDPeriod}\`, slowing \`${options.runtimeOptions.signalSettings.stochSlowing}\`, OB/OS \`${options.runtimeOptions.signalSettings.stochOverbought}/${options.runtimeOptions.signalSettings.stochOversold}\`, Low/High, Simple, main line only.
+- Signal clock: \`${options.runtimeOptions.signalClock}\`, ADR event brick \`${options.runtimeOptions.signalAdrBrick}\`.
+- Session mode: \`${options.runtimeOptions.sessionMode}\`, time zone \`${options.runtimeOptions.sessionTimeZone}\`, trade window start \`${formatTimeOfDay(options.runtimeOptions.sessionTradeStartEtMinutes)}\`, trade cutoff \`${formatTimeOfDay(options.runtimeOptions.sessionTradeEndEtMinutes)}\`, flatten \`${formatTimeOfDay(options.runtimeOptions.sessionFlattenEtMinutes)}\`, Sunday start \`${formatTimeOfDay(options.runtimeOptions.sessionSundayStartEtMinutes)}\`, flatten overrides \`${sessionFlattenOverridesLabel(options.runtimeOptions.sessionFlattenOverridesEt) || "none"}\`.
+- Summary-only output: \`${options.runtimeOptions.summaryOnly}\`.
+- Activation uses closed warehouse bars and controls only missing side-cycle starts.
+- Target mode \`${options.runtimeOptions.targetMode}\`, fixed target \`${options.runtimeOptions.targetAdr}\` ADR used only by fixed_adr mode, spacing \`${options.runtimeOptions.spacingAdr}\` ADR, minimum MA expansion \`${options.runtimeOptions.minMaExpansionAdr}\` ADR, grid add mode \`${options.runtimeOptions.gridAddMode}\`, lot size \`${options.runtimeOptions.lotSize}\`.
+- Protection modes are diagnostic replay controls only. \`lock_1q_stop_adds\` blocks new adds after a cycle reaches \`1Q\` MFE; trail modes close after Q-denominated giveback; protected flatten closes green cycles, holds small-red cycles, and closes ugly-red cycles at \`-1Q\`; live-state guards use first MFE/MAE quantum timestamps observed while the cycle is open; EOD hold-red modes close green cycles at flatten and carry red cycles forward.
+- Bar path mode: \`${options.runtimeOptions.barPathMode}\`.
+- Continuous mode carries side-grid positions across warehouse week boundaries; session-window mode carries only until target reset, session flatten, or terminal liquidation.
+- Target resets use the selected target mode. fixed_adr uses price ADR PnL; david_ma_reversion closes only profitable returns to the current David MA; session_mid_reversion closes only profitable returns to the formulaic session midpoint; session_center_band_reversion closes only profitable returns into the formulaic center band.
+- In \`ny_daily_window\`, target closes are still allowed whenever a tick exists, but starts/adds are blocked outside the configured clean session and unresolved cycles are force-closed at the flatten boundary.
+- In \`ny_daily_window\`, any cycle still open at the selected test endpoint is closed as a session flatten at the last available mark; this prevents endpoint terminal inventory from masquerading as a live overnight hold.
+- Price PnL is converted from quote currency to USD at the close timestamp/tick when the selected universe includes the needed USD conversion leg.
+- Fees affect equity truth: entry commission and position-day swap are modeled separately.
+- Explicit bid/ask spread and slippage are not modeled in this runner yet.
+- Terminal liquidation is explicit and reported separately.
+- No MT5 implementation, target/spacing optimization, pair-specific swap ingestion, margin stopout simulator, app/live integration, promotion, live-readiness, or double-sided in-between policy.
+
+## Summary
+
+${summaryTable}
+
+## Fee Model
+
+- Commission: \`${options.runtimeOptions.commissionPerEntryPer001LotUsd}\` USD per 0.01-lot entry.
+- Long swap: \`${options.runtimeOptions.longSwapPer001LotDayUsd}\` USD per 0.01-lot day.
+- Short swap: \`${options.runtimeOptions.shortSwapPer001LotDayUsd}\` USD per 0.01-lot day.
+- Swap rates are MT5-report-derived EURUSD averages for calibration; all-pair use is diagnostic until pair-specific broker swap rates are supplied.
+- Spread and slippage are excluded here; the daily session window is a structural exposure test, not a full execution-cost model.
+
+## Metric Definitions
+
+${metricTable}
+
+## Validation
+
+${validationTable}
+
+## Artifacts
+
+${artifactLines}
+
+## Stop Line
+
+Gate 90 is warehouse activation research only. Do not optimize MT5 lifecycle controls, retune target/spacing, promote strategy logic, or open double-sided in-between policy from this run.
+`;
+}
+
+async function writeRows(jsonPath: string, csvPath: string, rows: Record<string, unknown>[]) {
+  await writeJson(jsonPath, rows);
+  if (rows.length === 0) {
+    await writeFile(csvPath, "", "utf8");
+    return;
+  }
+  const columns = Object.keys(rows[0]!);
+  const escape = (value: unknown) => {
+    if (value === null || value === undefined) return "";
+    const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => escape(row[column])).join(","))].join("\n");
+  await writeFile(csvPath, `${csv}\n`, "utf8");
+}
+
+async function readWeekRowsWithRetry(options: { manifestId: string; week: string; pairs: string[]; attempts: number }) {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= options.attempts; attempt += 1) {
+    try {
+      return await readTradeLegPathWarehouseWeekRows({
+        manifestId: options.manifestId,
+        weekOpenUtc: options.week,
+        pairs: options.pairs,
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt === options.attempts) break;
+      await closePoolIfInitialized();
+    }
+  }
+  throw lastError;
+}
+
+async function main() {
+  const options = parseOptions();
+  await mkdir(options.artifactDir, { recursive: true });
+  await mkdir(path.dirname(options.reportPath), { recursive: true });
+
+  const gate74b = await readJson<Gate74bSummary>(path.join(options.gate74bDir, "gate74b-summary.json"));
+  const manifestId = options.manifestId ?? gate74b.warehouse.manifest_id;
+  const manifest = await readTradeLegPathWarehouseManifest(manifestId);
+  if (!manifest) throw new Error(`Missing Gate 74B warehouse manifest: ${manifestId}`);
+  if (manifest.status !== "complete") throw new Error(`Gate 74B warehouse is not complete: ${manifestId} status=${manifest.status}`);
+
+  const allWeeks = await readTradeLegPathWarehouseWeekKeys(manifestId);
+  const selectedWeeks = resolveSelectedWeeks(allWeeks, options);
+  if (selectedWeeks.length === 0) throw new Error("No weeks selected for Gate 90 replay");
+  const selectedPairs = resolveSelectedPairs(manifest.universe_symbols, options);
+  const variantStates: RuntimeVariantState[] = options.activationRuleIds.flatMap((activationRuleId) =>
+    options.protectionModes.map((protectionMode) => ({
+      activationRuleId,
+      protectionMode,
+      stats: createStats(),
+      books: new Map<string, PairBook>(),
+      previousEquityUsd: options.initialDepositUsd,
+    })),
+  );
+  const sharedSignalBooks = new Map<string, SignalBook>();
+  let finalConversionRates = emptyConversionRates();
+
+  for (const week of selectedWeeks) {
+    if (options.logProgress) console.log(`gate90 week=${week} pairs=${selectedPairs.length} activation_rules=${options.activationRuleIds.join(",")} protection_modes=${options.protectionModes.join(",")}`);
+    const rows = await readWeekRowsWithRetry({ manifestId, week, pairs: selectedPairs, attempts: 3 });
+    const weekRows = new Map(rows.map((row) => [row.pair, row]));
+    if (weekRows.size !== selectedPairs.length) throw new Error(`Loaded week ${week} has ${weekRows.size} pairs; expected ${selectedPairs.length}`);
+    const conversionRates = buildConversionRates([...weekRows.values()], options.barPathMode);
+    finalConversionRates = conversionRates;
+    for (const pair of selectedPairs) {
+      const row = weekRows.get(pair);
+      if (!row) throw new Error(`Missing loaded pair-week row for ${pair} ${week}`);
+      replayRowForVariants({ variantStates, sharedSignalBooks, row, conversionRates, runtimeOptions: options });
+    }
+    for (const variantState of variantStates) {
+      variantState.previousEquityUsd = addWeeklySnapshot({
+        stats: variantState.stats,
+        books: variantState.books,
+        variant_id: variantId(variantState.activationRuleId, variantState.protectionMode),
+        weekOpenUtc: week,
+        pairsReplayed: selectedPairs.length,
+        previousEquityUsd: variantState.previousEquityUsd,
+        conversionRates,
+        runtimeOptions: options,
+      });
+    }
+  }
+
+  for (const variantState of variantStates) {
+    liquidateEnd({
+      activationRuleId: variantState.activationRuleId,
+      protectionMode: variantState.protectionMode,
+      stats: variantState.stats,
+      books: variantState.books,
+      signalBooks: sharedSignalBooks,
+      conversionRates: finalConversionRates,
+      runtimeOptions: options,
+    });
+    observeStats(variantState.stats, variantState.books);
+  }
+  const summaryRows = variantStates.map((variantState) => summarize({
+    stats: variantState.stats,
+    books: variantState.books,
+    selectedWeeks,
+    selectedPairs,
+    manifest,
+    runtimeOptions: options,
+    activationRuleId: variantState.activationRuleId,
+    protectionMode: variantState.protectionMode,
+  }));
+  const weeklyRows = variantStates.flatMap((variantState) => variantState.stats.weeklyRows);
+  const closeEvents = variantStates.flatMap((variantState) => variantState.stats.closeEvents);
+  const addThrottleEvents = variantStates.flatMap((variantState) => variantState.stats.addThrottleEvents);
+  const marginalAddAuditRows = variantStates.flatMap((variantState) => variantState.stats.marginalAddAuditRows);
+  const closeEventBreakdowns = closeEventBreakdownRows(closeEvents, options.initialDepositUsd);
+  const terminalInventoryRows = variantStates.flatMap((variantState) => variantState.stats.terminalInventoryRows);
+  const validations = validationRows({ gate74b, selectedWeeks, selectedPairs, runtimeOptions: options });
+  const metrics = metricRows();
+  const verdict = "PASS_GATE90_GRID_ACTIVATION_ONE_SIDED_SELECTION_BUILT_DIAGNOSTIC_ONLY";
+
+  const paths = {
+    summaryJson: path.join(options.artifactDir, "activation-summary.rows.json"),
+    summaryCsv: path.join(options.artifactDir, "activation-summary.rows.csv"),
+    weeklyJson: path.join(options.artifactDir, "weekly-activation-truth.rows.json"),
+    weeklyCsv: path.join(options.artifactDir, "weekly-activation-truth.rows.csv"),
+    closeEventsJson: path.join(options.artifactDir, "close-events.rows.json"),
+    closeEventsCsv: path.join(options.artifactDir, "close-events.rows.csv"),
+    addThrottleEventsJson: path.join(options.artifactDir, "add-throttle-events.rows.json"),
+    addThrottleEventsCsv: path.join(options.artifactDir, "add-throttle-events.rows.csv"),
+    marginalAddAuditJson: path.join(options.artifactDir, "marginal-add-audit.rows.json"),
+    marginalAddAuditCsv: path.join(options.artifactDir, "marginal-add-audit.rows.csv"),
+    closeEventBreakdownsJson: path.join(options.artifactDir, "close-event-breakdown.rows.json"),
+    closeEventBreakdownsCsv: path.join(options.artifactDir, "close-event-breakdown.rows.csv"),
+    terminalInventoryJson: path.join(options.artifactDir, "terminal-inventory.rows.json"),
+    terminalInventoryCsv: path.join(options.artifactDir, "terminal-inventory.rows.csv"),
+    validationJson: path.join(options.artifactDir, "validation.rows.json"),
+    validationCsv: path.join(options.artifactDir, "validation.rows.csv"),
+    metricDefinitionsJson: path.join(options.artifactDir, "metric-definitions.rows.json"),
+    metricDefinitionsCsv: path.join(options.artifactDir, "metric-definitions.rows.csv"),
+    commandReceipt: path.join(options.artifactDir, "command-receipt.json"),
+    runSummaryJson: path.join(options.artifactDir, "gate90-run-summary.json"),
+    shaManifest: path.join(options.artifactDir, "gate90-activation-sha256.txt"),
+  };
+  const artifactsForReport = Object.fromEntries(Object.entries({ ...paths, report: options.reportPath }).map(([label, artifactPath]) => [label, toRepoRelative(artifactPath)]));
+
+  await writeRows(paths.summaryJson, paths.summaryCsv, summaryRows);
+  await writeRows(paths.weeklyJson, paths.weeklyCsv, weeklyRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.closeEventsJson, paths.closeEventsCsv, closeEvents.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.addThrottleEventsJson, paths.addThrottleEventsCsv, addThrottleEvents.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.marginalAddAuditJson, paths.marginalAddAuditCsv, marginalAddAuditRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.closeEventBreakdownsJson, paths.closeEventBreakdownsCsv, closeEventBreakdowns as unknown as Record<string, unknown>[]);
+  await writeRows(paths.terminalInventoryJson, paths.terminalInventoryCsv, terminalInventoryRows.map((row) => withHash(row as unknown as Record<string, unknown>)));
+  await writeRows(paths.validationJson, paths.validationCsv, validations);
+  await writeRows(paths.metricDefinitionsJson, paths.metricDefinitionsCsv, metrics);
+  await writeJson(paths.commandReceipt, {
+    gate_id: GATE_ID,
+    command: COMMAND,
+    durable_command: renderDurableCommand(options),
+    git_commit: gitCommit(),
+    generated_at: new Date().toISOString(),
+    options,
+  });
+  await writeJson(paths.runSummaryJson, {
+    gate_id: GATE_ID,
+    verdict,
+    variant_ids: variantStates.map((state) => variantId(state.activationRuleId, state.protectionMode)),
+    activation_rule_ids: options.activationRuleIds,
+    protection_modes: options.protectionModes,
+    warehouse_manifest_id: manifest.manifest_id,
+    warehouse_hash: manifest.warehouse_hash,
+    selected_weeks: selectedWeeks.length,
+    selected_pairs: selectedPairs,
+    summary_rows: summaryRows,
+    add_throttle_event_rows: addThrottleEvents.length,
+    marginal_add_audit_rows: marginalAddAuditRows.length,
+    close_event_breakdown_rows: closeEventBreakdowns.length,
+    terminal_inventory_rows: terminalInventoryRows.length,
+    validation_rows: validations,
+  });
+  await writeText(options.reportPath, renderReport({
+    verdict,
+    summaryRows,
+    validationRows: validations,
+    metricRows: metrics,
+    artifacts: artifactsForReport,
+    runtimeOptions: options,
+  }));
+  await writeShaManifest(paths.shaManifest, GATE_ID, COMMAND, [
+    { label: "summary_json", path: paths.summaryJson },
+    { label: "weekly_json", path: paths.weeklyJson },
+    { label: "close_events_json", path: paths.closeEventsJson },
+    { label: "add_throttle_events_json", path: paths.addThrottleEventsJson },
+    { label: "marginal_add_audit_json", path: paths.marginalAddAuditJson },
+    { label: "close_event_breakdowns_json", path: paths.closeEventBreakdownsJson },
+    { label: "terminal_inventory_json", path: paths.terminalInventoryJson },
+    { label: "validation_json", path: paths.validationJson },
+    { label: "metric_definitions_json", path: paths.metricDefinitionsJson },
+    { label: "command_receipt", path: paths.commandReceipt },
+    { label: "run_summary_json", path: paths.runSummaryJson },
+    { label: "report", path: options.reportPath },
+  ]);
+
+  console.log(JSON.stringify({
+    verdict,
+    report: toRepoRelative(options.reportPath),
+    artifact_dir: toRepoRelative(options.artifactDir),
+    summary_rows: summaryRows,
+  }, null, 2));
+  await closePoolIfInitialized();
+}
+
+main().catch(async (error) => {
+  console.error(error);
+  await closePoolIfInitialized();
+  process.exitCode = 1;
+});

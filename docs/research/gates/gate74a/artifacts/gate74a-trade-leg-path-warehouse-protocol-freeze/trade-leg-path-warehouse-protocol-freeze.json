@@ -1,0 +1,51 @@
+{
+  "gate_id": "Gate 74A: trade-leg-path-warehouse-protocol-freeze",
+  "protocol_version": "gate74_trade_leg_path_warehouse_protocol_v1",
+  "objective": "freeze a policy-neutral trade-leg path warehouse contract so expensive path materialization can be reused by many replay adapters",
+  "core_rule": "base warehouse stores path primitives; replay adapters express policy decisions",
+  "upstream_bindings": {
+    "locked_algorithm_id": "gate69_locked_unnamed_forced28_candidate_b_default",
+    "default_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+    "candidate_b_final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+    "candidate_b_ledger_file_sha256": "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03",
+    "gate71bm_basket_path_manifest_id": "gate71bm_basket_path_1A8231225169",
+    "gate71bm_basket_path_warehouse_hash": "CD8A18C163A7B19515F8EFB948481535704704D75C3C70F620B76DA6384EB8F0",
+    "gate73c_verdict": "PASS_GATE73C_DIRECTION_CONTINUATION_LIFECYCLE__PERSISTENCE_AND_COST_SENSITIVITY_VISIBLE",
+    "candidate_b_immutable_directional_truth": true,
+    "candidate_c_shadow_only": true
+  },
+  "path_contract": {
+    "asset_class": "fx",
+    "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "path_resolution": "1m",
+    "adr_target_pct": 1,
+    "adr_account_mapping": "1 ADR = 1 percent account profit under the current ADR-normalized research convention",
+    "entry_reference": "first loaded path bar open in the execution window",
+    "weekly_cutoff_reference": "Friday execution cutoff inherited from Gate 71 clean path protocol",
+    "timestamp_order": "strict ascending UTC timestamps per week and pair"
+  },
+  "gate74a_only": {
+    "materialization_started": false,
+    "replay_adapters_started": false,
+    "optimization_started": false,
+    "promotion_started": false,
+    "risk_started": false
+  },
+  "forbidden_scope": [
+    "warehouse materialization",
+    "policy replay scoring",
+    "exit promotion",
+    "risk layer",
+    "pair-specific optimization",
+    "regime-specific exits",
+    "fair-value pruning",
+    "source mutation",
+    "Candidate B mutation",
+    "Candidate C defaulting",
+    "COT retuning",
+    "Strength retuning",
+    "Regime retuning",
+    "MT5/live/runtime work"
+  ],
+  "content_hash": "D08C4A8F4F31CA94FED11F16B1DB91A7BAC4FDF45716ADC39BCBBD0451C64365"
+}

@@ -1,0 +1,16 @@
+MT5 terminal sync gate - 2026-07-08T13:15:03.2300711-04:00
+Manifest: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\terminal-roots.json
+ArtifactDir: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync
+Source hash mismatches: 0
+Tester profile source: C:\Users\User\Documents\GitHub\limni-website\automation\mt5\tester-presets\limni-portfolio-revma-fx28-fast-smoke.set
+Tester profile hash mismatches: 0
+Compile failures: 0
+Active Experts stale-input matches: 0
+Tester profile stale-input matches: 5
+Unknown running terminal64.exe count: 0
+Compile summary: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\terminal-compile-summary.txt
+Source hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\terminal-source-hash-proof.csv
+Tester profile hash proof: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\terminal-tester-profile-hash-proof.csv
+Active Experts stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\terminal-experts-stale-input-search.txt
+Tester profile stale search: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\terminal-profiles-stale-input-search.txt
+Running terminals: C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate102\artifacts\gate102-fx28-smoke-runner-2026-07-08\terminal-sync\running-terminals.txt

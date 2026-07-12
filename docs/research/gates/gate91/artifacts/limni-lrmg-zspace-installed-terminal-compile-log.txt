@@ -1,0 +1,3 @@
+0	2026.07.03 23:40:23.585	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 1056 ms elapsed, cpu='X64 Regular'
+0	2026.07.03 23:45:11.279	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 1100 ms elapsed, cpu='X64 Regular'
+0	2026.07.03 23:52:25.503	Compile	C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Indicators\LimniLRMGZSpace.mq5 - 0 errors, 0 warnings, 1147 ms elapsed, cpu='X64 Regular'

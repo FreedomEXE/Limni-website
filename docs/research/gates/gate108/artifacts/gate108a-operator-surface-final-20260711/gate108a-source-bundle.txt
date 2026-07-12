@@ -1,0 +1,8 @@
+algorithm=sha256-canonical-local-include-closure-v1
+entrypoint=automation/mt5/Experts/Limni/LimniPortfolioEA.mq5
+source_count=57
+external_include_count=1
+external_includes=Trade/Trade.mqh
+bundle_id=sha256:6efd1d405df9c8be38f1a801510539716d55a4906fd333e841e7618a719375ea
+manifest_path=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate108\artifacts\gate108a-operator-surface-final-20260711\gate108a-source-closure.csv
+status=MATCH

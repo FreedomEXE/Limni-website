@@ -1,0 +1,17 @@
+[
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "target_adr": 1.5,
+    "closed_delta_vs_adverse_focus": 3631.1111,
+    "final_equity_delta_vs_adverse_focus": 2394.638882,
+    "max_drawdown_delta_vs_adverse_focus": -2102.905072,
+    "final_open_delta_vs_adverse_focus": -1236.472218,
+    "giveback_delta_vs_adverse_focus": 4126.526781,
+    "closed_adr_from_recovery_fills": 15606.245343,
+    "closed_adr_from_expansion_fills": 1707.215318,
+    "adverse_recovery_fill_count": 79815,
+    "favorable_expansion_fill_count": 30168,
+    "interpretation": "expansion_not_superior_to_adverse_focus_on_first_pass",
+    "content_hash": "4A19F9C2547BF5222DBE4ACE0A0522BFF3871A797CC3B69128AF23F0B3DC0DE8"
+  }
+]

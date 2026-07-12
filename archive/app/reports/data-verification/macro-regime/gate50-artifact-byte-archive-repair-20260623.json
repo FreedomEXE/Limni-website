@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-06-23T04:56:24.224Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Exact raw-byte recovery and immutable archive binding for the current CHF Swiss FSO CPI source artifact.",
+  "summary": {
+    "status": "PASS_ARTIFACT_BYTE_ARCHIVE_REPAIR",
+    "artifactId": "488367a846761e11e31779cbe93817a52f0749ae69b2fd721fbb06b67340d345",
+    "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+    "recoveryMethod": "existing_local_temp_cache",
+    "recoveredFrom": "C:\\Users\\User\\AppData\\Local\\Temp\\limni-chf-cpi-xlsx-current\\chf.xlsx",
+    "expectedSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "actualSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "expectedSize": 5561298,
+    "actualSize": 5561298,
+    "byteIdentityPass": true,
+    "archiveWrittenAtUtc": "2026-06-23T04:56:24.613Z",
+    "archiveLocationIdentity": "postgres:research_macro_source_artifact_byte_archives/raw_payload_sha256=4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "originalArtifactRecordMutated": false,
+    "originalArtifactRawPayloadTextStillNull": true,
+    "networkUsedForRecovery": false,
+    "diagnosticOnly": true,
+    "promotionEligible": false,
+    "activationEligible": false,
+    "outcomeConsumable": false,
+    "noPnlComputed": true,
+    "noStrategyDecisionComputed": true
+  },
+  "target": {
+    "artifactId": "488367a846761e11e31779cbe93817a52f0749ae69b2fd721fbb06b67340d345",
+    "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+    "sourceFamily": "inflation",
+    "currency": "CHF",
+    "endpointId": "swiss_fso_lik25b25_xlsx_master",
+    "datasetId": "37b4081b-880e-4ae6-8d53-20ba900dff07",
+    "datasetHash": "0817b0ec5b4c03c2d01ddc5c014601a2b7028c78203d07f95b3393235c70cc17",
+    "expectedSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "expectedSize": 5561298,
+    "expectedContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  },
+  "artifactBefore": {
+    "artifact_id": "488367a846761e11e31779cbe93817a52f0749ae69b2fd721fbb06b67340d345",
+    "source_family": "inflation",
+    "source_id": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+    "currency": "CHF",
+    "endpoint_id": "swiss_fso_lik25b25_xlsx_master",
+    "endpoint_url": "https://dam-api.bfs.admin.ch/hub/api/dam/assets/36669836/master",
+    "http_status": 200,
+    "raw_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "raw_payload_sha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "raw_payload_size_bytes": 5561298,
+    "raw_payload_text_is_null": true,
+    "coverage": {
+      "endpointMode": "swiss_fso_dam_xlsx_master",
+      "evidenceLayer": "immutable_raw_endpoint_payload_v1",
+      "parserVersion": "swiss_fso_lik25b25_index_m_total_row_xlsx_parser_v1",
+      "layoutDriftGuard": "fail_closed_unless_sheet1_row4_date_headers_and_row5_total_index_values_exist",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "branchSemanticHash": "04aa022e1df9e899801b88d726b3e05a16010b5f6260db66b0d2005bee6bcd5d",
+      "sourceContractHash": "127a7130dba55f0138aadd549faf6dac9d565119185d6f32c626fda3e249a7b8",
+      "continuityDecisionId": "chf_lik25b25_dec2025_100_monthly_total_index_v1",
+      "baseOrReferencePeriod": "Dec 2025 = 100",
+      "sourceContractVersion": "macro_source_contract_hardening_v5_boundary_repair",
+      "releaseCalendarVersion": "chf_2026-05_release_calendar_v1",
+      "revisionRebasingVersion": "chf_revision_rebasing_v1"
+    },
+    "flags": {
+      "diagnosticOnly": true,
+      "credentialsRedacted": true,
+      "binaryPayloadStoredByHashOnly": true
+    }
+  },
+  "artifactAfter": {
+    "artifact_id": "488367a846761e11e31779cbe93817a52f0749ae69b2fd721fbb06b67340d345",
+    "source_family": "inflation",
+    "source_id": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+    "currency": "CHF",
+    "endpoint_id": "swiss_fso_lik25b25_xlsx_master",
+    "endpoint_url": "https://dam-api.bfs.admin.ch/hub/api/dam/assets/36669836/master",
+    "http_status": 200,
+    "raw_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "raw_payload_sha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "raw_payload_size_bytes": 5561298,
+    "raw_payload_text_is_null": true,
+    "coverage": {
+      "endpointMode": "swiss_fso_dam_xlsx_master",
+      "evidenceLayer": "immutable_raw_endpoint_payload_v1",
+      "parserVersion": "swiss_fso_lik25b25_index_m_total_row_xlsx_parser_v1",
+      "layoutDriftGuard": "fail_closed_unless_sheet1_row4_date_headers_and_row5_total_index_values_exist",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "branchSemanticHash": "04aa022e1df9e899801b88d726b3e05a16010b5f6260db66b0d2005bee6bcd5d",
+      "sourceContractHash": "127a7130dba55f0138aadd549faf6dac9d565119185d6f32c626fda3e249a7b8",
+      "continuityDecisionId": "chf_lik25b25_dec2025_100_monthly_total_index_v1",
+      "baseOrReferencePeriod": "Dec 2025 = 100",
+      "sourceContractVersion": "macro_source_contract_hardening_v5_boundary_repair",
+      "releaseCalendarVersion": "chf_2026-05_release_calendar_v1",
+      "revisionRebasingVersion": "chf_revision_rebasing_v1"
+    },
+    "flags": {
+      "diagnosticOnly": true,
+      "credentialsRedacted": true,
+      "binaryPayloadStoredByHashOnly": true
+    }
+  },
+  "archive": {
+    "raw_payload_sha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+    "raw_payload_size_bytes": 5561298,
+    "raw_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "archive_origin": "manual_recovered_exact_payload_v1",
+    "archive_written_at_utc": "2026-06-23T04:56:24.613Z",
+    "original_artifact_record_mutated": false,
+    "coverage": {
+      "datasetId": "37b4081b-880e-4ae6-8d53-20ba900dff07",
+      "artifactId": "488367a846761e11e31779cbe93817a52f0749ae69b2fd721fbb06b67340d345",
+      "recoveredFrom": "C:\\Users\\User\\AppData\\Local\\Temp\\limni-chf-cpi-xlsx-current\\chf.xlsx",
+      "recoveryMethod": "existing_local_temp_cache",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "networkUsedForRecovery": false
+    },
+    "flags": {
+      "diagnosticOnly": true,
+      "exactPreExistingHashRecovered": true,
+      "originalArtifactRecordMutated": false
+    },
+    "archiveLocationIdentity": "postgres:research_macro_source_artifact_byte_archives/raw_payload_sha256=4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda"
+  },
+  "receiptHash": "ffe301939594a8a4dc84679d7b412895e9cc54cb0ece35930f4c691358f78f48",
+  "files": {
+    "jsonPath": "app/reports/data-verification/macro-regime/gate50-artifact-byte-archive-repair-20260623.json",
+    "mdPath": "app/reports/data-verification/macro-regime/gate50-artifact-byte-archive-repair-20260623.md"
+  }
+}

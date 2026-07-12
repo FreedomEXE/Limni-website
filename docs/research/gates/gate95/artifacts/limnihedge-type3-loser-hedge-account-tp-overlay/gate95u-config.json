@@ -1,0 +1,48 @@
+{
+  "gate_id": "Gate 95U: limnihedge-type3-loser-hedge-account-tp-overlay",
+  "gate_date": "2026-07-05",
+  "source_gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "source_gate95r_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-corrected-accounting-oos-replay",
+  "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+  "gate74b_manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "date_from": "2025-01-01T00:00:00.000Z",
+  "date_to": "2026-05-31T23:59:59.999Z",
+  "observer_timezone": "America/New_York",
+  "observer_hour_ny": 16,
+  "mark_price_source": "latest_available_gate74b_raw_path_price_at_or_before_observer",
+  "hedge_triggers": [
+    "corrected_marked_net_lt_0",
+    "corrected_marked_net_lt_minus_1x_commission"
+  ],
+  "hedge_size": "1.0x_original_lot_equal_opposite_side",
+  "account_tp_usd": [
+    25,
+    50,
+    100,
+    250
+  ],
+  "max_gross_lot_ratio_guard": 1.75,
+  "target_variants": [
+    "adr_event_0_025_type3_long_only",
+    "adr_event_0_05_type3_long_only",
+    "adr_event_0_075_type3_long_only",
+    "time_h1_type3_long_only"
+  ],
+  "corrected_accounting_helper": "engine/scripts/verification/limnihedge-corrected-accounting.ts",
+  "frozen": [
+    "no_entry_rerun",
+    "no_2019_2024",
+    "no_mt5_mutation",
+    "no_new_signals",
+    "no_candidate_b_changes",
+    "no_katarakti_changes",
+    "no_lrmg_changes",
+    "no_q_triangle_changes",
+    "no_optimization"
+  ],
+  "cost_stress": [
+    "double_commission",
+    "base_commission_plus_0_1_pip_slippage"
+  ],
+  "content_hash": "A52118AE0A6FFB6DFAAAE90AE2D21C5D3373421B6B45C2109BF7D42CF34A11B2"
+}

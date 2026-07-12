@@ -1,0 +1,38 @@
+{
+  "gate_id": "Gate 64A: silent-missing-atom-audit",
+  "required_missing_count": 1,
+  "required_missing_atoms": [
+    {
+      "cell_id": "regime",
+      "atom_id": "valuation_gap",
+      "decision_reason": "valuation_gap_formula_not_versioned",
+      "route": "Gate 64B valuation-gap derived atom lock"
+    }
+  ],
+  "non_valuation_required_missing_count": 0,
+  "valuation_gap_status": {
+    "cell_id": "regime",
+    "atom_id": "valuation_gap",
+    "label": "valuation gap derived Regime atom",
+    "atom_class": "fail_closed_not_versioned_atom",
+    "expected_scope": "conceptual",
+    "required_before_body": true,
+    "expected_source": "Gate 60C derived valuation contract",
+    "emitted_probe": {
+      "kind": "conceptual_only",
+      "reason": "valuation_gap_formula_not_versioned"
+    },
+    "matrix_atom_keys": [
+      "valuation_gap"
+    ],
+    "fail_closed_reason": "valuation_gap_formula_not_versioned",
+    "emitted_rows": 0,
+    "expected_rows": 0,
+    "emitted_status": "conceptual_fail_closed",
+    "brain_architecture_visible": false,
+    "matrix_visible": false,
+    "matrix_candidate_ids": [],
+    "required_before_body_decision": "required_now",
+    "decision_reason": "valuation_gap_formula_not_versioned"
+  }
+}

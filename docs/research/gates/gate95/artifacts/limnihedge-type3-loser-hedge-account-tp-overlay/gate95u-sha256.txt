@@ -1,0 +1,13 @@
+gate_id Gate 95U: limnihedge-type3-loser-hedge-account-tp-overlay
+command npm run engine:gate95u:limnihedge-type3-loser-hedge-account-tp-overlay
+generated_at 2026-07-05T05:01:56.737Z
+git_commit 0fa7ea206e9d99a36f260a0e34c53774840196da
+config FEA093E33A3815CE4C9A6B460E42EEB629EDDE630BA5E3F3F281B60B4F8EA37D docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/gate95u-config.json
+baseline_summary 241E5204AF1C11FF2559825960957F3C28BFDBCE181059FE56A94FCCFF9AF462 docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/baseline-corrected-summary.rows.json
+hedge_account_tp_matrix 836718F432647DDBB6FE33F41E234FF19C64AF5B62A4371C7C246C69F23C1B11 docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/hedge-account-tp-matrix.rows.json
+hedge_account_tp_decision 2D554002F2F1E5C8F01C689DB083A642C3AE23EF9BB76C9261BB305FE52800DB docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/hedge-account-tp-decision.rows.json
+account_tp_cycle_flush 3ABEB42A40383FC5F888844E9D405C03F53F1AA77553D17D1AEC2BD43A6FB820 docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/account-tp-cycle-flush.rows.json
+validation 3EF19F4B4A5DECA95B36211B78429BFF426A26EAFB77983DEBA5716BD3176B71 docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/validation.rows.json
+run_summary E2D8D0A8719011CAB7AFD9959342E52647945F3522D17C2EE73D5537C482789A docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/gate95u-run-summary.json
+command_receipt 08B8A64ABFF32DE0B6FA176598CC55080C6F2755FD622BAE2E0D8BAB95BB7D0D docs/research/gates/gate95/artifacts/limnihedge-type3-loser-hedge-account-tp-overlay/command-receipt.json
+report 071B41701A04AADEDFEBC3755E03505C144E73F4A555E508244BFD5B09E9B630 docs/research/gates/gate95/GATE95U_LIMNIHEDGE_TYPE3_LOSER_HEDGE_ACCOUNT_TP_OVERLAY_2026-07-05.md

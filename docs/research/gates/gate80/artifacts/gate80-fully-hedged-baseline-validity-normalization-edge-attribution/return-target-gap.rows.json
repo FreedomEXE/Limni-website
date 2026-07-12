@@ -1,0 +1,16 @@
+[
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "target_return_percent_7y": 700,
+    "current_scale_percent_7y": 69,
+    "target_max_drawdown_percent": 30,
+    "required_adr_return_at_same_scale": 139726.084562,
+    "current_final_equity_adr": 13772.999764,
+    "current_adr_return_gap": 125953.084798,
+    "leverage_multiple_to_target_if_linear": 10.144928,
+    "current_max_drawdown_adr": -1989.442654,
+    "linearly_scaled_drawdown_adr_to_target": -20182.752485,
+    "leverage_read": "leverage_alone_would_scale_tail_risk_materially",
+    "content_hash": "B5D7C029ED4376D433BFF8D0053A8481F96F9993FCAF36D1EADF840D2198BB7B"
+  }
+]

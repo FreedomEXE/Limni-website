@@ -1,0 +1,12 @@
+Gate 99ZA active indicator static scan
+Date: 2026-07-07
+
+Command:
+rg -n "CAppDialog|g_state_dialog|LimniLoadCachedStackSeries|LimniQStateBuildPairFeatures|CopyRates|ChartRedraw" StateMap.mq5 Stochastic.mq5
+
+No matches in active indicators.
+
+Service/snapshot boundary scan:
+automation/mt5/Services/Limni/LimniVisualRuntimeService.mq5:299:      if(!LimniVisualQStateFeaturesFromStack(
+automation/mt5/Indicators/Include/LimniVisualRuntimeSnapshot.mqh:211:   copied = CopyRates(symbol, LIMNI_LRMG_SOURCE_TIMEFRAME, (datetime)0, TimeCurrent(), source_rates);
+automation/mt5/Indicators/Include/LimniVisualRuntimeSnapshot.mqh:479:bool LimniVisualQStateFeaturesFromStack(

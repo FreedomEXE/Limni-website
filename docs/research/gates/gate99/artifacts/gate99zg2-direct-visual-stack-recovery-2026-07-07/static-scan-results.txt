@@ -1,0 +1,15 @@
+Stochastic version_1_15=True
+StateMap version_1_57=True
+Stochastic direct_cached_before_snapshot_read=True
+StateMap direct_cached_before_snapshot_read=True
+Stochastic direct_build_before_snapshot_read=True
+StateMap direct_build_before_snapshot_read=True
+Stochastic failure_reason_printed=True
+StateMap failure_reason_printed=True
+StateMap failure_reason_displayed_in_panel=True
+StateMap qstate_refresh_after_projection=True
+StateMap panel_forces_default_position=True
+StateMap header_not_selectable=True
+StateMap drag_does_not_persist_position=True
+EA files changed=False
+Katarakti files changed=False

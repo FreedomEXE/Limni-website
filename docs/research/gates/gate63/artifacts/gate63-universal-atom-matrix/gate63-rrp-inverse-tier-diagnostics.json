@@ -1,0 +1,539 @@
+{
+  "diagnostic_only": true,
+  "rrp_inverse_binary_direction_counts": {
+    "BASE_CURRENCY": 5807,
+    "QUOTE_CURRENCY": 4637
+  },
+  "spread_tier3_breaks": [
+    0.697673,
+    1.79096
+  ],
+  "spread_tier5_breaks": [
+    0.390554,
+    0.876607,
+    1.490556,
+    2.694682
+  ],
+  "cohorts": [
+    {
+      "cohort_id": "rrp_inverse_spread_tier3_weak",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier3 weak.",
+      "rows": 3485,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 967.384687,
+        "adr_mean": 0.277585,
+        "max_drawdown": -148.201904,
+        "r_over_drawdown": 6.527478,
+        "row_pf": 1.334397
+      },
+      "weekly_hold": {
+        "adr_sum": 256.07151,
+        "adr_mean": 0.073478,
+        "max_drawdown": -35.809326,
+        "r_over_drawdown": 7.150973,
+        "row_pf": 1.146795
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier3_middle",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier3 middle.",
+      "rows": 3480,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 676.90004,
+        "adr_mean": 0.194512,
+        "max_drawdown": -180.90231,
+        "r_over_drawdown": 3.741799,
+        "row_pf": 1.211333
+      },
+      "weekly_hold": {
+        "adr_sum": 249.675463,
+        "adr_mean": 0.071746,
+        "max_drawdown": -52.66949,
+        "r_over_drawdown": 4.740419,
+        "row_pf": 1.13832
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier3_extreme",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier3 extreme.",
+      "rows": 3479,
+      "weeks": 327,
+      "adr_grid": {
+        "adr_sum": 739.33705,
+        "adr_mean": 0.212514,
+        "max_drawdown": -263.555703,
+        "r_over_drawdown": 2.80524,
+        "row_pf": 1.24001
+      },
+      "weekly_hold": {
+        "adr_sum": 182.569123,
+        "adr_mean": 0.052477,
+        "max_drawdown": -107.09785,
+        "r_over_drawdown": 1.704695,
+        "row_pf": 1.099499
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier5_q1",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier5 q1.",
+      "rows": 2089,
+      "weeks": 372,
+      "adr_grid": {
+        "adr_sum": 558.767579,
+        "adr_mean": 0.267481,
+        "max_drawdown": -103.068798,
+        "r_over_drawdown": 5.421307,
+        "row_pf": 1.318986
+      },
+      "weekly_hold": {
+        "adr_sum": 216.710624,
+        "adr_mean": 0.103739,
+        "max_drawdown": -15.985919,
+        "r_over_drawdown": 13.556344,
+        "row_pf": 1.211836
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier5_q2",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier5 q2.",
+      "rows": 2090,
+      "weeks": 357,
+      "adr_grid": {
+        "adr_sum": 609.320981,
+        "adr_mean": 0.291541,
+        "max_drawdown": -97.914374,
+        "r_over_drawdown": 6.222998,
+        "row_pf": 1.353663
+      },
+      "weekly_hold": {
+        "adr_sum": 31.103218,
+        "adr_mean": 0.014882,
+        "max_drawdown": -65.699884,
+        "r_over_drawdown": 0.473414,
+        "row_pf": 1.028694
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier5_q3",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier5 q3.",
+      "rows": 2090,
+      "weeks": 371,
+      "adr_grid": {
+        "adr_sum": 415.636951,
+        "adr_mean": 0.198869,
+        "max_drawdown": -208.592652,
+        "r_over_drawdown": 1.992577,
+        "row_pf": 1.212684
+      },
+      "weekly_hold": {
+        "adr_sum": 204.3333,
+        "adr_mean": 0.097767,
+        "max_drawdown": -32.856584,
+        "r_over_drawdown": 6.218945,
+        "row_pf": 1.190986
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier5_q4",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier5 q4.",
+      "rows": 2087,
+      "weeks": 336,
+      "adr_grid": {
+        "adr_sum": 463.00417,
+        "adr_mean": 0.221852,
+        "max_drawdown": -96.581848,
+        "r_over_drawdown": 4.793905,
+        "row_pf": 1.249888
+      },
+      "weekly_hold": {
+        "adr_sum": 84.20974,
+        "adr_mean": 0.04035,
+        "max_drawdown": -71.97333,
+        "r_over_drawdown": 1.170013,
+        "row_pf": 1.075155
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_spread_tier5_q5",
+      "description": "RRP inverse rows where absolute base-minus-quote spread is tier5 q5.",
+      "rows": 2088,
+      "weeks": 260,
+      "adr_grid": {
+        "adr_sum": 336.892096,
+        "adr_mean": 0.161347,
+        "max_drawdown": -272.33814,
+        "r_over_drawdown": 1.237036,
+        "row_pf": 1.177811
+      },
+      "weekly_hold": {
+        "adr_sum": 151.959214,
+        "adr_mean": 0.072777,
+        "max_drawdown": -88.39818,
+        "r_over_drawdown": 1.719031,
+        "row_pf": 1.139797
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier3_high",
+      "description": "RRP inverse rows where selected currency RRP rank tier3 is high.",
+      "rows": 1119,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 397.505701,
+        "adr_mean": 0.355233,
+        "max_drawdown": -65.666064,
+        "r_over_drawdown": 6.053442,
+        "row_pf": 1.458687
+      },
+      "weekly_hold": {
+        "adr_sum": 64.709594,
+        "adr_mean": 0.057828,
+        "max_drawdown": -31.494389,
+        "r_over_drawdown": 2.054639,
+        "row_pf": 1.110903
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier3_middle",
+      "description": "RRP inverse rows where selected currency RRP rank tier3 is middle.",
+      "rows": 4476,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1100.905291,
+        "adr_mean": 0.245957,
+        "max_drawdown": -258.557541,
+        "r_over_drawdown": 4.257873,
+        "row_pf": 1.282474
+      },
+      "weekly_hold": {
+        "adr_sum": 206.01637,
+        "adr_mean": 0.046027,
+        "max_drawdown": -127.160216,
+        "r_over_drawdown": 1.620132,
+        "row_pf": 1.087965
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier3_low",
+      "description": "RRP inverse rows where selected currency RRP rank tier3 is low.",
+      "rows": 4849,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 885.210785,
+        "adr_mean": 0.182555,
+        "max_drawdown": -251.723345,
+        "r_over_drawdown": 3.516602,
+        "row_pf": 1.20062
+      },
+      "weekly_hold": {
+        "adr_sum": 417.590132,
+        "adr_mean": 0.086119,
+        "max_drawdown": -73.908273,
+        "r_over_drawdown": 5.650114,
+        "row_pf": 1.169832
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier5_q1",
+      "description": "RRP inverse rows where selected currency RRP rank tier5 is q1.",
+      "rows": 373,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 160.990697,
+        "adr_mean": 0.43161,
+        "max_drawdown": -41.53004,
+        "r_over_drawdown": 3.876488,
+        "row_pf": 1.566296
+      },
+      "weekly_hold": {
+        "adr_sum": 14.173874,
+        "adr_mean": 0.038,
+        "max_drawdown": -16.920692,
+        "r_over_drawdown": 0.837665,
+        "row_pf": 1.071961
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier5_q2",
+      "description": "RRP inverse rows where selected currency RRP rank tier5 is q2.",
+      "rows": 1865,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 585.396836,
+        "adr_mean": 0.313886,
+        "max_drawdown": -104.472992,
+        "r_over_drawdown": 5.603332,
+        "row_pf": 1.39207
+      },
+      "weekly_hold": {
+        "adr_sum": 70.126483,
+        "adr_mean": 0.037601,
+        "max_drawdown": -58.947022,
+        "r_over_drawdown": 1.189653,
+        "row_pf": 1.07125
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier5_q3",
+      "description": "RRP inverse rows where selected currency RRP rank tier5 is q3.",
+      "rows": 1492,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 399.582384,
+        "adr_mean": 0.267817,
+        "max_drawdown": -143.733348,
+        "r_over_drawdown": 2.780026,
+        "row_pf": 1.319757
+      },
+      "weekly_hold": {
+        "adr_sum": 90.534281,
+        "adr_mean": 0.06068,
+        "max_drawdown": -45.878823,
+        "r_over_drawdown": 1.973335,
+        "row_pf": 1.116638
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier5_q4",
+      "description": "RRP inverse rows where selected currency RRP rank tier5 is q4.",
+      "rows": 4103,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 874.554924,
+        "adr_mean": 0.21315,
+        "max_drawdown": -198.936246,
+        "r_over_drawdown": 4.396157,
+        "row_pf": 1.234046
+      },
+      "weekly_hold": {
+        "adr_sum": 428.776453,
+        "adr_mean": 0.104503,
+        "max_drawdown": -55.718373,
+        "r_over_drawdown": 7.695423,
+        "row_pf": 1.209783
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_selected_currency_rank_tier5_q5",
+      "description": "RRP inverse rows where selected currency RRP rank tier5 is q5.",
+      "rows": 2611,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 363.096936,
+        "adr_mean": 0.139064,
+        "max_drawdown": -281.835525,
+        "r_over_drawdown": 1.288329,
+        "row_pf": 1.150497
+      },
+      "weekly_hold": {
+        "adr_sum": 84.705005,
+        "adr_mean": 0.032442,
+        "max_drawdown": -127.448986,
+        "r_over_drawdown": 0.664619,
+        "row_pf": 1.061246
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_agrees_with_cot",
+      "description": "RRP inverse rows where direction agrees with cot.",
+      "rows": 4842,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 873.594658,
+        "adr_mean": 0.18042,
+        "max_drawdown": -177.508233,
+        "r_over_drawdown": 4.921432,
+        "row_pf": 1.195235
+      },
+      "weekly_hold": {
+        "adr_sum": 521.14273,
+        "adr_mean": 0.10763,
+        "max_drawdown": -90.875365,
+        "r_over_drawdown": 5.734698,
+        "row_pf": 1.215455
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_disagrees_with_cot",
+      "description": "RRP inverse rows where direction disagrees with cot.",
+      "rows": 5602,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1510.027119,
+        "adr_mean": 0.269551,
+        "max_drawdown": -375.063982,
+        "r_over_drawdown": 4.026052,
+        "row_pf": 1.321162
+      },
+      "weekly_hold": {
+        "adr_sum": 167.173366,
+        "adr_mean": 0.029842,
+        "max_drawdown": -139.898003,
+        "r_over_drawdown": 1.194966,
+        "row_pf": 1.056372
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_agrees_with_strength",
+      "description": "RRP inverse rows where direction agrees with strength.",
+      "rows": 4954,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1238.943355,
+        "adr_mean": 0.250089,
+        "max_drawdown": -148.422565,
+        "r_over_drawdown": 8.347406,
+        "row_pf": 1.292864
+      },
+      "weekly_hold": {
+        "adr_sum": 544.920429,
+        "adr_mean": 0.109996,
+        "max_drawdown": -90.260611,
+        "r_over_drawdown": 6.03719,
+        "row_pf": 1.218888
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_disagrees_with_strength",
+      "description": "RRP inverse rows where direction disagrees with strength.",
+      "rows": 5490,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1144.678422,
+        "adr_mean": 0.208502,
+        "max_drawdown": -319.188999,
+        "r_over_drawdown": 3.586209,
+        "row_pf": 1.231439
+      },
+      "weekly_hold": {
+        "adr_sum": 143.395667,
+        "adr_mean": 0.026119,
+        "max_drawdown": -185.127573,
+        "r_over_drawdown": 0.774578,
+        "row_pf": 1.049535
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_agrees_with_bpr",
+      "description": "RRP inverse rows where direction agrees with bpr.",
+      "rows": 5010,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1043.911189,
+        "adr_mean": 0.208366,
+        "max_drawdown": -229.195742,
+        "r_over_drawdown": 4.554671,
+        "row_pf": 1.234619
+      },
+      "weekly_hold": {
+        "adr_sum": 485.578717,
+        "adr_mean": 0.096922,
+        "max_drawdown": -104.898557,
+        "r_over_drawdown": 4.629031,
+        "row_pf": 1.194301
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_disagrees_with_bpr",
+      "description": "RRP inverse rows where direction disagrees with bpr.",
+      "rows": 5434,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1339.710588,
+        "adr_mean": 0.246542,
+        "max_drawdown": -154.287419,
+        "r_over_drawdown": 8.683213,
+        "row_pf": 1.283419
+      },
+      "weekly_hold": {
+        "adr_sum": 202.737379,
+        "adr_mean": 0.037309,
+        "max_drawdown": -101.100727,
+        "r_over_drawdown": 2.005301,
+        "row_pf": 1.070267
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_agrees_with_ppp_inverse",
+      "description": "RRP inverse rows where direction agrees with ppp_inverse.",
+      "rows": 5711,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1570.259127,
+        "adr_mean": 0.274953,
+        "max_drawdown": -245.589418,
+        "r_over_drawdown": 6.393839,
+        "row_pf": 1.328451
+      },
+      "weekly_hold": {
+        "adr_sum": 510.774121,
+        "adr_mean": 0.089437,
+        "max_drawdown": -66.302332,
+        "r_over_drawdown": 7.703713,
+        "row_pf": 1.176141
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_disagrees_with_ppp_inverse",
+      "description": "RRP inverse rows where direction disagrees with ppp_inverse.",
+      "rows": 4733,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 813.36265,
+        "adr_mean": 0.171849,
+        "max_drawdown": -374.836084,
+        "r_over_drawdown": 2.169916,
+        "row_pf": 1.185042
+      },
+      "weekly_hold": {
+        "adr_sum": 177.541975,
+        "adr_mean": 0.037512,
+        "max_drawdown": -147.911932,
+        "r_over_drawdown": 1.200322,
+        "row_pf": 1.071458
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_agrees_with_reer_inverse",
+      "description": "RRP inverse rows where direction agrees with reer_inverse.",
+      "rows": 6374,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 1397.980135,
+        "adr_mean": 0.219325,
+        "max_drawdown": -247.824546,
+        "r_over_drawdown": 5.641008,
+        "row_pf": 1.249003
+      },
+      "weekly_hold": {
+        "adr_sum": 597.873448,
+        "adr_mean": 0.093799,
+        "max_drawdown": -130.802629,
+        "r_over_drawdown": 4.570806,
+        "row_pf": 1.18534
+      }
+    },
+    {
+      "cohort_id": "rrp_inverse_disagrees_with_reer_inverse",
+      "description": "RRP inverse rows where direction disagrees with reer_inverse.",
+      "rows": 4070,
+      "weeks": 373,
+      "adr_grid": {
+        "adr_sum": 985.641642,
+        "adr_mean": 0.242172,
+        "max_drawdown": -320.788634,
+        "r_over_drawdown": 3.072558,
+        "row_pf": 1.276707
+      },
+      "weekly_hold": {
+        "adr_sum": 90.442648,
+        "adr_mean": 0.022222,
+        "max_drawdown": -183.40335,
+        "r_over_drawdown": 0.493135,
+        "row_pf": 1.0419
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T00:17:06.060Z
+git_commit ddc665ae2df6c9cdb1ee1f234eddc77f8ef411bb
+summary_json 1D6251E3A4A32ECBD18514758A2C7563A85D0941BA6E40C2F166F4A237A0B2B7 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/activation-summary.rows.json
+weekly_json EF7AE14370D6EDAB644864353ECE269107AED6A941627701BE836767236113B4 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/weekly-activation-truth.rows.json
+close_events_json 76D9262D9C2988B1918A811A458BEF98049366F459D90324C90E209E311F464A docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/terminal-inventory.rows.json
+validation_json 256E74CDCD5D8F0FAF86CE7157A7B642065CB24505BC978DEE9F9E9EB91D26B0 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/validation.rows.json
+metric_definitions_json 7C339E1C28184ED286A3BE9F9B444324A0A4EBF5D5444A77F11EF9C541E188C2 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/metric-definitions.rows.json
+command_receipt 61E118552B09C5BE02D5DCE0878D49F00DC5959111EB0BB55B4918FCA6326CB8 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/command-receipt.json
+run_summary_json 7CD8AD07CCC3CA7D6D53C6315365DA88A9A320F169E6098564945C75FE035ED1 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/gate90-run-summary.json
+report A4C527BCB602DC991B4BA080FE79308086D4F707C5A6D7D5E19BB937D2A0A1A6 docs/research/gates/gate90/artifacts/gate90d-triangle-v0-smoke-audcad-1w/GATE90D_TRIANGLE_V0_SMOKE_AUDCAD_1W.md

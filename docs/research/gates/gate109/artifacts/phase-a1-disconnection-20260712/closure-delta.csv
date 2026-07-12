@@ -1,0 +1,6 @@
+"change","repo_relative_path","baseline_raw_sha256"
+"removed","automation/mt5/Experts/Include/Signals/LrmgState.mqh","b2ebb32f9d65bb6148e6c56259561790dfef33807396a6effde2d4dacab0cee4"
+"removed","automation/mt5/Experts/Include/Signals/SignalSnapshot.mqh","998132b5baf03794bbcdbdcd5aae7086ec7eb0ee18683f5bd01c99542c951a03"
+"removed","automation/mt5/Experts/Include/Strategies/PortfolioIntentSelector.mqh","5ea2a656acb560595557d90109fe6118173aa0bc2b27890da5064b431d87ebe8"
+"removed","automation/mt5/Experts/Include/Strategies/ReversalLane.mqh","4c2033109f5ce3fa2c6513ca2c34c18353a9260c5b7523506ecd1941c39398b6"
+"removed","automation/mt5/Experts/Include/Strategies/TrendFollowLane.mqh","995711edc7d0151b1628d3f4deb761e7c73fd38e72df3e027862bd6d15e5a865"

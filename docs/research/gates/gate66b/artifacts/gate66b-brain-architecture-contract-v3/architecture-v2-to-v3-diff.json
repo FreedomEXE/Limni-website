@@ -1,0 +1,34 @@
+{
+  "gate_id": "Gate 66B: brain-architecture-contract-v3",
+  "previous_contract_path": "docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/brain-atom-contract-v2.json",
+  "previous_architecture_version": "gate65a_brain_atom_contract_v2",
+  "current_architecture_version": "gate66_brain_cells_atoms_v3",
+  "removed_contract_keys": [
+    "body"
+  ],
+  "added_contract_keys": [
+    "architecture_version",
+    "hierarchy",
+    "deprecated_terms_removed_from_active_contracts",
+    "final_algorithm_name",
+    "final_algorithm_status",
+    "final_algorithm_placeholder",
+    "forced28_decision_required",
+    "forced28_decision_truth"
+  ],
+  "preserved_cells": [
+    "cot",
+    "regime",
+    "strength"
+  ],
+  "previous_atom_count": 22,
+  "current_atom_count": 22,
+  "final_algorithm_name": null,
+  "final_algorithm_status": "reserved_for_future_gate",
+  "risk_boundary": {
+    "path": "engine/src/brain/risk",
+    "status": "reserved_for_later_portfolio_expression_layer",
+    "risk_may_reduce_expression_later": true,
+    "risk_may_mutate_forced28_decision_truth": false
+  }
+}

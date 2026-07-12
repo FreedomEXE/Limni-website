@@ -1,0 +1,6 @@
+Gate 99ZZE Revma grid basket TP repair compile summary
+repo_result=Result: 0 errors, 0 warnings, 18090 msec elapsed, cpu='X64 Regular'
+active_result=Result: 0 errors, 0 warnings, 17880 msec elapsed, cpu='X64 Regular'
+repo_exit_code=1
+active_exit_code=1
+source_hash_mismatches=0

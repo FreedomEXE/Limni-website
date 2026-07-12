@@ -1,0 +1,136 @@
+{
+  "gate_id": "Gate 64A: silent-missing-atom-audit",
+  "matrix_visible_atoms": [
+    "cot_side",
+    "strength_gate57e_side",
+    "bpr_futures",
+    "bpr_futures_and_options",
+    "bpr_futures_carried_state",
+    "bpr_futures_synthetic_usd_state",
+    "nominal_rate_3m",
+    "cpi_inflation_yoy",
+    "rrp_derived",
+    "ppp",
+    "neer",
+    "reer"
+  ],
+  "emitted_not_matrix_visible_atoms": [
+    {
+      "atom_id": "cot_tei_spread",
+      "cell_id": "cot",
+      "atom_class": "raw_source_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_abs_tei_spread",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_tei_spread_bucket",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_tie_flag",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_carry_forward_flag",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_carry_previous_flag",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "cot_lifecycle_state",
+      "cell_id": "cot",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_parent_side",
+      "cell_id": "strength",
+      "atom_class": "direction_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_score_spread",
+      "cell_id": "strength",
+      "atom_class": "raw_source_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_abs_score_spread",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_score_spread_bucket",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_lifecycle_bucket",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_phase_bucket",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_lifecycle_phase_key",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_gate57c_side",
+      "cell_id": "strength",
+      "atom_class": "direction_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_gate57c_action_label",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_gate57d_side",
+      "cell_id": "strength",
+      "atom_class": "direction_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_gate57d_action_label",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    },
+    {
+      "atom_id": "strength_gate57e_action_label",
+      "cell_id": "strength",
+      "atom_class": "source_quality_atom",
+      "decision": "already_covered"
+    }
+  ],
+  "conceptual_not_matrix_visible_atoms": [
+    "valuation_gap"
+  ]
+}

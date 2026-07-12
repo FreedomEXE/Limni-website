@@ -1,0 +1,27 @@
+{
+  "gate_id": "Gate 89: continuous-raw-truth-simulator",
+  "command": "npm run engine:gate89:continuous-raw-truth-simulator",
+  "durable_command": "npm run engine:gate89:continuous-raw-truth-simulator -- --all-pairs --week-from=2020-01-05 --week-to=2025-12-28 --bar-path-mode=ohlc_high_low --artifact-dir=docs/research/gates/gate89/artifacts/continuous-raw-truth-smoke-all-pairs-converted-ohlc-high-low --report-path=docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_SMOKE_ALL_PAIRS_CONVERTED_OHLC_HIGH_LOW_2026-07-01.md",
+  "git_commit": "1dd8377993d59e1a94890878f45491f1d69c6dc7",
+  "generated_at": "2026-07-01T23:36:57.384Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate89/artifacts/continuous-raw-truth-smoke-all-pairs-converted-ohlc-high-low",
+    "reportPath": "docs/research/gates/gate89/GATE89_CONTINUOUS_RAW_TRUTH_SIMULATOR_SMOKE_ALL_PAIRS_CONVERTED_OHLC_HIGH_LOW_2026-07-01.md",
+    "manifestId": null,
+    "onlyPair": null,
+    "pairs": null,
+    "allPairs": true,
+    "weekFrom": "2020-01-05",
+    "weekTo": "2025-12-28",
+    "maxWeeks": 1,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "barPathMode": "ohlc_high_low",
+    "logProgress": false
+  }
+}

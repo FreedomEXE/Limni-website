@@ -1,0 +1,22 @@
+gate_id Gate 74D: pair-net-grid-open-loss-forensics
+command npm run engine:gate74d:pair-net-grid-open-loss-forensics
+generated_at 2026-06-29T11:17:09.836Z
+git_commit fac0c429700307b89d2e523b79c46303f3fa47b1
+rule_forensics_rows 8FBA9E0E3006C854607AA5AFA00E97CA1EFA8CB3CEF5B8C878EA8C8570E47EEE docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/rule-forensics.rows.json
+weekly_equity_truth_rows ED9CFFE617D84816DD1916B847C5930CA136BCAB573E0217EE64B9B8853101D7 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/weekly-equity-truth.rows.json
+final_open_inventory_rows C8E5F7E242D03B7058ADBA7A1CA1DDBE16EF8AEB28BC5FE9EFDFB1AFB9663B3F docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/final-open-inventory.rows.json
+final_open_by_pair_rows 3C858847AF1813589269012BEE289C6272F4BA7F74E0280FCDF4B0B54C890E8B docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/final-open-by-pair.rows.json
+final_open_by_start_year_rows 8B65658F5BB8ACF603480EC5223E57EF6DE21F19A1EB858E195107F8CD0A41FF docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/final-open-by-start-year.rows.json
+final_open_by_age_rows 28101C86866FEFF44B16BB431F3868BC62221F0EFE84FFF04BEC9A90E42476E2 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/final-open-by-age.rows.json
+final_open_by_streak_rows 77128D8FAF603D5B31029C085BB0289AB4DCF801D3998F464519972FE0391938 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/final-open-by-streak.rows.json
+drawdown_rows 6549E2805F6883FA615447B2F826C863F4F70EBC1A0E79F18C90742E1086CB65 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/drawdown-windows.rows.json
+drawdown_pair_contributors BD4D46AC7C3AF898747FB029CC2191312200AF7CD6296AF5A58C421F9BF02FF7 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/drawdown-pair-contributors.rows.json
+drawdown_currency_contributors 50C9E5E9E20F1E5148068033ADF5B973946730854F0735B5A97A2C43EC02BA67 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/drawdown-currency-contributors.rows.json
+flip_loss_summary_rows 85D749452955573D36557622263B37FB7ED80C1A9452145BE1AA181566FE5352 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/flip-loss-summary.rows.json
+worst_flip_loss_cycles 36582B69A2A7FFDB5A8104D8761070E30394AE11955851DA15BDF93FB856CAE4 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/worst-flip-loss-cycles.rows.json
+recovery_summary_rows 52BA31EF79DACEA4A4987FF11DBA694236AB2427E3C929D46C2ECC004D0572A4 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/recovery-summary.rows.json
+worst_never_recovered_cycles 3BABAA8D08E9FA6876682298A3BFA72B45F7710373658CF7D6E42C4F29108BCC docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/worst-never-recovered-cycles.rows.json
+worst_10_weeks F84BC60CF37B267556CBAD2F4BE907E5064DBA60E33460A0D5CF75E032D21CEA docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/worst-10-equity-weeks.rows.json
+best_10_closed_weeks 450D2F576B3AD95E81621FD06FE39AB97580D480EEE2E7D6F155A11DCD0FB256 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/best-10-closed-harvest-weeks.rows.json
+summary_json B18E78B3B3CF372D782CD76C91F99A0A33FC7608C5F460FE5805BB62A7776BD1 docs/research/gates/gate74d/artifacts/gate74d-pair-net-grid-open-loss-forensics/gate74d-summary.json
+report E3F909C99AE4B222B99F6165A296E714E1C1EA6A1D6EFC844CE41AC6CA958BEA docs/research/gates/gate74d/GATE74D_PAIR_NET_GRID_OPEN_LOSS_FORENSICS_2026-06-29.md

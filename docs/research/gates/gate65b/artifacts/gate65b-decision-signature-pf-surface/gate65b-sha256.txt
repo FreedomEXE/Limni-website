@@ -1,0 +1,10 @@
+gate_id Gate 65B: decision-signature-pf-surface
+command npm run engine:gate65b:decision-signature-pf-surface
+generated_at 2026-06-28T00:51:12.183Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+decision_signature_collapse 32EBAFA9A8A70E7F708464B770C86EC1EB00209C6AE8C63C1957BB6ABCECDC4F docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/decision-signature-collapse.json
+pf_ranking_surface 486F0366688AC4C9617C9A400211EE824A5364707D16DEC28E93FFA346884B81 docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/pf-ranking-surface.json
+pf_year_stability_diagnostics D373900839A11DF9AA58BE2A54BDD2852A9F3765FC11A79A0700A0D3C05782AC docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/pf-year-stability-diagnostics.json
+pf_comparison 411FAB9934DDA27EF1F551954D543F729BD5DA82A3F2BC442C29A378DF77FE94 docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/pf-comparison-vs-gate64c.json
+summary_json F2A4C0B02B8961DF173D2341995F9CA1FEB7C9C46247B8EE2DD98A338B01C701 docs/research/gates/gate65b/artifacts/gate65b-decision-signature-pf-surface/gate65b-summary.json
+report C51FA88A678497D9EA25E063486EF79CFDC0FE2BCCD64575EA56D53CC30A98BD docs/research/gates/gate65b/GATE65B_DECISION_SIGNATURE_PF_SURFACE_2026-06-27.md

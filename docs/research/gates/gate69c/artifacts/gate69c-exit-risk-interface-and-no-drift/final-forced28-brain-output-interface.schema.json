@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate 69 Final Forced-28 Brain Output Interface",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_open_utc",
+    "symbol",
+    "base_currency",
+    "quote_currency",
+    "final_direction",
+    "final_side",
+    "locked_algorithm_id",
+    "default_candidate_id",
+    "shadow_candidate_id",
+    "frozen_reference_capsule_id",
+    "frozen_reference_capsule_sha256",
+    "final_ledger_hash",
+    "shadow_ledger_hash",
+    "decision_hash",
+    "reason_codes",
+    "warning_active",
+    "fallback_used",
+    "veto_used",
+    "cell_roles",
+    "cell_quality_states",
+    "scenario_group_key",
+    "architecture_version",
+    "brain_truth_forced28",
+    "risk_can_reduce_trade_expression_later",
+    "risk_can_mutate_brain_truth"
+  ],
+  "properties": {
+    "week_open_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "quote_currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "final_direction": {
+      "enum": [
+        "BASE_CURRENCY",
+        "QUOTE_CURRENCY"
+      ]
+    },
+    "final_side": {
+      "enum": [
+        "LONG",
+        "SHORT"
+      ]
+    },
+    "locked_algorithm_id": {
+      "const": "gate69_locked_unnamed_forced28_candidate_b_default"
+    },
+    "default_candidate_id": {
+      "const": "candidate_b_macro_anchor_with_cot_warning"
+    },
+    "shadow_candidate_id": {
+      "const": "candidate_c_scenario_memory_guarded"
+    },
+    "frozen_reference_capsule_id": {
+      "const": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D"
+    },
+    "frozen_reference_capsule_sha256": {
+      "const": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3"
+    },
+    "final_ledger_hash": {
+      "const": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390"
+    },
+    "shadow_ledger_hash": {
+      "const": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720"
+    },
+    "decision_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "warning_active": {
+      "type": "boolean"
+    },
+    "fallback_used": {
+      "type": "boolean"
+    },
+    "veto_used": {
+      "type": "boolean"
+    },
+    "cell_roles": {
+      "type": "object"
+    },
+    "cell_quality_states": {
+      "type": "object"
+    },
+    "scenario_group_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "architecture_version": {
+      "const": "gate66_brain_cells_atoms_v3"
+    },
+    "brain_truth_forced28": {
+      "const": true
+    },
+    "risk_can_reduce_trade_expression_later": {
+      "const": true
+    },
+    "risk_can_mutate_brain_truth": {
+      "const": false
+    }
+  }
+}

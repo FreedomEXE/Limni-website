@@ -1,0 +1,55 @@
+{
+  "gate_id": "Gate 72B: matrix-ledger-sanity-review",
+  "command": "npm run engine:gate72b:matrix-ledger-sanity-review",
+  "generated_at": "2026-06-29T00:16:02.523Z",
+  "git_commit": "dc2043d87e8e76763e674ffe2bac31bb313b3fe7",
+  "verdict": "PASS_GATE72B_MATRIX_LEDGER_SANITY_REVIEW__RESULT_LEDGER_SHAPE_VALID_NO_REPLAY_DRIFT",
+  "validation": {
+    "gate72a_passed": true,
+    "gate71c_passed": true,
+    "rule_count_matches": true,
+    "week_count_matches": true,
+    "weekly_row_count_matches_rule_x_week": true,
+    "duplicate_rule_week_rows": 0,
+    "candidate_b_hash_singleton": true,
+    "path_diagnostic_hash_singleton_per_week": true,
+    "unavailable_rows_limited_to_pair_silo_control": true,
+    "warehouse_replay_confirmed": true,
+    "raw_m1_rebuild_performed": false,
+    "exit_promotion_performed": false,
+    "risk_layer_started": false
+  },
+  "matrix_integrity": {
+    "candidate_summary_count": 34,
+    "predeclared_rule_count": 34,
+    "week_count": 373,
+    "expected_week_count": 373,
+    "weekly_matrix_rows": 12682,
+    "expected_weekly_matrix_rows": 12682,
+    "duplicate_rule_week_count": 0,
+    "duplicate_rule_weeks_sample": [],
+    "row_rules_missing_from_summary": [],
+    "summary_rules_missing_from_rows": [],
+    "candidate_b_ledger_hashes": [
+      "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03"
+    ],
+    "path_diagnostic_hash_count": 373,
+    "inconsistent_diagnostic_hash_weeks": [],
+    "unavailable_rows": 373,
+    "unavailable_by_rule": {
+      "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE": 373
+    },
+    "pair_silo_unavailable_only": true,
+    "weekly_hold_rows": 373,
+    "gate71c_replay_from_warehouse": true,
+    "gate71c_raw_m1_rebuild_performed": false,
+    "gate71c_exit_promotion_performed": false,
+    "legacy_adr_grid_control_only": true
+  },
+  "artifacts": {
+    "matrixIntegrity": "docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/matrix-ledger-integrity.json",
+    "summaryJson": "docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/gate72b-summary.json",
+    "shaIdentity": "docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/gate72b-sha256.txt",
+    "report": "docs/research/gates/gate72b/GATE72B_MATRIX_LEDGER_SANITY_REVIEW_2026-06-28.md"
+  }
+}

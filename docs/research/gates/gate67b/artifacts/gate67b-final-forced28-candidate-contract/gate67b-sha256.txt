@@ -1,0 +1,9 @@
+gate_id Gate 67B: final-forced28-candidate-contract
+command npm run engine:gate67b:final-forced28-candidate-contract
+generated_at 2026-06-28T02:53:07.031Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+candidate_contracts F88785F2DA5E7DAEAEA2FE20EACD5078B032EB1E02FE7686838CE9841A8047A6 docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-candidate-contracts.json
+arbitration_rules 84702D33EE106D199D6D25B6D4EDE8D133D82389D70ED69A87CFEDD2642D1BD3 docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-arbitration-rules.md
+reason_code_contract C760627A77BCBAE1882390BBD9B42020E17028BCAA42142D0AEFE89761EF0079 docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-reason-code-contract.json
+summary_json 9CD1997536169BA331D082A1209303DA5525DDBF86BE113C7EE979FAAB267AB6 docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/gate67b-summary.json
+report 7F57FF802770D247CF0863EF30F401D79C6349CC564E789243083B191EEF01F2 docs/research/gates/gate67b/GATE67B_FINAL_FORCED28_CANDIDATE_CONTRACT_2026-06-28.md

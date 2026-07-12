@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 95S: limnihedge-type3-weekly-profit-cutoff-overlay",
+  "command": "npm run engine:gate95s:limnihedge-type3-weekly-profit-cutoff-overlay",
+  "args": [],
+  "generated_at": "2026-07-05T04:17:34.417Z",
+  "git_commit": "0fa7ea206e9d99a36f260a0e34c53774840196da",
+  "git_dirty_status": "dirty",
+  "gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "gate95r_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-corrected-accounting-oos-replay",
+  "artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-weekly-profit-cutoff-overlay",
+  "content_hash": "ECD4F747C49DF05A0A17290A98C12A510D77E472C94C1338FB00E793E293B40E"
+}

@@ -1,0 +1,24 @@
+# Gate 60C Regime source atom fill identity
+
+E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633  docs/research/gates/gate59/artifacts/gate59-alpha-v1-atom-ledger/gate59-alpha-v1-atom-ledger.rows.jsonl
+DADCE5C3036B676236EF8B1B2DB9E64928DF5C087F016553433BB419452ABB08  source_registry_hash
+82EA24665706EEB6D13773E59EF68411924588F8730732B529F55D12B092FA57  source_content_invariant_hash
+603C225C4919C7D4F3BC38BBD25C2CB5D24A83938142632CF2D16A8046150F27  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-currency-week-source-atom-ledger.rows.jsonl
+167C13FA309FFE74A7C074DFEE4FA97A3AEFBBFDFEF73EDD13A5287925EC6DBD  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-pair-week-source-atom-join-ledger.rows.jsonl
+22A82BA75C6FAFE3B7AB579878B54C7458D6A71D3A1EEC9FF7616218C49296AB  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-source-artifact-hash-map.json
+928FE19EA51C7A58A12EC30FBBBFBFE775E55E4164BFBCFF39805E5322272F4D  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-raw-observation-hash-map.json
+7F4D4FC7B555BC984D724FC8182F03E0FE5BC5381CCC19252E2A48E33FCF6B55  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-availability-event-hash-map.json
+2AE483C5811874800381C1DF246BCB3B19E6BA37FF71222593A7A94E5EBEF9F4  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-parent-derived-lineage-map.json
+DAEB0CA0820AD7F965DCBB65FF8E1C475EFBA4DCEA933DCDF2EDE50F34F2179F  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-missing-stale-quarantine-source-ambiguity-report.json
+92AD0A5D45EFA0E08D7DDD01AA810DB41854A8396713590A694C87AF744F36C0  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-regime-source-atom-fill.summary.json
+9522AF40FC6A97B17E3D4A7FEDAD0D0F837D75CD60FBCC02B4B4F334CB3F03AD  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-regime-source-atom-fill.summary.md
+45E8DF17B1F918937934C7E3A348B96D264D826E50E372DC9857D7836AB77673  docs/research/gates/gate60c/artifacts/gate60c-regime-source-atom-fill/gate60c-regime-source-atom-fill.query-receipt.md
+2FC215BE3D6EA82C2369FC2EA373F93743234B1D6AC7DE80AF0431054D884348  docs/research/gates/gate60c/GATE60C_REGIME_SOURCE_ATOM_FILL_2026-06-27.md.report-text
+
+combined_hash AEB9B7A60346672D19708F00D5AA2E2888CB45007F2DBCF9DEF02B60A159E456
+rebuild_command npm run engine:gate60c:regime-source-atom-fill
+source_registry_version gate60c_regime_source_registry_v2
+currency_atom_ledger_version gate60c_currency_week_source_atom_ledger_v1
+pair_join_ledger_version gate60c_pair_week_source_atom_join_v1
+rrp_formula_version rrp_percent_v1__nominal_3m_interbank_minus_cpi_yoy
+valuation_gap_formula_version not_versioned

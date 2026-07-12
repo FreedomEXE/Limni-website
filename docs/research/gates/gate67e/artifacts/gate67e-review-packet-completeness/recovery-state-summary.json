@@ -1,0 +1,8 @@
+{
+  "gate_id": "Gate 67E: review-packet-completeness",
+  "recovery_files_to_update_after_push": [
+    "C:/Users/User/Documents/GitHub/freedom-ops/.codex/CODEX_SESSION.md",
+    "docs/backlog/CURRENT_WORK.md"
+  ],
+  "final_head_available_before_commit": false
+}

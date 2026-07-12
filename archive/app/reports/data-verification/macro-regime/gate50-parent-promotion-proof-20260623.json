@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-06-23T02:04:09.887Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Immutable parent-promotion proof for current SEALED RRP checkpoint; no ACTIVE lifecycle transition or outcome logic.",
+  "summary": {
+    "status": "PASS_PARENT_APPROVED_NOT_ACTIVE",
+    "parentPromotionApproved": true,
+    "activationEligible": false,
+    "outcomeConsumable": false,
+    "diagnosticOnly": true,
+    "promotionEligible": false,
+    "rateParentPromotionProofHash": "453d14a2bbb6d9f1e64eae3c150554eff7227466b43f0cd42cd60864e6950d99",
+    "cpiParentPromotionProofHash": "c836614277f41c755150dd3de21cc14dd8692231b20b84d537d2a02e08e04709",
+    "rootRrpPromotionManifestId": "f6c4a3e3223ee4e54f7dfd6bbc7bb2bd29d17d7a98b59440b8e0f9bcfad9b619",
+    "rootRrpPromotionManifestHash": "85e76ca98a34553d0b1d29535f5c271b485eafc4b271df7136151a3b0800004d",
+    "rrpDatasetId": "27542abe-6ce7-4e44-a7d2-f071ed258c73",
+    "rrpDatasetHash": "a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603",
+    "resolvedContentJoinMapHash": "12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e",
+    "noPnlComputed": true,
+    "noStrategyFilterComputed": true
+  },
+  "parentProofs": {
+    "rate": {
+      "role": "rate",
+      "status": "PARENT_APPROVED",
+      "parent": {
+        "role": "rate",
+        "datasetId": "ee1f1611-5d6d-41cf-86fe-c06c66cb16bb",
+        "datasetHash": "eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd",
+        "familyManifestId": "rate_3m_market_family_v1",
+        "familyManifestHash": "c1befe5d6711265a3c2b55191eec19f9dec8b8e3e0316b48ea01a1e723eeb219",
+        "promotionManifestId": "4f187897b9e60a79865e371daa2415d2654ef72aef18a2afd63609260b840947",
+        "contractManifestHash": "9d5f6d859a2f409f45a41a15f71994203ae3411fd36603aa1c40ab360ff8f774",
+        "expectedSourceFamily": "rate",
+        "expectedInstrument": "oecd_3m_interbank_rate",
+        "expectedWeeklyRows": 2976
+      },
+      "dataset": {
+        "regime_dataset_id": "ee1f1611-5d6d-41cf-86fe-c06c66cb16bb",
+        "dataset_hash": "eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd",
+        "dataset_version": "macro_regime_source_dataset_v3",
+        "status": "complete",
+        "snapshot_state": "SEALED",
+        "promotion_manifest_id": "4f187897b9e60a79865e371daa2415d2654ef72aef18a2afd63609260b840947",
+        "contract_manifest_hash": "9d5f6d859a2f409f45a41a15f71994203ae3411fd36603aa1c40ab360ff8f774",
+        "calendar_version": "canonical_week_open_v1",
+        "selector_version": "macro_weekly_snapshot_selector_v2_rate_latest_eligible",
+        "validation_contract_version": "macro_source_validation_contract_v1",
+        "build_version": "macro_source_fill_build_v2_rate_latest_eligible",
+        "revoked_at_utc": null
+      },
+      "weeklyCounts": {
+        "rows": 2976,
+        "availableRows": 2976,
+        "missingRows": 0,
+        "staleRows": 0,
+        "currencies": 8,
+        "sourceFamilies": [
+          "rate"
+        ],
+        "instruments": [
+          "oecd_3m_interbank_rate"
+        ]
+      },
+      "manifestCounts": {
+        "manifests": 372,
+        "sealedManifests": 372,
+        "activeManifests": 0,
+        "revokedManifests": 0
+      },
+      "contentHashes": {
+        "observationContentHash": "ecab708828f8cc2ae3e57ba9f0a24d5eb966807b46953132c319bae6389141ee",
+        "weeklySnapshotContentHash": "c6a4867df2a8a665bdb5d8fe88b51659ce8459d72cdfc49cb61d39c140ac41c4"
+      },
+      "supportingReceiptHashes": {
+        "reconciliation": "8cbc4b565e6ccd8ea30942ec3dbacc9c5a72baa5abf6d23f44b90b2674092989",
+        "write": "deba0851bd308e0dad4a742732ff4912853438c4255ba567c486353139a125f8",
+        "boundary": "7ee1449a41bf46598b375650beb354af41e512857b21a430e2f2583567e49a45",
+        "join": "63205cdb4c6de8e699d392790c3ada07aa747c92a7a9f91e500b3dae29f2c097"
+      },
+      "blockers": [],
+      "parentPromotionProofHash": "453d14a2bbb6d9f1e64eae3c150554eff7227466b43f0cd42cd60864e6950d99"
+    },
+    "cpi": {
+      "role": "cpi",
+      "status": "PARENT_APPROVED",
+      "parent": {
+        "role": "cpi",
+        "datasetId": "b4cbb08f-d564-452f-8c67-7e47f0ec40d6",
+        "datasetHash": "e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b",
+        "familyManifestId": "cpi_all_items_family_v1",
+        "familyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "promotionManifestId": "d6831acfe5df0d07fdd8d551cc8cb8a3b69605afdb227346ee66e4183cbea9b5",
+        "contractManifestHash": "3ff7a511821f20f0b81c65f6589dad85965540c68687843688128e1a7b87fa7c",
+        "expectedSourceFamily": "inflation",
+        "expectedInstrument": "cpi_all_items_yoy",
+        "expectedWeeklyRows": 2976
+      },
+      "dataset": {
+        "regime_dataset_id": "b4cbb08f-d564-452f-8c67-7e47f0ec40d6",
+        "dataset_hash": "e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b",
+        "dataset_version": "macro_regime_source_dataset_v4_official_cpi",
+        "status": "complete",
+        "snapshot_state": "SEALED",
+        "promotion_manifest_id": "d6831acfe5df0d07fdd8d551cc8cb8a3b69605afdb227346ee66e4183cbea9b5",
+        "contract_manifest_hash": "3ff7a511821f20f0b81c65f6589dad85965540c68687843688128e1a7b87fa7c",
+        "calendar_version": "canonical_week_open_v1",
+        "selector_version": "macro_weekly_snapshot_selector_v3_rate_and_cpi_release_aware",
+        "validation_contract_version": "macro_source_validation_contract_v1",
+        "build_version": "macro_source_fill_build_v3_official_cpi_materialized",
+        "revoked_at_utc": null
+      },
+      "weeklyCounts": {
+        "rows": 2976,
+        "availableRows": 2976,
+        "missingRows": 0,
+        "staleRows": 0,
+        "currencies": 8,
+        "sourceFamilies": [
+          "inflation"
+        ],
+        "instruments": [
+          "cpi_all_items_yoy"
+        ]
+      },
+      "manifestCounts": {
+        "manifests": 372,
+        "sealedManifests": 372,
+        "activeManifests": 0,
+        "revokedManifests": 0
+      },
+      "contentHashes": {
+        "observationContentHash": "3e1bfac333cab63f1b27c9c9c0c881a9e918aab219473d79cadbc8777f1a1791",
+        "weeklySnapshotContentHash": "a46e9232f476ec1674b3188aec7b06acf7755d7537db45f700e7e5f1f145a531"
+      },
+      "supportingReceiptHashes": {
+        "endpoint": "0f70d9412af1e458260e73f06586222c471c1458236a57c2b3d122a185f8eeed",
+        "write": "7c18c4a25632c3b45eb5524fe766e2a895ef6cbf33967df40935def5c719ce89",
+        "join": "8a11f09b0f4aab12d5b71659063d41b53965dc28219c42aedce51a403b2a3f8a"
+      },
+      "blockers": [],
+      "parentPromotionProofHash": "c836614277f41c755150dd3de21cc14dd8692231b20b84d537d2a02e08e04709"
+    }
+  },
+  "rrpProof": {
+    "dataset": {
+      "regime_dataset_id": "27542abe-6ce7-4e44-a7d2-f071ed258c73",
+      "dataset_hash": "a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603",
+      "dataset_version": "macro_regime_source_dataset_v5_real_rate_pressure_composed",
+      "status": "complete",
+      "snapshot_state": "SEALED",
+      "promotion_manifest_id": "205b52529b049f7fe648a9b57e52a3734566855f54959f5b78b8ee0d239b6c07",
+      "contract_manifest_hash": "714317f9c754278774fb79c9b758359a28a939b5fc56a139b6a7977fd9e621ff",
+      "calendar_version": "canonical_week_open_v1",
+      "selector_version": "macro_weekly_snapshot_selector_v3_rate_and_cpi_release_aware",
+      "validation_contract_version": "macro_source_validation_contract_v1",
+      "build_version": "macro_source_fill_build_v4_rrp_parent_composition",
+      "revoked_at_utc": null
+    },
+    "weeklyCounts": {
+      "rows": 2976,
+      "availableRows": 2976,
+      "missingRows": 0,
+      "staleRows": 0,
+      "currencies": 8,
+      "sourceFamilies": [
+        "real_rate_pressure"
+      ],
+      "instruments": [
+        "real_rate_pressure_percent"
+      ]
+    },
+    "manifestCounts": {
+      "manifests": 372,
+      "sealedManifests": 372,
+      "activeManifests": 0,
+      "revokedManifests": 0
+    },
+    "contentHashes": {
+      "weeklySnapshotContentHash": "c1ee702672fd6c5bf7e89f3ab2344465837e4369859c3721b5619fab2cab223c",
+      "aggregateSnapshotContentHash": "98c36a196ba8c8c0dc15cb61c3d519cbaf8332ddd91f1220652c2347f7aa39b5",
+      "resolvedContentJoinMapHash": "12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e"
+    },
+    "supportingReceiptHashes": {
+      "write": "88f2515f73cc7bc97f01428c984928e05a62a2a434c26e3d9c808772c6cb99ad",
+      "join": "63d93ecdad4fc1fb2d00a4b5da7e4892102fc308aeaf51aee5979d6cc3313fd0"
+    },
+    "blockers": []
+  },
+  "rootRrpPromotionManifest": {
+    "version": "root_rrp_parent_approved_promotion_manifest_v1",
+    "status": "PARENT_APPROVED_PENDING_ACTIVATION_PROOFS",
+    "lifecycleState": "SEALED_PARENT_APPROVED_NOT_ACTIVE",
+    "parentPromotionApproved": true,
+    "activationEligible": false,
+    "outcomeConsumable": false,
+    "mutatesDiagnosticManifest": false,
+    "rateParent": {
+      "role": "rate",
+      "datasetId": "ee1f1611-5d6d-41cf-86fe-c06c66cb16bb",
+      "datasetHash": "eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd",
+      "familyManifestId": "rate_3m_market_family_v1",
+      "familyManifestHash": "c1befe5d6711265a3c2b55191eec19f9dec8b8e3e0316b48ea01a1e723eeb219",
+      "promotionManifestId": "4f187897b9e60a79865e371daa2415d2654ef72aef18a2afd63609260b840947",
+      "contractManifestHash": "9d5f6d859a2f409f45a41a15f71994203ae3411fd36603aa1c40ab360ff8f774",
+      "expectedSourceFamily": "rate",
+      "expectedInstrument": "oecd_3m_interbank_rate",
+      "expectedWeeklyRows": 2976
+    },
+    "cpiParent": {
+      "role": "cpi",
+      "datasetId": "b4cbb08f-d564-452f-8c67-7e47f0ec40d6",
+      "datasetHash": "e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b",
+      "familyManifestId": "cpi_all_items_family_v1",
+      "familyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+      "promotionManifestId": "d6831acfe5df0d07fdd8d551cc8cb8a3b69605afdb227346ee66e4183cbea9b5",
+      "contractManifestHash": "3ff7a511821f20f0b81c65f6589dad85965540c68687843688128e1a7b87fa7c",
+      "expectedSourceFamily": "inflation",
+      "expectedInstrument": "cpi_all_items_yoy",
+      "expectedWeeklyRows": 2976
+    },
+    "parentPromotionProofHashes": {
+      "rate": "453d14a2bbb6d9f1e64eae3c150554eff7227466b43f0cd42cd60864e6950d99",
+      "cpi": "c836614277f41c755150dd3de21cc14dd8692231b20b84d537d2a02e08e04709"
+    },
+    "rrpDataset": {
+      "datasetId": "27542abe-6ce7-4e44-a7d2-f071ed258c73",
+      "datasetHash": "a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603",
+      "promotionManifestId": "205b52529b049f7fe648a9b57e52a3734566855f54959f5b78b8ee0d239b6c07",
+      "contractManifestHash": "714317f9c754278774fb79c9b758359a28a939b5fc56a139b6a7977fd9e621ff",
+      "resolvedContentJoinMapHash": "12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e"
+    },
+    "rrpContentHashes": {
+      "weeklySnapshotContentHash": "c1ee702672fd6c5bf7e89f3ab2344465837e4369859c3721b5619fab2cab223c",
+      "aggregateSnapshotContentHash": "98c36a196ba8c8c0dc15cb61c3d519cbaf8332ddd91f1220652c2347f7aa39b5",
+      "resolvedContentJoinMapHash": "12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e"
+    },
+    "supportingReceiptHashes": {
+      "cpiEndpoint": {
+        "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-20260622.json",
+        "stableReceiptHash": "0f70d9412af1e458260e73f06586222c471c1458236a57c2b3d122a185f8eeed",
+        "canonicalContentHash": "3908d7965fc6b6b245b1e0e66d53b74bf8ab67cdd393a4cb3a926463017d3e20"
+      },
+      "cpiJoin": {
+        "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-join-coverage-20260622.json",
+        "stableReceiptHash": "8a11f09b0f4aab12d5b71659063d41b53965dc28219c42aedce51a403b2a3f8a",
+        "canonicalContentHash": "8a11f09b0f4aab12d5b71659063d41b53965dc28219c42aedce51a403b2a3f8a"
+      },
+      "cpiWrite": {
+        "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-write-20260622.json",
+        "stableReceiptHash": "7c18c4a25632c3b45eb5524fe766e2a895ef6cbf33967df40935def5c719ce89",
+        "canonicalContentHash": "7c18c4a25632c3b45eb5524fe766e2a895ef6cbf33967df40935def5c719ce89"
+      },
+      "rateBoundary": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-boundary-proof-20260622.json",
+        "stableReceiptHash": "7ee1449a41bf46598b375650beb354af41e512857b21a430e2f2583567e49a45",
+        "canonicalContentHash": "9c58af4a41a57a8dfb11b36c4c487bf87d7e69e84285bdd0e71a45653ce64765"
+      },
+      "rateJoin": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-join-coverage-20260622.json",
+        "stableReceiptHash": "63205cdb4c6de8e699d392790c3ada07aa747c92a7a9f91e500b3dae29f2c097",
+        "canonicalContentHash": "63205cdb4c6de8e699d392790c3ada07aa747c92a7a9f91e500b3dae29f2c097"
+      },
+      "rateReconciliation": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rate-alfred-differential-reconstruction-20260622.json",
+        "stableReceiptHash": "8cbc4b565e6ccd8ea30942ec3dbacc9c5a72baa5abf6d23f44b90b2674092989",
+        "canonicalContentHash": "4efcec6de199325bb07acf088f4bae5ac5dbcc8eee62028a58425c4992fd2dfd"
+      },
+      "rateWrite": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-write-20260622.json",
+        "stableReceiptHash": "deba0851bd308e0dad4a742732ff4912853438c4255ba567c486353139a125f8",
+        "canonicalContentHash": "deba0851bd308e0dad4a742732ff4912853438c4255ba567c486353139a125f8"
+      },
+      "rrpJoin": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-join-coverage-20260623.json",
+        "stableReceiptHash": "63d93ecdad4fc1fb2d00a4b5da7e4892102fc308aeaf51aee5979d6cc3313fd0",
+        "canonicalContentHash": "63d93ecdad4fc1fb2d00a4b5da7e4892102fc308aeaf51aee5979d6cc3313fd0"
+      },
+      "rrpWrite": {
+        "path": "app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-write-20260623.json",
+        "stableReceiptHash": "88f2515f73cc7bc97f01428c984928e05a62a2a434c26e3d9c808772c6cb99ad",
+        "canonicalContentHash": "88f2515f73cc7bc97f01428c984928e05a62a2a434c26e3d9c808772c6cb99ad"
+      }
+    },
+    "controls": {
+      "noPnlComputed": true,
+      "noStrategyFilterComputed": true,
+      "diagnosticManifestPreserved": true,
+      "currentSealedCheckpointOnly": true,
+      "activeStateNotCreated": true
+    },
+    "rootRrpPromotionManifestId": "f6c4a3e3223ee4e54f7dfd6bbc7bb2bd29d17d7a98b59440b8e0f9bcfad9b619",
+    "rootRrpPromotionManifestHash": "85e76ca98a34553d0b1d29535f5c271b485eafc4b271df7136151a3b0800004d"
+  },
+  "supportingReceiptFileHashes": {
+    "cpiEndpoint": {
+      "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-20260622.json",
+      "rawFileSha256": "9ee71e98743975226c1fa1c2d30ba6c7b2ed05db2ddea7bd753d398330b06663"
+    },
+    "cpiJoin": {
+      "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-join-coverage-20260622.json",
+      "rawFileSha256": "1106601dbf789b13ad37b592687dcaca8c968cff0b5507ad13cbca0cd090a2d8"
+    },
+    "cpiWrite": {
+      "path": "app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-write-20260622.json",
+      "rawFileSha256": "42ababf8c140753a398b5e111c1408070b0592134e9b0700f3d24c75969d1060"
+    },
+    "rateBoundary": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-boundary-proof-20260622.json",
+      "rawFileSha256": "9f64e388392ad6c5e8a2af1ad1802482e7fe7cb5dda3b7ac63e88171d1b21373"
+    },
+    "rateJoin": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-join-coverage-20260622.json",
+      "rawFileSha256": "699e4579ec60a7c33b2a1796419eeb055b8787898f55f8052fa8cacb67fa2299"
+    },
+    "rateReconciliation": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rate-alfred-differential-reconstruction-20260622.json",
+      "rawFileSha256": "b05f7728c96a972ea46c79151801723e2e32c3e356407c5677fc2813dc6d0185"
+    },
+    "rateWrite": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-write-20260622.json",
+      "rawFileSha256": "1a16f4a9129a1b61d6dd8fe3d5c8767417d5ff9950b2d10ab6fd7151f7b43dce"
+    },
+    "rrpJoin": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-join-coverage-20260623.json",
+      "rawFileSha256": "722b1b3fd127964394a7a8c3c9f4f2018dcb822193c05c5871b8bbf1b2f776cf"
+    },
+    "rrpWrite": {
+      "path": "app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-write-20260623.json",
+      "rawFileSha256": "bc29eb6cb9bc271d53a4dff0fd2fb436f8445e38aefd7fd2c01befe660b1cbd0"
+    }
+  },
+  "blockers": {},
+  "receiptHash": "e92026d15cdbf3676a8f27bf4737f3eaac2c4113ca2171739fa879c87e093d28",
+  "files": {
+    "jsonPath": "app/reports/data-verification/macro-regime/gate50-parent-promotion-proof-20260623.json",
+    "mdPath": "app/reports/data-verification/macro-regime/gate50-parent-promotion-proof-20260623.md"
+  }
+}

@@ -1,0 +1,1677 @@
+[
+  {
+    "rule_id": "CONTROL_WEEKLY_HOLD",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_WEEKLY_HOLD",
+      "family": "control",
+      "control": "weekly_hold"
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -20.757959,
+    "average_adr_per_week": -10.378979,
+    "median_adr_per_week": -10.378979,
+    "profitable_weeks": 0,
+    "losing_weeks": 2,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0,
+    "worst_week_adr": -13.004217,
+    "worst_5_week_adr_sum": -20.757959,
+    "max_drawdown_adr": -20.757959,
+    "return_to_drawdown": -1,
+    "profit_factor_adr": 0,
+    "average_winning_week_adr": 0,
+    "average_losing_week_adr": -10.378979,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 0,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -13.004217
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -7.753742
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -20.757959,
+        "profitable_week_rate": 0,
+        "worst_week_adr": -13.004217
+      }
+    ]
+  },
+  {
+    "rule_id": "CONTROL_LEGACY_ADR_GRID",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_LEGACY_ADR_GRID",
+      "family": "control",
+      "control": "legacy_adr_grid"
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -59.427236,
+    "average_adr_per_week": -29.713618,
+    "median_adr_per_week": -29.713618,
+    "profitable_weeks": 0,
+    "losing_weeks": 2,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0,
+    "worst_week_adr": -32.539411,
+    "worst_5_week_adr_sum": -59.427236,
+    "max_drawdown_adr": -59.427236,
+    "return_to_drawdown": -1,
+    "profit_factor_adr": 0,
+    "average_winning_week_adr": 0,
+    "average_losing_week_adr": -29.713618,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 1,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -32.539411
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -26.887825
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -59.427236,
+        "profitable_week_rate": 0,
+        "worst_week_adr": -32.539411
+      }
+    ]
+  },
+  {
+    "rule_id": "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE",
+    "rule_family": "control",
+    "rule": {
+      "id": "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE",
+      "family": "control",
+      "control": "pair_silo_1adr_unavailable"
+    },
+    "weeks": 0,
+    "unavailable_weeks": 2,
+    "total_adr": 0,
+    "average_adr_per_week": 0,
+    "median_adr_per_week": 0,
+    "profitable_weeks": 0,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0,
+    "worst_week_adr": 0,
+    "worst_5_week_adr_sum": 0,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 0,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [],
+    "annual": []
+  },
+  {
+    "rule_id": "GLOBAL_TP_025_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_025_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.525116,
+    "average_adr_per_week": 0.262558,
+    "median_adr_per_week": 0.262558,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.25183,
+    "worst_5_week_adr_sum": 0.525116,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.262558,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.25183
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.273286
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.525116,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.25183
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 1.118636,
+    "average_adr_per_week": 0.559318,
+    "median_adr_per_week": 0.559318,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.507236,
+    "worst_5_week_adr_sum": 1.118636,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.559318,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.507236
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.6114
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 1.118636,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.507236
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 0.75
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 1.788869,
+    "average_adr_per_week": 0.894435,
+    "median_adr_per_week": 0.894435,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.76765,
+    "worst_5_week_adr_sum": 1.788869,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.894435,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.76765
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.021219
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 1.788869,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.76765
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 2.035648,
+    "average_adr_per_week": 1.017824,
+    "median_adr_per_week": 1.017824,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 1.014429,
+    "worst_5_week_adr_sum": 2.035648,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 1.017824,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.014429
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.021219
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 2.035648,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 1.014429
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 2.59696,
+    "average_adr_per_week": 1.29848,
+    "median_adr_per_week": 1.29848,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 1.280273,
+    "worst_5_week_adr_sum": 2.59696,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 1.29848,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.280273
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.316687
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 2.59696,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 1.280273
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_150_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_150_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 3.139942,
+    "average_adr_per_week": 1.569971,
+    "median_adr_per_week": 1.569971,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 1.543801,
+    "worst_5_week_adr_sum": 3.139942,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 1.569971,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.543801
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.596141
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 3.139942,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 1.543801
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_200_STOP_WEEK",
+    "rule_family": "global_close_all_stop_week",
+    "rule": {
+      "id": "GLOBAL_TP_200_STOP_WEEK",
+      "family": "global_close_all_stop_week",
+      "target_adr": 2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 4.289108,
+    "average_adr_per_week": 2.144554,
+    "median_adr_per_week": 2.144554,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 2.140594,
+    "worst_5_week_adr_sum": 4.289108,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 2.144554,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 2.140594
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 2.148514
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 4.289108,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 2.140594
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.611601,
+    "average_adr_per_week": -0.305801,
+    "median_adr_per_week": -0.305801,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.118837,
+    "worst_5_week_adr_sum": -0.611601,
+    "max_drawdown_adr": -1.118837,
+    "return_to_drawdown": -0.54664,
+    "profit_factor_adr": 0.45336,
+    "average_winning_week_adr": 0.507236,
+    "average_losing_week_adr": -1.118837,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.118837
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.507236
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.611601,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.118837
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -1.006041,
+    "average_adr_per_week": -0.50302,
+    "median_adr_per_week": -0.50302,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.513277,
+    "worst_5_week_adr_sum": -1.006041,
+    "max_drawdown_adr": -1.513277,
+    "return_to_drawdown": -0.66481,
+    "profit_factor_adr": 0.33519,
+    "average_winning_week_adr": 0.507236,
+    "average_losing_week_adr": -1.513277,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.513277
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.507236
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -1.006041,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.513277
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_050_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.5,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -1.496183,
+    "average_adr_per_week": -0.748091,
+    "median_adr_per_week": -0.748091,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -2.003419,
+    "worst_5_week_adr_sum": -1.496183,
+    "max_drawdown_adr": -2.003419,
+    "return_to_drawdown": -0.746815,
+    "profit_factor_adr": 0.253185,
+    "average_winning_week_adr": 0.507236,
+    "average_losing_week_adr": -2.003419,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.003419
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.507236
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -1.496183,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -2.003419
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.351187,
+    "average_adr_per_week": -0.175593,
+    "median_adr_per_week": -0.175593,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.118837,
+    "worst_5_week_adr_sum": -0.351187,
+    "max_drawdown_adr": -1.118837,
+    "return_to_drawdown": -0.313886,
+    "profit_factor_adr": 0.686114,
+    "average_winning_week_adr": 0.76765,
+    "average_losing_week_adr": -1.118837,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.118837
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.76765
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.351187,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.118837
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.745627,
+    "average_adr_per_week": -0.372813,
+    "median_adr_per_week": -0.372813,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.513277,
+    "worst_5_week_adr_sum": -0.745627,
+    "max_drawdown_adr": -1.513277,
+    "return_to_drawdown": -0.492723,
+    "profit_factor_adr": 0.507277,
+    "average_winning_week_adr": 0.76765,
+    "average_losing_week_adr": -1.513277,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.513277
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.76765
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.745627,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.513277
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_075_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_075_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 0.75,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -1.235769,
+    "average_adr_per_week": -0.617884,
+    "median_adr_per_week": -0.617884,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -2.003419,
+    "worst_5_week_adr_sum": -1.235769,
+    "max_drawdown_adr": -2.003419,
+    "return_to_drawdown": -0.61683,
+    "profit_factor_adr": 0.38317,
+    "average_winning_week_adr": 0.76765,
+    "average_losing_week_adr": -2.003419,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.003419
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.76765
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -1.235769,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -2.003419
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.104408,
+    "average_adr_per_week": -0.052204,
+    "median_adr_per_week": -0.052204,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.118837,
+    "worst_5_week_adr_sum": -0.104408,
+    "max_drawdown_adr": -1.118837,
+    "return_to_drawdown": -0.093318,
+    "profit_factor_adr": 0.906682,
+    "average_winning_week_adr": 1.014429,
+    "average_losing_week_adr": -1.118837,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.118837
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.014429
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.104408,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.118837
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.498848,
+    "average_adr_per_week": -0.249424,
+    "median_adr_per_week": -0.249424,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.513277,
+    "worst_5_week_adr_sum": -0.498848,
+    "max_drawdown_adr": -1.513277,
+    "return_to_drawdown": -0.329648,
+    "profit_factor_adr": 0.670352,
+    "average_winning_week_adr": 1.014429,
+    "average_losing_week_adr": -1.513277,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.513277
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.014429
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.498848,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.513277
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_100_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_100_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.98899,
+    "average_adr_per_week": -0.494495,
+    "median_adr_per_week": -0.494495,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -2.003419,
+    "worst_5_week_adr_sum": -0.98899,
+    "max_drawdown_adr": -2.003419,
+    "return_to_drawdown": -0.493651,
+    "profit_factor_adr": 0.506349,
+    "average_winning_week_adr": 1.014429,
+    "average_losing_week_adr": -2.003419,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.003419
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.014429
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.98899,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -2.003419
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_100",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_100",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.161436,
+    "average_adr_per_week": 0.080718,
+    "median_adr_per_week": 0.080718,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.118837,
+    "worst_5_week_adr_sum": 0.161436,
+    "max_drawdown_adr": -1.118837,
+    "return_to_drawdown": 0.144289,
+    "profit_factor_adr": 1.144289,
+    "average_winning_week_adr": 1.280273,
+    "average_losing_week_adr": -1.118837,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.118837
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.280273
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.161436,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.118837
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_150",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_150",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.233004,
+    "average_adr_per_week": -0.116502,
+    "median_adr_per_week": -0.116502,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -1.513277,
+    "worst_5_week_adr_sum": -0.233004,
+    "max_drawdown_adr": -1.513277,
+    "return_to_drawdown": -0.153973,
+    "profit_factor_adr": 0.846027,
+    "average_winning_week_adr": 1.280273,
+    "average_losing_week_adr": -1.513277,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -1.513277
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.280273
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.233004,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -1.513277
+      }
+    ]
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_200",
+    "rule_family": "global_target_plus_adverse_stop",
+    "rule": {
+      "id": "GLOBAL_TP_125_STOP_200",
+      "family": "global_target_plus_adverse_stop",
+      "target_adr": 1.25,
+      "adverse_stop_adr": -2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": -0.723146,
+    "average_adr_per_week": -0.361573,
+    "median_adr_per_week": -0.361573,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -2.003419,
+    "worst_5_week_adr_sum": -0.723146,
+    "max_drawdown_adr": -2.003419,
+    "return_to_drawdown": -0.360956,
+    "profit_factor_adr": 0.639044,
+    "average_winning_week_adr": 1.280273,
+    "average_losing_week_adr": -2.003419,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0.5,
+    "negative_years": 1,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -2.003419
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.280273
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": -0.723146,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -2.003419
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A050_F010",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A050_F010",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.5,
+      "floor_adr": 0.1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.130326,
+    "average_adr_per_week": 0.065163,
+    "median_adr_per_week": 0.065163,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.055484,
+    "worst_5_week_adr_sum": 0.130326,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.065163,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.055484
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.074842
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.130326,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.055484
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A050_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A050_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.5,
+      "floor_adr": 0.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.328605,
+    "average_adr_per_week": 0.164303,
+    "median_adr_per_week": 0.164303,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.115857,
+    "worst_5_week_adr_sum": 0.328605,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.164303,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.115857
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.212748
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.328605,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.115857
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A075_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.75,
+      "floor_adr": 0.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.307647,
+    "average_adr_per_week": 0.153824,
+    "median_adr_per_week": 0.153824,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.113288,
+    "worst_5_week_adr_sum": 0.307647,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.153824,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.113288
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.194359
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.307647,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.113288
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A075_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A075_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 0.75,
+      "floor_adr": 0.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.785607,
+    "average_adr_per_week": 0.392804,
+    "median_adr_per_week": 0.392804,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.327682,
+    "worst_5_week_adr_sum": 0.785607,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.392804,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.327682
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.457925
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.785607,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.327682
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A100_F025",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A100_F025",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1,
+      "floor_adr": 0.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.307647,
+    "average_adr_per_week": 0.153824,
+    "median_adr_per_week": 0.153824,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.113288,
+    "worst_5_week_adr_sum": 0.307647,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.153824,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.113288
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.194359
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.307647,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.113288
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A100_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A100_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1,
+      "floor_adr": 0.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.775016,
+    "average_adr_per_week": 0.387508,
+    "median_adr_per_week": 0.387508,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.327682,
+    "worst_5_week_adr_sum": 0.775016,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.387508,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.327682
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.447334
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.775016,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.327682
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A125_F050",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A125_F050",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1.25,
+      "floor_adr": 0.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.775016,
+    "average_adr_per_week": 0.387508,
+    "median_adr_per_week": 0.387508,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.327682,
+    "worst_5_week_adr_sum": 0.775016,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.387508,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.327682
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.447334
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.775016,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.327682
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_A150_F075",
+    "rule_family": "basket_profit_floor_trailing",
+    "rule": {
+      "id": "TRAIL_A150_F075",
+      "family": "basket_profit_floor_trailing",
+      "activation_adr": 1.5,
+      "floor_adr": 0.75
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.381811,
+    "average_adr_per_week": 0.190906,
+    "median_adr_per_week": 0.190906,
+    "profitable_weeks": 1,
+    "losing_weeks": 1,
+    "flat_weeks": 0,
+    "profitable_week_rate": 0.5,
+    "worst_week_adr": -0.305878,
+    "worst_5_week_adr_sum": 0.381811,
+    "max_drawdown_adr": -0.305878,
+    "return_to_drawdown": 1.248246,
+    "profit_factor_adr": 2.248246,
+    "average_winning_week_adr": 0.687689,
+    "average_losing_week_adr": -0.305878,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": -0.305878
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.687689
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.381811,
+        "profitable_week_rate": 0.5,
+        "worst_week_adr": -0.305878
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A050_F025_T100",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A050_F025_T100",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.5,
+      "floor_adr": 0.25,
+      "hard_tp_adr": 1
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.328605,
+    "average_adr_per_week": 0.164303,
+    "median_adr_per_week": 0.164303,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.115857,
+    "worst_5_week_adr_sum": 0.328605,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.164303,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.115857
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.212748
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.328605,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.115857
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A075_F025_T125",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A075_F025_T125",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.75,
+      "floor_adr": 0.25,
+      "hard_tp_adr": 1.25
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 2.59696,
+    "average_adr_per_week": 1.29848,
+    "median_adr_per_week": 1.29848,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 1.280273,
+    "worst_5_week_adr_sum": 2.59696,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 1.29848,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.280273
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 1.316687
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 2.59696,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 1.280273
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A075_F050_T150",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A075_F050_T150",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 0.75,
+      "floor_adr": 0.5,
+      "hard_tp_adr": 1.5
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 0.785607,
+    "average_adr_per_week": 0.392804,
+    "median_adr_per_week": 0.392804,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.327682,
+    "worst_5_week_adr_sum": 0.785607,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 0.392804,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.327682
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.457925
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 0.785607,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.327682
+      }
+    ]
+  },
+  {
+    "rule_id": "TRAIL_TP_A100_F050_T200",
+    "rule_family": "trail_plus_hard_tp",
+    "rule": {
+      "id": "TRAIL_TP_A100_F050_T200",
+      "family": "trail_plus_hard_tp",
+      "activation_adr": 1,
+      "floor_adr": 0.5,
+      "hard_tp_adr": 2
+    },
+    "weeks": 2,
+    "unavailable_weeks": 0,
+    "total_adr": 2.468276,
+    "average_adr_per_week": 1.234138,
+    "median_adr_per_week": 1.234138,
+    "profitable_weeks": 2,
+    "losing_weeks": 0,
+    "flat_weeks": 0,
+    "profitable_week_rate": 1,
+    "worst_week_adr": 0.327682,
+    "worst_5_week_adr_sum": 2.468276,
+    "max_drawdown_adr": 0,
+    "return_to_drawdown": null,
+    "profit_factor_adr": null,
+    "average_winning_week_adr": 1.234138,
+    "average_losing_week_adr": 0,
+    "closed_before_friday_rate": 1,
+    "stopped_out_rate": 0,
+    "negative_years": 0,
+    "worst_5_weeks": [
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 0.327682
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "year": 2019,
+        "exit_adr": 2.140594
+      }
+    ],
+    "annual": [
+      {
+        "year": 2019,
+        "weeks": 2,
+        "total_adr": 2.468276,
+        "profitable_week_rate": 1,
+        "worst_week_adr": 0.327682
+      }
+    ]
+  }
+]

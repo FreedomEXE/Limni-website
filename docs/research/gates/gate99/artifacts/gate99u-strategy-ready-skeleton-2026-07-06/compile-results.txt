@@ -1,0 +1,8 @@
+Gate 99U strategy-ready skeleton compile receipt
+generated_utc=2026-07-06T20:46:08Z
+git_head_before_commit=933ab0757a2fd4214949c687fdac76abf5ab1ea5
+repo_compile_exit_code=1
+repo_compile_result=Result: 0 errors, 0 warnings, 8780 msec elapsed, cpu='X64 Regular'
+active_terminal_compile_exit_code=1
+active_terminal_compile_result=Result: 0 errors, 0 warnings, 9213 ms elapsed, cpu='X64 Regular'
+note=MetaEditor exit code 1 is known local behavior when the log reports zero errors and zero warnings.

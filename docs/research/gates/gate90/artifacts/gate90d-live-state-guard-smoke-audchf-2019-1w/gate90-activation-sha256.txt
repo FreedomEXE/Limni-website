@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T18:12:37.961Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json 39868B98DF1BA289E1BBC52C671F5A547BCB02069E00379E798EB9A437A5AE83 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json 1F0DC50A3E9E1A3B59FF28EAB45D73741FC12A9EC0A36D3733C5AC1E03D26A01 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json F5291C328DC706E3A4BC9E002C0F8C07C1538FE2ED8012F4762F43DF02CB3A30 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json 098198955F1BCCCD3D38E377A23A1D1B211372101B5DCD4AD141C78CAEDA89D0 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json 49407492662708FFF255BE2CEF4F2C5830B14440922C2AF4BA5EC513F69E72E3 docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 227136F9870CFA1B0F7E301095ED190601503631E67093F07F4A2371B24D456A docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt C4017A5B36E8710EF3E0BBD514979F8D098381670C279E82D44ED5D5BE30298F docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 7C09288DC0881E7D6C0691FE2D3A3BE8EC489F081E6609DA68E3955047A885CB docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/gate90-run-summary.json
+report 8F6675AA3E39EE4AE2BA7674E7F997FE30CDEEAE2A8E96ABC6570ACFC59D44EA docs/research/gates/gate90/artifacts/gate90d-live-state-guard-smoke-audchf-2019-1w/GATE90D_LIVE_STATE_GUARD_SMOKE_AUDCHF_2019_1W.md

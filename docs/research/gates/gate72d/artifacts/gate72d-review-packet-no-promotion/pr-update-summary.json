@@ -1,0 +1,11 @@
+{
+  "gate_id": "Gate 72D: review-packet-no-promotion",
+  "pr_number": 2,
+  "repository": "FreedomEXE/Limni-website",
+  "local_packet_ready_for_pr_update": true,
+  "live_pr_update_performed_by_script": false,
+  "reason": "PR body is updated after final commit and push so the final head SHA is live truth.",
+  "gate72a_verdict": "PASS_WITH_CAVEAT_GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT__DIRECT_PATH_BINDING_TRANSITIVE_GATE68",
+  "gate72b_verdict": "PASS_GATE72B_MATRIX_LEDGER_SANITY_REVIEW__RESULT_LEDGER_SHAPE_VALID_NO_REPLAY_DRIFT",
+  "gate72c_verdict": "PASS_GATE72C_EXIT_FAMILY_RANKING_SHORTLIST__NO_CLEAN_PROMOTION_CANDIDATE"
+}

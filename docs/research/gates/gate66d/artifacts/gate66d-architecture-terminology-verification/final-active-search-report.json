@@ -1,0 +1,15 @@
+{
+  "gate_id": "Gate 66D: architecture-terminology-verification",
+  "active_remaining_count": 0,
+  "active_remaining_occurrences": [],
+  "immutable_exception_count": 548,
+  "migration_manifest_allowed_count": 304,
+  "classification_summary": {
+    "active_source_code": 201,
+    "current_gate65_review_packet": 29,
+    "current_recovery_doc": 1,
+    "historical_immutable_artifact": 332,
+    "historical_verdict_or_hash_bound_receipt": 187,
+    "migration_manifest_allowed": 304
+  }
+}

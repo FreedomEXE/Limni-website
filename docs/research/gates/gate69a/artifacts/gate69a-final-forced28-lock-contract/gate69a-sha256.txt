@@ -1,0 +1,10 @@
+gate_id Gate 69A: final-forced28-lock-contract
+command npm run engine:gate69a:final-forced28-lock-contract
+generated_at 2026-06-28T06:34:39.418Z
+git_commit 5caad98b226f45b063fe201c13700a940e905531
+lock_contract 3BEB5253BF26E812A75DF6F588A4B6AF5CE4ACFD98286C5DBD6DC3C383DEA92A docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/final-forced28-lock-contract.json
+shadow_canary_contract 38D22714C93CE4FEB1840E9A47C863C02D4EA3F54A380E095CEF534FE0146A1A docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/candidate-c-shadow-canary-contract.json
+lock_evidence BE891F85A3B1A46C6E8EB7E62105D1C95A17704D45D2155B4397E9CC5C527664 docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/lock-evidence.json
+lock_decision_memo C9DB98939282678299C6A4DD1A30C51298D04C6B29969D9A88602AA702729999 docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/lock-decision-memo.md
+summary_json AAD4DB00911F6051D21DEC80905BDE7C29594A080385EBB088BD6FF5D5C42407 docs/research/gates/gate69a/artifacts/gate69a-final-forced28-lock-contract/gate69a-summary.json
+report 8E4B5123BC6148C2FF8C2B6D8A832DE458E2F7DC1D2A90995F4A971248D8FFED docs/research/gates/gate69a/GATE69A_FINAL_FORCED28_LOCK_CONTRACT_2026-06-28.md

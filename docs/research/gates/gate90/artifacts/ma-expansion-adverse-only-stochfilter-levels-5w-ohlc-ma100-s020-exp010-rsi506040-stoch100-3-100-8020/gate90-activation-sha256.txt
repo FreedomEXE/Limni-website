@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T12:21:53.766Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 2E614FD2481399F7AB04FA9AA4891D1A9CEFE66384EE03630EE835A2BDCC7434 docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/activation-summary.rows.json
+weekly_json 17EA055F898BCEE82E0EA4DC52E02D77F94A360D94CEF15B154D4D669EE25CA5 docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/close-events.rows.json
+validation_json 68D294E79ED95B40009CD6DA39A3B0A4896C2B0282FE04A4C4F3195E27B819DF docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/validation.rows.json
+metric_definitions_json 29430730DBFE50DD3C8435CEA48E6C0102B546126072E0FA58F96E2502FECE36 docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/metric-definitions.rows.json
+command_receipt 48A321E85435B1BD03C43685ADC39291356FD783B0CBA2CA06EBC2BBA6790A3B docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/command-receipt.json
+run_summary_json FBD06AF5098C11CA1680FDBD8BCE1474205D6A64421D719F8E3C82FB0BC390A0 docs/research/gates/gate90/artifacts/ma-expansion-adverse-only-stochfilter-levels-5w-ohlc-ma100-s020-exp010-rsi506040-stoch100-3-100-8020/gate90-run-summary.json
+report ABFA1AE6EB340F21DC4C22473360F43A7F7FC31EEBF5FDE3774B9672BB0E3680 docs/research/gates/gate90/GATE90_MA_EXPANSION_ADVERSE_ONLY_STOCHFILTER_LEVELS_5W_OHLC_MA100_S020_EXP010_RSI506040_STOCH100_3_100_8020_2026-07-02.md

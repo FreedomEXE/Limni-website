@@ -1,0 +1,325 @@
+export const BRAIN_ARCHITECTURE_VERSION = "gate66_brain_cells_atoms_v3";
+
+export type BrainCellId = "cot" | "strength" | "regime";
+export type BrainAtomStatus = "locked" | "building" | "shadow" | "sealed_parent" | "fail_closed" | "reserved";
+export type BrainAtomClass =
+  | "direction_signal"
+  | "context_signal"
+  | "source_quality"
+  | "derived_signal"
+  | "shadow_only"
+  | "fail_closed"
+  | "reserved";
+
+export type BrainAtomContract = {
+  atom_id: string;
+  label: string;
+  status: BrainAtomStatus;
+  source_gate: string;
+  atom_class: BrainAtomClass;
+  forced_28_role: "signal_atom" | "source_quality_atom" | "shadow_atom" | "diagnostic_atom";
+};
+
+export type BrainCellContract = {
+  cell_id: BrainCellId;
+  label: string;
+  path: string;
+  forced_28_required: true;
+  atoms: BrainAtomContract[];
+};
+
+export type FinalAlgorithmStatus = "reserved_for_future_gate";
+
+export type BrainArchitectureContract = {
+  version: typeof BRAIN_ARCHITECTURE_VERSION;
+  architecture_version: typeof BRAIN_ARCHITECTURE_VERSION;
+  system: "Brain";
+  hierarchy: "Brain -> Cells -> Atoms";
+  cells: BrainCellContract[];
+  deprecated_terms_removed_from_active_contracts: true;
+  final_algorithm_name: null;
+  final_algorithm_status: FinalAlgorithmStatus;
+  final_algorithm_placeholder: "unnamed_final_forced28_algorithm";
+  forced28_decision_required: true;
+  forced28_decision_truth: {
+    status: "reserved_for_future_gate";
+    final_algorithm_started: false;
+    final_algorithm_named: false;
+  };
+  risk: {
+    path: "engine/src/brain/risk";
+    status: "reserved_for_later_portfolio_expression_layer";
+    risk_may_reduce_expression_later: true;
+    risk_may_mutate_forced28_decision_truth: false;
+  };
+  standing_rule: string;
+};
+
+export const COT_CELL_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "cot_side",
+    label: "locked COT side",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "direction_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "cot_tei_spread",
+    label: "base-minus-quote COT TEI spread",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "direction_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "cot_carry_flags",
+    label: "COT carry-forward and carry-previous flags",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+  {
+    atom_id: "cot_lifecycle_state",
+    label: "COT report lifecycle state",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+];
+
+export const STRENGTH_CELL_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "strength_gate57e_side",
+    label: "locked Gate 57E Strength side",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "direction_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "strength_score_spread",
+    label: "FRS15 base-minus-quote score spread",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "direction_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "strength_lifecycle_bucket",
+    label: "Strength lifecycle bucket",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+  {
+    atom_id: "strength_phase_bucket",
+    label: "Strength phase bucket",
+    status: "locked",
+    source_gate: "Gate 59",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+];
+
+export const REGIME_BPR_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "bpr_futures",
+    label: "BPR futures required source atom",
+    status: "building",
+    source_gate: "Gate 60G",
+    atom_class: "direction_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "bpr_futures_and_options",
+    label: "BPR futures/options shadow source atom",
+    status: "shadow",
+    source_gate: "Gate 60G",
+    atom_class: "shadow_only",
+    forced_28_role: "shadow_atom",
+  },
+  {
+    atom_id: "bpr_futures_carried_state",
+    label: "BPR futures carried source state",
+    status: "building",
+    source_gate: "Gate 60G",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+  {
+    atom_id: "bpr_futures_synthetic_usd_state",
+    label: "BPR synthetic USD source state",
+    status: "building",
+    source_gate: "Gate 60G",
+    atom_class: "source_quality",
+    forced_28_role: "source_quality_atom",
+  },
+];
+
+export const REGIME_RATE_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "nominal_rate_3m",
+    label: "nominal 3m interbank rate",
+    status: "sealed_parent",
+    source_gate: "Gate 60C",
+    atom_class: "context_signal",
+    forced_28_role: "signal_atom",
+  },
+];
+
+export const REGIME_INFLATION_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "cpi_inflation_yoy",
+    label: "CPI inflation year-over-year",
+    status: "sealed_parent",
+    source_gate: "Gate 60C",
+    atom_class: "context_signal",
+    forced_28_role: "signal_atom",
+  },
+];
+
+export const REGIME_RRP_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "rrp_derived",
+    label: "real-rate-pressure derived atom",
+    status: "building",
+    source_gate: "Gate 60C",
+    atom_class: "derived_signal",
+    forced_28_role: "signal_atom",
+  },
+];
+
+export const REGIME_VALUATION_ATOMS: BrainAtomContract[] = [
+  {
+    atom_id: "ppp",
+    label: "purchasing power parity",
+    status: "building",
+    source_gate: "Gate 60C",
+    atom_class: "context_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "neer",
+    label: "nominal effective exchange rate",
+    status: "building",
+    source_gate: "Gate 60C",
+    atom_class: "context_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "reer",
+    label: "real effective exchange rate",
+    status: "building",
+    source_gate: "Gate 60C",
+    atom_class: "context_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_reer_deviation",
+    label: "valuation gap from REER deviation versus 2020=100",
+    status: "building",
+    source_gate: "Gate 64B",
+    atom_class: "derived_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_neer_reer_relative",
+    label: "valuation gap from REER minus NEER relative index spread",
+    status: "building",
+    source_gate: "Gate 64B",
+    atom_class: "derived_signal",
+    forced_28_role: "signal_atom",
+  },
+  {
+    atom_id: "valuation_gap_ppp_spot",
+    label: "PPP versus spot valuation gap",
+    status: "fail_closed",
+    source_gate: "Gate 64B",
+    atom_class: "fail_closed",
+    forced_28_role: "diagnostic_atom",
+  },
+  {
+    atom_id: "valuation_gap_composite_ppp_neer_reer",
+    label: "composite PPP, NEER, and REER valuation gap",
+    status: "fail_closed",
+    source_gate: "Gate 64B",
+    atom_class: "fail_closed",
+    forced_28_role: "diagnostic_atom",
+  },
+];
+
+export const REGIME_CELL_ATOMS: BrainAtomContract[] = [
+  ...REGIME_BPR_ATOMS,
+  ...REGIME_RATE_ATOMS,
+  ...REGIME_INFLATION_ATOMS,
+  ...REGIME_RRP_ATOMS,
+  ...REGIME_VALUATION_ATOMS,
+];
+
+export const BRAIN_CELLS: BrainCellContract[] = [
+  {
+    cell_id: "cot",
+    label: "COT cell",
+    path: "engine/src/brain/cells/cot",
+    forced_28_required: true,
+    atoms: COT_CELL_ATOMS,
+  },
+  {
+    cell_id: "strength",
+    label: "Strength cell",
+    path: "engine/src/brain/cells/strength",
+    forced_28_required: true,
+    atoms: STRENGTH_CELL_ATOMS,
+  },
+  {
+    cell_id: "regime",
+    label: "Regime cell",
+    path: "engine/src/brain/cells/regime",
+    forced_28_required: true,
+    atoms: REGIME_CELL_ATOMS,
+  },
+];
+
+export const BRAIN_ARCHITECTURE: BrainArchitectureContract = {
+  version: BRAIN_ARCHITECTURE_VERSION,
+  architecture_version: BRAIN_ARCHITECTURE_VERSION,
+  system: "Brain",
+  hierarchy: "Brain -> Cells -> Atoms",
+  cells: BRAIN_CELLS,
+  deprecated_terms_removed_from_active_contracts: true,
+  final_algorithm_name: null,
+  final_algorithm_status: "reserved_for_future_gate",
+  final_algorithm_placeholder: "unnamed_final_forced28_algorithm",
+  forced28_decision_required: true,
+  forced28_decision_truth: {
+    status: "reserved_for_future_gate",
+    final_algorithm_started: false,
+    final_algorithm_named: false,
+  },
+  risk: {
+    path: "engine/src/brain/risk",
+    status: "reserved_for_later_portfolio_expression_layer",
+    risk_may_reduce_expression_later: true,
+    risk_may_mutate_forced28_decision_truth: false,
+  },
+  standing_rule:
+    "Brain cells preserve forced-28 weekly pair decision truth; only a later risk/portfolio layer may reduce actual trade expression, and it may not mutate forced-28 decision truth.",
+};
+
+export function getBrainCell(cellId: BrainCellId) {
+  return BRAIN_CELLS.find((cell) => cell.cell_id === cellId);
+}
+
+export function flattenBrainAtomInventory() {
+  return BRAIN_CELLS.flatMap((cell) =>
+    cell.atoms.map((atom) => ({
+      cell_id: cell.cell_id,
+      cell_label: cell.label,
+      ...atom,
+    })),
+  );
+}

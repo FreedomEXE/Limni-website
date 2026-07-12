@@ -1,0 +1,8 @@
+{
+  "gate_id": "Gate 67E: review-packet-completeness",
+  "pr_number": 2,
+  "repository": "FreedomEXE/Limni-website",
+  "local_packet_ready_for_pr_update": true,
+  "live_pr_update_performed_by_script": false,
+  "reason": "PR body must be updated after commit/push so final head SHA is live truth."
+}

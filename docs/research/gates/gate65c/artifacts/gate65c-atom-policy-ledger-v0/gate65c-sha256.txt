@@ -1,0 +1,10 @@
+gate_id Gate 65C: atom-policy-ledger-v0
+command npm run engine:gate65c:atom-policy-ledger-v0
+generated_at 2026-06-28T00:51:29.306Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+atom_policy_ledger_rows 26DB6F343FE1114809CE7C4EF3624B7EF70524362C6365126CC463CDC61B6E48 docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-ledger.rows.jsonl
+role_summary FAE262F66F85D0407B47377E96ED681B5D9DB1FA5315FE98C6C0F326332ADED5 docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-role-summary.json
+quality_summary 2C00E90EA192FA40154A8FAC023F0EB5B68B9B668CB3B7E4EC6977E52F02309D docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-quality-summary.json
+policy_contract B6AAD1F74867158546241F7EFA5D0FC84CF626C4100FF92C29ECC56B3B163E7F docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/atom-policy-contract.json
+summary_json 64EDAC505AA110CC697CA3768687DAEA12E6E25ED3F4D9B3BC26C8F7776864E2 docs/research/gates/gate65c/artifacts/gate65c-atom-policy-ledger-v0/gate65c-summary.json
+report 2B1AB02B41305FD6AF6E651A4989505003052FE879F787F7DB62A59A48E70612 docs/research/gates/gate65c/GATE65C_ATOM_POLICY_LEDGER_V0_2026-06-27.md

@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T03:30:11.741Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json D77453C7EC5EC40B603BEE116D6910C7E089EE207C273AD0A11C258E1F96EA10 docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/activation-summary.rows.json
+weekly_json 5446E1248D3A993655704DD8248EA9D3AFFA5C1CDEDD399DE889E00DE1AF78EB docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json 9287CACF463A683C60040300BC7737EA8CAB6EA4BDD5BCA1C06344565A9D6BCA docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json 5FF10A4E72C824178DFFE9DB6B78937A0007129568422147E67163F3A2CE5384 docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/terminal-inventory.rows.json
+validation_json B771B2ECDAB2236280635210284B8C704E074210A363C40B74C8EE683BB251FA docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/validation.rows.json
+metric_definitions_json 30DFB409972EB2784830BA88BB7AE143D13F89DB91A4595FEAC45E9850D6BF26 docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/metric-definitions.rows.json
+command_receipt E7F70E8B3A7A7F2BFA1DF82CDF932D839DD9188E007C64AD7DD3741DCB50341A docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/command-receipt.json
+run_summary_json DED97F8D6539EFCCBCB09343EC724910254C7F968EFBEBB985825FFC11614E80 docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/gate90-run-summary.json
+report 18D6625534B2F436C87D7411F02434453893A3ABD71506D740B8E695BD48B08B docs/research/gates/gate90/artifacts/gate90d-2019-open-adr-breakdown-no-candidate-b/GATE90D_2019_OPEN_ADR_BREAKDOWN_NO_CANDIDATE_B.md

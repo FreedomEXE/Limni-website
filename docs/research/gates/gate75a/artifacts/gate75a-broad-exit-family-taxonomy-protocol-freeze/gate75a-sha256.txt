@@ -1,0 +1,16 @@
+gate_id Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze
+command npm run engine:gate75a:broad-exit-family-taxonomy-protocol-freeze
+generated_at 2026-06-29T18:02:30.735Z
+git_commit cf2cd08741b78387f18c3add021f005e5447d52f
+taxonomy_contract 584A5C6E23E190A5A25A03C830DB522773F8C5F315F9577018BE5077A62BD218 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/taxonomy-contract.json
+gate75b_matrix_plan 83B021406186A635B081203B768B2C7725E5B6921A54EB7F908E8A61B329E984 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/gate75b-matrix-plan.json
+adapter_family_feasibility_map A45B209BC4FD17C8E61BF326BF00747A49ABFBDCD4DA84CFA8DCE5CF3D2749C8 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/adapter-family-feasibility-map.json
+baseline_binding B936704E9901EFCF42DFDDE13B8F7FBFA93CC769ABB442D48E6D4AAC80AB4ABB docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/baseline-binding.json
+gate74e_decision_memo 70386660EA134D3D6DB71C89001C471C27021D2D6867D9BB38ABF0B896CDC270 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/gate74e-decision-memo.json
+ranking_and_no_promotion_criteria 9237D31447888E64B7F7DF1B713EE34B178D515DBD91713B862430D4728A9BC4 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/ranking-and-no-promotion-criteria.json
+forbidden_behavior_register BD69AEC5FBF94718E89DFA36E6A824B4F56361C9CA01FFBDAA48A73C1AE75F35 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/forbidden-behavior-register.json
+command_receipt 67C5A71F7D52A7792918491BA6407BCE3EC4B625E179F67D654AA843AAF4A553 docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/command-receipt.json
+summary_json 59A01A11EE6E8BF69D6212693231F728C6E37AF7D57302DF6E2240E97DB191CA docs/research/gates/gate75a/artifacts/gate75a-broad-exit-family-taxonomy-protocol-freeze/gate75a-summary.json
+report A25E75DC066FF1F6CB2E41C6844C678FE2A9435B409E8D7B8E8140B5535FE7A6 docs/research/gates/gate75a/GATE75A_BROAD_EXIT_FAMILY_TAXONOMY_PROTOCOL_FREEZE_2026-06-29.md
+gate74e_summary 4451C2E71DAFB542F3C90241D7CD898F2C79B8D61022CED36E803E7ED9B41A52 docs/research/gates/gate74e/artifacts/gate74e-pair-net-grid-tail-containment-adapter-pack/gate74e-summary.json
+gate74b_summary 8691C81023379027CB52D556BDC22FA3789C5B2AA4AE904546718EB94FDB7738 docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization/gate74b-summary.json

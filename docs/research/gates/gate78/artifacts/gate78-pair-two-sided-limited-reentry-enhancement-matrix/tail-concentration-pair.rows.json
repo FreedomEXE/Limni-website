@@ -1,0 +1,2151 @@
+[
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -3119.377621,
+    "content_hash": "CA9B4294205A3F67897802D1C15B1371A4AC1192EA05D2CC0033A55BEEA8B8A8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -3119.377621,
+    "content_hash": "45611E7289815A0019280A29E7B23C662A90F7929D5C5BDB33E071DE16BC213E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -3119.377621,
+    "content_hash": "33FF343E9A0B161224FAD6FB295A7525222AE7E8B6C3C1F94E86F5B5D68699AD"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -3099.046979,
+    "content_hash": "9CB42314BB02D493824E965450A15DF2C9B99C7F3AA923DE52AB43838F19782D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -3088.881635,
+    "content_hash": "764C60C5A7874DC90874522B3A94F970D667CA20AF1C3B37B874A801EAE3ECFE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -2073.550175,
+    "content_hash": "A26926E2EB182A70D4BF3FEC0DB2494EEB3F7F4DDFDC1820A65BB453FB8D4059"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -2073.0693,
+    "content_hash": "6A5BF379AD9041A576B40549F48FB341D16413E0F9C671E9EBEC470DB7C1E771"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -1950.296503,
+    "content_hash": "60DBF21F0045ABCAD52662A4480BB3DBB2D601FCBE3150561504040B2FFCBA5C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -791.32201,
+    "content_hash": "B4896B04A7B5B62E4AB4769D178F574952DC69F05F34B5EBCE12C343C6441F4D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -791.32201,
+    "content_hash": "37D9DF764A956EF93B638B6067C2640E544D122964CCE022C6871D8853823CB8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -297.166241,
+    "content_hash": "7C101C686D1A5040F9109E30AB67FFD027F2AE35B7A4032B599732A4D84D5A56"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -294.253022,
+    "content_hash": "A8CCF90DA27D60878EBE3F0159CD098DCE047B0BC8EAFB20DA9C2D7C2B4F39BB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -289.848397,
+    "content_hash": "49ED57CDFC836543C64281268792972AC6E0F2A8565705B5A2989AFD24EBA7D2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -106.412109,
+    "content_hash": "2417DD3E246C3C7F572161014090522B19F8810E8B34C319BE9095C17E5C0CA7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -84.176156,
+    "content_hash": "85232D691D8704E4C521621497933FC4C1CC16B809097F53EA6A5A120D198455"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -82.507479,
+    "content_hash": "AB47D726A8FE169EF62DD6F153B4469811CC903D045A7CDD5ABEA6B42399E4F2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -81.529317,
+    "content_hash": "90FFD2131B6BE69FE9E63C306FE04ACCE9010D9A2F00AE5FC338098FCF5E1569"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -81.529317,
+    "content_hash": "55636D855147E30835DEB3338F138E34CC0703B749A209C987ADA99D9001A646"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -64.151933,
+    "content_hash": "89CAB8871F9933ADDF1C654DCEBE275BA46F621C41BA963CA8E10E959BC16706"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -64.068313,
+    "content_hash": "AF1A84B2816D2268506E86F741A7164F452CE7884491D46005174203569151EA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -63.740988,
+    "content_hash": "A53C2462754FA47D8CDBE4F855F9D8BC3D8E330FACE64C0C4DC232ACAF1BCB90"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -55.526761,
+    "content_hash": "8532A0BD6AAE282E7051C2ECC3EB117BAC6E32967D3228700F01496A77C17D44"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -55.404579,
+    "content_hash": "A09FFD323D28E0CDA5534DCBDF06659E1BF76C7AEA8C6FDEC011C4BD7B6C48AC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -55.351294,
+    "content_hash": "844148A1DBE9220229163D7090DB202214F3643B32BF2FA570FFA2D4E038855E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -53.695008,
+    "content_hash": "B23890417BE6B840D27EE8154AE0FE674FDE186CEBA7E61B146EC22DEEF958A4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -53.494483,
+    "content_hash": "4A666E030F29D4E6E0B0B910DF4963CE43E3ED0FFDA9161A6A10261D120FF795"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -38.3596,
+    "content_hash": "F54700719CA94A4BCE0CF01AABC39565E81B243BB08B89BDAEB954A840794C7B"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -35.838472,
+    "content_hash": "071B5266DA3F1A0EA1CA54E752C3B15ECC6149211C8530D25941ACFB808955AB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -34.945478,
+    "content_hash": "3930AFDFCAADC05F390DE84A49DBB736801A114CE033E237058EBAF1FA59DC85"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -33.216346,
+    "content_hash": "15870E9B52811B2E912408D4BE762BFE7989FC77534F87AF9BFA1CBD5AB675B5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -33.019623,
+    "content_hash": "86FC3A24FDD66125232DFEA7D51EF845BEBA5C3162F3364EEF78E66FB34FD8CE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -32.898689,
+    "content_hash": "EA1D1C08E0A9700009A132159D74B872D4B8B0D2811C89375A977EC47F1BF79C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -32.075966,
+    "content_hash": "C4A838E70D393E4FBCD7AA947B857192286EEAE99D79AC296E508E765DF06F5E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -32.034156,
+    "content_hash": "C6607A4F229337A2787E8CA7E4D471AC830811E3CB9D3872E5BCA3B18A7D8F48"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -31.870306,
+    "content_hash": "6ED8CDFD484A85C016D2840F4CAFAD47F8F7D471B33DC1313D744B40E3A65030"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -31.790104,
+    "content_hash": "E0371B8D2439C8999878B31999EA44D2A26D70C3644E792B5DAB113A056F426D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -31.790104,
+    "content_hash": "37EBF0BCC2EB0E7F8936E1240230F198EB8944A2D05E778BE8B8857322988048"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -31.702403,
+    "content_hash": "C21113C6D6268544583CE4346CAAA1A38F90F5B31C37B1C34AF516A385308DEB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -30.304606,
+    "content_hash": "3DCA408EBA479E50E83725DBF541905CF6A60DDA1C737CC57CBC7A80D610FD09"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -30.014759,
+    "content_hash": "685F4EB8BD09E81C3A59040950433FB779789B11CC064DA3B33C0A6B813BF0B1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -29.985386,
+    "content_hash": "7F2A06DD6E81051B40F69FCE5BBF38EA726006F07E84DADE92D2B9D2E063DA22"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -29.375305,
+    "content_hash": "255587DB3FB82A4680C46A69962EA48B8AED072FCC173F0428C4123737375279"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -28.872685,
+    "content_hash": "A21C9116354066A6CB4B6B75886EB40F62E68B373E1ABDB9C1F8F71AD28A2C4F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -28.169186,
+    "content_hash": "939B76D231B2EB2CEDE87EE0F213A18B53377D4F8C6A3EDC05A332E12D077E1F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -27.76338,
+    "content_hash": "22C6473222F5DB543D5D2A1CC62279B84809821011D6C9CB6F0B4651F3EFB748"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -27.692727,
+    "content_hash": "2A4A366DA3F1125AE65868969CD73EAFCAEACDA399D01D4AFE6D14FB264AE78A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -27.685395,
+    "content_hash": "D07BD34B2474AEB39FCE42DE40F24CB02EBEA0827B592C8378940ECC0B2A21FD"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "AUDJPY",
+    "final_open_unrealized_adr": -27.45724,
+    "content_hash": "7DEB2E3B48505A60EE691A797853A87A379532807B92421DC433FEADB2456195"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -26.847504,
+    "content_hash": "52A50BE04FB211BAB3E560EC149F09BFAA84C5485E611DC613E1A8F64BDCB6A4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDNZD",
+    "final_open_unrealized_adr": -26.747439,
+    "content_hash": "43E656E0663DBE2CA3F946463CF5A46A4D1502CD1EB3CC40B58767ED70434CDE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -25.472595,
+    "content_hash": "91DD625CC05E4350D2BAB32E0DF82BEC4173A1608A11CAB3298E638B1A207384"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -24.810429,
+    "content_hash": "0B3590DC18820805D370986F5DE86D33B201EED769350CBB9ECEB8FA66265B0E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -24.810429,
+    "content_hash": "BBB959986A336C6804E543927B9DD0AF78B8D95DBF9D676F7A0CC2D47174C41A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -24.18956,
+    "content_hash": "688919CE9AE5906DBA793AA640AC89259346AEF4BDFB2BB65F3C69422605063B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -24.089613,
+    "content_hash": "A2EE89FD3EBD277CDDD47B8E60A4BC96F4472EE1C349F059CFA0EA9F031403F7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -23.724371,
+    "content_hash": "28990E2EE841C32D5C7A93F05F212F757B61884B203EDC0DE29B134BA1664BA7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -23.007575,
+    "content_hash": "4C7539E761642A9652E2B7EA2A8256F3FB396872708A8A2631D48AE9B29103BB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -22.800186,
+    "content_hash": "94D7914F16D4E97811A55FFE7167DBE33524AEBFD94974E56DB4F4C4E49CA9B6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -22.661079,
+    "content_hash": "2925DD8CD92409FD9237FAA9A5C22FFE8291F87D2C79E6999AFD22256C93403A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -22.661079,
+    "content_hash": "FCBE7FA2DA3DF5C196DF0C2F778BFB09205A293E74DD3F1311368B80888E22CF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -22.661079,
+    "content_hash": "C2314EFD22CF33CC7F69414E494C511FBF807AD44D82C014C77FE5659B39F1A3"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -22.593394,
+    "content_hash": "D5F7DA5A7880B3C79777276D995AE60B22E6ADED21AA5502088075812A67D96C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -22.513641,
+    "content_hash": "3FEA17CAF414A0737F5E6B5E918392DF823C3CFBC8DD7755B5E3FAB9686AC6EB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": -20.276503,
+    "content_hash": "8136BB611FB19E4F4003BDB17B04CEA541460C4E030ADC7DBC3D9BA71500E890"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": -20.276503,
+    "content_hash": "490317C3D28865D0A571B3535668A6EC79B842CF1FCA6733AE10DFDCFF4404A7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -19.504958,
+    "content_hash": "44288F20E64EFA31DCD20519D146D5BF3C6E3217529866CBD8B0F51C3D8045B3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -19.504958,
+    "content_hash": "C923B04630C2E1B894B2288FF6AA66CE870D3189AF0D070D8A521352CB184A6D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -19.504958,
+    "content_hash": "2F4C8394F330345EC58F3E418E41E3140FDBB10B8E5809B00DE1320B5B7F0A17"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": -18.901009,
+    "content_hash": "1AF99A553DBFF08940C50FD379AA58BC1B1362F7239BC867673F8F96915A54FA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -18.077442,
+    "content_hash": "09C902F9AD5CC756031EA6017FE373823001BB9D04F0B3A1A909652ACA90DF21"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": -17.832537,
+    "content_hash": "C41C1C2769E9C838E4674BC213CE182A004ED5127D5492F5FC42F4AE38FA9887"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": -17.66524,
+    "content_hash": "47BB77B165B4DB8621CDC106F8E4C70FFCBDA7DDEB97B82BF1928A59D2A93735"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -17.472694,
+    "content_hash": "583B8C5E75BA682F7C13EFD823DDF66E89C9F22C4323FF0101C9E765BFF594C0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -17.430164,
+    "content_hash": "F49FF5EFD4CC8D163062CC4074361A61137C5CDDD4B77BEECE15A32D02CC9B88"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -17.235202,
+    "content_hash": "A564C9BA092C3F25EB347502A6029DCFB08711C16BF4727E3A715191E801B768"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -17.235202,
+    "content_hash": "7C412CA2E7B4620C5D956490FD25C3F58EC8A80ACB1034582CEDAB8342604CCD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -17.235202,
+    "content_hash": "4F13D07D37AAF3C83C4AE43518BFD43B9216C57B86D3E803BF8742519863E49E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -16.596473,
+    "content_hash": "B96A9491C997333DBFD3C8031E7116455113A776C71A75BE9A891E3857C33874"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -16.03478,
+    "content_hash": "1944D9C072E7DB6C55CC40BE19597A25DD5C3B9371583851BE039454FCCB2E85"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -16.03478,
+    "content_hash": "79A0F83C21F8058A8314637BA7301A11C044BCA46C1E5E7886BBF1E73F10B4AC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -16.03478,
+    "content_hash": "0AB156CE3369452F0F224F8F176FCBEE2CF6C696151D921B6693F061D1F40FF8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -15.007425,
+    "content_hash": "5EFC3257554CED5FC71DB366E123E7F6C43895FF49F5EEDC829C1174214F7C35"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -12.129499,
+    "content_hash": "7C8681A70CB2355FE3B72EB1BA8B5992270484CB9A6C2920291312A93ECDC4BF"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -12.118157,
+    "content_hash": "2A7EA17C8795259F6D4AFF4569EC05746E4972F1786ED206825186FDEAE34B69"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -12.09478,
+    "content_hash": "CE1E9C5F0700120B421FA8009D323C2FACCB905D0DB88D5D1E8C4256CDB9E29B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -12.004464,
+    "content_hash": "7F82BF7B5820AF34FFF75A0D672F44466052D57C841CAFC89E35E817ED23D92A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -12.004464,
+    "content_hash": "3D583642E7092565B4A46FEB2F8AA3559CE426797CEF8595678F56FCD0AB2353"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -12.004464,
+    "content_hash": "FA8860EC89DC56BBB79C3DBB12D5C8C16DBC372C2AE2621437D1B4D30CC2C157"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -11.862186,
+    "content_hash": "DB9733A89F591E6935019FD2AD66E925A0A13688E1B2C206A16C32D8CA840065"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -11.712953,
+    "content_hash": "F603209D9D4F2BFB335E541061B5401A41196F3427B8A366A01DA785A0B6FCEA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -11.503788,
+    "content_hash": "F7672B455BB6094AEE103AAC8117338A6F6FD9F9B0534F5400B7E10FC111B47B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -11.40026,
+    "content_hash": "2E715B5E25E3D1232ECC79F733F76161EDBEFF830CBBE96F57E555983039260D"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -10.852144,
+    "content_hash": "BFFEE60E9BD37B008753F8E2E6FB2D456C2D1C3447AE44C6735D2C740E2D5974"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "final_open_unrealized_adr": -10.147128,
+    "content_hash": "8639AA6A95722D95A790D0645CABDFCBCFA83E13C272FC6A13A865529F02CC8E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -9.076843,
+    "content_hash": "D2B47358AEB4A41E0ADC68335ED07E39D523D6BA8B3887349D01474493300C64"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -9.027933,
+    "content_hash": "25842B0B26C25FB34FDE5B405ABCCCE6E241E1B12171146C4F8BF8E1B13EAF05"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDJPY",
+    "final_open_unrealized_adr": -8.72587,
+    "content_hash": "AE281E4478A3B2DF0F0840920475A5C542FAEC536394912EF9CD669940CBE390"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -7.99626,
+    "content_hash": "2267B55480F77CF646C3E865E646FB8E5AC7309467ADBE9A058703B0BF0BE93A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -6.175234,
+    "content_hash": "B79D85602DE25DAD78FBCC1BC28DC2162ED7631082ED18A8EDECAA4DFF03069B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -6.133618,
+    "content_hash": "A106210D612D4B9D0ED0747CEBDBA8EC685E4861CE50A076134A88CF4D304C99"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": -5.787877,
+    "content_hash": "B232460DE9EEBD9224C67C21D5701990658B6267F40E683E4C0E08E2A91BEA27"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -5.60631,
+    "content_hash": "11223ED694C9BA2CFF4DD908FB2DDEF5127ECC1107C55760CF41581D07676C36"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -5.500433,
+    "content_hash": "848AEE43E0047B221BAF216884D62020F54C8F46F7C02674CBA3239BF09C6A7C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -5.404647,
+    "content_hash": "5D4C07E25F48D15A3E9C8FADACA1E02E064F56B7708B9CA2945381C4415D4D59"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -5.10292,
+    "content_hash": "DD2FF9708EC524F0447F3FC112DB7A64AE33373613F5F96194016FA13A200924"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -4.964987,
+    "content_hash": "1B07BC988F7F0BC3C5B3CFDD1E513EC4D485F120D6BF608C878B1E3B15448DCA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -4.692778,
+    "content_hash": "9B279CD7DB224894DEDF6E79C27C2606B2C80F24704206095E74A6CFC8AF34EB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": -4.615877,
+    "content_hash": "3E23A9BE0C6C76A46DD7E878C0575AC046C7A5B545F8A08B060258B0958D824F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -4.574169,
+    "content_hash": "AD93F57E6BBBD13FF919B8D008B795EFEBFED5B638A8BF20E2843753AC713F96"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -4.514979,
+    "content_hash": "34DE352DDA8E1756BF36C79A5F9334DC023419040872945229C13F947DC82787"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -4.453373,
+    "content_hash": "D3558365F199541B4CE83E372BCB10DD09361B72DBD9ED748846AE204B1D412E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -4.343555,
+    "content_hash": "7ED4D19EA40E2B6F4BB00791C8B2A3BC0773B16ECFC62AF6C585F0E7C52777EC"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -4.19103,
+    "content_hash": "B6C80728674F3342C4D8C38CF4811DE2AAA9DCA71EA5AA5F44D86EB3A121F7D4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -4.088705,
+    "content_hash": "8DB896AC07F4EE8DD17E920F61FCB7EFB6486BC9711562F21D4B53383EAEF615"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": -4.065263,
+    "content_hash": "0296864D7F536CC23FC6C54773FAC882206FE2E09A91D56870E4AE693DD2C6BF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": -4.017331,
+    "content_hash": "5C0A38E8305BC531CCE3D388C964AFABBE654AD7E8EE725845D12CC15DBC2CA4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCAD",
+    "final_open_unrealized_adr": -3.998297,
+    "content_hash": "D7ADED5823D230447A8517FE0631FBC5F90BE32809401E997501FE6EEAFBC927"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -3.976152,
+    "content_hash": "7023DD62359E8D3483A458D01E96356FEC5E12E42C7ACA3CE11EBA87633B07D5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -3.956272,
+    "content_hash": "ED727B0B854A76E8551195BD08927801EC98C7F952B2E958650ED7AC6228F121"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -3.74276,
+    "content_hash": "77C049C2684A3373791836E2F0F9AAF6423F38A13BAF84A3D344A8967FB9A3FB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -3.703932,
+    "content_hash": "42B6D7299841C994EE0E4A5863EE2E2489F9AADCAE77B3459931C89B8CAFCA07"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -3.606858,
+    "content_hash": "84F562BD446BF15124E5F9C5E866790FFDC9A26135089DCCECA6CAD4702EAA43"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -3.606858,
+    "content_hash": "BB5426BF7994BCCB5A10304EB4455E47D09A1AC2219000159C31F97A90DD6E6A"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -3.526916,
+    "content_hash": "7D86BF22743825137CF04D8C5715E033766F0465FBB856D9DCCF735422CF0B2D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -3.52547,
+    "content_hash": "F6260E864B0FC6EB94CA848FB32EB84BCC4A2AFDB702D4F5A3BC3D7C2603B86A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": -3.408194,
+    "content_hash": "AD0383C58B0A7CBB74F1751A6F44C85654B1812402711D78A8A79882AD237729"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -3.285711,
+    "content_hash": "58A4BFBC54E7CCBE1A29E6E3C6F696BC01606B58BB363D9681C71FB52F3A38E9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -3.219883,
+    "content_hash": "4B49EBAA6FADF5B1A6411EB2A08DA853F4E949C6ACE0082891919D47A9AB9749"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -3.142654,
+    "content_hash": "CE76665AB72294B300C89A3100C60A7A78857FB620C7528A6EF2651B77D75F2F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -3.131803,
+    "content_hash": "E610B50C22BE4B50D873D5A7883096DF44A570929F7F65520449E941C584FD2A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -3.066809,
+    "content_hash": "C586A1B7F1184C160D9B004AA0B1D701B9C6F258ABEB8E44A38295B3C8830D68"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -3.040266,
+    "content_hash": "07A8CE2D0ABF52FC6B50A6A602245E9588488CF38BEC044F5E86FF6A69428629"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -2.865881,
+    "content_hash": "8AE7DD3993389181C2387B9B639F2C30939AFB60B468613A897D442AF5BF57EC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -2.846823,
+    "content_hash": "55C4E8436B1C0651F5A27A2D4A98ABF1DA746FB785DD1A7690DB221FD4671DD8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -2.694273,
+    "content_hash": "E4D4446BDC4D54241A2CC3970DBD99079D09A1ACE18477018746798EEF0F306B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -2.567586,
+    "content_hash": "772A12E220405578AC00CF2E3308FB3F502A115E35EA1757D85C243ADD83A2BF"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -2.517224,
+    "content_hash": "6502497162935A8094C77752A675B3E9C2DF1759461D6A6F2159807073D0220A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -2.496751,
+    "content_hash": "8E114E0F92622210D33787F8D604F653455F4D2E2F32807B338CC5E76BB81067"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -2.482456,
+    "content_hash": "51796816896C7B1CC5DE44FA32ACB5D9E42B1296DE1AA793B0D737E04E1E50F1"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": -2.27004,
+    "content_hash": "EAEADE2F0C2C0242D0536CE99E10CB567646411AA22121B8A0BF12F39149FBB1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -2.261041,
+    "content_hash": "00177348C5F6EC7058ED10B7A0556D0772E1F816753BEB248E0317FB0016013B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -2.257489,
+    "content_hash": "A0E438D36B8FD82FC3127D717634CE6CCCE7E579D4F79AC305768CE1C5DEA735"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -2.223198,
+    "content_hash": "DB5F5AADEA6F7D26F7077E57F61CE0B6D7C8A1E9D62AD669FCD65BE9B6DE0A6F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -2.223198,
+    "content_hash": "FB728ED48C3247C2F918689C11E68EAD999A28E4D7245AB49391F14F01E70ECD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -2.223198,
+    "content_hash": "1EB3AA58FE6C62430D3C0C9E87014864E7B6BE3EBCD7CD74909C70A815B963D2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -2.194662,
+    "content_hash": "485AC97305B4CCD2FD8288838BD4132545A01686D8387ACAD634391FC9BA89C4"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -2.128891,
+    "content_hash": "48A88B43871EB3D15EA53A4EE1E92BA64A4C214442464DB5D77BAA35C7C4C75F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -2.044353,
+    "content_hash": "C629C4CF59A621B760A74FF67DB45D16F802608C33D2AF1C1F3BCBF1856D85BE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -2.044154,
+    "content_hash": "CB05333886EB3494AB6566518CBAD6382FD11F00594A918D1EDE86B2F582BA9C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -2.039688,
+    "content_hash": "E8E7254CDD97526A3F22DE96A6F68BD41A03FB14746AE8A7A3C84FCD215D7CAC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -1.988076,
+    "content_hash": "7BCFEF43A963B567955180133B79BE80A41B63F2015C306DF7386C07356758EB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CADCHF",
+    "final_open_unrealized_adr": -1.874146,
+    "content_hash": "AA6CE920290518A1809F897D82AFA7FB512115AC602EE6EB6FFBA060A174AC52"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -1.769579,
+    "content_hash": "D184B44DB6ED98F1FBB3CA255B7F302E3A8FE80630C2F83ECFA88EF35432A648"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -1.762645,
+    "content_hash": "16ED95AE0A96E768E2AE549420CF96797C076C0F8217E060B501AB2D4236431C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -1.706055,
+    "content_hash": "8582E6CDDA75741BCED4A1A0150FFCC798A9F57B8AF6587A4F4708724868018C"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -1.65479,
+    "content_hash": "17EA1BA7CB4DF1743C367E8D1FD554333F10168C301B389C2507C6AC86F10D7F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -1.642784,
+    "content_hash": "5439E431810359F3D293D8014D1F63BE2F31D71DC8913E9A337ACF3623E4030D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURJPY",
+    "final_open_unrealized_adr": -1.635986,
+    "content_hash": "45BDA1E997D2A9A8A402DFE338C9EB8B74E03DEF7A9E4DDAD0B48E214EEE5CCC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -1.571398,
+    "content_hash": "5D9FE9515C3C461D2352BD490B0C9E567313D73C4F98F00278BDD39D5C9425BD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -1.565902,
+    "content_hash": "4135AC628C8058B86E4A17F73228B2E821E2E0FF71E3E83C4DC860DFB2C07890"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -1.536585,
+    "content_hash": "DA954D0B6B2F14B7B8E23D62DA3716AA69A22645EAD435CF256872DCACBE3D32"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPJPY",
+    "final_open_unrealized_adr": -1.520133,
+    "content_hash": "013B56A5147C0D4B3BE05AC65D0DD788B471C2057897B26652F697C4EBC0BFAC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -1.513402,
+    "content_hash": "91E4FECA35B85104CB1218CE90151F4074CC12FB14357905E5B74724BE785868"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -1.423411,
+    "content_hash": "F177C509337B2EC085BFB4BA4FB9E955057CB8EB4B9595C1A21A7733030AAC07"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -1.360823,
+    "content_hash": "AABF09F7A246FC9235FF3ED6DE0BC24B13F97380F75491EE09A218E34482798F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -1.347097,
+    "content_hash": "A151943483DAAA785E7192C5DB7190C61E5F4AFC0294FA30E3301281C3ADF33E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDUSD",
+    "final_open_unrealized_adr": -1.283832,
+    "content_hash": "AC39CAD71D76C88B179EAF298EC1B43DE5D24FDBC3F26E1251CDB3C19D3DAABF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -1.248466,
+    "content_hash": "50B6CBC7D47DA59598E8F0D947F8C628CB928039AEAE88CF2DA661ED9BF979AD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -1.240074,
+    "content_hash": "DF6856F1C9E114B9BC6698A1F77909134BD713FF172870BE1C981644EC6FFE13"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -1.133162,
+    "content_hash": "BA0CAB6912C9F53E10D9DB7A100F5488F107DD011AA524B93E6B409761745020"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": -1.07759,
+    "content_hash": "E296B90C39C72EDB32A0581411171CDCB4B84C91E6B36E2CC9E45A12087F98CC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURAUD",
+    "final_open_unrealized_adr": -1.022077,
+    "content_hash": "2EBD3CAFA5FF6E5748C798EA9A7E958E8528AC35D1D01CC6D9AB626FEA434CAF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": -0.846432,
+    "content_hash": "F1B59E8ED9C9F0FDA7AF79D68690E4F90E45F1D6B65D81537EACCCECFF39DEDE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -0.786631,
+    "content_hash": "2FAD471B6C39ABA4DF96299D3E24B99388A8D0C972426ABA6E5F17A1D6E56960"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": -0.77996,
+    "content_hash": "064595E485C979313A83CE508A7CEDE6AD821F953B665D8E170E66B86A9A56CB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -0.768461,
+    "content_hash": "F1D76C6B2409DF2E65DBDA21C22559BEADC84BF19011E7977E20E65363AE11EA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -0.75663,
+    "content_hash": "6441E3ED426A8ED896824490C872CE46BF517636B822E0716E998B06DBD5EA9F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.664891,
+    "content_hash": "5E563B1EE4D70724FF0C67FA627FA13B5E0F55F3EB7544AF546E9935B40A832C"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.663124,
+    "content_hash": "C0A6784F420EB91B465DACAD3E40B964D89EAE8AA45DF3500E6D1A2BF07A7E63"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": -0.659501,
+    "content_hash": "F47F07A230734C4446BB6193738915096591B5E2A0FC3DDF16B42DB655252B3B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.655887,
+    "content_hash": "080DE3D5ADB6DE662B13FB20E4FB075C97D930C2D5D39AF3958FEC3D8AE28F8F"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.649324,
+    "content_hash": "556D6958381F12CBC808DE8AA861CC93452930F5300168C4F2CFA16E90E3468B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.620931,
+    "content_hash": "87F8B7293F7A4CEDBE9A19EDD2AC4256F83D35B67CA4C1C200746AF2FCBBBA16"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.620037,
+    "content_hash": "863D314505DA05EACE786C41A63B0484A927968F79CE5B114FC6B5F169859F8F"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -0.617716,
+    "content_hash": "66400EC5CEBA437967CB3E0F3C0C81ECAF33341A514E5A907E3AB5271B460E1A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": -0.538833,
+    "content_hash": "A8247A13AACD676A35FD8FD385A51A4C3B22BE9134D3AC16E590478D5BA96CE6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -0.479671,
+    "content_hash": "C9B7F7ED15DD2875D3FC43D684FBE8C421E9E5E3A38633099EAA1DEC403AA697"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": -0.423216,
+    "content_hash": "9D4065DFC4EE39ACB2078A6092193D2AEAD1A56E5A0692491959F17DD9798C8D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -0.421255,
+    "content_hash": "44A143E5CC505B03C55EB8F9BAA4DDBE9628CEF548A3B2FE6111779BE0A96B0E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.414919,
+    "content_hash": "E61EB7203761F4D6074D3041E562F1BE1B2992B696FF39EEF9830F8FA4205D8A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.414919,
+    "content_hash": "B21BCAA62B79A344E11ED1F78D48D6B5D1583268A6DA9A7801C633D55BD2A5CD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -0.393315,
+    "content_hash": "39E2FCA5F7550E5A7405EB7115B64AA9079362E280882DDDE7D4771E2D0F2BCA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.327943,
+    "content_hash": "801ACD593BC0F1C05679C7874223C7EF2CF5F9FFAE7C09C10D6549126989A234"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.298055,
+    "content_hash": "0EEE532787AF35D9D787A07E162A741BC795A2C3E668A99490AD784DD41D833F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.298055,
+    "content_hash": "44FEB99EE2D39ADA4EBBBBD97ADBA36A1D98EC453FC8B203F15CB63E0780CC4D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -0.24157,
+    "content_hash": "0FE33028C00D153331211DA147131E9B451338932704D9C8F708BCBEDCAF6B4B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -0.239835,
+    "content_hash": "29A2F33B8EC4E13F73CE2C20C712F4CBB34370AD4B53567392BA29EAD6C9F4C5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -0.227446,
+    "content_hash": "88B5A5CAD821FD5BD3E1B1E1CD2B78FD711843660EFC2E1AAC7F7DD6CF332CE1"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -0.220232,
+    "content_hash": "0C942326589244D168065E861300A616F1AD07B633043FBBD09866753BC781A9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -0.210563,
+    "content_hash": "953B4C51F11ED16DBCE125AF823DCB619588D3091E271EE022D53B391E76EE15"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.194302,
+    "content_hash": "4F8816D14D6D0CABE0CEA939D6F61653B05D867B2D7D0EB81C2AD330B747E4B1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -0.181619,
+    "content_hash": "79C4841E4DFE9E705E6E9843A0E6C7F69EFEDD16A9FA30D79822539A92F0E895"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -0.181281,
+    "content_hash": "2E60E4D04D09C91C25603EAB33499200B599349BCCB41A64CCD7A9C097002880"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": -0.167198,
+    "content_hash": "FF373D1776BE451BBA1CABAFE05F95F3D5F98982C4FAD0669AF96E293A55B544"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": -0.157612,
+    "content_hash": "09FD285C0C95CCF7BC92BF0846A250AC2B6D58254FF8DF7BD0F48F2CDB2620DE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": -0.149574,
+    "content_hash": "24AD52302E65610E372C95CF33A1C69C560EE559A34BCC873C37AECE00866DC2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.149027,
+    "content_hash": "2F81239C5D8DA615F7D662673070844CAB30E7C0F20B22929ACC10DBE216F9A3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURGBP",
+    "final_open_unrealized_adr": -0.149027,
+    "content_hash": "849CF40D2DC3285E471FA0EBACB07640521B5DFEF5ACE21D028639797B47768D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": -0.1243,
+    "content_hash": "92A3703F3B3DE754D06D33D7886D46CCFADCB091350E6C282FB09CCCEBF56F6B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": -0.1243,
+    "content_hash": "029A9D406B6294F7911F9286466489578D10D66B404DEEEED535D9F46812100D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDCHF",
+    "final_open_unrealized_adr": -0.12093,
+    "content_hash": "66745C9FB63D3A03F79FDEF724D133E07D1EBC37BB4F6E19463E0A2C32EC8940"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -0.120785,
+    "content_hash": "335F454783D2CF771DCAF57DF889490A3B06A2EA0965C400EBF4392F2F41C1C8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -0.113723,
+    "content_hash": "48F71C9C3BB7C083283469B400015E084BAF3AF575D066991A6CE08A123596D3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -0.10699,
+    "content_hash": "585C8B7FB79E1FB2AB2DB8F97183074B3DEA3A740E9DC7626F5B17DBB4165E67"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.097151,
+    "content_hash": "C499D1BE2959AB565C9B423ADD0F96DA331AAE9228C201A814E9F14E088E5B0A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -0.096114,
+    "content_hash": "5E8891150F4BBAFD7608D5B38A800C36EC7CB538D6ED17F29FC8CCC25789574C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -0.087251,
+    "content_hash": "A6D244CABF2EDF33A1C96D84A400DDEF42F34CE2E0B5BDBAD993F3A88E47FB96"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": -0.078754,
+    "content_hash": "090A7358D6E4554E4E4B82A838BB0BC9E36C8829F252E94BC60CCB5633983D38"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": -0.07627,
+    "content_hash": "C13472119EEC99A2A008F33EE4F6FE7B6A62DF1CE294DF90C8F8E9A89B3A3147"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": -0.074748,
+    "content_hash": "81059D5780AF3E7E1A82B0A53B2E48A62FB295FA8261FF14BCB71E574B188ACD"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": -0.051307,
+    "content_hash": "DFB46F777347D61465A85D86C970D6FCB9533ED2B5BD7155423940BEB2D505F6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": -0.048002,
+    "content_hash": "081E001C48488641D8BD606C27536A7D563BD8383474726A5B2DDFFE5BEC84B9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": -0.043817,
+    "content_hash": "EA2FE457CA650BAB202EA2BF25D9E1C37E0ABCE2AE1C8F1AC829A0C71EE4F48C"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": -0.032645,
+    "content_hash": "D6A3782F3F740CD4E4D528755E348BF521A0451A6A25EAF61FA7D7FE13FC9707"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURUSD",
+    "final_open_unrealized_adr": -0.031082,
+    "content_hash": "5417E68BE7CE707A1F7B1E4777210DACC3478A0A4F368C140CA4177A14D4C64A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": -0.015394,
+    "content_hash": "AD17E217E6A6225ADE970F066BABCBC7BE321569B9DC982203C5686AF69556D9"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "CADJPY",
+    "final_open_unrealized_adr": -0.014042,
+    "content_hash": "27BD0E82FDB7C0B3423A082F6BA95C73EFB69A315F77FE17329CE99EC8E7FA26"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.050299,
+    "content_hash": "A6C17FE797688A6997F285602142C1E1BF2AA8BD37EAB8D718E7DD11A7DB45FC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "final_open_unrealized_adr": 0.064057,
+    "content_hash": "F7FD3D76FE50864BB9F6169339905286EA72427119A32221280FD0C43E84A16C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.085361,
+    "content_hash": "6889BD907AD2259963BE3987B377C30AED5D349DCAEDF14BB03E8CE39B7B366D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": 0.101177,
+    "content_hash": "532BF14B8D11EFF4902E6824B71BA7DE77A36D5F66D7D7BC261DABA788C6C338"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.148358,
+    "content_hash": "974C5BCC7501486AC1370DE2D88C78C4D8620B34B5ABBBA714E9250E61B1ECC4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.148358,
+    "content_hash": "0119908ECD32A12C5B55884D2D311AB7C4CF0B9F80B36F7E5828B909C2D2A8E7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.172125,
+    "content_hash": "F1305FF21AC8EB9F2BF37591F53F88C608A51751A8ECCAECDD9E01254BC4FF04"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": 0.183973,
+    "content_hash": "CB82721DD26112DEB5666DAEFD0CFD16E44C88BD1C5B9C3F4A257EE13358F1C2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.185919,
+    "content_hash": "70A8A7C4C6728857B9607DAB650357BA514487199CBA9221F6982418B0C36514"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": 0.190752,
+    "content_hash": "D52EA6DC28FF40ECFA838C970B37F4C2C10CEB50F8FCA2D327ADB8E02B83A8F4"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 0.191811,
+    "content_hash": "C99F37F29368B242883464E772963FE98668ACD8BAFA75E46147EE04901F5927"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": 0.202355,
+    "content_hash": "BE7231DB8159D5C1922BE5C32AEBA312CA6A37C19C73DBF74F0050FC3933BEE2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.225404,
+    "content_hash": "D69659BCBF51335781D3D84064FD8B72390FFC3A8D87906815FF2C6E21FEA410"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": 0.234339,
+    "content_hash": "61A0C2D7EFE7EE01711A4F193C2157FDC84D5979DF0F620463A6FEE76F57192B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": 0.236334,
+    "content_hash": "0A3F9F27AC80E64C1CE1C657C7ACB230621BD65A0D708D491E5C92F5B4CE6FBF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.25946,
+    "content_hash": "1CDA4A2F605FE8288FD07D5A087F2FEFF985E5137D1D88042A404EE48CFE792C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.296716,
+    "content_hash": "3FCB292FB396C7DB05CC57CDBDF72C7A06E303115EC700D67BEF98F39FF9C8EB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.296716,
+    "content_hash": "B13F1AAB7849DA5A718D312888F5915805146748610B1D88BC7AB1D95976418F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.344328,
+    "content_hash": "FA37D71292A3C2BDDADCDFC1707310561916797020F0F0DA4F4CDE03827D7C03"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDCAD",
+    "final_open_unrealized_adr": 0.364811,
+    "content_hash": "DE0AA131980684C168C9E3F4C787144827F25D509AC14ED9AA0037154231CBD9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": 0.381787,
+    "content_hash": "D61326BAA3E07B7FD7099DC4C199D429C0D2E0999A828FA2ED8ADFCF6E9A8926"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "final_open_unrealized_adr": 0.403774,
+    "content_hash": "2603B1FDDFC5CFB6DB1812EA8BAFD133EE95A778EFCC69227E99DA03F48A8A92"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": 0.409268,
+    "content_hash": "532F5664C84FB2FF4C2734A7B9921DF1BC07DE475DA5503717786DD6A1EC925D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 0.444988,
+    "content_hash": "D666E51EDAF05E645EDDC42087398BA147BF03E83D6F9347434C323909CE3CAC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURNZD",
+    "final_open_unrealized_adr": 0.468679,
+    "content_hash": "DB4E958B957969122879003296F6F5D1472E8CEC23DA523976ECF1E75CC42F84"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.505152,
+    "content_hash": "62ED1A0DEC344E5A86AB4D43F349717C110D2A6321924C577FCC46B36EAA12C8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.505152,
+    "content_hash": "A9B5FB5A73B0344CD0CEA7FCB07333F6BC1931728A04F0088DFDE2402C6358A0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDCAD",
+    "final_open_unrealized_adr": 0.505152,
+    "content_hash": "C445777321CCDB5E318167AB03DF9976B5EB54D78B8F24786E67BC9E1E6EC9A4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 0.568941,
+    "content_hash": "C6CD60EE392297FD6078BEAE03F69BDCC70037E048BE6F7581A38D0C99595EB2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.583568,
+    "content_hash": "225C730F5970E8B96588F36999FB68FB9E45F0BA3CF0C69254D7157ECF64C374"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 0.658505,
+    "content_hash": "11F29B5FA37EA2410D6B6A9AA72307616B9107351CDF2AEED84812AD65AABA72"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 0.703151,
+    "content_hash": "843D14B77307F4326D5CCD0DD290140A024D079042A4257158608B908BA980F6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.745175,
+    "content_hash": "DD691421019B0BCF66D0803DAB5ABA8D8234987C4025A29F849EC9C1AB8FA591"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.779778,
+    "content_hash": "03CBD95A45A19EC75C9E23AF1EC62BE4AE45465BE7162FCDE03FF4DC1276CC54"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.779778,
+    "content_hash": "42AD07671F85876A9E2E26BAEE2707EB39FDFEB7B4513587386901B1D583D947"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.779778,
+    "content_hash": "EE182C2E2ECB1264AB9D6E168ACE934F18521FF9A3323CE44DA311D140D71AB3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 0.809262,
+    "content_hash": "60E63D55AFDB2344A22BB28018DE041C6E2FCB79029F61C3E1B9657BE9AE1BD1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": 0.818536,
+    "content_hash": "880E900A162EFEDA4C28AEEDC479302064F6A2CED02765EF6FAD8403299B69FC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 0.829605,
+    "content_hash": "6C78677D4CB822A3753CD757DC448B8FFB09F02ADFB9E6E0190F3DFFA6F09482"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 0.955967,
+    "content_hash": "FE8EC42FD3823B1866E8929E3926F95D78BEC79CFDA492279038922F2DAE03E0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 1.023619,
+    "content_hash": "DA8176FFD68BD46CEC8ABFE2239C8135A103EB3C75E7102D57C4965949B4B7C9"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPNZD",
+    "final_open_unrealized_adr": 1.088014,
+    "content_hash": "71008471FDD46900ECF163273E8C50795791DB6F72749D83F26201ADA0122B23"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 1.094219,
+    "content_hash": "415C7BE043B3B49C2633A0A03BC068385AC94984DE0B6E3D82E6275C2B3748B8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 1.113379,
+    "content_hash": "F047280B4ABE67A189476F9A85F19CA0D1B48A45245FEA105CF6D4FECACBA53A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 1.137882,
+    "content_hash": "1185DBFA0DF0FA3C06ED6EE478FED0A497554A2D8A15878F25F2134BA1CA5875"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 1.167136,
+    "content_hash": "344708850239C8EA2E2C181B023F2E17C92E8E0B8A83AB5EF5EB7F1688BFFED1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 1.184642,
+    "content_hash": "560F325188FDE5378F79C9474F1BC405CF4C0252D4804177F03C8BE5A66094CA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 1.218239,
+    "content_hash": "27AFCD5F235F4CD16EC0699DB70D90CABA9EC4DC95364B20E4D6250E742B6F5D"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "USDCHF",
+    "final_open_unrealized_adr": 1.237225,
+    "content_hash": "9E7FCD640EFDE001B1B9563848A067DDC85B7D8022B31C30DCEC7486FD0A884E"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 1.257418,
+    "content_hash": "F9FD33848A24BC824A844E2F4570AF3CC443B6083D2FFEAE3393F098109586BC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 1.317098,
+    "content_hash": "C95F02FA83E0C7B9D383AFD472417A0A0D91471B08BBEF424D966D0EFFC73087"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 1.369037,
+    "content_hash": "159C3217F63AE7C56E331FA31DCA5BB10396A04D3EBDF6CBE995A0BDB30571D4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 1.406301,
+    "content_hash": "886DE6401B0467C91A147893710FC032693E8E5BF6ACE73F59FD38FE3FB0FEE0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 1.480503,
+    "content_hash": "90C5D3C6F391CA549400BAE5D94CB71B04D551DF23858866EDA48C6C3A3214F5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPUSD",
+    "final_open_unrealized_adr": 1.490621,
+    "content_hash": "5A31A0496AAB9B178753E8FC1F05C90955AD5925678B7B8AF06849F7398AF7C2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 1.491066,
+    "content_hash": "0D7579976089286117103C5FFA992695A71A7839C1AB1A6B363FF28DA64831A7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 1.510156,
+    "content_hash": "BA4B17DFB9A61DBC73E50559C7D511A546ABE7C1FD22944111A6B80DFBA43D30"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "AUDUSD",
+    "final_open_unrealized_adr": 1.618525,
+    "content_hash": "5CA1577DB9CB24BD39A0D1B054E2DF5C457A64F14A053C49AA7BE97D34E263E3"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 1.780464,
+    "content_hash": "8CED876212AA6D779009FB4BC9EC506886552FE551B493FC6CAE29CB7034FCBF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 1.815855,
+    "content_hash": "0AB4F7797EAD2892BC3352348A82179B75DFC7D9618ED23E16349972C5AAF994"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 1.911935,
+    "content_hash": "7101EA03B918A1410AF53B9BB69301473E2792AF9F05A44D1598CD7B3878A827"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 1.990559,
+    "content_hash": "32BEF5B7C72D6AEDEABAEA3345A4900C1E985AC286B87167BDA99A1F9B500200"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 2.047238,
+    "content_hash": "1D7F1775CD4718CD07A3360183B4D0F4E6B59A580EB21207E11D46E7EACDEFFD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 2.226973,
+    "content_hash": "9741D652E4BD683F16212A02CA1CA04A0781580F440E6699E915CF072D6C4063"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 2.282752,
+    "content_hash": "FC47BB52E6BEAE6FCE15250A54D2089A67DB2CD0A77E3DCC57A044FDABF38C48"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 2.369285,
+    "content_hash": "5B0E55ABE4A4C9BCF4A30B310A57F422F70E64D71ECEF4A0CC5155E729CCBF31"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCAD",
+    "final_open_unrealized_adr": 2.436478,
+    "content_hash": "1BB2F427E0CA2B6A0B96966DF5D229DC49DBC52787963FBE6FA867CD53B46FFE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 2.748728,
+    "content_hash": "65B4C040B4F486E93F889756E42EA1014692161C0FD29B81D632A656E587E1B8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 2.961005,
+    "content_hash": "EBBC58C0D34CFDABCA81D41E370500F1FF38D3F987708E0215A43FDA79BC7A82"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "NZDJPY",
+    "final_open_unrealized_adr": 2.969603,
+    "content_hash": "6A601EB15BCB5FE144D847B17BE424E8844DD629D2157859D75036D6A3C52F2D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 3.049964,
+    "content_hash": "F666D3A3F6F15AC9F4D6BFF4B5EEB2F4951B5A5A410296E439D976132E937A48"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "CHFJPY",
+    "final_open_unrealized_adr": 3.631709,
+    "content_hash": "8D3738064A14C6FA752189503C5186A60701230AA533AE8123F7536385263292"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "EURCHF",
+    "final_open_unrealized_adr": 4.565078,
+    "content_hash": "1281BA19D123CCC4C451162A631EC131496BA958116765B2B1248E0ED94F0F62"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 7.679726,
+    "content_hash": "565D7872350EA4AED3C595EA57BC73F1DEF28B1F614365A9F9E5B87258E1DBE4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 9.688638,
+    "content_hash": "82B453425DF62CF6BCF8279F3F6C3C6BC60C1A4E17465D240BE32111C8D366A3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_025",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 10.696754,
+    "content_hash": "2F8DC3394C9AF13EDDB45DEF9BAB35F71029010BDA898B2859D9F403E74B69DE"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 11.299293,
+    "content_hash": "664763B5CD92129166FC4379789CCAEE27378C002BF8AB7769F7058735272051"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 15.359673,
+    "content_hash": "B85734C78DEFB985903FA6E0A3E25B535BA37402DBFF0A4D9ADF43DAD3C73AEE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 19.377055,
+    "content_hash": "BAE88C7658D48868BC3186AFC35741A736B8665E7582EB92DA6D8ED7EEAE9184"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_L3_FINAL_RESET_RUNNER_050",
+    "rule_family": "pair_final_reset_runner",
+    "pair": "GBPCHF",
+    "final_open_unrealized_adr": 21.393287,
+    "content_hash": "B16E4C09F307A39DF9A97FC0A3E24E6FABC1134D1B5BB6B24B7FF0BEA25D6B0F"
+  }
+]

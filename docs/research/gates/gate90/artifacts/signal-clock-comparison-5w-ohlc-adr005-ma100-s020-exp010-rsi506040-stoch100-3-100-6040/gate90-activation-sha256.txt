@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T12:52:37.646Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json D877AFE21185A09D0DB3A4BAD7B0CB2A08E8F25FE0A971BFD1D4776817490351 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json F107464617FB8F078C6AA9305C12F33BDF52F8C15601744ECA2799CF4132AEC9 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+validation_json E83DA00C24F261AC0D85F49C00FE97C2D2603928F141F410EBC266B1CF81E034 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 99FD70742C0BAF6069DCEEE0DD36208137E8916DE2BC93D695B3C67B9DAA06C0 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 7C5774A7767AA90CD5171176050F23B28292FE17C9DCF8258C289FF8E30A32BD docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 6DF4A841A2AF63C893F301C4303D98EF410A9996C9E99745EF964E6C9DDF0608 docs/research/gates/gate90/artifacts/signal-clock-comparison-5w-ohlc-adr005-ma100-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 9C0D15C6FDC28AB7B1988317B7671971AFB1D2529799C1FAB7666C20F555824D docs/research/gates/gate90/GATE90_SIGNAL_CLOCK_COMPARISON_5W_OHLC_ADR005_MA100_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

@@ -1,0 +1,104 @@
+{
+  "gate_id": "Gate 60F: bpr-carry-source-policy",
+  "contract_version": "gate60f_bpr_source_policy_contract_v1",
+  "required_bpr_v1_candidate": "bpr_futures",
+  "derived_candidate": "bpr_futures_carried_state",
+  "shadow_diagnostic_only": "bpr_futures_and_options",
+  "candidate_alias_policy": {
+    "alias_policy_version": "gate60f_bpr_nzd_alias_candidate_policy_v1",
+    "currency": "NZD",
+    "source_id": "cftc_bpr_futures",
+    "current_contract_label": "NZ DOLLAR",
+    "candidate_alias_labels": [
+      "NEW ZEALAND DOLLAR",
+      "CME NEW ZEALAND DOLLAR"
+    ],
+    "candidate_impact_only": true,
+    "source_rows_mutated": false
+  },
+  "hard_rules": {
+    "bpr_only": true,
+    "source_policy_only": true,
+    "no_regime_transform": true,
+    "no_broad_matrix": true,
+    "no_regime_side": true,
+    "no_support_oppose_fade_labels": true,
+    "no_pnl": true,
+    "no_attribution": true,
+    "no_alpha_v2": true,
+    "no_risk_execution_mt5_live_app": true,
+    "no_source_mutation": true,
+    "no_silent_carry_forward": true,
+    "do_not_mix_bpr_futures_and_futures_options": true,
+    "do_not_use_one_contract_to_fill_the_other": true,
+    "do_not_average_bpr_contracts": true,
+    "do_not_create_combined_bpr_atom_for_regime_v1": true,
+    "carry_only_within_same_currency_same_source_contract": true,
+    "current_report_missing_remains_visible": true,
+    "no_carry_across_timing_or_source_ambiguous_reports": true
+  },
+  "carry_policies": [
+    {
+      "policy_key": "no_carry_fail_closed",
+      "carry_policy_version": "gate60f_bpr_futures_no_carry_fail_closed_v1",
+      "mode": "no_carry",
+      "maxCarryDays": null,
+      "staleAfterDays": null,
+      "description": "No carry. Missing current BPR futures rows remain fail-closed."
+    },
+    {
+      "policy_key": "carry_last_valid_clean_futures_45d",
+      "carry_policy_version": "gate60f_bpr_futures_carry_last_valid_clean_futures_45d_v1",
+      "mode": "carry_max_days",
+      "maxCarryDays": 45,
+      "staleAfterDays": null,
+      "description": "Carry the same-currency last valid clean BPR futures value only when the current clean futures report is truly absent and carry age is <= 45 days."
+    },
+    {
+      "policy_key": "carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d",
+      "carry_policy_version": "gate60f_bpr_futures_carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d_v1",
+      "mode": "carry_until_next_clean_report",
+      "maxCarryDays": null,
+      "staleAfterDays": 45,
+      "description": "Carry the same-currency last valid clean BPR futures value across true source absence until a new clean current futures value appears; expose stale flag after 45 days."
+    }
+  ],
+  "gate60e_input_hashes": {
+    "gate59_alpha_ledger_jsonl": "E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633",
+    "bpr_value_source_contract": "82B166D4595207AB4C5ED48CF515DDF71E86672F9CCFF6A1EDD569AE0C159208",
+    "bpr_raw_artifact_value_index": "B1425CBC78EDCAF6EF76F18DEA9BB4134343DE04D78BB4DD7609520A389684F8",
+    "bpr_source_observation_value_diagnostic": "B23D562619715F54B511D0EB0EA57CDF9A4B4EFE53014B805B2C70578A901273",
+    "bpr_value_availability_matrix": "435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB",
+    "bpr_publication_timing_separate": "A459C973DBD0B4871F61615378E61ED702AEF2BFE5EE473541A2D90A3CC5AE53",
+    "bpr_value_fail_closed_receipt": "6BF23B7D5A3BE508575992F5CA58CEC6C2B87A5A76A409E693612AEBB6E7DEA7",
+    "bpr_unresolved_rows": "0149AB8C7F6F5DC27A631F4E2D364CF23A0D92909B2A13087677A43410B6462E",
+    "summary_json": "F048D16EDC90C5C33B09D9BD6A311E00E3D37CCEE0CAAAD19FABA41DAB68A138",
+    "summary_md": "C8764A0006D1D67C3B3C76D1FCA96EF105582ADFAF223C4AF2E84F9821F58ECA",
+    "query_receipt": "D2AAD639FB1BA82D42EA3293CC39B0CDD535CC8916D5AF7B2DADA7F6CE66FE42",
+    "report": "9DFFA5B8B813EBEAC367F4C7D42485B17CAB260700C6D15BF3203B4832A376F0",
+    "combined_hash": "BAF06FE2FC51229BC32247C1A3FD5A9281E057E5FD89179FB654D327D05EBC23",
+    "gate60e_sha_identity_file_sha256": "517A5831D7A65EC5209C6A2E319DA9BC71B91D5D6B6E36703AEAC1554BF68A0D",
+    "gate59_alpha_ledger_jsonl_sha256": "E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633",
+    "gate60e_value_matrix_file_sha256": "435B2962B59C73C5F17B9D03065796B87920F1FFB008C3F9354BD1740E93C9CB",
+    "gate60e_raw_artifact_index_file_sha256": "B1425CBC78EDCAF6EF76F18DEA9BB4134343DE04D78BB4DD7609520A389684F8",
+    "gate60e_source_diagnostic_file_sha256": "B23D562619715F54B511D0EB0EA57CDF9A4B4EFE53014B805B2C70578A901273",
+    "gate60e_unresolved_rows_file_sha256": "0149AB8C7F6F5DC27A631F4E2D364CF23A0D92909B2A13087677A43410B6462E"
+  },
+  "policy_comparison_hashes": [
+    {
+      "policy_key": "no_carry_fail_closed",
+      "carry_policy_version": "gate60f_bpr_futures_no_carry_fail_closed_v1",
+      "content_hash": "8BF5CB0618E8BEC731A8AA4E9D2FE08C865725E2FBA8725E07B12B5F6F5C0D8F"
+    },
+    {
+      "policy_key": "carry_last_valid_clean_futures_45d",
+      "carry_policy_version": "gate60f_bpr_futures_carry_last_valid_clean_futures_45d_v1",
+      "content_hash": "E65BD86075979143B6B541E04F5A99D1A140E67913A8CDB7FAB514B5C0A1E6B6"
+    },
+    {
+      "policy_key": "carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d",
+      "carry_policy_version": "gate60f_bpr_futures_carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d_v1",
+      "content_hash": "3FBA0D279BDCD75674305E47EB270F1A0AD413FC6EEF389D95D9F17FE160FD61"
+    }
+  ]
+}

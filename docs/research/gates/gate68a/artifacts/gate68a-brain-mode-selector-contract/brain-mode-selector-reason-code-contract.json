@@ -1,0 +1,16 @@
+{
+  "gate_id": "Gate 68A: brain-mode-selector-contract",
+  "contract_version": "gate68_brain_mode_selector_reason_codes_v0",
+  "selector_reason_codes": {
+    "SELECT_CONSERVATIVE_ON_DEGRADED_OR_AMBIGUOUS_EVIDENCE": "Candidate A conservative behavior selected by source quality or macro-anchor ambiguity.",
+    "SELECT_PROTECTION_ON_ROBUST_SCENARIO_GUARD": "Candidate C protection behavior selected by robust scenario-memory guard.",
+    "SELECT_NORMAL_DEFAULT": "Candidate B normal behavior selected by default."
+  },
+  "mode_reason_code_prefixes": {
+    "MODE_CONSERVATIVE": "Conservative mode selector diagnostics.",
+    "MODE_PROTECTION": "Protection mode selector diagnostics.",
+    "MODE_NORMAL": "Normal mode selector diagnostics."
+  },
+  "candidate_reason_codes_preserved": true,
+  "outcome_fields_allowed_in_reason_codes": false
+}

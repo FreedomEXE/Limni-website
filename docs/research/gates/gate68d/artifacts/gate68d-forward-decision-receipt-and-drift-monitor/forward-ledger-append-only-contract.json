@@ -1,0 +1,19 @@
+{
+  "gate_id": "Gate 68D: forward-decision-receipt-and-drift-monitor",
+  "contract_version": "gate68d_forward_ledger_append_only_contract_v0",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "append_only_records": [
+    "forward weekly decisions",
+    "forward outcome observations",
+    "drift alerts",
+    "replay mismatch reports"
+  ],
+  "forbidden_mutations": [
+    "rewrite historical decisions",
+    "delete prior decisions",
+    "replace frozen reference capsule rows",
+    "retrofit better mode",
+    "risk/exits/execution fields in Brain truth"
+  ],
+  "risk_exits_execution_fields_allowed": false
+}

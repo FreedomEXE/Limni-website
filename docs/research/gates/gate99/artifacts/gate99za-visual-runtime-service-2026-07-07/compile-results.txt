@@ -1,0 +1,23 @@
+Gate 99ZA visual runtime service compile results
+Date: 2026-07-07
+
+repo-StateMap:
+Result: 0 errors, 0 warnings, 3772 msec elapsed, cpu='X64 Regular'
+
+active-StateMap:
+Result: 0 errors, 0 warnings, 3554 msec elapsed, cpu='X64 Regular'
+
+repo-Stochastic:
+Result: 0 errors, 0 warnings, 1806 msec elapsed, cpu='X64 Regular'
+
+active-Stochastic:
+Result: 0 errors, 0 warnings, 1634 msec elapsed, cpu='X64 Regular'
+
+repo-LimniVisualRuntimeService:
+Result: 0 errors, 0 warnings, 5894 msec elapsed, cpu='X64 Regular'
+
+active-LimniVisualRuntimeService:
+Result: 0 errors, 0 warnings, 5744 msec elapsed, cpu='X64 Regular'
+
+Scope: Gate 99ZA visual runtime only. Service/snapshot boundary plus StateMap/Stochastic snapshot readers and compact panel. No EA behavior, q-state thresholds, q-state persistence/hysteresis, Katarakti redesign, live trading, backtest, promotion, or MT5 performance claim.
+Implementation note: visible indicators do not call CopyRates, LimniLoadCachedStackSeries, or LimniQStateBuildPairFeatures. Stack CopyRates/build work is centralized in the non-trading service snapshot boundary; portfolio q-state snapshots are derived from stack snapshots.

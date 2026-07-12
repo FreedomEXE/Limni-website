@@ -1,0 +1,8 @@
+metric,definition,content_hash
+h1_triangle_center_reversion_side,Minimal Triangle side check on the verified H1 path: BUY must be at/below the median center and SELL must be at/above it.,48BAE5C719CFE87E2FF37D5C437D10AA568A9FC14DD5ADCAEAD032B0D8852743
+h1_triangle_v1_directionless,"Gate91 v1 equation adapted to the verified Gate92 broker H1 path: low path efficiency, range >= 2Q, and side distance from median center >= Q.",3DAD180DC41E6E80422AA417F11B9BF3E203A3D1F701C0AB0D0220851BD2868F
+h1_triangle_v2_geometry,Gate91 v2 cost-bend equation adapted to H1: geometry quality >= 1 and side distance from median center >= Q.,DB9D248E994B3DE42041CBB325A64D84DE2F5D73E5C8746362839CF194769756
+h1_triangle_v21_floorpin,Gate91 v2.1 floor-pin overlay: v2 geometry plus Q_bend / Q_floor >= 1.25.,C920B6E2419C4A6C203001505435495A8F6B5F95406C753525B02197333F2354
+h1_triangle_v21_surplus,Gate91 v2.1 surplus overlay: floor-pin plus surplus geometry quality >= 1 after subtracting 2 * Q_cost.,67FEDD6FFD42480815C585902B560F8E90F3B89C313E6448098712F11EE2D969
+net_delta_vs_baseline,Accepted MT5 saved-report net profit minus the full LimniHedge V1 baseline net profit for the same report/case.,BCBEE7B3CEB30C92770E092A35718B3235CF141EB950A223E5B8A87F8B78D94E
+terminal_liquidations_removed,Saved-report terminal forced liquidations rejected by the overlay filter. Positive is risk-shape improvement only if net is not destroyed.,FFE81043962ACE55AB7B68CDD3987231E4627DC39ADB39F439AEF5E7CAE44DB7

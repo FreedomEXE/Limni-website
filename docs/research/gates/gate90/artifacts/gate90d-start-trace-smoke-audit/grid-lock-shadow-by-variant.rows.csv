@@ -1,0 +1,3 @@
+variant_id,close_reason,rows,preserve_candidates,shadow_preserved_adr,avg_shadow_preserved_adr,no_lock_mfe_rows,protected_or_above_floor_rows,content_hash
+RAW_GRID_T100_S020_GATE90_RAW_BOTH,session_flatten,2,1,0.227065,0.227065,1,0,B718D200EADB409EB7114480A63FAC57296705E23BC7A63BAD4F9EEFFEA2C881
+RAW_GRID_T100_S020_GATE90_RAW_BOTH,target,3,0,0,,2,1,2AFCDF2D70F07081409A50FEC1BC509F1B7E271C0F215711921934EE9C1EBB8D

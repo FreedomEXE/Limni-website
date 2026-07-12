@@ -1,0 +1,15 @@
+gate_id Gate 68B: brain-mode-selector-test-matrix
+command npm run engine:gate68b:brain-mode-selector-test-matrix
+generated_at 2026-06-28T04:43:21.575Z
+git_commit ba35a8d2223400bc60375cb19736a80ddb26d4c0
+matrix_rows BB36EC6B2B163796C72F575C6190CE47A37B4697DC4B8AA4EA65F936E1DB380A docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-matrix.rows.jsonl
+test_summary 99EE5DEB7E71DA1BABA8B6A7970B452B9D82510330593D8276AEB6584A21CFBC docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-summary.json
+best_candidate_review 56DB42F4390813E62156400FCB3D10A73585AE888156F3FDB02E1B759321A114 docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-best-candidate-review.md
+mode_diagnostics 470E6EE5B79EDD8FC29F1F2F2A085090AAF9B03892F567075485B599C78E3E8B docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-mode-diagnostics.json
+year_diagnostics 6D6C271F91AFB84570E8B48CF11D042BC4AED7F0BAA38727146CF94D3449BF91 docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-year-by-year-diagnostics.json
+reason_code_diagnostics B719732DD782B55B83894FB9D1EEC4018719D817A8034F423348FBE7693B2694 docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-reason-code-diagnostics.json
+policy_participation C4F3C6AD425D3054F6A6764270ABC70C50584B3D54DC27A6B93316AFA85ECC5A docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-policy-participation.json
+signature_collapse F376BDBE72CA159FA6F02ED9A1EB189B197FFB8D264104EFA2B90B2338BAAADC docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-signature-collapse.json
+comparison_vs_gate64_67 68840B637DE90951E1C8C9BE8BCEE4F364AA4A5FFE960D1669F7675E2BBF8688 docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-comparison-vs-gate64-67.json
+summary_json 99EE5DEB7E71DA1BABA8B6A7970B452B9D82510330593D8276AEB6584A21CFBC docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/gate68b-summary.json
+report FF05D5C58FD8285E6C7F4DB4D856EB5E3D8C04B6A6C2AE89E0C0FC7B508A3136 docs/research/gates/gate68b/GATE68B_BRAIN_MODE_SELECTOR_TEST_MATRIX_2026-06-28.md

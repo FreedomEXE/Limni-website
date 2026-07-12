@@ -1,0 +1,239 @@
+{
+  "generatedAtUtc": "2026-06-20T04:12:50.228Z",
+  "write": false,
+  "datasetHash": "6168c6708ea34bcd381cc79973ff6fb2a54dc621ff561737ac9ab5057a669bdd",
+  "promotionManifestId": "c4ab9b08d70bf270743c2291068e08e721463147daf14cd6369982fb0fad91b5",
+  "contractManifestHash": "6408660a52dc15e0081580a52e3e8ca9128aa19bc0b45ee9022956177487d3a7",
+  "regimeDatasetId": null,
+  "range": {
+    "fromWeekOpenUtc": "2019-01-07T00:00:00.000Z",
+    "toWeekOpenUtc": "2019-03-04T00:00:00.000Z",
+    "weeks": 9
+  },
+  "currencies": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "observations": {
+    "total": 90,
+    "bpr": 90,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0
+  },
+  "artifacts": {
+    "total": 10,
+    "endpoints": {
+      "cftc_bpr_live_html": 10
+    },
+    "payloadBytes": 6425439
+  },
+  "availabilityEvents": {
+    "total": 90,
+    "precision": {
+      "scheduled_window": 90
+    },
+    "retrievalCapabilities": {
+      "release_event_filterable": 90
+    },
+    "eligibilityPolicies": {
+      "eligible_at_or_before_freeze": 90
+    }
+  },
+  "weeklySnapshots": {
+    "total": 144,
+    "manifests": 9,
+    "bpr": 144,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0,
+    "realRatePressure": 0,
+    "stale": 32,
+    "missing": 95
+  },
+  "bpr": {
+    "attemptedReports": 10,
+    "fetchedReports": 10,
+    "archiveFetchedReports": 0,
+    "failedReports": 0,
+    "localFetchBlockedReports": 0,
+    "failedReportKeys": [],
+    "reportTypes": [
+      "f",
+      "o"
+    ],
+    "exceptionCalendarVersion": "cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday",
+    "availabilityModes": {
+      "computed_from_cftc_bpr_report_date_friday_1530_new_york": 54,
+      "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york": 36
+    },
+    "exceptionOrDelayObservations": 36,
+    "promotionBlockedUntilExactPublicationDateObservations": 0,
+    "availabilitySamples": [
+      {
+        "reportType": "f",
+        "year": 2018,
+        "month": 11,
+        "reportDate": "2018-11-06",
+        "availableAtUtc": "2018-11-09T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "f",
+        "year": 2018,
+        "month": 12,
+        "reportDate": "2018-12-04",
+        "availableAtUtc": "2018-12-07T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "f",
+        "year": 2019,
+        "month": 1,
+        "reportDate": "2019-01-08",
+        "availableAtUtc": "2019-02-08T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "2018-2019 lapse in appropriations delayed the January 2019 BPR to February 8, 2019"
+      },
+      {
+        "reportType": "f",
+        "year": 2019,
+        "month": 2,
+        "reportDate": "2019-02-05",
+        "availableAtUtc": "2019-02-22T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "2018-2019 lapse in appropriations delayed the February 2019 BPR to February 22, 2019"
+      },
+      {
+        "reportType": "f",
+        "year": 2019,
+        "month": 3,
+        "reportDate": "2019-03-05",
+        "availableAtUtc": "2019-03-08T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "o",
+        "year": 2018,
+        "month": 11,
+        "reportDate": "2018-11-06",
+        "availableAtUtc": "2018-11-09T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "o",
+        "year": 2018,
+        "month": 12,
+        "reportDate": "2018-12-04",
+        "availableAtUtc": "2018-12-07T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "o",
+        "year": 2019,
+        "month": 1,
+        "reportDate": "2019-01-08",
+        "availableAtUtc": "2019-02-08T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "2018-2019 lapse in appropriations delayed the January 2019 BPR to February 8, 2019"
+      },
+      {
+        "reportType": "o",
+        "year": 2019,
+        "month": 2,
+        "reportDate": "2019-02-05",
+        "availableAtUtc": "2019-02-22T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "2018-2019 lapse in appropriations delayed the February 2019 BPR to February 22, 2019"
+      },
+      {
+        "reportType": "o",
+        "year": 2019,
+        "month": 3,
+        "reportDate": "2019-03-05",
+        "availableAtUtc": "2019-03-08T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      }
+    ]
+  },
+  "rates": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "inflation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "valuation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "realRatePressure": {
+    "sources": 0,
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "persistedCounts": null,
+  "notes": [
+    "Gate 49 source-contract hardening only. No BPR/rate/inflation/real-rate-pressure regime interpretation, pair filter, stop policy, TP, runner, or grid-entry logic is encoded.",
+    "Weekly snapshots are frozen at the macro weekly signal freeze target, currently week_open_utc; raw rows released after that cutoff are stored but first become eligible in the next weekly snapshot.",
+    "Date-only or approximate availability remains exploratory/latest-vintage research and must roll forward at exact-boundary ties before promotion.",
+    "FRED rate and CPI rows remain promotion-blocked until ALFRED/FRED real-time vintage reconstruction replaces modeled availability.",
+    "BPR report fetches use canonical CFTC artifacts; archived canonical CFTC pages are internal replay evidence for historical fills, not runtime provider fallback.",
+    "Inflation rows compute CPI YoY from index levels and preserve lag observation metadata.",
+    "Valuation rows store OECD annual PPP/exchange-rate inputs and BIS monthly broad NEER/REER inputs only; no PPP gap, support/oppose state, or combined regime logic is derived here.",
+    "Real-rate-pressure rows are derived weekly from 3-month interbank rate minus CPI YoY; BPR remains a separate positioning source.",
+    "Japan CPI is a known v0 source weakness because the FRED/OECD Japan CPI series is stale locally; official Statistics Bureau/e-Stat Table 1-1 all-items is the primary future source, with Table 4-1 all-items as validation-only evidence."
+  ]
+}

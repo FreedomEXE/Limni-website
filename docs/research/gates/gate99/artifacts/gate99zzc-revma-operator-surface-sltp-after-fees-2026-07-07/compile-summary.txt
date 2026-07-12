@@ -1,0 +1,7 @@
+Gate99ZZC compile summary
+repo=Result: 0 errors, 0 warnings, 23956 msec elapsed, cpu='X64 Regular'
+active-terminal=Result: 0 errors, 0 warnings, 20205 ms elapsed, cpu='X64 Regular'
+metaeditor_exit_codes:
+repo-LimniPortfolioEA=1
+active-terminal-LimniPortfolioEA=1
+source_hash_mismatches=0

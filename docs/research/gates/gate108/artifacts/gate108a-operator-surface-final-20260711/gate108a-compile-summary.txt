@@ -1,0 +1,2 @@
+label=repo|compiler=C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5\MetaEditor64.exe|exit_code=0|result=Result: 0 errors, 0 warnings, 284241 ms elapsed, cpu='X64 Regular'|started_utc=2026-07-11T23:16:42.8447082Z|completed_utc=2026-07-11T23:21:27.0959148Z
+label=terminal-94497|compiler=C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5\MetaEditor64.exe|exit_code=0|result=Result: 0 errors, 0 warnings, 284624 ms elapsed, cpu='X64 Regular'|started_utc=2026-07-11T23:21:58.2604126Z|completed_utc=2026-07-11T23:26:42.8952209Z

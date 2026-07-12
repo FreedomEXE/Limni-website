@@ -1,0 +1,27 @@
+[
+  {
+    "variant_id": "RAW_GRID_T100_S020_GATE90_RAW_BOTH",
+    "week_open_utc": "2020-01-06T00:00:00.000Z",
+    "pairs_replayed": 1,
+    "closed_price_pnl_usd": 39.840024,
+    "realized_commission_usd": -2.4,
+    "realized_swap_usd": 0.090596,
+    "realized_net_usd": 37.53062,
+    "open_price_pnl_usd": -40.670015,
+    "open_swap_usd": -2.947621,
+    "equity_usd": 9993.912984,
+    "balance_usd": 10037.53062,
+    "equity_delta_usd": -6.087016,
+    "open_positions": 16,
+    "long_positions": 12,
+    "short_positions": 4,
+    "fills_opened": 40,
+    "target_reset_count": 7,
+    "max_open_positions_to_date": 16,
+    "max_long_positions_to_date": 12,
+    "max_short_positions_to_date": 5,
+    "max_add_depth_to_date": 10,
+    "position_days_closed_to_date": 13.219445,
+    "content_hash": "EE4AA2B8CEB1B082E6D04737E902674797B8B13FB3F5BE6E6954E15513770BF1"
+  }
+]

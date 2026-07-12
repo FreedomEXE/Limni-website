@@ -1,0 +1,406 @@
+{
+  "gate_id": "Gate 61A: brain-architecture-refactor",
+  "command": "npm run engine:gate61a:brain-architecture-refactor",
+  "generated_at": "2026-06-27T17:58:45.403Z",
+  "git_commit": "a2acb8600019db03ea90ad1a6f8b9bfb88604342",
+  "verdict": "PASS_BRAIN_CELLS_ATOMS_NAMESPACE_LOCKED__BPR_NESTED_UNDER_REGIME__NO_EVIDENCE_MUTATION",
+  "architecture": {
+    "version": "gate61a_brain_cells_atoms_v1",
+    "system": "Brain",
+    "cells": [
+      {
+        "cell_id": "cot",
+        "label": "COT cell",
+        "path": "engine/src/brain/cells/cot",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "cot_side",
+            "label": "locked COT side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_tei_spread",
+            "label": "base-minus-quote COT TEI spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_carry_flags",
+            "label": "COT carry-forward and carry-previous flags",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "cot_lifecycle_state",
+            "label": "COT report lifecycle state",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "strength",
+        "label": "Strength cell",
+        "path": "engine/src/brain/cells/strength",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "strength_gate57e_side",
+            "label": "locked Gate 57E Strength side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_score_spread",
+            "label": "FRS15 base-minus-quote score spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_lifecycle_bucket",
+            "label": "Strength lifecycle bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "strength_phase_bucket",
+            "label": "Strength phase bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "regime",
+        "label": "Regime cell",
+        "path": "engine/src/brain/cells/regime",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "bpr_futures",
+            "label": "BPR futures required source atom",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "bpr_futures_and_options",
+            "label": "BPR futures/options shadow source atom",
+            "status": "shadow",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "shadow_atom"
+          },
+          {
+            "atom_id": "bpr_futures_carried_state",
+            "label": "BPR futures carried source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "bpr_futures_synthetic_usd_state",
+            "label": "BPR synthetic USD source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "nominal_rate_3m",
+            "label": "nominal 3m interbank rate",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cpi_inflation_yoy",
+            "label": "CPI inflation year-over-year",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "rrp_derived",
+            "label": "real-rate-pressure derived atom",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "ppp",
+            "label": "purchasing power parity",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "neer",
+            "label": "nominal effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "reer",
+            "label": "real effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          }
+        ]
+      }
+    ],
+    "body": {
+      "path": "engine/src/brain/body",
+      "status": "reserved_for_later_integrated_forced28_decision_algorithm",
+      "may_reduce_expression_below_28": false
+    },
+    "risk": {
+      "path": "engine/src/brain/risk",
+      "status": "reserved_for_later_permission_layer",
+      "may_reduce_expression_below_28": true
+    },
+    "standing_rule": "Alpha-style cells and Regime-style cells preserve forced-28 weekly pair directions; only the later risk layer may reduce actual trade expression."
+  },
+  "cells": [
+    {
+      "cell_id": "cot",
+      "path": "engine/src/brain/cells/cot",
+      "forced_28_required": true,
+      "atom_count": 4,
+      "atom_ids": [
+        "cot_side",
+        "cot_tei_spread",
+        "cot_carry_flags",
+        "cot_lifecycle_state"
+      ]
+    },
+    {
+      "cell_id": "strength",
+      "path": "engine/src/brain/cells/strength",
+      "forced_28_required": true,
+      "atom_count": 4,
+      "atom_ids": [
+        "strength_gate57e_side",
+        "strength_score_spread",
+        "strength_lifecycle_bucket",
+        "strength_phase_bucket"
+      ]
+    },
+    {
+      "cell_id": "regime",
+      "path": "engine/src/brain/cells/regime",
+      "forced_28_required": true,
+      "atom_count": 10,
+      "atom_ids": [
+        "bpr_futures",
+        "bpr_futures_and_options",
+        "bpr_futures_carried_state",
+        "bpr_futures_synthetic_usd_state",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer"
+      ]
+    }
+  ],
+  "atom_inventory": [
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_side",
+      "label": "locked COT side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_tei_spread",
+      "label": "base-minus-quote COT TEI spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_carry_flags",
+      "label": "COT carry-forward and carry-previous flags",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_lifecycle_state",
+      "label": "COT report lifecycle state",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_gate57e_side",
+      "label": "locked Gate 57E Strength side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_score_spread",
+      "label": "FRS15 base-minus-quote score spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_lifecycle_bucket",
+      "label": "Strength lifecycle bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_phase_bucket",
+      "label": "Strength phase bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures",
+      "label": "BPR futures required source atom",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_and_options",
+      "label": "BPR futures/options shadow source atom",
+      "status": "shadow",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "shadow_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_carried_state",
+      "label": "BPR futures carried source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_synthetic_usd_state",
+      "label": "BPR synthetic USD source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "nominal_rate_3m",
+      "label": "nominal 3m interbank rate",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "cpi_inflation_yoy",
+      "label": "CPI inflation year-over-year",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "rrp_derived",
+      "label": "real-rate-pressure derived atom",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "ppp",
+      "label": "purchasing power parity",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "neer",
+      "label": "nominal effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "reer",
+      "label": "real effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    }
+  ],
+  "validation": {
+    "brain_architecture_version": "gate61a_brain_cells_atoms_v1",
+    "architecture_path_count": 22,
+    "missing_architecture_paths": [],
+    "top_level_bpr_cell_exists": false,
+    "cells_represented": [
+      "cot",
+      "strength",
+      "regime"
+    ],
+    "cot_cell_represented": true,
+    "strength_cell_represented": true,
+    "regime_cell_represented": true,
+    "bpr_nested_under_regime": true,
+    "missing_package_scripts": [],
+    "immutable_docs_research_gates_moved": false,
+    "historical_evidence_rewritten": false
+  },
+  "artifacts": {
+    "summaryJson": "docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-summary.json",
+    "fileMapJson": "docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-file-map.json",
+    "shaIdentity": "docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-refactor.sha256.txt",
+    "report": "docs/research/gates/gate61a/GATE61A_BRAIN_ARCHITECTURE_REFACTOR_2026-06-27.md"
+  }
+}

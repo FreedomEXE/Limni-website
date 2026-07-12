@@ -1,0 +1,12 @@
+{
+  "gate_id": "Gate 96A: limnihedge-type3-adr-long-causality-accounting-inventory-audit",
+  "command": "npm run engine:gate96a:limnihedge-type3-adr-long-causality-accounting-inventory-audit",
+  "args": [],
+  "node_options": null,
+  "generated_at": "2026-07-05T00:09:36.191Z",
+  "git_commit": "adb88b90b272414de686a0e776b5f4119c208eb7",
+  "git_dirty_status": "dirty",
+  "gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "artifact_dir": "docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit",
+  "content_hash": "D3F4295BEFB0D8463B35C288C7FC90CDBF2A9700D786D2BF4E9DAA4CD80737E2"
+}

@@ -1,0 +1,20 @@
+{
+  "losing_friday_continuation": {
+    "count": 4641,
+    "recovered_to_breakeven_rate": 0.752424,
+    "later_became_profitable_rate": 0.752424,
+    "materially_worsened_rate": 0.620125,
+    "average_remaining_streak_adr_after_week": 2.152548,
+    "median_remaining_streak_adr_after_week": 1.673592,
+    "total_adr_effect_of_carrying": 9989.973412
+  },
+  "winning_friday_continuation": {
+    "count": 4871,
+    "continued_higher_rate": 0.638883,
+    "gave_back_rate": 0.361117,
+    "average_continuation_gain_adr": 4.716935,
+    "average_giveback_adr": -3.397364,
+    "median_remaining_streak_adr_after_week": 1.288887,
+    "total_adr_effect_of_carrying": 8703.137719
+  }
+}

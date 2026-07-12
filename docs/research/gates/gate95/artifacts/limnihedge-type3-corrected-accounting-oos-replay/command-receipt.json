@@ -1,0 +1,11 @@
+{
+  "gate_id": "Gate 95R: limnihedge-type3-corrected-accounting-oos-replay",
+  "command": "npm run engine:gate95r:limnihedge-type3-corrected-accounting-oos-replay",
+  "args": [],
+  "generated_at": "2026-07-05T02:51:00.699Z",
+  "git_commit": "a2a9bf8af1401c82ae294f7bef2f6f464c007812",
+  "git_dirty_status": "dirty",
+  "gate95_artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026",
+  "artifact_dir": "docs/research/gates/gate95/artifacts/limnihedge-type3-corrected-accounting-oos-replay",
+  "content_hash": "E243F170A597C06E3DDB4FD473351A05CF0A6FD81C601AF7312C619DBE7134E3"
+}

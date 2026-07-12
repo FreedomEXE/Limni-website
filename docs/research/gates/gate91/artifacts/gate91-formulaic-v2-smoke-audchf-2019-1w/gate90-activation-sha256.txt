@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T20:49:00.117Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json C290D872C672030207E4C7E4B7D5F9005ED5FB9A37DECEB712521255872A78D5 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json AF44F0E23E46D1C7F880D21755AE1EE97E7679CDAB8F1A34931EDD54BF828577 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json BB33905DE8252F7DF60F3551B585E6C784BF4CAE7E0F525CA718713B798D075D docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json CF30B94FD75A57F96FE2FC00F7845A737F710B5DC7B5AC43E2290EFC33CC8FC6 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json AFFC656297F233CF51A3F26480CD18F31FE1A5B401990178183AE80FA82AE36C docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 890F5EA19F30E000FDF35E70E4352D3FDEB4B6CC59ED236595567FE555A8BBAA docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt 49A53235B54A5ECF6EFBD354A69750D0F3C9E88D56C0384D08A398CE9077D53F docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 438BB9A9926A681EDCC9140DA5EFC566CD720489CE12E95BC9D006B0B3B6156F docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/gate90-run-summary.json
+report 7C287C60439C4C1DCC2B75C1E70B8E35C48B7EC11924528F03698960745CDE17 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-smoke-audchf-2019-1w/GATE91_FORMULAIC_V2_SMOKE_AUDCHF_2019_1W.md

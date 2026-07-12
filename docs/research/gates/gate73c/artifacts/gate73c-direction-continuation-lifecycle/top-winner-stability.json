@@ -1,0 +1,272 @@
+{
+  "baseline_top20_gross_adr": 687.48965,
+  "same_top20_weekly_forced_standard_net_adr": 676.278474,
+  "same_top20_carry_until_flip_standard_net_adr": 686.848474,
+  "same_top20_carry_vs_weekly_standard_delta_adr": 10.57,
+  "top20_retention_ratio_vs_gross": 0.9990673663232603,
+  "new_top20_carry_weeks_not_in_baseline_top20": 0,
+  "baseline_top20_weeks": [
+    {
+      "week_open_utc": "2024-07-28T23:00:00.000Z",
+      "weekly_hold_gross_adr": 61.050609,
+      "weekly_forced_standard_net_adr": 60.490611,
+      "carry_until_flip_standard_net_adr": 61.010611,
+      "delta_adr": 0.52
+    },
+    {
+      "week_open_utc": "2020-05-31T23:00:00.000Z",
+      "weekly_hold_gross_adr": 60.561576,
+      "weekly_forced_standard_net_adr": 60.001576,
+      "carry_until_flip_standard_net_adr": 60.531576,
+      "delta_adr": 0.53
+    },
+    {
+      "week_open_utc": "2024-07-21T23:00:00.000Z",
+      "weekly_hold_gross_adr": 46.494143,
+      "weekly_forced_standard_net_adr": 45.934142,
+      "carry_until_flip_standard_net_adr": 46.484142,
+      "delta_adr": 0.55
+    },
+    {
+      "week_open_utc": "2025-03-30T23:00:00.000Z",
+      "weekly_hold_gross_adr": 43.245395,
+      "weekly_forced_standard_net_adr": 42.685397,
+      "carry_until_flip_standard_net_adr": 43.185397,
+      "delta_adr": 0.5
+    },
+    {
+      "week_open_utc": "2024-04-28T23:00:00.000Z",
+      "weekly_hold_gross_adr": 38.158862,
+      "weekly_forced_standard_net_adr": 37.598862,
+      "carry_until_flip_standard_net_adr": 38.148862,
+      "delta_adr": 0.55
+    },
+    {
+      "week_open_utc": "2024-07-14T23:00:00.000Z",
+      "weekly_hold_gross_adr": 37.761266,
+      "weekly_forced_standard_net_adr": 37.201267,
+      "carry_until_flip_standard_net_adr": 37.741267,
+      "delta_adr": 0.54
+    },
+    {
+      "week_open_utc": "2025-10-12T23:00:00.000Z",
+      "weekly_hold_gross_adr": 35.288625,
+      "weekly_forced_standard_net_adr": 34.728622,
+      "carry_until_flip_standard_net_adr": 35.288622,
+      "delta_adr": 0.56
+    },
+    {
+      "week_open_utc": "2020-02-24T00:00:00.000Z",
+      "weekly_hold_gross_adr": 33.972147,
+      "weekly_forced_standard_net_adr": 33.412149,
+      "carry_until_flip_standard_net_adr": 33.892149,
+      "delta_adr": 0.48
+    },
+    {
+      "week_open_utc": "2022-09-25T23:00:00.000Z",
+      "weekly_hold_gross_adr": 33.434796,
+      "weekly_forced_standard_net_adr": 32.874795,
+      "carry_until_flip_standard_net_adr": 33.364795,
+      "delta_adr": 0.49
+    },
+    {
+      "week_open_utc": "2023-11-27T00:00:00.000Z",
+      "weekly_hold_gross_adr": 31.661446,
+      "weekly_forced_standard_net_adr": 31.101446,
+      "carry_until_flip_standard_net_adr": 31.651446,
+      "delta_adr": 0.55
+    },
+    {
+      "week_open_utc": "2021-02-15T00:00:00.000Z",
+      "weekly_hold_gross_adr": 30.084357,
+      "weekly_forced_standard_net_adr": 29.524356,
+      "carry_until_flip_standard_net_adr": 30.044356,
+      "delta_adr": 0.52
+    },
+    {
+      "week_open_utc": "2019-10-06T23:00:00.000Z",
+      "weekly_hold_gross_adr": 27.99503,
+      "weekly_forced_standard_net_adr": 27.435032,
+      "carry_until_flip_standard_net_adr": 27.995032,
+      "delta_adr": 0.56
+    },
+    {
+      "week_open_utc": "2019-12-09T00:00:00.000Z",
+      "weekly_hold_gross_adr": 27.561086,
+      "weekly_forced_standard_net_adr": 27.001087,
+      "carry_until_flip_standard_net_adr": 27.521087,
+      "delta_adr": 0.52
+    },
+    {
+      "week_open_utc": "2019-10-27T23:00:00.000Z",
+      "weekly_hold_gross_adr": 26.509054,
+      "weekly_forced_standard_net_adr": 25.937876,
+      "carry_until_flip_standard_net_adr": 26.487876,
+      "delta_adr": 0.55
+    },
+    {
+      "week_open_utc": "2020-05-17T23:00:00.000Z",
+      "weekly_hold_gross_adr": 26.469344,
+      "weekly_forced_standard_net_adr": 25.909344,
+      "carry_until_flip_standard_net_adr": 26.409344,
+      "delta_adr": 0.5
+    },
+    {
+      "week_open_utc": "2023-07-09T23:00:00.000Z",
+      "weekly_hold_gross_adr": 26.286846,
+      "weekly_forced_standard_net_adr": 25.726846,
+      "carry_until_flip_standard_net_adr": 26.216846,
+      "delta_adr": 0.49
+    },
+    {
+      "week_open_utc": "2023-11-13T00:00:00.000Z",
+      "weekly_hold_gross_adr": 26.267024,
+      "weekly_forced_standard_net_adr": 25.707023,
+      "carry_until_flip_standard_net_adr": 26.237023,
+      "delta_adr": 0.53
+    },
+    {
+      "week_open_utc": "2023-12-11T00:00:00.000Z",
+      "weekly_hold_gross_adr": 25.208878,
+      "weekly_forced_standard_net_adr": 24.648876,
+      "carry_until_flip_standard_net_adr": 25.198876,
+      "delta_adr": 0.55
+    },
+    {
+      "week_open_utc": "2020-09-20T23:00:00.000Z",
+      "weekly_hold_gross_adr": 24.815744,
+      "weekly_forced_standard_net_adr": 24.255745,
+      "carry_until_flip_standard_net_adr": 24.775745,
+      "delta_adr": 0.52
+    },
+    {
+      "week_open_utc": "2019-10-13T23:00:00.000Z",
+      "weekly_hold_gross_adr": 24.663422,
+      "weekly_forced_standard_net_adr": 24.103422,
+      "carry_until_flip_standard_net_adr": 24.663422,
+      "delta_adr": 0.56
+    }
+  ],
+  "carry_top20_weeks": [
+    {
+      "week_open_utc": "2024-07-28T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 61.010611,
+      "weekly_forced_standard_net_adr": 60.490611,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2020-05-31T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 60.531576,
+      "weekly_forced_standard_net_adr": 60.001576,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2024-07-21T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 46.484142,
+      "weekly_forced_standard_net_adr": 45.934142,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2025-03-30T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 43.185397,
+      "weekly_forced_standard_net_adr": 42.685397,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2024-04-28T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 38.148862,
+      "weekly_forced_standard_net_adr": 37.598862,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2024-07-14T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 37.741267,
+      "weekly_forced_standard_net_adr": 37.201267,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2025-10-12T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 35.288622,
+      "weekly_forced_standard_net_adr": 34.728622,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2020-02-24T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 33.892149,
+      "weekly_forced_standard_net_adr": 33.412149,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2022-09-25T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 33.364795,
+      "weekly_forced_standard_net_adr": 32.874795,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2023-11-27T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 31.651446,
+      "weekly_forced_standard_net_adr": 31.101446,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2021-02-15T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 30.044356,
+      "weekly_forced_standard_net_adr": 29.524356,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2019-10-06T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 27.995032,
+      "weekly_forced_standard_net_adr": 27.435032,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2019-12-09T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 27.521087,
+      "weekly_forced_standard_net_adr": 27.001087,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2019-10-27T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 26.487876,
+      "weekly_forced_standard_net_adr": 25.937876,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2020-05-17T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 26.409344,
+      "weekly_forced_standard_net_adr": 25.909344,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2023-11-13T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 26.237023,
+      "weekly_forced_standard_net_adr": 25.707023,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2023-07-09T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 26.216846,
+      "weekly_forced_standard_net_adr": 25.726846,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2023-12-11T00:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 25.198876,
+      "weekly_forced_standard_net_adr": 24.648876,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2020-09-20T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 24.775745,
+      "weekly_forced_standard_net_adr": 24.255745,
+      "was_baseline_top20": true
+    },
+    {
+      "week_open_utc": "2019-10-13T23:00:00.000Z",
+      "carry_until_flip_standard_net_adr": 24.663422,
+      "weekly_forced_standard_net_adr": 24.103422,
+      "was_baseline_top20": true
+    }
+  ]
+}

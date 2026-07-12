@@ -1,0 +1,951 @@
+{
+  "gate_id": "Gate 63: universal-atom-matrix",
+  "brain_architecture": {
+    "version": "gate61a_brain_cells_atoms_v1",
+    "system": "Brain",
+    "cells": [
+      {
+        "cell_id": "cot",
+        "label": "COT cell",
+        "path": "engine/src/brain/cells/cot",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "cot_side",
+            "label": "locked COT side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_tei_spread",
+            "label": "base-minus-quote COT TEI spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_carry_flags",
+            "label": "COT carry-forward and carry-previous flags",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "cot_lifecycle_state",
+            "label": "COT report lifecycle state",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "strength",
+        "label": "Strength cell",
+        "path": "engine/src/brain/cells/strength",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "strength_gate57e_side",
+            "label": "locked Gate 57E Strength side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_score_spread",
+            "label": "FRS15 base-minus-quote score spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_lifecycle_bucket",
+            "label": "Strength lifecycle bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "strength_phase_bucket",
+            "label": "Strength phase bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "regime",
+        "label": "Regime cell",
+        "path": "engine/src/brain/cells/regime",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "bpr_futures",
+            "label": "BPR futures required source atom",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "bpr_futures_and_options",
+            "label": "BPR futures/options shadow source atom",
+            "status": "shadow",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "shadow_atom"
+          },
+          {
+            "atom_id": "bpr_futures_carried_state",
+            "label": "BPR futures carried source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "bpr_futures_synthetic_usd_state",
+            "label": "BPR synthetic USD source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "nominal_rate_3m",
+            "label": "nominal 3m interbank rate",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cpi_inflation_yoy",
+            "label": "CPI inflation year-over-year",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "rrp_derived",
+            "label": "real-rate-pressure derived atom",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "ppp",
+            "label": "purchasing power parity",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "neer",
+            "label": "nominal effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "reer",
+            "label": "real effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          }
+        ]
+      }
+    ],
+    "body": {
+      "path": "engine/src/brain/body",
+      "status": "reserved_for_later_integrated_forced28_decision_algorithm",
+      "may_reduce_expression_below_28": false
+    },
+    "risk": {
+      "path": "engine/src/brain/risk",
+      "status": "reserved_for_later_permission_layer",
+      "may_reduce_expression_below_28": true
+    },
+    "standing_rule": "Alpha-style cells and Regime-style cells preserve forced-28 weekly pair directions; only the later risk layer may reduce actual trade expression."
+  },
+  "atom_inventory": [
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_side",
+      "label": "locked COT side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_tei_spread",
+      "label": "base-minus-quote COT TEI spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_carry_flags",
+      "label": "COT carry-forward and carry-previous flags",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_lifecycle_state",
+      "label": "COT report lifecycle state",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_gate57e_side",
+      "label": "locked Gate 57E Strength side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_score_spread",
+      "label": "FRS15 base-minus-quote score spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_lifecycle_bucket",
+      "label": "Strength lifecycle bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_phase_bucket",
+      "label": "Strength phase bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures",
+      "label": "BPR futures required source atom",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_and_options",
+      "label": "BPR futures/options shadow source atom",
+      "status": "shadow",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "shadow_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_carried_state",
+      "label": "BPR futures carried source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_synthetic_usd_state",
+      "label": "BPR synthetic USD source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "nominal_rate_3m",
+      "label": "nominal 3m interbank rate",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "cpi_inflation_yoy",
+      "label": "CPI inflation year-over-year",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "rrp_derived",
+      "label": "real-rate-pressure derived atom",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "ppp",
+      "label": "purchasing power parity",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "neer",
+      "label": "nominal effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "reer",
+      "label": "real effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    }
+  ],
+  "candidate_contracts": [
+    {
+      "candidate_id": "cot_cell_locked_cot_side",
+      "family": "single_cell_baseline",
+      "label": "COT-only locked side baseline",
+      "candidate_direction_kind": "candidate_cell_direction",
+      "transform_version": "gate59_cot_side_locked_v1",
+      "atom_keys": [
+        "cot_side"
+      ],
+      "source_cells": [
+        "cot"
+      ],
+      "polarity": "locked",
+      "tie_rule": "uses locked Gate 59 COT side",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "strength_cell_gate57e_side",
+      "family": "single_cell_baseline",
+      "label": "Strength-only Gate 57E side baseline",
+      "candidate_direction_kind": "candidate_cell_direction",
+      "transform_version": "gate59_strength_gate57e_side_locked_v1",
+      "atom_keys": [
+        "strength_gate57e_side"
+      ],
+      "source_cells": [
+        "strength"
+      ],
+      "polarity": "locked",
+      "tie_rule": "uses locked Gate 57E Strength side",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "alpha_v1_frozen_final_side",
+      "family": "single_cell_baseline",
+      "label": "Alpha v1 frozen final side baseline",
+      "candidate_direction_kind": "candidate_cell_direction",
+      "transform_version": "gate59_alpha_v1_final_side_v1",
+      "atom_keys": [
+        "alpha_v1_final_side",
+        "cot_side",
+        "strength_gate57e_side"
+      ],
+      "source_cells": [
+        "alpha_v1",
+        "cot",
+        "strength"
+      ],
+      "polarity": "alpha_v1",
+      "tie_rule": "uses frozen Gate 59 Alpha v1 row-level arbitration",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "regime_cell_gate62_best_rrp_derived_inverse",
+      "family": "single_cell_baseline",
+      "label": "Regime-only Gate 62 best RRP inverse baseline",
+      "candidate_direction_kind": "candidate_cell_direction",
+      "transform_version": "gate63_rrp_derived_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "bpr_only_forced28_source_direction",
+      "family": "single_regime_atom",
+      "label": "BPR-only forced-28 source direction",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate60g_bpr_forced28_source_direction_policy_v1",
+      "atom_keys": [
+        "bpr"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "bpr_source",
+      "tie_rule": "Gate 60G deterministic forced-28 BPR source-direction policy",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rates_nominal_rate_3m_natural",
+      "family": "single_regime_atom",
+      "label": "Rates-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_nominal_rate_3m_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "nominal_rate_3m"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rates_nominal_rate_3m_inverse",
+      "family": "single_regime_atom",
+      "label": "Rates-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_nominal_rate_3m_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "nominal_rate_3m"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "inflation_cpi_yoy_natural",
+      "family": "single_regime_atom",
+      "label": "CPI/inflation-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_cpi_inflation_yoy_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "cpi_inflation_yoy"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "inflation_cpi_yoy_inverse",
+      "family": "single_regime_atom",
+      "label": "CPI/inflation-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_cpi_inflation_yoy_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "cpi_inflation_yoy"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rrp_derived_natural",
+      "family": "single_regime_atom",
+      "label": "RRP-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_rrp_derived_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "rrp_derived_inverse",
+      "family": "single_regime_atom",
+      "label": "RRP-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_rrp_derived_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "ppp_natural",
+      "family": "single_regime_atom",
+      "label": "PPP-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_ppp_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "ppp"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "ppp_inverse",
+      "family": "single_regime_atom",
+      "label": "PPP-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_ppp_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "ppp"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "neer_natural",
+      "family": "single_regime_atom",
+      "label": "NEER-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_neer_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "neer"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "neer_inverse",
+      "family": "single_regime_atom",
+      "label": "NEER-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_neer_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "neer"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "reer_natural",
+      "family": "single_regime_atom",
+      "label": "REER-only natural polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_reer_natural_base_minus_quote_v1",
+      "atom_keys": [
+        "reer"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "natural",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "reer_inverse",
+      "family": "single_regime_atom",
+      "label": "REER-only inverse polarity",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "transform_version": "gate63_reer_inverse_base_minus_quote_v1",
+      "atom_keys": [
+        "reer"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "polarity": "inverse",
+      "tie_rule": "equal numeric spread uses deterministic currency rank AUD,CAD,CHF,EUR,GBP,JPY,NZD,USD",
+      "complexity": 1,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_plus_rrp_inverse_tie_cot",
+      "family": "two_cell_composite",
+      "label": "COT + RRP inverse, tie to COT",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_plus_rrp_inverse_tie_cot_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to COT",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_plus_rrp_inverse_tie_rrp",
+      "family": "two_cell_composite",
+      "label": "COT + RRP inverse, tie to RRP inverse",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_plus_rrp_inverse_tie_rrp_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to RRP inverse",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "strength_plus_rrp_inverse_tie_strength",
+      "family": "two_cell_composite",
+      "label": "Strength + RRP inverse, tie to Strength",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_strength_plus_rrp_inverse_tie_strength_simple_majority_v1",
+      "atom_keys": [
+        "strength_gate57e_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to Strength",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "strength_plus_rrp_inverse_tie_rrp",
+      "family": "two_cell_composite",
+      "label": "Strength + RRP inverse, tie to RRP inverse",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_strength_plus_rrp_inverse_tie_rrp_simple_majority_v1",
+      "atom_keys": [
+        "strength_gate57e_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to RRP inverse",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "alpha_v1_plus_rrp_inverse_tie_alpha",
+      "family": "alpha_regime_composite",
+      "label": "Alpha v1 + RRP inverse, tie to Alpha v1",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_alpha_v1_plus_rrp_inverse_tie_alpha_simple_majority_v1",
+      "atom_keys": [
+        "alpha_v1_final_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "alpha_v1",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to Alpha v1",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "alpha_v1_plus_rrp_inverse_tie_rrp",
+      "family": "alpha_regime_composite",
+      "label": "Alpha v1 + RRP inverse, tie to RRP inverse",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_alpha_v1_plus_rrp_inverse_tie_rrp_simple_majority_v1",
+      "atom_keys": [
+        "alpha_v1_final_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "alpha_v1",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "two-vote majority; ties resolve to RRP inverse",
+      "complexity": 2,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_rrp_inverse_majority",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + RRP inverse simple majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_rrp_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote simple majority",
+      "complexity": 3,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_bpr_majority",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + BPR source direction simple majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_bpr_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "bpr"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote simple majority",
+      "complexity": 3,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_ppp_inverse_majority",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + PPP inverse simple majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_ppp_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "ppp"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote simple majority",
+      "complexity": 3,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_reer_inverse_majority",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + REER inverse simple majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_reer_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "reer"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote simple majority",
+      "complexity": 3,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_regime_best_rrp_inverse",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + Gate 62 best Regime atom RRP inverse",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_regime_best_rrp_inverse_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote simple majority; Regime leg is Gate 62 best RRP inverse",
+      "complexity": 3,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_full_regime_inverse_majority",
+      "family": "three_cell_composite",
+      "label": "COT + Strength + full Regime inverse simple-majority leg",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_full_regime_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "bpr",
+        "nominal_rate_3m",
+        "cpi_inflation_yoy",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "three-vote cell majority; Regime leg is full inverse Regime majority",
+      "complexity": 9,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_rrp_ppp_reer_inverse_majority",
+      "family": "cross_atom_composite",
+      "label": "COT + Strength + RRP/PPP/REER inverse atom majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_rrp_ppp_reer_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived",
+        "ppp",
+        "reer"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "five-vote simple majority",
+      "complexity": 5,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_rrp_ppp_neer_reer_inverse_majority",
+      "family": "cross_atom_composite",
+      "label": "COT + Strength + RRP/PPP/NEER/REER inverse atom majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_rrp_ppp_neer_reer_inverse_majority_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "six-vote simple majority; ties resolve to RRP inverse",
+      "complexity": 6,
+      "row_policy": "forced_28_rows_preserved"
+    },
+    {
+      "candidate_id": "cot_strength_bpr_rrp_inverse_majority_tie_rrp",
+      "family": "cross_atom_composite",
+      "label": "COT + Strength + BPR + RRP inverse majority, tie to RRP",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "transform_version": "gate63_cot_strength_bpr_rrp_inverse_majority_tie_rrp_simple_majority_v1",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "bpr",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "polarity": "mixed",
+      "tie_rule": "four-vote simple majority; ties resolve to RRP inverse",
+      "complexity": 4,
+      "row_policy": "forced_28_rows_preserved"
+    }
+  ],
+  "non_candidate_diagnostics": {
+    "rrp_inverse_tiers": true,
+    "cot_quality": true,
+    "strength_quality": true,
+    "bpr_quality": true,
+    "cross_cell_agreement": true
+  }
+}

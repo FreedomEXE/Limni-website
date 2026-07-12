@@ -1,0 +1,63 @@
+{
+  "gate_id": "Gate 67A: cell-opinion-packet-contract",
+  "quality_counts_by_cell": [
+    {
+      "cell_id": "cot",
+      "quality_state": "CLEAN",
+      "rows": 9956
+    },
+    {
+      "cell_id": "cot",
+      "quality_state": "DEGRADED",
+      "rows": 488
+    },
+    {
+      "cell_id": "regime",
+      "quality_state": "CLEAN",
+      "rows": 5113
+    },
+    {
+      "cell_id": "regime",
+      "quality_state": "DEGRADED",
+      "rows": 5331
+    },
+    {
+      "cell_id": "strength",
+      "quality_state": "CLEAN",
+      "rows": 10416
+    },
+    {
+      "cell_id": "strength",
+      "quality_state": "DEGRADED",
+      "rows": 28
+    }
+  ],
+  "direct_vote_allowed_by_cell": [
+    {
+      "cell_id": "cot",
+      "rows": 2496
+    },
+    {
+      "cell_id": "regime",
+      "rows": 10444
+    },
+    {
+      "cell_id": "strength",
+      "rows": 4344
+    }
+  ],
+  "warning_active_by_cell": [
+    {
+      "cell_id": "cot",
+      "rows": 1780
+    },
+    {
+      "cell_id": "regime",
+      "rows": 5331
+    },
+    {
+      "cell_id": "strength",
+      "rows": 28
+    }
+  ]
+}

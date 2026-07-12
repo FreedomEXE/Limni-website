@@ -1,0 +1,56 @@
+[
+  {
+    "decision": "verdict",
+    "value": "PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION",
+    "evidence": "Gate80 artifact-derived stress only; hedged T100/L3 remains positive and ahead of directional T100/L3 under normal and stress fixed ADR cost/swap proxies.",
+    "content_hash": "AABA76A518FD2EA8B9C8DFCCAF03ACCE8709755195727D4ECB79C8780217A210"
+  },
+  {
+    "decision": "gate80_mechanical_validity",
+    "value": "accepted_as_input",
+    "evidence": "PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION",
+    "content_hash": "E9168D28E7DFBC85D8F99C257813055AA7921F82C6BAFBDE3590D47599BB71BC"
+  },
+  {
+    "decision": "normal_cost_survival",
+    "value": "pass",
+    "evidence": "51434.077719 ADR stressed final equity",
+    "content_hash": "8A3025FC4C960A9E932847797836E53C6D6559D41580448A94F841B217143927"
+  },
+  {
+    "decision": "stress_cost_survival",
+    "value": "pass",
+    "evidence": "42637.417719 ADR stressed final equity",
+    "content_hash": "5F316D8F34BEA5B5F1667AF9509D7A1A64115FDEA94D56AD6E3625CABA28E479"
+  },
+  {
+    "decision": "extreme_cost_survival",
+    "value": "pass_but_not_required",
+    "evidence": "31628.537719 ADR stressed final equity",
+    "content_hash": "8F54D5550F0B12835E8045185CA252F98A60DB82FCBF271DB4C6F51DAACCA3A2"
+  },
+  {
+    "decision": "cost_buffer",
+    "value": "visible",
+    "evidence": "Gate80 break-even cost 0.262006 ADR/fill; 50 percent return reduction cost 0.131003 ADR/fill.",
+    "content_hash": "095B688461C268446FFA41FBCC35BDF349A90917420B89D78FF51181D84BC397"
+  },
+  {
+    "decision": "margin_proxy",
+    "value": "not_blocking_preflight_not_broker_real",
+    "evidence": "Hedged worst open -966.732115 ADR, max DD -705.647194 ADR, avg active side slots 56.",
+    "content_hash": "6517BB5DCA8575C26C444B0A323C50C99647436D6741136FB781585F41E3F684"
+  },
+  {
+    "decision": "smoothness",
+    "value": "strong_relative_to_directional_but_not_live_proof",
+    "evidence": "Gate80 smoothness 307.029797, longest drawdown 2 weeks.",
+    "content_hash": "7D948B107D2C7FD6AA9D9A9BD35374FA76963500E0D15CD45F7DEBDF3C68C217"
+  },
+  {
+    "decision": "next_action",
+    "value": "open_one_pair_mt5_visual_prototype",
+    "evidence": "Prototype scope must be one pair, no Candidate B, no COT, no Strength, no Regime, no risk layer, no live capital.",
+    "content_hash": "D0618CABF02776030F1443E5306B8F91E21B1B0F62522ED95E75F6FD083A23E4"
+  }
+]

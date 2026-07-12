@@ -1,0 +1,17 @@
+[
+{"check":"gate95_oos_artifacts_present","value":"docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/gate95-config.json plus local full ledgers","expected":"config, summary, validation, command receipt, sha manifest, full local ledgers","passed":true,"content_hash":"E79FDD48CEDF05346E4664190F9A94CB96AE37B8BF830DA3421F11C93C5257A1"},
+{"check":"gate95_oos_validation_failures","value":0,"expected":0,"passed":true,"content_hash":"21CB8043663B655774CEAFAD4B3823A48995AE31D1E729A1425789DE1BEB962D"},
+{"check":"scope_limited_to_gate96a_rows","value":"2 audit variants, 4 controls","expected":"2 audit variants plus 4 controls","passed":true,"content_hash":"A2EE2980FCBBCE040E31EF1AD6A1429057355BF45FCC62BCC599B2441314FDA5"},
+{"check":"movement_candle_causality_failures","value":0,"expected":0,"passed":true,"content_hash":"3B4E87A1AF73DCD3187FDFD9E376C828ECAC4668AEDB5EA3CEFC97066380D75D"},
+{"check":"causality_unique_entry_coverage","value":"62736/62736","expected":"all unique audited entry ids","passed":true,"content_hash":"9797E209DDFD710FA7CE1E7138A5AC64146F7EF6362EE00A2D14E0CC45851B10"},
+{"check":"pnl_actual_usd_reconciliation_max_abs_delta","value":4184.094116,"expected":"<= 0.01","passed":false,"content_hash":"C2E8F49E7B7F47BB94742869039C76FD55B41DA18C9EF4BA51BDBCA3F132E814"},
+{"check":"actual_usd_conversion_gap_rows","value":0,"expected":0,"passed":true,"content_hash":"CF8040F39373B7D24BA44DDA5FDBDFA9B07725ABB626BEEC6EBC25409293C7E2"},
+{"check":"gate95_vs_actual_usd_delta_total","value":9901806.27,"expected":"<= 1.00 for audited winning rows","passed":false,"content_hash":"189FEA0F72FC1BE07FD9CEE18290A5627BA56B7ACE1B31019D215ADB0A3B43BB"},
+{"check":"ranked_net_includes_terminal_inventory","value":"closed_plus_marked_actual emitted from closed exits plus terminal inventory","expected":"closed + marked open inventory","passed":true,"content_hash":"EA9C96FA6D13FB7A02EAD52E9CC27BC223F9A39C805B1624718925797F620E93"},
+{"check":"month_end_marked_equity_emitted","value":34,"expected":">0","passed":true,"content_hash":"9ABE5B064A1B8FEF1A7D965BF3C9A8F0BF3E5C3213AF9763D65CCB957066B912"},
+{"check":"null_controls_emitted","value":10,"expected":"always-long, random, shifted +1/+5/+20 for each audit row","passed":true,"content_hash":"7D794CACBC5D04733205693A3E6EA18B3B3D20E2EC3C058FFC8575406BE92A22"},
+{"check":"pair_concentration_gate_0_05_remove_best_pair","value":11151.99,"expected":">0","passed":true,"content_hash":"8DDD5728F64F5B65369AC1105D851CE3E09A8A1F7DFA56D2F3D4942336933549"},
+{"check":"price_bundle_and_command_receipt_bound","value":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","expected":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","passed":true,"content_hash":"596B4A0E961B0DE5BE825C3C430C69A03F6952F6AA521852397A397E12C7EF7D"},
+{"check":"history_expansion_not_run","value":"2025-01-01T00:00:00.000Z..2026-05-31T23:59:59.999Z","expected":"2025-01-01..2026-05-31 only","passed":true,"content_hash":"EC535C7801210EFC72248DC956AFF7D43218A89F535FA5DAF03C09F42002FE25"},
+{"check":"mt5_ea_mutated_by_gate96a_script","value":"repo-side artifact audit only","expected":"reference-only EA","passed":true,"content_hash":"90B29A9373BCEE3019F1F7E4AD9F2138AC7DC97FDCD4F1FD8DD851B0ECCB00EB"}
+]

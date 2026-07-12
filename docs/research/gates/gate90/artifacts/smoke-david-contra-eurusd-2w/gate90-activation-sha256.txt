@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T02:12:08.483Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json CAA5ECF53CEB2A27E6A5B03661023F01904E7616922D03608024AE7AA04BB950 docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/activation-summary.rows.json
+weekly_json A0CB53667FBBCE9F3253233D3C43314C9298DF58BD6731CF494B96554E460B0B docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/weekly-activation-truth.rows.json
+close_events_json B7A0BAA60ADD39D03C05DAA36D6E2B347AD5650D6D4FC9D2DD09CE7BC4CA7696 docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/close-events.rows.json
+validation_json 39CE88040E99929A4D8EB566D454604D6D6EA81A45B7C758F8C1E9E3349252AF docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/metric-definitions.rows.json
+command_receipt 4C2FE33FA3FE2D80A4D4FA36815966DED810470D4501C05E999A96913A8CD509 docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/command-receipt.json
+run_summary_json 1BA025504C41446E8B4E8EF93F2325FBF8AE1A4168AE79C8AD3A2553AC49BC3F docs/research/gates/gate90/artifacts/smoke-david-contra-eurusd-2w/gate90-run-summary.json
+report D0DEA7852744B4710506FFD713CC3E75199054ACFE8DCDC49FA5D5ED42E9D6DB docs/research/gates/gate90/GATE90_SMOKE_DAVID_CONTRA_EURUSD_2W_2026-07-02.md

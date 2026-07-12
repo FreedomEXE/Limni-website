@@ -1,0 +1,9 @@
+gate_id Gate 70B: exit-expression-interface-preflight
+command npm run engine:gate70b:exit-expression-interface-preflight
+generated_at 2026-06-28T18:14:00.340Z
+git_commit 461cea86054c1047b0d47a805a9a01ca01a4b0ef
+exit_input_schema 25B47AC3D457F33AF0B87CEB0B8BFF96A17591D50A6BA1CD5B4166F3C85F0ECE docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-input.schema.json
+exit_output_schema FFF10441EBE4B0125694F4228553083DE06BACE8A75A5A161029E7FEAC3763F1 docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-output.schema.json
+exit_research_boundary 314A12C4728BACBDEB71422A50F74E29448456DAB0BA1E48416D350F3B51F9B0 docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/exit-expression-research-boundary.json
+summary_json 2850D05FE2EC0A0974349B3254301991BBDB99C69E35FE8C6F875FEEB4209BEF docs/research/gates/gate70b/artifacts/gate70b-exit-expression-interface-preflight/gate70b-summary.json
+report AD733ECD72801EFDAC68AEEFE6C6276BD3B42E25B0CB2E822CF2EA88F3E1B635 docs/research/gates/gate70b/GATE70B_EXIT_EXPRESSION_INTERFACE_PREFLIGHT_2026-06-28.md

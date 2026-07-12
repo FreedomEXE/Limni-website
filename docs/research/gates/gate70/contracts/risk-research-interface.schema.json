@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "limni.poseidon.gate70.risk_research_interface.v1",
+  "title": "Gate 70 Risk Research Interface Contract",
+  "description": "Frozen contract for later risk/portfolio expression research consuming locked Candidate B forced-28 Brain truth without mutating directions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "gate",
+    "input_schema",
+    "output_schema",
+    "immutability_rules"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "gate70_risk_research_interface_v1"
+    },
+    "gate": {
+      "const": "Gate 70: Exit/Risk Interface Preflight"
+    },
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "week_identifier",
+        "all_28_candidate_b_directions",
+        "candidate_tradable_rows",
+        "pair",
+        "direction",
+        "signal_ledger_hash",
+        "exit_candidate_metadata",
+        "volatility_adr_atr_inputs",
+        "fair_value_price_location_input",
+        "correlation_basket_exposure_inputs",
+        "account_state_assumptions"
+      ],
+      "properties": {
+        "week_identifier": {
+          "type": "string"
+        },
+        "all_28_candidate_b_directions": {
+          "type": "array",
+          "minItems": 28,
+          "maxItems": 28,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pair",
+              "candidate_b_direction"
+            ],
+            "properties": {
+              "pair": {
+                "type": "string",
+                "pattern": "^[A-Z]{6}$"
+              },
+              "candidate_b_direction": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "All 28 signal-truth rows for the week; risk may not delete these rows."
+        },
+        "candidate_tradable_rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "description": "Expression candidates derived from signal rows; skipped candidates must remain auditable."
+        },
+        "pair": {
+          "type": "string",
+          "pattern": "^[A-Z]{6}$"
+        },
+        "direction": {
+          "type": "string",
+          "description": "Candidate B direction copied from the signal ledger."
+        },
+        "signal_ledger_hash": {
+          "const": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390"
+        },
+        "exit_candidate_metadata": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "volatility_adr_atr_inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "fair_value_price_location_input": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "correlation_basket_exposure_inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "account_state_assumptions": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "week_identifier",
+        "pair",
+        "candidate_b_direction",
+        "expression_decision",
+        "size_multiplier_or_risk_allocation",
+        "reason_code",
+        "portfolio_basket_state",
+        "correlation_exposure_state",
+        "reset_state",
+        "deterministic_run_id",
+        "config_hash",
+        "input_ledger_hash",
+        "output_ledger_hash"
+      ],
+      "properties": {
+        "week_identifier": {
+          "type": "string"
+        },
+        "pair": {
+          "type": "string",
+          "pattern": "^[A-Z]{6}$"
+        },
+        "candidate_b_direction": {
+          "type": "string"
+        },
+        "expression_decision": {
+          "type": "string",
+          "enum": [
+            "express",
+            "skip",
+            "delay",
+            "reduce",
+            "basket-limit"
+          ]
+        },
+        "size_multiplier_or_risk_allocation": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "portfolio_basket_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "correlation_exposure_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "reset_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "deterministic_run_id": {
+          "type": "string"
+        },
+        "config_hash": {
+          "type": "string"
+        },
+        "input_ledger_hash": {
+          "const": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390"
+        },
+        "output_ledger_hash": {
+          "type": "string"
+        }
+      }
+    },
+    "immutability_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "risk_may_mutate_candidate_b_direction",
+        "risk_may_drop_signal_truth_rows",
+        "risk_may_become_second_direction_model",
+        "candidate_c_default_promotion_allowed"
+      ],
+      "properties": {
+        "risk_may_mutate_candidate_b_direction": {
+          "const": false
+        },
+        "risk_may_drop_signal_truth_rows": {
+          "const": false
+        },
+        "risk_may_become_second_direction_model": {
+          "const": false
+        },
+        "candidate_c_default_promotion_allowed": {
+          "const": false
+        }
+      }
+    }
+  }
+}

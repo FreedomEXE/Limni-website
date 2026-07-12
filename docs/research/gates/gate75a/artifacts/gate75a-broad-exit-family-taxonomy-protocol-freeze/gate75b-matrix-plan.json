@@ -1,0 +1,310 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "planned_gate": "Gate 75B: broad-exit-family-taxonomy-matrix",
+  "execution_started_in_gate75a": false,
+  "fixed_config_count_total": 30,
+  "allowed_family_ids_for_immediate_gate75b": [
+    "controls",
+    "pair_net_grid_cycle_reset",
+    "pair_profit_floor_trail",
+    "pair_stop_floor_universal",
+    "max_fill_max_age_containment",
+    "partial_close_let_rest_run"
+  ],
+  "reference_only_family_ids": [
+    "hedge_freeze_lock_visible_loss"
+  ],
+  "parked_family_ids": [
+    "account_net_adr_reset",
+    "account_profit_floor_trail",
+    "account_stop_recovery_close",
+    "one_reset_and_stop_weekly",
+    "no_reentry_after_reset",
+    "pair_grid_plus_account_override",
+    "pair_cycle_with_account_floor",
+    "partial_pair_close_plus_account_runner_preservation"
+  ],
+  "matrix_rows": [
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_WEEKLY_FORCED_CLOSE"
+    },
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_CARRY_UNTIL_FLIP"
+    },
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_PAIR_NET_GRID_FOCUS_T075_S020"
+    },
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_GATE74E_MAX_FILL_075_REFERENCE"
+    },
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_GATE74E_MAX_AGE_2160H_REFERENCE"
+    },
+    {
+      "family_id": "controls",
+      "group": "control",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "CONTROL_GATE74E_RECOVERY_CLOSE_15_TO_MINUS_250_REFERENCE"
+    },
+    {
+      "family_id": "pair_net_grid_cycle_reset",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_NET_GRID_T050_S020",
+      "target_adr": 0.5,
+      "spacing_adr": 0.2
+    },
+    {
+      "family_id": "pair_net_grid_cycle_reset",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_NET_GRID_T075_S020",
+      "target_adr": 0.75,
+      "spacing_adr": 0.2
+    },
+    {
+      "family_id": "pair_net_grid_cycle_reset",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_NET_GRID_T100_S020",
+      "target_adr": 1,
+      "spacing_adr": 0.2
+    },
+    {
+      "family_id": "pair_profit_floor_trail",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_TRAIL_A075_F025",
+      "activation_adr": 0.75,
+      "floor_adr": 0.25
+    },
+    {
+      "family_id": "pair_profit_floor_trail",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_TRAIL_A100_F050",
+      "activation_adr": 1,
+      "floor_adr": 0.5
+    },
+    {
+      "family_id": "pair_stop_floor_universal",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_STOP_15_REFERENCE",
+      "stop_loss_adr": 15
+    },
+    {
+      "family_id": "pair_stop_floor_universal",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_STOP_20_REFERENCE",
+      "stop_loss_adr": 20
+    },
+    {
+      "family_id": "pair_stop_floor_universal",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PAIR_STOP_20_RECOVER_TO_MINUS_250",
+      "stop_loss_adr": 20,
+      "recovery_close_adr": -2.5
+    },
+    {
+      "family_id": "max_fill_max_age_containment",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "MAX_FILL_075_REFERENCE",
+      "max_fill_count": 75
+    },
+    {
+      "family_id": "max_fill_max_age_containment",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "MAX_AGE_2160H_REFERENCE",
+      "max_age_hours": 2160
+    },
+    {
+      "family_id": "partial_close_let_rest_run",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PARTIAL_50_AT_T075_REST_TO_FLIP",
+      "close_fraction": 0.5,
+      "trigger_adr": 0.75,
+      "runner_exit": "candidate_b_flip"
+    },
+    {
+      "family_id": "partial_close_let_rest_run",
+      "group": "pair_level_lifecycle",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "adapter_id": "PARTIAL_50_AT_T075_REST_TRAIL_F025",
+      "close_fraction": 0.5,
+      "trigger_adr": 0.75,
+      "runner_floor_adr": 0.25
+    },
+    {
+      "family_id": "account_net_adr_reset",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_NET_RESET_075",
+      "target_adr": 0.75
+    },
+    {
+      "family_id": "account_net_adr_reset",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_NET_RESET_125",
+      "target_adr": 1.25
+    },
+    {
+      "family_id": "account_profit_floor_trail",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_TRAIL_A100_F050",
+      "activation_adr": 1,
+      "floor_adr": 0.5
+    },
+    {
+      "family_id": "account_profit_floor_trail",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_TRAIL_A150_F075",
+      "activation_adr": 1.5,
+      "floor_adr": 0.75
+    },
+    {
+      "family_id": "account_stop_recovery_close",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_STOP_300_RECOVER_TO_MINUS_050",
+      "adverse_adr": -3,
+      "recovery_close_adr": -0.5
+    },
+    {
+      "family_id": "account_stop_recovery_close",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_STOP_500_RECOVER_TO_MINUS_100",
+      "adverse_adr": -5,
+      "recovery_close_adr": -1
+    },
+    {
+      "family_id": "one_reset_and_stop_weekly",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_ONE_RESET_STOP_WEEK_TARGET_100",
+      "target_adr": 1
+    },
+    {
+      "family_id": "no_reentry_after_reset",
+      "group": "account_level_lifecycle",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "ACCOUNT_RESET_100_NO_REENTRY",
+      "target_adr": 1,
+      "no_reentry_until_next_week": true
+    },
+    {
+      "family_id": "pair_grid_plus_account_override",
+      "group": "hybrid",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "PAIR_GRID_T075_S020_ACCOUNT_RESET_125",
+      "pair_target_adr": 0.75,
+      "pair_spacing_adr": 0.2,
+      "account_reset_adr": 1.25
+    },
+    {
+      "family_id": "pair_cycle_with_account_floor",
+      "group": "hybrid",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "PAIR_GRID_T075_S020_ACCOUNT_TRAIL_A150_F075",
+      "pair_target_adr": 0.75,
+      "pair_spacing_adr": 0.2,
+      "account_activation_adr": 1.5,
+      "account_floor_adr": 0.75
+    },
+    {
+      "family_id": "partial_pair_close_plus_account_runner_preservation",
+      "group": "hybrid",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "adapter_id": "PARTIAL_PAIR_50_ACCOUNT_RUNNER_FLOOR",
+      "pair_close_fraction": 0.5,
+      "pair_trigger_adr": 0.75,
+      "account_floor_adr": 0.5
+    },
+    {
+      "family_id": "hedge_freeze_lock_visible_loss",
+      "group": "hedge_freeze_lock",
+      "feasibility": "replayable_now",
+      "gate75b_status": "reference_only",
+      "adapter_id": "FREEZE_LOCK_15_REFERENCE_ONLY",
+      "freeze_loss_adr": 15,
+      "locked_loss_visible": true
+    }
+  ],
+  "ranking_metrics": [
+    "final_equity_adr",
+    "equity_profit_factor",
+    "max_equity_drawdown_adr",
+    "final_open_unrealized_adr",
+    "closed_adr",
+    "closed_adr_retention_vs_focus",
+    "top20_winner_retention",
+    "worst_week_loss_adr",
+    "worst_5_week_loss_adr",
+    "annual_stability",
+    "negative_year_count",
+    "profitable_week_rate",
+    "recovery_behavior_where_applicable",
+    "flip_loss_adr_where_applicable",
+    "stops_resets_freezes_locks_count",
+    "fill_count",
+    "turnover_metadata",
+    "hold_time_metadata",
+    "tail_concentration_by_pair_reporting_only",
+    "tail_concentration_by_currency_reporting_only"
+  ],
+  "no_promotion": true,
+  "content_hash": "8EB2439D85A312213F7A60BE94F98EF8DCE6A5260CB8754AA214CAFF4F00ABAB"
+}

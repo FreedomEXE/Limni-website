@@ -1,0 +1,15 @@
+StateMap version_1_63=True
+StateMap includes_pair_direction_core=True
+StateMap direction_uses_confirmed_core=True
+PairDirection formula_id=True
+PairDirection formula_hash_expected=8337305153952970193
+PairDirection confirm_events_5=True
+PairDirection min_flip_score_0_25=True
+PairDirection has_extreme_tracker=True
+PairDirection exhaustion_requires_two_failures=True
+PairDirection old_anchor_reversion_removed=True
+PairDirection old_stoch_reversion_removed=True
+PairDirection no_common_files=True
+PairDirection no_trade_calls=True
+PairDirection no_chart_objects=True
+Stochastic source_untouched_by_gate99zv=True

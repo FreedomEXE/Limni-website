@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T18:37:37.805Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json 140BDD1932E02453E254F6AE75347267CD15970166DA1110F0D0AC0ACF1BC94F docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json B2C7928B043556C57E25AA4845D5B4EBEF62AA5BFD34022C491AE28302A50B71 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
+validation_json B4AD16D3EA3387C89E7BA09A5DD0E690E39A2BCBFE6B2E8294063379E80B4805 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt B8593630F3C4E4AC73AD5D74B8B2CAC5873B814E71CB8129765566C97B1CF24E docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json 7325F905F32B64615A07A6625DD0A1EDC67DF151597078EBACB4B12C000CE4C9 docs/research/gates/gate90/artifacts/gate90c-fast-decision-26w-adr025_ma25_s15-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 873D49CBC4D1B99F5AAA3C03D8890543CE41B0AF61879118D79AEA4AB61D9BAE docs/research/gates/gate90/GATE90C_FAST_DECISION_26W_ADR025_MA25_S15_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

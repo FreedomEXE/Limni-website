@@ -1,0 +1,19 @@
+Gate104 FX28 tester speed benchmark - 2026-07-08T18:50:38.1172121-04:00
+artifact_dir=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-timeout-classification-20260708
+terminal_id=14275
+q_profile=FAST_5000
+tester_model=OpenPrices
+tester_model_value=2
+receipt_mode=CompactLongRun
+process_exit_code=-1
+timed_out=True
+from_date=2026.01.01
+to_date=2026.01.02
+take_profit=0.001
+stop_loss=0.000
+wall_seconds=2.252
+output_folder=LPEA_Rv_FX28_F5K_OpenPrices_RC_TP0p001_SL0p000_20260708-185035
+run_manifest=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\gate104-speed-fixes-timeout-classification-20260708\fx28-run-manifest.json
+status=TIMED_OUT_BENCHMARK_NO_RECEIPTS
+reason=receipt folder missing for prefix: LPEA_Rv_FX28_F5K_OpenPrices_RC_TP0p001_SL0p000_20260708-185035
+strategy_evidence=false

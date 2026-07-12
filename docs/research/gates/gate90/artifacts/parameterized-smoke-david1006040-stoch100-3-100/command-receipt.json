@@ -1,0 +1,40 @@
+{
+  "gate_id": "Gate 90: grid-activation-accuracy-one-sided-selection",
+  "command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection",
+  "durable_command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection -- --only-pair=EURUSD --week-from=2020-01-05 --week-to=2025-12-28 --activation-rule=david_contra --bar-path-mode=ohlc_high_low --david-ma-period=35 --david-rsi-period=100 --david-rsi-overbought=60 --david-rsi-oversold=40 --stoch-k-period=100 --stoch-d-period=3 --stoch-slowing=100 --stoch-overbought=80 --stoch-oversold=20 --summary-only --artifact-dir=docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100 --report-path=docs/research/gates/gate90/GATE90_PARAMETERIZED_SIGNAL_SMOKE_2026-07-02.md",
+  "git_commit": "a905e9806391ddc439bbac43230809860edde1b8",
+  "generated_at": "2026-07-02T03:01:28.684Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100",
+    "reportPath": "docs/research/gates/gate90/GATE90_PARAMETERIZED_SIGNAL_SMOKE_2026-07-02.md",
+    "manifestId": null,
+    "onlyPair": "EURUSD",
+    "pairs": null,
+    "allPairs": false,
+    "weekFrom": "2020-01-05",
+    "weekTo": "2025-12-28",
+    "maxWeeks": 1,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "barPathMode": "ohlc_high_low",
+    "activationRuleId": "david_contra",
+    "logProgress": false,
+    "summaryOnly": true,
+    "signalSettings": {
+      "davidMaPeriod": 35,
+      "davidRsiPeriod": 100,
+      "davidRsiOverbought": 60,
+      "davidRsiOversold": 40,
+      "stochKPeriod": 100,
+      "stochDPeriod": 3,
+      "stochSlowing": 100,
+      "stochOverbought": 80,
+      "stochOversold": 20
+    }
+  }
+}

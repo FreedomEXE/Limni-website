@@ -1,0 +1,14 @@
+single_pair_equivalence_contract=normalized_pre_post_v2
+baseline_run=LPEA_2025_01_01_00_00_00_R256042953
+post_run=LPEA_2025_01_01_00_00_00_R257266703
+baseline_identity=1.032|b70c42863d76
+post_identity=1.033|0ec41f9f53eb
+config_hash_difference=expected_source_identity_change
+normalized_event_rows_equal=True
+normalized_event_sequence_equal=True
+birth_gate_allowed_equal=True
+route_attempt_equal=True
+order_result_equal=True
+birth_commit_equal=True
+quarantine_events_post=0
+status=PASS

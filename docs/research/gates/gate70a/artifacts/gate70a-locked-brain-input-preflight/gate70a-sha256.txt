@@ -1,0 +1,9 @@
+gate_id Gate 70A: locked-brain-input-preflight
+command npm run engine:gate70a:locked-brain-input-preflight
+generated_at 2026-06-28T18:13:33.190Z
+git_commit 461cea86054c1047b0d47a805a9a01ca01a4b0ef
+candidate_b_input_contract 7380D57613F39D5BE5F53E4FCC9C69EF0B6BCB85EE09AF0374EEB6923D195BC6 docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/candidate-b-readonly-input-contract.json
+candidate_c_monitoring_contract B5CFEE9A8710F1FD4EAD1435DA0554F17C1542B775ABFED781D28ED29F893CE7 docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/candidate-c-shadow-monitoring-contract.json
+input_hash_binding 038E63860D4718536F08A3AA5302932316E1AFA47B3D4EB0F024C68D2DA2D86E docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/locked-input-hash-binding.json
+summary_json EB0DAE5197E6E87CC6D74B7B471028360A46859CE1BD4EFC6A45673E3BC89082 docs/research/gates/gate70a/artifacts/gate70a-locked-brain-input-preflight/gate70a-summary.json
+report 5560A6A69CB123D01F876FCECDB73D9ED4E58332008D7FB9E3D1556AB98945B5 docs/research/gates/gate70a/GATE70A_LOCKED_BRAIN_INPUT_PREFLIGHT_2026-06-28.md

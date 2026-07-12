@@ -1,0 +1,30 @@
+{
+  "gate_id": "Gate 70D: review-packet-completeness",
+  "command": "npm run engine:gate70d:review-packet-completeness",
+  "generated_at": "2026-06-28T18:14:48.989Z",
+  "git_commit": "461cea86054c1047b0d47a805a9a01ca01a4b0ef",
+  "verdict": "PASS_GATE70_REVIEW_PACKET_COMPLETENESS__INTERFACE_PREFLIGHT_ARTIFACTS_VISIBLE",
+  "validation": {
+    "required_commands_present": true,
+    "missing_commands": [],
+    "current_work_points_to_gate70d": true,
+    "artifact_paths_checked": 22,
+    "missing_artifact_paths": [],
+    "exit_scoring_started": false,
+    "risk_pruning_started": false,
+    "p_and_l_attribution_started": false,
+    "execution_started": false,
+    "mt5_live_started": false,
+    "learning_started": false,
+    "pr_update_ready_after_push": true,
+    "recovery_state_external_update_required_after_push": true
+  },
+  "artifacts": {
+    "repoVisibleArtifactCheck": "docs/research/gates/gate70d/artifacts/gate70d-review-packet-completeness/repo-visible-artifact-check.json",
+    "prUpdateSummary": "docs/research/gates/gate70d/artifacts/gate70d-review-packet-completeness/pr-update-summary.json",
+    "recoveryStateSummary": "docs/research/gates/gate70d/artifacts/gate70d-review-packet-completeness/recovery-state-summary.json",
+    "summaryJson": "docs/research/gates/gate70d/artifacts/gate70d-review-packet-completeness/gate70d-summary.json",
+    "shaIdentity": "docs/research/gates/gate70d/artifacts/gate70d-review-packet-completeness/gate70d-sha256.txt",
+    "report": "docs/research/gates/gate70d/GATE70D_REVIEW_PACKET_COMPLETENESS_2026-06-28.md"
+  }
+}

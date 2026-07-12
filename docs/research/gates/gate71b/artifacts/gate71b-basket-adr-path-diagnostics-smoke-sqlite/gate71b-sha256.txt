@@ -1,0 +1,8 @@
+gate_id Gate 71B: basket-adr-path-diagnostics
+command npm run engine:gate71b:basket-adr-path-diagnostics
+generated_at 2026-06-28T20:34:03.521Z
+git_commit f1903a478c07afff3453cff0c080d568ae2b5b24
+weekly_path_diagnostics 219D4177C4C9A9178A6A00D447708BE75CB51B3FD6779C05D8DCCBC19A74CB9C docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics-smoke-sqlite/candidate-b-basket-adr-path-diagnostics.rows.jsonl
+threshold_summary E2C46949C6EE49BBFD8629FEFA2BD98E54820462DBC4E7DBD2642952F7AAF017 docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics-smoke-sqlite/threshold-hit-summary.json
+summary_json F87178CF46EF2A8098DE3EAAB5C872844EB9ADA19CC1A502B95448DAD52626D1 docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics-smoke-sqlite/gate71b-summary.json
+report A6521E1B3F6452792EC5C730BAACB11DA5959F1A6B161172819A7104AA30587E docs/research/gates/gate71b/GATE71B_BASKET_ADR_PATH_DIAGNOSTICS_SMOKE_SQLITE_2026-06-28.md

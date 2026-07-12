@@ -1,0 +1,10 @@
+gate_id Gate 72D: review-packet-no-promotion
+command npm run engine:gate72d:review-packet-no-promotion
+generated_at 2026-06-29T00:17:49.395Z
+git_commit dc2043d87e8e76763e674ffe2bac31bb313b3fe7
+repo_visible_artifact_check 52DEEBB4DC53C89E0146EA3C72B06A93871BA65057C35B509C82F71C4E2EF175 docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/repo-visible-artifact-check.json
+no_promotion_assertion C4B9D8DBCA7B18E53F856D60C6F0188181DCB744DAFBDC6BAD9BB2A49D13DF72 docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/gate72-no-promotion-assertion.json
+pr_update_summary 7A4A6DA772517E249743EE366CE30C123EF2370B468B563CBBCC6E1FFC1A1A6F docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/pr-update-summary.json
+recovery_state_summary 40EC7B1EDD22E6A5CC2B7C02443E00756DC9F6517CBEDAB8D93605F2441E43C1 docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/recovery-state-summary.json
+summary_json 6C5CAF71D36801106869FF1457F421733E7CC1F929AE4BA7FA2B5D1787B37CF4 docs/research/gates/gate72d/artifacts/gate72d-review-packet-no-promotion/gate72d-summary.json
+report 9644D1995567C49C051076CD5F040593CDE701B736C340ECC9EEB64CA3A005B0 docs/research/gates/gate72d/GATE72D_REVIEW_PACKET_NO_PROMOTION_2026-06-28.md

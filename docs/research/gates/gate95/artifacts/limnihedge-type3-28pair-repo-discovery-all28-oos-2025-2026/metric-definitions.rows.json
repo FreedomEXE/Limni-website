@@ -1,0 +1,9 @@
+[
+{"metric":"type3_candle_combination","definition":"Legacy Type 3 five-candle combo; +4 buys after bearish seed plus four bullish candles, -4 sells after bullish seed plus four bearish candles.","content_hash":"EDC12DC72B66410D07A55C5DF726C1D73A411B9B5E5E7C377A024C4B349D3AA7"},
+{"metric":"candidate_b_agreement_strict","definition":"Type 3 entry only when Candidate B weekly side agrees with Type 3 side. Candidate B never initiates trades in Gate 95.","content_hash":"D63F223ED9E4F400C731572BC700F36364FD204267293FEFD9F4FBCC1B1D1044"},
+{"metric":"movement_surfaces","definition":"Fixed ADR event streams 0.025/0.05/0.075/0.10 built from Gate 74B canonical M1 paths.","content_hash":"26EC67EF694BF4B470405943B9F3B177343FEA772B1704A80856D326DB5C8663"},
+{"metric":"legacy_lifecycle_model","definition":"Initial Gate 95 replay uses legacy Type 3 lot scaling and trail start/step/stop pips over reconstructed candles; no new lifecycle optimization.","content_hash":"269EE5CBBA52FF838F25DF34ED36411088520D25E10B4165AA7A9F0E2E5B2DCA"},
+{"metric":"net_usd_model","definition":"Modeled price PnL plus modeled entry commission. Cross quote conversion is explicitly receipted and not a live economics claim.","content_hash":"B68CEEB42A5DDDE3D6EA6FC589E7E4E0BC1BD787244E396452D3BAB318B3492A"},
+{"metric":"open_inventory_rows","definition":"Positions still open at the replay endpoint before terminal liquidation accounting.","content_hash":"F9F874E28F448FE0E3E66CC3B218D532A66B3D8ABDD95881758E4B88D1FF6113"},
+{"metric":"terminal_liquidations","definition":"Positions force-closed at the replay endpoint; research-pass candidates must reduce this materially before any live-shaped gate.","content_hash":"C120E730056DA4474E39F785AD2E0AE12A27D9A6661E3922ACE7796426F79ED5"}
+]

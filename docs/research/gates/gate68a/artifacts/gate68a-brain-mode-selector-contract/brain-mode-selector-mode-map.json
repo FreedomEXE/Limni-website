@@ -1,0 +1,10 @@
+{
+  "gate_id": "Gate 68A: brain-mode-selector-contract",
+  "selector_id": "candidate_d_brain_mode_selector",
+  "mode_count": 3,
+  "modes": {
+    "NORMAL": "candidate_b_macro_anchor_with_cot_warning",
+    "PROTECTION": "candidate_c_scenario_memory_guarded",
+    "CONSERVATIVE": "candidate_a_macro_anchor_conservative"
+  }
+}

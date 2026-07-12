@@ -1,0 +1,85 @@
+{
+  "gate_id": "Gate 68C: frozen-seven-year-reference-capsule",
+  "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+  "architecture_version": "gate66_brain_cells_atoms_v3",
+  "brain_cells_atoms_contract_version": "gate66_brain_cells_atoms_v3",
+  "final_algorithm_name": null,
+  "candidate_d_mode_selector_contract_hash": "796C86E90DC374E6E9807AB005C65EFF23A80F89C161F824AB62E0F620777BBA",
+  "candidate_a_b_c_reference_hashes": [
+    {
+      "path": "docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-candidate-contracts.json",
+      "sha256": "F88785F2DA5E7DAEAEA2FE20EACD5078B032EB1E02FE7686838CE9841A8047A6"
+    },
+    {
+      "path": "docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-test-matrix.rows.jsonl",
+      "sha256": "968DA2A989047B74CACE2E3260C8398CFE59D12B6EED2D9732F4EA404B1B3433"
+    }
+  ],
+  "cell_opinion_contract_hash": "570ACF742F5E601D99F43ED40F62C5B9E7DFA19571CB9BAF800CFD1E917C4F50",
+  "source_data_bundle_identities": {
+    "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "path_outcome_warehouse_id": "gate57a0b_pair_week_path_outcomes_47B8F40AFB3B",
+    "path_resolution": "1m",
+    "architecture_contract": "gate66_brain_cells_atoms_v3",
+    "cell_opinion_packet_contract": "gate67a_cell_opinion_packet_contract_v0",
+    "brain_mode_selector_contract": "gate68_brain_mode_selector_v0"
+  },
+  "forced28_denominator_contract": {
+    "candidate_count": 4,
+    "rows_per_candidate": 10444,
+    "weeks": 373,
+    "pairs_per_week": 28,
+    "duplicate_week_symbol_rows_per_candidate": 0
+  },
+  "seven_year_decision_ledger_hash": "C33A7B81DC8FDD3D1048F1AF7EB2F7A8350B189506E4215E12EF78B705403D9A",
+  "seven_year_outcome_scoring_hash": "38961DF0C194E9765619F3753F7975795838A9182DE37632403332BD02A4C0D2",
+  "reason_code_contract_hash": "87BE7BFFB87E932B1C852ED16F1025B93336B76D5481D654776B004F55E74D5F",
+  "input_hashes": [
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-contract.json",
+      "sha256": "796C86E90DC374E6E9807AB005C65EFF23A80F89C161F824AB62E0F620777BBA"
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-mode-map.json",
+      "sha256": "E4A5B05A2E6A8DCADCF1BE1A04017FF482CADB512578AAEAADC05E1FDD8F95A2"
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-reason-code-contract.json",
+      "sha256": "87BE7BFFB87E932B1C852ED16F1025B93336B76D5481D654776B004F55E74D5F"
+    },
+    {
+      "path": "docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-sha256.txt",
+      "sha256": "DF8BC5912D051589C4A338AE7957CDBAA9368A3FD9D745560AE563C08773605C"
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-summary.json",
+      "sha256": "99EE5DEB7E71DA1BABA8B6A7970B452B9D82510330593D8276AEB6584A21CFBC"
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-test-matrix.rows.jsonl",
+      "sha256": "BB36EC6B2B163796C72F575C6190CE47A37B4697DC4B8AA4EA65F936E1DB380A"
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/brain-mode-selector-signature-collapse.json",
+      "sha256": "F376BDBE72CA159FA6F02ED9A1EB189B197FFB8D264104EFA2B90B2338BAAADC"
+    },
+    {
+      "path": "docs/research/gates/gate68b/artifacts/gate68b-brain-mode-selector-test-matrix/gate68b-sha256.txt",
+      "sha256": "64466348EA2EBF55BCFE8FDE1DBEE80123845771E9DC8F46C47EDABB7F76C236"
+    },
+    {
+      "path": "docs/research/gates/gate67a/artifacts/gate67a-cell-opinion-packet-contract/cell-opinion-ledger.rows.jsonl",
+      "sha256": "570ACF742F5E601D99F43ED40F62C5B9E7DFA19571CB9BAF800CFD1E917C4F50"
+    },
+    {
+      "path": "docs/research/gates/gate67b/artifacts/gate67b-final-forced28-candidate-contract/final-forced28-candidate-contracts.json",
+      "sha256": "F88785F2DA5E7DAEAEA2FE20EACD5078B032EB1E02FE7686838CE9841A8047A6"
+    },
+    {
+      "path": "docs/research/gates/gate67c/artifacts/gate67c-final-forced28-test-matrix/final-forced28-test-matrix.rows.jsonl",
+      "sha256": "968DA2A989047B74CACE2E3260C8398CFE59D12B6EED2D9732F4EA404B1B3433"
+    }
+  ],
+  "no_drift_contract_hash": "8BB135E0F2138AA145AF80E6C4A974C4EAE479E9B77E26902A4C2C2533C7BC10"
+}

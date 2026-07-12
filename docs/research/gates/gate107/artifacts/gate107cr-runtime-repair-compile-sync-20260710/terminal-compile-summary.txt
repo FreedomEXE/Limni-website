@@ -1,0 +1,4 @@
+MT5 compile summary - 2026-07-10T04:05:45.3748308-04:00
+repo|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 34826 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107cr-runtime-repair-compile-sync-20260710\repo-LimniPortfolioEA-compile-log.txt
+terminal-14275|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 36778 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107cr-runtime-repair-compile-sync-20260710\terminal-14275-LimniPortfolioEA-compile-log.txt
+terminal-94497|exit_code=1|clean=True|Result: 0 errors, 0 warnings, 35432 ms elapsed, cpu='X64 Regular'|log=C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate107\artifacts\gate107cr-runtime-repair-compile-sync-20260710\terminal-94497-LimniPortfolioEA-compile-log.txt

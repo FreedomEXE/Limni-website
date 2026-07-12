@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T10:44:47.358Z
+git_commit 7d85457a666ff53890b05966300e1a8ef6b734dc
+summary_json 9543A352B6690CAE050B8404F92C8B9241131666AFA2700B292599F465EAD30B docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/activation-summary.rows.json
+weekly_json 3CFF97EFB0779C855367FB76DE35242ED0F01DB7EDFEE1A55477123791C6F89C docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/close-events.rows.json
+validation_json B939B4CE5F72EC4A622399E3D7314F8961A23610D89EBBE6986EA30B64C96844 docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/metric-definitions.rows.json
+command_receipt 5A49D22AD735E1E4D5316E5768B1599B242ACBFF50883076CC0E3587CBF746CB docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/command-receipt.json
+run_summary_json 9300D2E9F40E864A8AAE6B853AEF374977698358061B89DC412988BB81E38153 docs/research/gates/gate90/artifacts/ma200-target-5w-close-s010-david200-rsi506040-stoch100-3-100/gate90-run-summary.json
+report ECDD44C07F58C18E2BC1181F4D31E9356129C9E6BFDD1940306886FB454F458F docs/research/gates/gate90/GATE90_MA200_TARGET_5W_CLOSE_S010_DAVID200_RSI506040_STOCH100_3_100_2026-07-02.md

@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T18:15:52.508Z
+git_commit 53679c57f2fdbb3639c5bf5334e723924beed858
+summary_json C747DCCA0ED8044E1876753903C93E974F7650FF33E1ADE640DD6B3B6FBCEC9E docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/activation-summary.rows.json
+weekly_json E237611FD4AA919D5EA15B53065699976210338A28EF27B34C7A9FC4CE808FEE docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/close-events.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/terminal-inventory.rows.json
+validation_json A2895BD4F8F2CEF8B6B811724AC1D1DC8BB0597FAAC8A7C5DE5A10A1AFFA8149 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/validation.rows.json
+metric_definitions_json 73B759673C1A8CDB0D714EBC0A4E51CC8450435FDDFBBCC2FB1CA8607993217B docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/metric-definitions.rows.json
+command_receipt 294DBD3E6E0729A9E77B2D5A4831190434C1F7B733C01D947894C943FFD94006 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/command-receipt.json
+run_summary_json 6270C3B7E101580B4573E8D89D2B4B7D4FD11DE61461981808B5BFA85B461AE1 docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/gate90-run-summary.json
+report 54F80A08B1D2C623713731724A9290A527000CE2499F2325D82384B360A93AFD docs/research/gates/gate90/artifacts/gate90c-speed-check-1w-close-adr025_ma25_s1/report.md

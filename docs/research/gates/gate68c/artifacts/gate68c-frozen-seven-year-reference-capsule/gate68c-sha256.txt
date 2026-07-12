@@ -1,0 +1,14 @@
+gate_id Gate 68C: frozen-seven-year-reference-capsule
+command npm run engine:gate68c:frozen-seven-year-reference-capsule
+generated_at 2026-06-28T04:45:38.580Z
+git_commit 5ac9280189eb536207b115398c671dd3f9952598
+manifest_json 5409501357CA48154B0F8E64BADFDAAC9A66036CCD8137959379502AD4698B97 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.manifest.json
+hash_manifest 780555E0109FFC16F336081FB69A777043F5CCD63EDA200B92E974012F63D454 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reference-capsule.hash-manifest.txt
+decision_ledger_rows DC97B41D345CFB8D07FE6F05F3AA6B96F79501CFE78A0B33CD18564F7A92B589 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-decision-ledger.rows.jsonl
+reference_summary EC759C6E18B38F636BBE841FBA43E05FF7A169D15AFDC5143A83ECEBAF4CE241 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-seven-year-reference-summary.json
+performance_envelope 31FD5BF7F1576D9EDAF653EA5F0E4C4B7568BF138AB66497A1AE2B6E016C721B docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-performance-envelope.json
+mode_distribution 1B91540E13C252D4D0C63DB2A3FD5BF2A60BBC23A32485A6C2D51A3BC98A5261 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-mode-distribution.json
+reason_code_distribution BE1B05366521833576B98BCB7C62D4D6256A71414C1270C882B85124070D16BE docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-reason-code-distribution.json
+no_drift_contract CB51CC0070B30A9B60A9AEA41CA51200C42140CDE96DA2755810F59AFE3B339D docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/frozen-no-drift-contract.json
+summary_json D7655412932BE98A7BF2797D9E4054915F71D53A79194FC24A2ADC9A675EEBB3 docs/research/gates/gate68c/artifacts/gate68c-frozen-seven-year-reference-capsule/gate68c-summary.json
+report 24B2FAE2B5DBE67EAFB70B0D9F624FCE622B0AE08EA704DD7E61B21F8FDB9AD2 docs/research/gates/gate68c/GATE68C_FROZEN_SEVEN_YEAR_REFERENCE_CAPSULE_2026-06-28.md

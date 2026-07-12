@@ -1,0 +1,185 @@
+/*-----------------------------------------------
+  Run manifest receipt writer
+-----------------------------------------------*/
+#ifndef __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__
+#define __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__
+
+#include "..\\Core\\BuildInfo.mqh"
+#include "..\\Core\\Types.mqh"
+#include "..\\Market\\SessionCalendar.mqh"
+#include "..\\Strategies\\Revma\\RevmaTypes.mqh"
+#include "ReceiptWriter.mqh"
+
+void LP_WriteRunManifest(
+   LP_ReceiptWriter &receipts,
+   const LP_Config &config,
+   const ulong config_hash,
+   const ulong symbol_universe_hash
+)
+{
+   receipts.Write(
+      LP_RECEIPT_RUN_START,
+      "",
+      "started",
+       "ea=" + LP_EA_DisplayName() +
+         "|active_systems=" + LP_ActiveSystemsText(
+            config.enable_revma_system,
+            config.enable_kyma_system,
+            config.enable_katarakti_system) +
+         "|universe=" + LP_UniverseDisplayName(config.revma_universe_mode) +
+         "|execution=" + LP_ExecutionModeName(config.execution_mode) +
+         "|profile_classification=" + LP_RunClassification(config.revma_universe_mode) +
+         "|loaded_runtime_input_hash=" + (string)config_hash +
+         "|fx28_active=" + LP_BoolText(config.enable_revma_system &&
+            config.revma_universe_mode == LP_UNIVERSE_FX28) +
+         "|research_build_identity=" + LP_BUILD_GATE +
+         "|ea_version=" + LP_EA_VERSION +
+         "|source_bundle_algorithm=" + LP_EA_SOURCE_BUNDLE_ALGORITHM +
+         "|source_bundle_id=" + LP_EA_SOURCE_BUNDLE_ID +
+         "|source_bundle_short=" + LP_EA_SourceBundleShort() +
+         "|scope=" + LP_BUILD_SCOPE +
+         "|receipt_payload_contract=" + receipts.PayloadContract() +
+         "|execution_mode=" + LP_ExecutionModeName(config.execution_mode) +
+         "|enable_trading=" + LP_BoolText(config.enable_trading) +
+         "|allow_live_trading=" + LP_BoolText(config.allow_live_trading) +
+         "|open_order_routing=" + LP_BoolText(config.enable_open_order_routing) +
+         "|close_execution=" + LP_BoolText(config.enable_close_execution) +
+          "|account_close_execution=" + LP_BoolText(config.enable_account_close_execution) +
+          "|enable_strategy_evaluation=" + LP_BoolText(config.enable_strategy_evaluation) +
+          "|timer_watchdog=" + LP_BoolText(config.use_timer_watchdog) +
+          "|timer_watchdog_seconds=" + IntegerToString(config.timer_watchdog_seconds) +
+          "|persist_revma_lifecycle_state=" + LP_BoolText(config.persist_revma_lifecycle_state) +
+          "|source_revision=" + config.source_revision +
+         "|news_guard_mode=" + LP_NewsGuardModeName(config.news_guard_mode) +
+         "|week_boundary=" + LP_BoolText(config.use_week_boundary_guard) +
+         "|harvest_governor=" + LP_BoolText(config.enable_portfolio_harvest_governor) +
+         "|currency_guard=" + LP_BoolText(config.enable_currency_exposure_guard) +
+         "|active_systems=" + LP_ActiveSystemsText(
+            config.enable_revma_system,
+            config.enable_kyma_system,
+            config.enable_katarakti_system) +
+         "|active_system=" + LP_REVMA_SYSTEM_ID +
+         "|revma_formula_id=" + LP_REVMA_FORMULA_ID +
+         "|revma_formula_hash=" + (string)LP_RevmaFormulaHash() +
+         "|revma_pair_direction_formula_id=" + LimniPairDirectionFormulaId() +
+         "|revma_pair_direction_formula_hash=" + (string)LimniPairDirectionFormulaHash() +
+         "|revma_universe_mode=" + LP_UniverseModeName(config.revma_universe_mode) +
+         "|revma_setup=MEAN_REVERSION" +
+         "|revma_q_profile=" + LP_RevmaQProfileName(config.revma_q_profile) +
+         "|revma_max_m1_bars=" + IntegerToString(LP_RevmaResolvedMaxM1Bars(config)) +
+         "|revma_q_profile_id=" + LP_RevmaConfigQProfileId(config) +
+         "|revma_grid_spacing_q=" + DoubleToString(config.revma_grid_spacing_q, 2) +
+         "|revma_visual_dashboard=" + LP_BoolText(config.revma_show_visual_dashboard) +
+         "|revma_dashboard_refresh_seconds=" + IntegerToString(config.revma_dashboard_refresh_seconds) +
+         "|revma_dashboard_screenshot_on_divergent_add=" + LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add) +
+         "|sltp_mode=" + LP_StopTakeProfitModeName(config.stop_take_profit_mode) +
+         "|broker_grid_tp_sync_mode=" + LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode) +
+         "|broker_grid_tp_sync_enabled_current_runtime=" + LP_BoolText(LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode)) +
+         "|grid_take_profit_q=" + DoubleToString(config.grid_take_profit_q, 4) +
+         "|grid_stop_loss_q=" + DoubleToString(config.grid_stop_loss_q, 4) +
+         "|account_take_profit_pct=" + DoubleToString(config.account_take_profit_pct, 4) +
+         "|account_stop_loss_pct=" + DoubleToString(config.account_stop_loss_pct, 4) +
+         "|sltp_close_commission_per_lot=" + DoubleToString(config.stop_take_profit_close_commission_per_lot, 2) +
+         "|hwm_trail_arm_pct=" + DoubleToString(config.hwm_trail_arm_pct, 4) +
+         "|hwm_trail_min_lock_pct=" + DoubleToString(config.hwm_trail_min_lock_pct, 4) +
+         "|hwm_trail_giveback_pct=" + DoubleToString(config.hwm_trail_giveback_pct, 4) +
+         "|hwm_trail_block_new_entries_when_armed=" + LP_BoolText(config.hwm_trail_block_new_entries_when_armed) +
+         "|hwm_trail_hard_stop_loss_pct=" + DoubleToString(config.hwm_trail_hard_stop_loss_pct, 4),
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+   );
+
+   receipts.Summary("ea_name", LP_EA_DisplayName());
+   receipts.Summary("active_systems", LP_ActiveSystemsText(
+      config.enable_revma_system,
+      config.enable_kyma_system,
+      config.enable_katarakti_system));
+   receipts.Summary("universe", LP_UniverseDisplayName(config.revma_universe_mode));
+   receipts.Summary("execution", LP_ExecutionModeName(config.execution_mode));
+   receipts.Summary("profile_classification", LP_RunClassification(config.revma_universe_mode));
+   receipts.Summary("research_build_identity", LP_BUILD_GATE);
+   receipts.Summary("ea_version", LP_EA_VERSION);
+   receipts.Summary("build_gate", LP_BUILD_GATE);
+   receipts.Summary("source_bundle_algorithm", LP_EA_SOURCE_BUNDLE_ALGORITHM);
+   receipts.Summary("source_bundle_id", LP_EA_SOURCE_BUNDLE_ID);
+   receipts.Summary("source_bundle_short", LP_EA_SourceBundleShort());
+   receipts.Summary("ex5_build_identity", LP_EA_VERSION + "|" +
+      LP_EA_SourceBundleShort());
+   receipts.Summary("build_scope", LP_BUILD_SCOPE);
+   receipts.Summary("run_id", receipts.RunId());
+   receipts.Summary("output_folder", config.output_folder);
+   receipts.Summary("config_hash", (string)config_hash);
+   receipts.Summary("loaded_runtime_input_hash", (string)config_hash);
+   receipts.Summary("symbol_universe_hash", (string)symbol_universe_hash);
+   receipts.Summary("execution_mode", LP_ExecutionModeName(config.execution_mode));
+   receipts.Summary("enable_trading", LP_BoolText(config.enable_trading));
+   receipts.Summary("allow_live_trading", LP_BoolText(config.allow_live_trading));
+   receipts.Summary("open_order_routing_enabled", LP_BoolText(config.enable_open_order_routing));
+   receipts.Summary("close_execution_enabled", LP_BoolText(config.enable_close_execution));
+   receipts.Summary("account_close_execution_enabled", LP_BoolText(config.enable_account_close_execution));
+   receipts.Summary("strategy_evaluation_enabled", LP_BoolText(config.enable_strategy_evaluation));
+   receipts.Summary("timer_watchdog_enabled", LP_BoolText(config.use_timer_watchdog));
+   receipts.Summary("timer_watchdog_seconds", IntegerToString(config.timer_watchdog_seconds));
+   receipts.Summary("persist_revma_lifecycle_state", LP_BoolText(config.persist_revma_lifecycle_state));
+   receipts.Summary("source_revision", config.source_revision);
+   receipts.Summary("news_guard_mode", LP_NewsGuardModeName(config.news_guard_mode));
+   receipts.Summary("news_calendar_file", config.news_calendar_file);
+   receipts.Summary("receipt_mode", LP_ReceiptModeName(config.receipt_mode));
+   receipts.Summary("receipt_payload_contract", receipts.PayloadContract());
+   receipts.Summary("week_boundary_description", LP_WeekBoundaryDescription());
+   receipts.Summary("portfolio_harvest_governor_enabled", LP_BoolText(config.enable_portfolio_harvest_governor));
+   receipts.Summary("harvest_initial_target_money", DoubleToString(config.harvest_initial_target_money, 2));
+   receipts.Summary("harvest_trail_money", DoubleToString(config.harvest_trail_money, 2));
+   receipts.Summary("harvest_soft_lock_on_breach", LP_BoolText(config.harvest_soft_lock_on_breach));
+   receipts.Summary("harvest_grid_winddown_on_breach", LP_BoolText(config.harvest_grid_winddown_on_breach));
+   receipts.Summary("harvest_arm_emergency_liquidation", LP_BoolText(config.harvest_arm_emergency_liquidation));
+   receipts.Summary("currency_exposure_guard_enabled", LP_BoolText(config.enable_currency_exposure_guard));
+   receipts.Summary("active_system", LP_REVMA_SYSTEM_ID);
+   receipts.Summary("revma_system_id", LP_REVMA_SYSTEM_ID);
+   receipts.Summary("revma_system_name", LP_REVMA_SYSTEM_NAME);
+   receipts.Summary("revma_universe_mode", LP_UniverseModeName(config.revma_universe_mode));
+   receipts.Summary("fx28_active", LP_BoolText(config.enable_revma_system &&
+      config.revma_universe_mode == LP_UNIVERSE_FX28));
+   receipts.Summary("revma_setup", "MEAN_REVERSION");
+   receipts.Summary("revma_formula_id", LP_REVMA_FORMULA_ID);
+   receipts.Summary("revma_formula_hash", (string)LP_RevmaFormulaHash());
+   receipts.Summary("revma_pair_direction_formula_id", LimniPairDirectionFormulaId());
+   receipts.Summary("revma_pair_direction_formula_hash", (string)LimniPairDirectionFormulaHash());
+   receipts.Summary("revma_fixed_lots", DoubleToString(config.revma_fixed_lots, 4));
+   receipts.Summary("revma_grid_spacing_q", DoubleToString(config.revma_grid_spacing_q, 2));
+   receipts.Summary("revma_intent_expiry_minutes", IntegerToString(config.revma_intent_expiry_minutes));
+   receipts.Summary("revma_q_profile", LP_RevmaQProfileName(config.revma_q_profile));
+   receipts.Summary("revma_max_m1_bars", IntegerToString(LP_RevmaResolvedMaxM1Bars(config)));
+   receipts.Summary("revma_q_profile_id", LP_RevmaConfigQProfileId(config));
+   receipts.Summary("revma_visual_dashboard", LP_BoolText(config.revma_show_visual_dashboard));
+   receipts.Summary("revma_dashboard_refresh_seconds", IntegerToString(config.revma_dashboard_refresh_seconds));
+   receipts.Summary("revma_dashboard_screenshot_on_divergent_add", LP_BoolText(config.revma_dashboard_screenshot_on_divergent_add));
+   receipts.Summary("stop_take_profit_mode", LP_StopTakeProfitModeName(config.stop_take_profit_mode));
+   receipts.Summary("broker_grid_tp_sync_mode", LP_BrokerGridTpSyncModeName(config.broker_grid_tp_sync_mode));
+   receipts.Summary("broker_grid_tp_sync_enabled_current_runtime", LP_BoolText(LP_BrokerGridTpSyncEnabledForRuntime(config.broker_grid_tp_sync_mode)));
+   receipts.Summary("grid_take_profit_q", DoubleToString(config.grid_take_profit_q, 4));
+   receipts.Summary("grid_stop_loss_q", DoubleToString(config.grid_stop_loss_q, 4));
+   receipts.Summary("account_take_profit_pct", DoubleToString(config.account_take_profit_pct, 4));
+   receipts.Summary("account_stop_loss_pct", DoubleToString(config.account_stop_loss_pct, 4));
+   receipts.Summary("take_profit_value", DoubleToString(config.grid_take_profit_q, 4));
+   receipts.Summary("stop_loss_value", DoubleToString(config.grid_stop_loss_q, 4));
+   receipts.Summary("stop_take_profit_close_commission_per_lot", DoubleToString(config.stop_take_profit_close_commission_per_lot, 2));
+   receipts.Summary("hwm_trail_arm_pct", DoubleToString(config.hwm_trail_arm_pct, 4));
+   receipts.Summary("hwm_trail_min_lock_pct", DoubleToString(config.hwm_trail_min_lock_pct, 4));
+   receipts.Summary("hwm_trail_giveback_pct", DoubleToString(config.hwm_trail_giveback_pct, 4));
+   receipts.Summary("hwm_trail_block_new_entries_when_armed", LP_BoolText(config.hwm_trail_block_new_entries_when_armed));
+   receipts.Summary("hwm_trail_hard_stop_loss_pct", DoubleToString(config.hwm_trail_hard_stop_loss_pct, 4));
+   receipts.Summary("max_currency_signed_lots", DoubleToString(config.max_currency_signed_lots, 2));
+   receipts.Summary("max_currency_gross_lots", DoubleToString(config.max_currency_gross_lots, 2));
+   receipts.Summary("max_same_direction_grids_per_currency", IntegerToString(config.max_same_direction_grids_per_currency));
+   receipts.Summary("max_managed_positions", IntegerToString(config.max_managed_positions));
+   receipts.Summary("max_single_order_lots", DoubleToString(config.max_single_order_lots, 2));
+   receipts.Summary("max_close_positions_per_step", IntegerToString(config.max_close_positions_per_step));
+   receipts.Summary("news_minimum_impact", IntegerToString(config.news_minimum_impact));
+}
+
+#endif // __LIMNI_PORTFOLIO_RUN_MANIFEST_MQH__

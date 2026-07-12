@@ -1,0 +1,27 @@
+{
+  "candidate_summary_count": 34,
+  "predeclared_rule_count": 34,
+  "week_count": 373,
+  "expected_week_count": 373,
+  "weekly_matrix_rows": 12682,
+  "expected_weekly_matrix_rows": 12682,
+  "duplicate_rule_week_count": 0,
+  "duplicate_rule_weeks_sample": [],
+  "row_rules_missing_from_summary": [],
+  "summary_rules_missing_from_rows": [],
+  "candidate_b_ledger_hashes": [
+    "92C9E090F14B3EF2F96C78E749D9783F0F8F0E8E6CEA4900FDEFB115ED1BAD03"
+  ],
+  "path_diagnostic_hash_count": 373,
+  "inconsistent_diagnostic_hash_weeks": [],
+  "unavailable_rows": 373,
+  "unavailable_by_rule": {
+    "CONTROL_PAIR_SILO_1ADR_UNAVAILABLE": 373
+  },
+  "pair_silo_unavailable_only": true,
+  "weekly_hold_rows": 373,
+  "gate71c_replay_from_warehouse": true,
+  "gate71c_raw_m1_rebuild_performed": false,
+  "gate71c_exit_promotion_performed": false,
+  "legacy_adr_grid_control_only": true
+}

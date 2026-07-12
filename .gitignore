@@ -33,13 +33,18 @@ yarn-error.log*
 
 # Data files
 data/
+engine/data/
+engine/reports/
+engine/tmp/
 *.json
 !package.json
 !package-lock.json
 !tsconfig.json
+!docs/research/papers/papers_manifest.json
 !app/tsconfig.json
 !database/contracts/*.json
 !app/src/lib/performance/embedded/data-integrity-audit.json
+!automation/mt5/tools/canonical-compile-state.json
 
 # IDE
 .vscode/
@@ -54,31 +59,37 @@ data/
 Thumbs.db
 
 # MT5 compiled files
-app/services/mt5/Experts/*.ex5
+automation/mt5/Experts/*.ex5
 app/public/downloads/*.mq5
 
 # Scraper
-app/services/sentiment-scraper/node_modules/
-app/services/sentiment-scraper/*.log
+automation/sentiment-scraper/node_modules/
+automation/sentiment-scraper/*.log
 
 # Debug
 *.tsbuildinfo
+
+# Research runner intermediate artifacts
+docs/research/gates/gate90/artifacts/oos-session-window-5w-*/
+docs/research/gates/gate90/artifacts/gate90c-combined-variant-smoke-*/
+docs/research/gates/gate90/artifacts/gate90c-full-window-*/
+
+# Large local-only research row ledgers; compact summaries and SHA manifests are committed explicitly.
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-mechanical-smoke-2026-04/
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-smoke/
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/open-inventory.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/terminal-liquidations.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/trade-exits.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-admissions.rows.csv
+docs/research/gates/gate95/artifacts/limnihedge-type3-28pair-repo-discovery-all28-oos-2025-2026/type3-entry-candidates.rows.csv
+docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/causality-audit.rows.csv
+docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/pnl-reconciliation.rows.csv
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Research outputs
-app/research/scalp_bot/output*/
-
-# Local MT5 sizing audit exports
-app/scripts/LimniSizingAudit_*.csv
-
-# Generated funded-policy simulation reports
-app/reports/universal-v1-funded-policy-sim-latest.md
-app/reports/universal-v1-funded-policy-sim-*.md
 
 # Screenshots and temp files
 Local Environment/
@@ -108,11 +119,8 @@ poseidon/state/activity_log.json
 poseidon/state/missed_turns.json
 !poseidon/state/PROTEUS_STATE.md
 
-# Python helper scripts
-app/scripts/*.py
-
 .vercel
 
 # MenthorQ browser-capture artifacts
-app/reports/bias-gate/menthorq-captures/
-app/reports/bias-gate/menthorq-gamma-daily.csv
+archive/app/reports/bias-gate/menthorq-captures/
+archive/app/reports/bias-gate/menthorq-gamma-daily.csv

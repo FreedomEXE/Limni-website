@@ -1,0 +1,12 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T03:03:14.855Z
+git_commit a905e9806391ddc439bbac43230809860edde1b8
+summary_json 2A9D121481E07414E8D5EBACEF6B20C13BE98785D8846FB0F1FD0FB8A0BAB782 docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/activation-summary.rows.json
+weekly_json D1B2DE724D5D73D12C5B18C92BBA9029E5177DBC7A7DC1477954C78376FE66DD docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/close-events.rows.json
+validation_json 809AD11976F4F3D7E78A555A023FEB4F6C8422D6598ADBD472A0CE9DA5C68ECE docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/validation.rows.json
+metric_definitions_json 57058B415EEEC693CDD8059BDE0A2BE96E2F0C2EC92621A1CBF2136D2F7015E8 docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/metric-definitions.rows.json
+command_receipt AEE027DCF8C8B73CAEA725C9BE0FED14AF6027B374F2424830B4DA637D5DC8DF docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/command-receipt.json
+run_summary_json FF2257FDF6E8BBB2B3A71A6C4C972E828910F2D7C65BD9E08B9EDB7439E811B2 docs/research/gates/gate90/artifacts/parameterized-smoke-david1006040-stoch100-3-100-exit-check/gate90-run-summary.json
+report D3752F092AF9402E5B06A2B4EF4722B603DC0B28031BCBF9BFC89BEBC122B8E5 docs/research/gates/gate90/GATE90_PARAMETERIZED_SIGNAL_SMOKE_EXIT_CHECK_2026-07-02.md

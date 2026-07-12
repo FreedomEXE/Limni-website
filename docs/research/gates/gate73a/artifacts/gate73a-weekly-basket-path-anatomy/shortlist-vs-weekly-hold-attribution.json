@@ -1,0 +1,42 @@
+[
+  {
+    "rule_id": "TRAIL_TP_A100_F050_T200",
+    "family": "trail_plus_hard_tp",
+    "total_weekly_hold_minus_exit_adr": 592.265815,
+    "average_weekly_hold_minus_exit_adr": 1.587844,
+    "weeks_clipped_vs_weekly_hold": 181,
+    "weeks_helped_vs_weekly_hold": 164,
+    "monster_week_loss_adr": 664.612016,
+    "green_giveback_week_saved_adr": 1371.539769
+  },
+  {
+    "rule_id": "GLOBAL_TP_125_STOP_WEEK",
+    "family": "global_close_all_stop_week",
+    "total_weekly_hold_minus_exit_adr": 558.52384,
+    "average_weekly_hold_minus_exit_adr": 1.497383,
+    "weeks_clipped_vs_weekly_hold": 175,
+    "weeks_helped_vs_weekly_hold": 165,
+    "monster_week_loss_adr": 658.692234,
+    "green_giveback_week_saved_adr": 1372.493345
+  },
+  {
+    "rule_id": "TRAIL_A075_F025",
+    "family": "basket_profit_floor_trailing",
+    "total_weekly_hold_minus_exit_adr": 464.624349,
+    "average_weekly_hold_minus_exit_adr": 1.245642,
+    "weeks_clipped_vs_weekly_hold": 166,
+    "weeks_helped_vs_weekly_hold": 163,
+    "monster_week_loss_adr": 489.683465,
+    "green_giveback_week_saved_adr": 1295.07874
+  },
+  {
+    "rule_id": "GLOBAL_TP_050_STOP_200",
+    "family": "global_target_plus_adverse_stop",
+    "total_weekly_hold_minus_exit_adr": 607.044621,
+    "average_weekly_hold_minus_exit_adr": 1.627465,
+    "weeks_clipped_vs_weekly_hold": 191,
+    "weeks_helped_vs_weekly_hold": 182,
+    "monster_week_loss_adr": 684.113588,
+    "green_giveback_week_saved_adr": 1399.392979
+  }
+]

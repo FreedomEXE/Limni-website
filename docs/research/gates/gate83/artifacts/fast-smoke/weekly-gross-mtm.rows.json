@@ -1,0 +1,14 @@
+[
+  {
+    "variant_id": "RAW_HEDGED_GRID_T100_S020_NO_BOUNDARY",
+    "speed_profile": "FAST_SMOKE",
+    "week_open_utc": "2019-04-14T23:00:00.000Z",
+    "closed_pnl_adr": 8.262829,
+    "open_unrealized_pnl_adr": -0.769642,
+    "equity_delta_adr": 7.493187,
+    "equity_snapshot_adr": 7.493187,
+    "fills": 37,
+    "resets": 7,
+    "content_hash": "E6171F36C59CDFF8432293F11C823815C29AA707BCBE9C50613BDBD0BC4AE804"
+  }
+]

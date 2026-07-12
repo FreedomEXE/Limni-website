@@ -1,0 +1,34 @@
+{
+  "gate_id": "Gate 68D: forward-decision-receipt-and-drift-monitor",
+  "contract_version": "gate68d_alert_only_drift_monitor_v0",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "drift_surfaces": [
+    "mode distribution drift",
+    "reason-code distribution drift",
+    "source-quality drift",
+    "warning/fallback/veto drift",
+    "pair concentration drift",
+    "week concentration drift",
+    "performance envelope drift after outcomes are known",
+    "decision replay mismatch",
+    "missing source / late source / stale source alerts"
+  ],
+  "allowed_actions": [
+    "emit alert",
+    "write drift report",
+    "require future versioned research gate"
+  ],
+  "forbidden_actions": [
+    "change decisions",
+    "update rules",
+    "select a better candidate",
+    "start learning",
+    "start risk",
+    "start exits",
+    "start execution"
+  ],
+  "can_change_brain_decisions": false,
+  "can_update_rules": false,
+  "can_select_better_candidate": false,
+  "any_change_requires_future_versioned_research_gate": true
+}

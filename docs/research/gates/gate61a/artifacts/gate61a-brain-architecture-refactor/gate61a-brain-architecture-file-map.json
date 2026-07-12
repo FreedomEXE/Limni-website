@@ -1,0 +1,123 @@
+{
+  "gate_id": "Gate 61A: brain-architecture-refactor",
+  "moved_files": [],
+  "adapter_or_namespace_files": [
+    {
+      "path": "engine/src/brain/README.md",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/architecture.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/cot/atoms/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/cot/contracts/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/cot/ledgers/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/cot/matrix/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/strength/atoms/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/strength/contracts/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/strength/ledgers/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/strength/matrix/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/atoms/bpr/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/atoms/rates/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/atoms/inflation/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/atoms/rrp/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/atoms/valuation/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/contracts/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/ledgers/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/cells/regime/matrix/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/body/contracts/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/body/ledgers/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/body/arbitration/index.ts",
+      "exists": true,
+      "type": "file"
+    },
+    {
+      "path": "engine/src/brain/risk/README.md",
+      "exists": true,
+      "type": "file"
+    }
+  ],
+  "intentionally_not_moved": [
+    "docs/research/gates/**",
+    "engine/scripts/verification/build-gate59-alpha-v1-atom-ledger.ts",
+    "engine/scripts/verification/build-gate60g-bpr-forced28-source-direction-ledger.ts",
+    "engine/scripts/verification/build-gate60h-bpr-source-direction-eligibility-classes.ts"
+  ],
+  "rationale": "Gate 61A adds a Brain namespace contract and thin source-layout adapters without rewriting historical evidence or moving prior gate scripts."
+}

@@ -1,0 +1,21 @@
+{
+  "gate_id": "Gate 67B: final-forced28-candidate-contract",
+  "contract_version": "gate67b_final_forced28_reason_codes_v0",
+  "final_algorithm_name": null,
+  "candidate_test_only": true,
+  "reason_code_prefixes": {
+    "A": "Candidate A macro anchor conservative",
+    "B": "Candidate B macro anchor with COT warning",
+    "C": "Candidate C scenario-memory guarded",
+    "QUALITY": "Cell opinion quality state",
+    "STRENGTH": "Strength confirmation or context",
+    "VALUATION": "Regime valuation confirmation state"
+  },
+  "required_row_reason_fields": [
+    "reason_codes",
+    "participating_cells",
+    "warning_active",
+    "fallback_used",
+    "veto_used"
+  ]
+}

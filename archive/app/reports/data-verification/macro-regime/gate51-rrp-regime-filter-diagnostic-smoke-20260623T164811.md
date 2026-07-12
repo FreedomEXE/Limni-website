@@ -1,0 +1,58 @@
+# Gate 51A RRP Regime Filter Diagnostic
+
+Generated: 2026-06-23T16:48:11.477Z
+
+## Result
+
+- Status: PASS_RRP_DIAGNOSTIC_ATTRIBUTION
+- Gate: Gate 51A: rrp-regime-filter-research-suite diagnostic attribution
+- Mode: smoke
+- Variants tested: 3
+- Thresholds: 0, 0.25, 0.5, 1 RRP percentage points
+- Pair attribution rows: 23638
+- Diagnostic against legacy baseline: true
+- Full-stack source-promotion claim: false
+- Production claim: false
+- Source refetch/rebuild: false/false
+
+## Boundary
+
+- RRP is PROMOTED_SOURCE.
+- Gate 44 matrix, COT, COT Faces, Dealer/Commercial, Strength, and ADR Grid are FROZEN_LEGACY_DATASET for this diagnostic.
+- BPR, PPP, NEER, REER, valuation, and combined macro regime are OUT_OF_SCOPE.
+- This receipt uses existing warehouse outcomes and pair contributions; it does not rerun execution, refetch sources, or promote a live decision.
+
+## Top Block-Fade Filters
+
+| Variant | Thr | Rows | Total ADR | Delta vs Base | Max DD | R/DD | Win Active | Worst Year |
+| dealer_commercial_agreement_selected | 1.00 | 2712 | 398.92 | -204.22 | -299.60 | 1.33 | 0.74 | 2024 -173.26 |
+| dealer_commercial_agreement_selected | 0.50 | 2319 | 328.01 | -275.13 | -294.85 | 1.11 | 0.75 | 2024 -166.24 |
+| strength_open_canonical_fade | 1.00 | 6725 | 497.00 | -508.19 | -488.45 | 1.02 | 0.67 | 2023 -331.72 |
+| dealer_commercial_agreement_selected | 0.25 | 2050 | 268.37 | -334.77 | -289.31 | 0.93 | 0.75 | 2024 -181.10 |
+| cot_faces_v1_forced_selected | 1.00 | 7081 | 511.06 | -557.82 | -559.56 | 0.91 | 0.71 | 2024 -144.47 |
+| cot_faces_v1_forced_selected | 0.50 | 6117 | 388.09 | -680.79 | -546.98 | 0.71 | 0.71 | 2024 -171.95 |
+| dealer_commercial_agreement_selected | 0.00 | 1791 | 161.23 | -441.91 | -283.96 | 0.57 | 0.75 | 2024 -171.97 |
+| cot_faces_v1_forced_selected | 0.25 | 5528 | 220.13 | -848.75 | -646.08 | 0.34 | 0.69 | 2021 -217.08 |
+| strength_open_canonical_fade | 0.50 | 5761 | 170.36 | -834.82 | -628.03 | 0.27 | 0.67 | 2023 -349.53 |
+| strength_open_canonical_fade | 0.25 | 5197 | -86.12 | -1091.30 | -799.69 | -0.11 | 0.68 | 2023 -395.15 |
+
+## Top Confirm vs Fade Separation
+
+| Variant | Thr | Confirm Rows | Fade Rows | Confirm ADR/Pair | Fade ADR/Pair | Spread | Block-Fade Delta |
+| dealer_commercial_agreement_selected | 0.50 | 1291 | 1748 | 0.1314 | 0.1574 | -0.0260 | -275.13 |
+| dealer_commercial_agreement_selected | 0.25 | 1548 | 2017 | 0.0848 | 0.1660 | -0.0811 | -334.77 |
+| dealer_commercial_agreement_selected | 0.00 | 1791 | 2276 | 0.0900 | 0.1942 | -0.1041 | -441.91 |
+| dealer_commercial_agreement_selected | 1.00 | 891 | 1355 | 0.0013 | 0.1507 | -0.1494 | -204.22 |
+| cot_faces_v1_forced_selected | 0.50 | 3574 | 4198 | -0.0713 | 0.1622 | -0.2335 | -680.79 |
+| cot_faces_v1_forced_selected | 0.00 | 4867 | 5448 | -0.0237 | 0.2173 | -0.2410 | -1184.12 |
+| cot_faces_v1_forced_selected | 0.25 | 4241 | 4787 | -0.0715 | 0.1773 | -0.2488 | -848.75 |
+| strength_open_canonical_fade | 0.50 | 3451 | 3495 | -0.0993 | 0.2389 | -0.3381 | -834.82 |
+| strength_open_canonical_fade | 0.00 | 4625 | 4631 | -0.0623 | 0.2793 | -0.3417 | -1293.54 |
+| strength_open_canonical_fade | 0.25 | 4011 | 4059 | -0.0749 | 0.2689 | -0.3437 | -1091.30 |
+
+## Files
+
+- JSON: app\reports\data-verification\macro-regime\gate51-rrp-regime-filter-diagnostic-smoke-20260623T164811.json
+- Markdown: app\reports\data-verification\macro-regime\gate51-rrp-regime-filter-diagnostic-smoke-20260623T164811.md
+
+No live, ACTIVE, production-ready, portfolio-ready, BPR, PPP, NEER, REER, valuation, or combined-regime claim is made by this receipt.

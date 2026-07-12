@@ -1,0 +1,28 @@
+{
+  "gate_id": "Gate 64B: valuation-gap-atom-lock",
+  "lineage_version": "gate64b_valuation_gap_lineage_map_v1",
+  "emitted_formulas": [
+    {
+      "formula_id": "valuation_gap_reer_deviation",
+      "formula_version": "valuation_gap_reer_deviation_v1",
+      "parent_atom_keys": [
+        "reer"
+      ],
+      "source_ledger": "docs\\research\\gates\\gate60c\\artifacts\\gate60c-regime-source-atom-fill\\gate60c-currency-week-source-atom-ledger.rows.jsonl"
+    },
+    {
+      "formula_id": "valuation_gap_neer_reer_relative",
+      "formula_version": "valuation_gap_neer_reer_relative_v1",
+      "parent_atom_keys": [
+        "reer",
+        "neer"
+      ],
+      "source_ledger": "docs\\research\\gates\\gate60c\\artifacts\\gate60c-regime-source-atom-fill\\gate60c-currency-week-source-atom-ledger.rows.jsonl"
+    }
+  ],
+  "raw_atoms_preserved_separately": [
+    "ppp",
+    "neer",
+    "reer"
+  ]
+}

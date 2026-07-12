@@ -1,0 +1,1766 @@
+[
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDCAD",
+    "reset_count": 1028,
+    "content_hash": "DC485407455A2997ECDAAF31293A01246C3C736790994B35EDA23750B2727EF2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDCHF",
+    "reset_count": 1192,
+    "content_hash": "99134471A29D589153AA1A6AE833D68AFBFB452C484A7E51868646271462AE4B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDJPY",
+    "reset_count": 1099,
+    "content_hash": "29468EE841C90CD1DE577FA8707B7908AF2A9B6DC71AB78B85752259AC28B7C8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDNZD",
+    "reset_count": 766,
+    "content_hash": "BFC06CF2307A597629B2E28781996A674447B599A0C6B51312EE0E9ACDB9A328"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "AUDUSD",
+    "reset_count": 992,
+    "content_hash": "39EB04DC7A7CB47504ABFF4F5A18E4E66895E1E81ED519EA8BB58758C43DCCB4"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CADCHF",
+    "reset_count": 1184,
+    "content_hash": "34F1F5628C13EC128F9538088DA827213FD30BC151EE6FA77AC5A2993C7BD8FF"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CADJPY",
+    "reset_count": 880,
+    "content_hash": "3C3CDBD7A3A1031440EFCAD20075DFB1E84625B14200CD14134D577212E9946D"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "CHFJPY",
+    "reset_count": 917,
+    "content_hash": "EC7F62A939980758293337993AB1B2C32B4D386B379B1E604BFFE50672FE4BA2"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURAUD",
+    "reset_count": 1142,
+    "content_hash": "CAA5E9B6A50CCF59EC1E108EE2B8BBA21085F50B119B2E8E9CEC7AD83C8C06BE"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURCAD",
+    "reset_count": 1130,
+    "content_hash": "24BD2034D9FE8925BB8D6F626F07B8FE0FCAF40EEF7BD271EFB795D8622DD049"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURCHF",
+    "reset_count": 698,
+    "content_hash": "F675160341FA34645DC2741D03E481AECA21C3DC93E60F1FB4BEAC4E3813533B"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURGBP",
+    "reset_count": 1037,
+    "content_hash": "7B79D4AF8491496DB62CD34EFEFE22BBAE4123BD163E10B61801AB2A42D8EFEB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURJPY",
+    "reset_count": 889,
+    "content_hash": "0839E37DEA44CBB0FE22CFCCE2FE5C72FDA4B325E9CFDFE16A8CC961428EFB0A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURNZD",
+    "reset_count": 1171,
+    "content_hash": "C511FD1D46AA8A681B30345BE9E7A95AADB31A4BCC7833133DA2527EA4839E81"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "EURUSD",
+    "reset_count": 918,
+    "content_hash": "08CC9A5277E43D6E5638C33795BE52960DD2D0A944E6A4FF61BD2D0822B5085C"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPAUD",
+    "reset_count": 1021,
+    "content_hash": "65F13272034D4F9C9C5E642D8F2D4D9E4064A140B78BB56B00E15054492B025A"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPCAD",
+    "reset_count": 902,
+    "content_hash": "02FFD06971D2434173B078A7B598222AB0FD0FECD8703B69DCAC8D3D44237673"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPCHF",
+    "reset_count": 1003,
+    "content_hash": "B0EE76F1DE57F810389CB14C6473AB58531185180FE0CFCB86477ED3577CA378"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPJPY",
+    "reset_count": 939,
+    "content_hash": "C9E522666D438173F5C910FAAF7441EFCE15BEC1875F9C41BEAC504FC7C323AC"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPNZD",
+    "reset_count": 1063,
+    "content_hash": "204D8D1645D3B20047185035662E3D17395C9836A174F79280EF6D8521B05DE8"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "GBPUSD",
+    "reset_count": 1000,
+    "content_hash": "A71312A4FF2CA0073BD390BE1EDE01CD427E5A2E2692A04FF1A25E4665DACA4E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDCAD",
+    "reset_count": 1128,
+    "content_hash": "0A2AB78CD0CB3E293A138E36FDBABB90738ED35790AB6B8EA5C599B2AC187EC6"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDCHF",
+    "reset_count": 1156,
+    "content_hash": "135C91602A962BE00F9CD6DDB3CD93A245472B94FA998D71167D49D9ACF6E65E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDJPY",
+    "reset_count": 1151,
+    "content_hash": "214FD481F2D32F62FE9437F524AE43B28EC0FA6BA9528BF92DB03C6632F71402"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "NZDUSD",
+    "reset_count": 940,
+    "content_hash": "046D1A6981E86DC7F20A7B2A1CD3A49864A97649713CCC756B4B2A7BDA8C65DB"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDCAD",
+    "reset_count": 1062,
+    "content_hash": "8357C7746605966C927CFECFA9A46599F92E6D02F6F26861689300850DDC4975"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDCHF",
+    "reset_count": 951,
+    "content_hash": "1722708BD4996ADFF7B35B2A1BAB9A7675023C0BBB467AFF004B7639B457FF77"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "pair": "USDJPY",
+    "reset_count": 941,
+    "content_hash": "845024E28646602317DE516CF9024B31CB79FF65C85A8168AFD4CB53D1F0B26C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCAD",
+    "reset_count": 1211,
+    "content_hash": "577039F9C5526DB48635941F663AA8B9C4C03184D9B4132E0A08C5C25DCE3E77"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCHF",
+    "reset_count": 1461,
+    "content_hash": "14AF799A9D9C7692B74C568C93D4A9D7764E71E28A2191D0156DD99EE296C4E9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDJPY",
+    "reset_count": 1308,
+    "content_hash": "CEF75184410D8C8812054EEFBAEF318948E45151586BC67B548302847C4871D9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDNZD",
+    "reset_count": 870,
+    "content_hash": "535135425F8BB128392FBD3D595C154E685C41452C8C7C2459AC6A98FA169F72"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDUSD",
+    "reset_count": 1151,
+    "content_hash": "0981A5E9396F38FCD521D4B126F5FF69129FDAFF532CCE06514BBFE516A00F83"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADCHF",
+    "reset_count": 1372,
+    "content_hash": "B4956B941AD3E21325644D8BAEC96E5ACED9FDC89C900E702FEFA3FB792379FF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADJPY",
+    "reset_count": 1029,
+    "content_hash": "C2989DD3862B67BF3CC04A2A4FA56EC8F239D8E8D1F92C2102119E5E477A5E36"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CHFJPY",
+    "reset_count": 1102,
+    "content_hash": "6D6CD2DD7E28CF428DEC8B05D38B38D18D1413233BDDBA4FC65992027A2CA33A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURAUD",
+    "reset_count": 1339,
+    "content_hash": "A196B5637871C6175095C0E7D6CC8FF39667E1654A645CA68EAFFC28AD150DA7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCAD",
+    "reset_count": 1293,
+    "content_hash": "BE6B8D2B18F049C92C702A7128A191BC4816584CB2332161D59FC3C57BED10C4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCHF",
+    "reset_count": 797,
+    "content_hash": "1736087A09DB3A12E66FC8F6DFC95578577C7F96DACABCD4EAF111B7D8F26124"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURGBP",
+    "reset_count": 1192,
+    "content_hash": "25C24E12FC3E8D1507EEA19FB5DFFD2DE0B2376019088394417393D53003BE85"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURJPY",
+    "reset_count": 956,
+    "content_hash": "00B6751DEBA96D981B0010831F57BADE7D528B0410C576F249A5AAFF49F1F7BE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURNZD",
+    "reset_count": 1395,
+    "content_hash": "1FCC09B96BCA7307360254F0EE7816198B9658A3D5657EC6A9540598D97229C9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURUSD",
+    "reset_count": 1063,
+    "content_hash": "50B3368EE9CAB75779BFC237897819CB8B785B699DCD0AFE1C9E600FC93EBD41"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPAUD",
+    "reset_count": 1205,
+    "content_hash": "E1A2F3296E0AE0FD6AB035F956E4D207C63A6F7F3F92E6D72110A47FFB56FD05"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCAD",
+    "reset_count": 1026,
+    "content_hash": "F7BCFCFDB494495ABD82F17AEBA2CD90F7EA9D850E9EBF4C7361BFDBA7D4A669"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCHF",
+    "reset_count": 1194,
+    "content_hash": "86F093CCDF51BB3123DFB6A1654775E98076D959DB4315687305AD7BD58940A8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPJPY",
+    "reset_count": 1074,
+    "content_hash": "46A63F811AE5BD3F3D638E6B9A6B4B1002134122A3CA799953FA15566AA0C8C7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPNZD",
+    "reset_count": 1241,
+    "content_hash": "952547CB093600E12B057473139E8AAD7F8AADB1789E38312FEDBAAFFB7E12BB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPUSD",
+    "reset_count": 1205,
+    "content_hash": "D697E80DBCE9C23E09E116ACD2F4F6AE1A7049E8729DDA18C3440810873BBDEF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCAD",
+    "reset_count": 1329,
+    "content_hash": "60736E8E61BCC9F97349588851212EB7FE8FE09BEE322242E87D6C0D581D321D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCHF",
+    "reset_count": 1374,
+    "content_hash": "D4674820D4B0389CDDDA4B4ADDA741E486288929A7F61BF00C23D4D0D569EAD5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDJPY",
+    "reset_count": 1336,
+    "content_hash": "0D5C1A9B5ADF09DF8DFDFF8287C7A054DFD58395314410149DCC9F6A0EE0D6FF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDUSD",
+    "reset_count": 1152,
+    "content_hash": "D468A7B4569246036D5F87A12ECFC4AC6CDE2A97914E96BC9796AE2A69E633A3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCAD",
+    "reset_count": 1230,
+    "content_hash": "D538641BCB6AEAEBAE99A1DA803BE08A5564449003123AF1142E2C92BB146DCD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCHF",
+    "reset_count": 1114,
+    "content_hash": "CD5F97FE03FA2453A1C18BA43F315776D71BBD7578A35C054709355AD92CE276"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDJPY",
+    "reset_count": 1167,
+    "content_hash": "A59740388CD61829E87457F7C0839FD1200D2E9EDCDB6343CEFE56E174C62D1C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCAD",
+    "reset_count": 809,
+    "content_hash": "6046761159536EBBD20E00FCE4A2F963CA77ABBB6AFE31777EB27101B227FD20"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCHF",
+    "reset_count": 897,
+    "content_hash": "391E831307C70E307EC2A7FE0745B01F04CB8C1AF1F6B3FD89DACDFAEBB93AB9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDJPY",
+    "reset_count": 880,
+    "content_hash": "449D7316D81B498339F13DBD415924EABFF0AE1367C25C37D48B8E472A304753"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDNZD",
+    "reset_count": 582,
+    "content_hash": "E95C0BA63F09079A4CFC4174CFF1C0B63E05548746CF8F113D464D77738DEFC7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDUSD",
+    "reset_count": 736,
+    "content_hash": "D6B74C79ACB9A9AC913D1C12546DB64D29036461C666F94DF7A325E22BEB8185"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADCHF",
+    "reset_count": 882,
+    "content_hash": "7F0B96E0345C34F5E4BC295FA1264332D1924D086716345ED5A9989EDE8B0912"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADJPY",
+    "reset_count": 689,
+    "content_hash": "B7F785828EE3D5C2D4A61194BCBD2E43201666DE5D225A41F81564A7FBAA729F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CHFJPY",
+    "reset_count": 733,
+    "content_hash": "00A8AA1CADEF7ED245BC40E08738881DE69352B1C2F9450B934D8DD29778E9D6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURAUD",
+    "reset_count": 869,
+    "content_hash": "5471DFEF743011C76EE2A378A7EBBDF0E10ED720D47E5D8EAD1E85F4EF47E618"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCAD",
+    "reset_count": 849,
+    "content_hash": "992DE0137B04990604606FE40FD7F8BCC53B249E4037563835C01CC5EB1F4855"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCHF",
+    "reset_count": 531,
+    "content_hash": "CEE547FF64BF7A5B9EAEC4CCD6AB582631F2A2ED5E65EE8F2CF6F0D1793AA9A0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURGBP",
+    "reset_count": 792,
+    "content_hash": "5F32A657C040A31136522F02EE09B6C5849D2FC258E4838D32373FE6EA58D302"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURJPY",
+    "reset_count": 624,
+    "content_hash": "8187D1E53E050F597C7E72A2B279FF5C42C43D2A644D39F9C7A14C2DC0816C6F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURNZD",
+    "reset_count": 932,
+    "content_hash": "8AD3B969EC15C37BF0D5291736DD53BF58218C5F15203747FB2129AB087A539B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURUSD",
+    "reset_count": 722,
+    "content_hash": "EF4EADFA612AAD2E4924E07FAAC34329AC9EFF77CCED52E380CAF1B970704793"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPAUD",
+    "reset_count": 765,
+    "content_hash": "3328D2D35D781D63FD14F0F78C202863B158BFE345E64FD78FCACAF9CD85E9B7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCAD",
+    "reset_count": 673,
+    "content_hash": "1179C35A98AC2D8CC2125ECD561BC21B6AE3F194C87A289C1CC290A998E2053A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCHF",
+    "reset_count": 779,
+    "content_hash": "974FA927182BC7DBB0D42D2BC11B600F88DD4E71EC5FA062DBEDF709B0DDDFFC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPJPY",
+    "reset_count": 709,
+    "content_hash": "88C597B05869E5F2FD7B25C910C182CDD61FF570869B59120112D857D000D4EF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPNZD",
+    "reset_count": 814,
+    "content_hash": "F26DBE19C92C77102565E5E11582FA8EBAD626356E097405F193A7A75B213DB0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPUSD",
+    "reset_count": 759,
+    "content_hash": "03D18BA4E7A59445BEB977D0594BD9483CD636376E57F082135E003EEFB30C09"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCAD",
+    "reset_count": 846,
+    "content_hash": "C93556644DDF69E0EBA9F0CC56BA1460523B84A507E0DA1F0C0CB9342903CD60"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCHF",
+    "reset_count": 872,
+    "content_hash": "63E8EB67949795029943423349CF0738F92FA884BEB2F0FAE199155A083E4285"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDJPY",
+    "reset_count": 891,
+    "content_hash": "427BC5C841BA48982D3DF022BFA8683CAC23324EE754B44A4279581A66518DC8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDUSD",
+    "reset_count": 739,
+    "content_hash": "6CE9E3205E83A61959598627E081BAE719809AD19D5128075C76711A622823ED"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCAD",
+    "reset_count": 832,
+    "content_hash": "6AD765D65649A4DB17485B3DF369C52410AC9EAD34D24691FD5D65449DFAC2FB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCHF",
+    "reset_count": 738,
+    "content_hash": "F70CF495A166D76D4DC945A750993781E23790659BAEB7DA4C3CE85C7F0F55E0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDJPY",
+    "reset_count": 753,
+    "content_hash": "F6E43CF064D0E994CBCDCE7F2BA7D209026EEEB62D6A82D641610B5431310557"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCAD",
+    "reset_count": 708,
+    "content_hash": "8CF18CD26A2B3A513609BB91C87EC500799F3FD6193AF65B5B1A6D457445A017"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDCHF",
+    "reset_count": 756,
+    "content_hash": "0D4A8E4349C5459795F52C2387B6CF6F95742D7608EA6532BE3CD809D84558AC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDJPY",
+    "reset_count": 749,
+    "content_hash": "C93464FCE3C685A296FF4C9E97BDAF30D9558EEE3589B478D73F9CDC164A043A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDNZD",
+    "reset_count": 500,
+    "content_hash": "DBAAB435D941DAA60B16D43B9D13C66A0FF90EB8F6CA10A78EA989E2EB8D2190"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "AUDUSD",
+    "reset_count": 629,
+    "content_hash": "7321E864A8F712883A3A6A9B048970EB6E6C0D5383C5A2F806799F8951A4337B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADCHF",
+    "reset_count": 777,
+    "content_hash": "06586D79B0820837F1CD8137A133B680D27979A49BC07DEEE0F17400DCCE30C6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CADJPY",
+    "reset_count": 599,
+    "content_hash": "812C2ABE116815FE6805F54DF6B96BE31588FD33967BF1047CD472DAE6A41EB4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "CHFJPY",
+    "reset_count": 624,
+    "content_hash": "5B558623B5E75540FDC227EB83E2982ABF7D2875C8A36A98F0609D8CD41E4AF2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURAUD",
+    "reset_count": 742,
+    "content_hash": "410B81EC30AE0094792A0A8D78BC0FCC7A138CFC10EEC48EB2261FFB53125DD1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCAD",
+    "reset_count": 736,
+    "content_hash": "673BA2505E521C50ADE0E4C68DCE53EAF19144AFF2E95AF03EF0782FBF941B5F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURCHF",
+    "reset_count": 435,
+    "content_hash": "569101A7CC15C0074296CA14ABAA54C2EAADBD13EED42D1595195348577214EE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURGBP",
+    "reset_count": 689,
+    "content_hash": "457088DE011F0F1CD30B80E6572F879EA88DD33E07238EA4F1E69D2D3A659FFE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURJPY",
+    "reset_count": 538,
+    "content_hash": "77CDD3FB765485F477BD9B6D14F724DCD5ABB5E65DAB065240C53EA0D54B4733"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURNZD",
+    "reset_count": 779,
+    "content_hash": "A3478E7AD4AAA8263C011ACEBF47533C179645CDAA7989758C73B0A0F6C75D8D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "EURUSD",
+    "reset_count": 634,
+    "content_hash": "EBAB12DD30B980B0F9CE02E80334F5CFBE2B0F1BD1A500F29A4B5A5E354DE5CE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPAUD",
+    "reset_count": 682,
+    "content_hash": "25C01CE36F107597A32C00C84FDCEEEB6192DB9B1715ECC7E77ED2067F8E2961"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCAD",
+    "reset_count": 567,
+    "content_hash": "F095229BABA914A4E94221B91B82C4D82B7357402D03629991340A469063C64C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPCHF",
+    "reset_count": 663,
+    "content_hash": "F2F295FBAA6F72363B39E5FD4031D162485A70FB1007908141535356FC45E993"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPJPY",
+    "reset_count": 615,
+    "content_hash": "3B6A6E87F46AAFF95FC45AEEA72036635391B3ACC0CD1416B13EAAB5DDDF0A9A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPNZD",
+    "reset_count": 698,
+    "content_hash": "94B3DEC58FF4A9383EEBB324257AD51FD172D0C90B9FE36653A15A74D8D8E80D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "GBPUSD",
+    "reset_count": 658,
+    "content_hash": "498A3E945C356BE76FA5F21ADCA552CF07210455643A5351D5C701DEA5877403"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCAD",
+    "reset_count": 719,
+    "content_hash": "D7EBF981311A3DE95C52F299C4C71426D894127AEC9CB272C21D74063EFDC895"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDCHF",
+    "reset_count": 762,
+    "content_hash": "1136C76DB12D757D9766CBEE4320F2768E3AEA3E5133C4556E14C70034E84518"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDJPY",
+    "reset_count": 767,
+    "content_hash": "AB81C98B22ADFE718F12DACE1FE6CEE7519B93B1775E558549D4BA5B5D28A699"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "NZDUSD",
+    "reset_count": 661,
+    "content_hash": "981E959391E9979182987F0CAFCD10DA409457BB936EBF3F2EE153AE126770DE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCAD",
+    "reset_count": 701,
+    "content_hash": "A428BC9EC8AE6D133FA3E2C1E71260072B65D606878E4B708DB88FE71E51A622"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDCHF",
+    "reset_count": 643,
+    "content_hash": "72B5FEB50C1E909E7E42F92DDD10B38038A3383A89BBF39B85CB024D34F686A7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "pair": "USDJPY",
+    "reset_count": 672,
+    "content_hash": "65D56C40E312E0A6D33D32DCC17C0FE8CACB48E5420FAB480363307A3127B5CA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "reset_count": 643,
+    "content_hash": "F29411BFB7453739DC14F3373E72CE7F920091F0634CB059101B16AD81267FBA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "reset_count": 598,
+    "content_hash": "99E34494E9944601707C58D3FEBF9D85627BB6D47D6E4E73D3A425FCFC692FD2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "reset_count": 624,
+    "content_hash": "DDBEAA176CE62889AF063CE296C061308F81597C7BD90EF414E4E3C4B5835579"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "reset_count": 529,
+    "content_hash": "478C418A9F243F0924A1B4C4570DB4A74A53D42EEA76567996E45DF5FBDF1F41"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDUSD",
+    "reset_count": 577,
+    "content_hash": "177DE145F631E9CBF626DDFE2E1B1CB150F8EB324692721FE7192D94371E97E2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "reset_count": 620,
+    "content_hash": "7B08C495C8FE6795779DF329896B44600E95836E319A2F66FE70572859A4B53E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "reset_count": 575,
+    "content_hash": "10C93211F27E1B568BDF10603CB12B0D8351E250BAAD65A0056254D362ACBC9D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "reset_count": 592,
+    "content_hash": "BC93F67B2E42362884458A2AD728B24AB40D972647059349A3A14932864F2BF4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "reset_count": 596,
+    "content_hash": "E81BD978F6EEA3B846270F6AA60760C853CEE0B72A9C196E0480B6BAC892E076"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCAD",
+    "reset_count": 592,
+    "content_hash": "9F576A44C19CB2D71B2FDC124D6EBACFDC60EA6DB46D92581EAF282DCE6496C5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCHF",
+    "reset_count": 460,
+    "content_hash": "E960365B18EBA8A3D25B78149A1E690E952DBC133C222A7A761F9A5BF3E3CF17"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "reset_count": 568,
+    "content_hash": "A6D59FECCCF5361B5EA46DD3D22848258A69A81EA636556170794EF953FD12CA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURJPY",
+    "reset_count": 577,
+    "content_hash": "8761A5EFC91812E6DCFC75ED28920C921C9F10EC22C4AB044A186765C63B0C6A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURNZD",
+    "reset_count": 628,
+    "content_hash": "8880C3C1583AF202E36624FE6D1A3BBEB9AEEAD023BDB0FA096E514CD6604E6E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "reset_count": 562,
+    "content_hash": "9E468F61DBF5CA4AD957D194E0A3A00C7CDABD05FA009B56E63C908BBBC3A486"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "reset_count": 545,
+    "content_hash": "A09F29707FDD360984CAC867E7D2847B538FE022AF08DB10DEC762F6816F63F4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "reset_count": 555,
+    "content_hash": "CBCBC1788B8A3586FD3D6C851F0623A29105947AFCEC8999FFE98293B8642B5A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "reset_count": 555,
+    "content_hash": "4869DA50C98D0A2340BDD6B338287B0326D4ED45C20EA8B77F4E8FE40FC9F71D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "reset_count": 539,
+    "content_hash": "338F5B13D77C7A1ACA27A310C9E7159528D764E433A11561219DAEEEFFCA788D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "reset_count": 561,
+    "content_hash": "A2841BB1CC7C5AD3FC9135894793EAB712C48D00B81E2DB5DF159745342D6DD0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "reset_count": 586,
+    "content_hash": "92952A9EC90145A2AC3D0AA949C184DF6F029237BFB16382397971BAD95846B6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "reset_count": 641,
+    "content_hash": "4B9F9CE6E04B447D620FFDA68F65236320E8ACF5FF63A6E5F6CF213BC67C5300"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "reset_count": 653,
+    "content_hash": "9D4AA7EFEB86CB7C51D2DD4E0E1337A0CC9A3580A2F39C2C7FF8795A70B9B014"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "reset_count": 623,
+    "content_hash": "6FB55C21D6551DA1693EABD70F104E6D100B63B34966568DC815E4B99DEE8DE0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "reset_count": 581,
+    "content_hash": "298C24851CF0D73274DD109B16A177ADBFCFC7EEAE4FDFD74E481F38EE3BDC7F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "reset_count": 594,
+    "content_hash": "673E69B4463D007A476EDE655ABC54A1A8013203647C72F9FF6684528AE9FE6E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "reset_count": 557,
+    "content_hash": "07876AE23F4DF66FCFCA4663D53C9F6561AA716251290323717712C8F83E7755"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "reset_count": 544,
+    "content_hash": "C08DAEBFB7A02787CF96203DA4B908E95B0E2D17FA928FE8BB5F145D1D6CA7FA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "reset_count": 858,
+    "content_hash": "3AAB854505716962C3F5FFA467B42DD7FDF1F829D8DA8111794FBDEC90AC3E92"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "reset_count": 819,
+    "content_hash": "5E93CDEAC8DE77EDB3D6D27B5C6DEAA62666B9593C7CDB3C5D0BE7D3B71B6068"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "reset_count": 859,
+    "content_hash": "403FA153FDB8D2ED619FF501B91F0E43872FD9D73238902C3D9C0B091201A5CD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "reset_count": 642,
+    "content_hash": "C5D5694ADD3435A2F26D9E1A2CEBA02C43683D501361FB4CF565E7DF579E52C5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDUSD",
+    "reset_count": 747,
+    "content_hash": "BEC2D0BA60BE0F3F49A95B0345CADD81266B29622B845FCA0A074048AE2B1AC1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "reset_count": 861,
+    "content_hash": "E8F4BE4CC68D0FC36AA83EF68F679ED6857DA6BBD192F5232DAC92DDB1E02985"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "reset_count": 755,
+    "content_hash": "9EF7B2588C4EF8F37F131F3EEDFAB93B5DE07F159AAFB9BADC7F8DCEE9CE9CCA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "reset_count": 802,
+    "content_hash": "2B2B8C22DC26BCDC93E6F4879DE4301EBDEF9BCF0E3E3BE90EB574149726156D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "reset_count": 808,
+    "content_hash": "651D9997FF2D99535FD3ECA23A888D0D27FDF77DBCFC1C240E3DBAAB5B300947"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCAD",
+    "reset_count": 801,
+    "content_hash": "0A90229A436EFDB9DD3D66D74A9371F1A08209D391FA2D1264BC3C381E9EA115"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCHF",
+    "reset_count": 610,
+    "content_hash": "47B29697B505F6E71AC945EDF22D012943B2646B65B26E9871510CD6ADAF7FC6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "reset_count": 735,
+    "content_hash": "B519FEC94A3C65A4B5C689599CCABDD5D2A802D2BEAF961533295A44F2FD458C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURJPY",
+    "reset_count": 707,
+    "content_hash": "133AF5CD26F27EC11C85C8581157840850C8871920E6D7D5A15F3A242D1513F1"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURNZD",
+    "reset_count": 822,
+    "content_hash": "935742DFC695183E91F473BDE98FA474D007CBB6BA4FCA39BAAD0F66773486ED"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "reset_count": 706,
+    "content_hash": "322A6FC2795492D915BBEE17E5D434453AA81968B9D577033EEA215258B0247C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "reset_count": 759,
+    "content_hash": "D2F7440575C8D29F69838ABD42AA6BCD126C252864BDBC4E7DFB378B923E616C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "reset_count": 720,
+    "content_hash": "4C2390AC28F18721F8C5E631CE9E0FBC6052C1022F12ECC83EC28D7CECEC774C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "reset_count": 744,
+    "content_hash": "EA745C55B1C2E1ABDE36C6716027CC1A6140860624D46F8AE717CDF2843519EA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "reset_count": 725,
+    "content_hash": "F18338803A9266F6E21F886AF527C6E19FA27F077086833A27DC84DF58EDE0DF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "reset_count": 784,
+    "content_hash": "62064A3A114161A6C8F9B6DCF8E12EE1B89E1D1EF202351FCC125FAC7E851EA8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "reset_count": 765,
+    "content_hash": "80E032065ED34C2CFC044104FE76D4C845896C271AC7751CF6F337B62CC37894"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "reset_count": 863,
+    "content_hash": "6C4F587F5EE368A427C1540CDD072017F20C704BC30016D5DDB2FA001A55A1DB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "reset_count": 888,
+    "content_hash": "9152CAA35C604CF1B77627AFBB23B1A584B7846D009842FF08797097BC19B1CE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "reset_count": 861,
+    "content_hash": "E57F66A98406E9B8E93D860671B0EC16CAF12ED8B814DF7875BB34D74FD3C94E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "reset_count": 751,
+    "content_hash": "1D3953E2B3C83AB06847D1C2F328C6E2423086B785BA45BD3BCD9BBD2E4B7D16"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "reset_count": 788,
+    "content_hash": "32EB5B6EACE883A2396BE491A20E993D77E1A8C2BFDDF9E9E47A2E6CECCD1157"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "reset_count": 737,
+    "content_hash": "6AECD21C5B35DE0B7E41230505A413C88023B71B4D0296F1DEB7587AADA876EC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "reset_count": 741,
+    "content_hash": "B2277A60C296B1D1D01304697A05ACA277376D789D4C39427FBD88CEE9131C80"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "reset_count": 1107,
+    "content_hash": "1C93A748CE60654765ACEF631FF8A79639A8B7598AEFAD7B6CA6741A620B1993"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "reset_count": 1158,
+    "content_hash": "AAF9F745E81F18BBFC3AED51A3FF2B6DA3AC052250D96D7B32A2FBD8E7F071F6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "reset_count": 1139,
+    "content_hash": "4293A929AF7D241BCA51A65C64AAD25B57AD068C0A1A88EEF415855B0E5C438A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "reset_count": 778,
+    "content_hash": "2C674524A37305602E28517D3E4A14EEE31AE0D9D38BE5B16D1DB3258AE60D34"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDUSD",
+    "reset_count": 930,
+    "content_hash": "CBA16CF1F17711586EA0E72E35208C632148EE95462F1D4F5888220A728D249A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "reset_count": 1135,
+    "content_hash": "3B251C368E7DD7E9254C6BA11B9D188D0E27843BED9C43FD4B922994CCDD49E7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "reset_count": 939,
+    "content_hash": "A7AEECDDE686D1151EC23339416EEE65094B4814138E6E8416E536858489738F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "reset_count": 894,
+    "content_hash": "5290258EFAF9AD5FA431D190A208B289231C54527D4697F29FFE18F9D86B5E09"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "reset_count": 1082,
+    "content_hash": "98865E3105168C32F7A45D6E6CA03783EB062D633FFD572CAA38E9DD9DCC33EC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCAD",
+    "reset_count": 1081,
+    "content_hash": "591267763BC4E406F609D2EEE78C920FF0031863DA6788C94E7D5FFE037CF40A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCHF",
+    "reset_count": 794,
+    "content_hash": "A47D773E498342B4E37ECA806E37C8F659BFDAA1F3D7B0C05B9172781CDE2143"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "reset_count": 952,
+    "content_hash": "D290E938B2EC007472824172E9E1B04CE59441025027F670C706B79E5C6607DF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURJPY",
+    "reset_count": 821,
+    "content_hash": "13E959BEF0781A312FF218A9922E0A77E2296A4E33B97756E868F6D7ABF473B6"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURNZD",
+    "reset_count": 1105,
+    "content_hash": "614C9CFA8D053D664BC1DB2BDF313BC960FA788ED2E4EC36AED3584BB46E41C3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "reset_count": 893,
+    "content_hash": "527532CD5C6D7312865DA62A55470648B00815D8777F33559AB3D844259B1E47"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "reset_count": 1015,
+    "content_hash": "4D6E6279C4560A858E6CDD51B04E520AE42EBA7517C1A12C4796CC0AEB094B66"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "reset_count": 933,
+    "content_hash": "196BAC41B4A9CEC40FD88E6F4930C72E27130E97F0B7282CC8F781C4E411B01D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "reset_count": 975,
+    "content_hash": "90680188B4592598B122D75DFD1D13F59AEC49CA7FD91013E73FE3A91ED3BD0C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "reset_count": 919,
+    "content_hash": "34305423141A66873C09C278B4050BE2B7D5FB2A436C0A14DF060FEA2CEB126B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "reset_count": 1058,
+    "content_hash": "13DF19059B0AE7939255BA4521D7D8BD7D4F5B5A60BCDA1AA6491D9B36A4E8E0"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "reset_count": 990,
+    "content_hash": "0D3A489F7A363A8EFB361FEAF9E5206BBB5CE636A56604C174AA64698D01D867"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "reset_count": 1139,
+    "content_hash": "8C9DB515B27B6A73EEA9007751C4BCFFBB0444A37A90A0050B1598644FAD0BBF"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "reset_count": 1147,
+    "content_hash": "963D903B6811F353589455C5AB74E2C2B374271F2CA223C8C817E793A988099C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "reset_count": 1131,
+    "content_hash": "40C51B839CFD90BAA8EA139A52B2F51C3C1F3112334FB9B6712961E8CC12156A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "reset_count": 937,
+    "content_hash": "8264620658B4FE42113E22D259144640AFEB1048C23ADE19CDF0DAEEFF894388"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "reset_count": 997,
+    "content_hash": "AE81AEB61882C22C820BDED47BFB33F817A4698D17EED2AB1FF953F7A2FF454E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "reset_count": 943,
+    "content_hash": "2D2516911890E18AF4098959FB23F773D0D1858B66005D054CA182CCC8BF8051"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "reset_count": 953,
+    "content_hash": "64CD9ABE6E36C4B37B5849219BE0AD21CEFC5ECEB712AEA58114AC8BA4B2D2A9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "reset_count": 762,
+    "content_hash": "2E6A764FE19C57CE887DF5AFEC3CFD62FEB0B04012AB1987E34471B62D57CEEC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "reset_count": 752,
+    "content_hash": "D087E6407143E90EF960F934777C0DB86731CF2889FC84364072465D07F5BB91"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "reset_count": 789,
+    "content_hash": "1577440D9EEAEDBEA9F7A9DDA40EB49942848B78973410D52F20C75DC3B8B6B9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "reset_count": 547,
+    "content_hash": "7FA13268A156FDB032B67986DB15A8A8D55E61793B40A847B91A8089F68F4350"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDUSD",
+    "reset_count": 697,
+    "content_hash": "E26D5457DC40C9A838149A2B6B736AEE9359931DD024CB83C541B103E58F0408"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "reset_count": 757,
+    "content_hash": "B153FFAFA447A142929BBFA1E6AC3A3F3A90D7DF59B882389969E5A8F9F7BEB9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "reset_count": 680,
+    "content_hash": "12B916FBB8CF562C2E41D4F6A13C4A3D02086A1050298C19E030472F6FF31448"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "reset_count": 711,
+    "content_hash": "28F52FA3EA77AA98ACFCDDF8D596538B2D401DE93AE9ED048BA74DD3704CA46F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "reset_count": 715,
+    "content_hash": "8EFAEBDE3FA919D4424187B491B22A1BE392D34685D8E10806530E814C617BCD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCAD",
+    "reset_count": 726,
+    "content_hash": "E17432FC927B164080A6E0A5ABF0B9C438C1A0E970604D99C1D1D553183EB72C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCHF",
+    "reset_count": 529,
+    "content_hash": "39A411AFCEC31D3CD4DDCCD4B2B5A90A39A40388997DAD1AA56A7AB72D9A0FDE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "reset_count": 663,
+    "content_hash": "830B344CF61C7A7E43F08B97D8AB51291EF71EB17235DD2DDBD141E28FC6B10E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURJPY",
+    "reset_count": 620,
+    "content_hash": "7D484C520B7509127877A4BDBE1529F8747CC3FF03E45869721BA8CF4BF7AE63"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURNZD",
+    "reset_count": 748,
+    "content_hash": "7A0F66807BBC6F54D344AEEC997004CBD4993DEDFD1898D28101A3BD999103F9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "reset_count": 648,
+    "content_hash": "96790A7F1340ABD5ECDB6CD10B837668AF5687A7CC8ADBFEC65E4EB0E8697F20"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "reset_count": 668,
+    "content_hash": "6ACDB4D69D314EE4F78E8BEDE82AB39E14D4A070A9543FE8B4D2F0E81BA69FE2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "reset_count": 624,
+    "content_hash": "3922A8FF53A0A42026CF1332C3AF60790B956AF39B6F53892F84869F1FA0B8C4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "reset_count": 669,
+    "content_hash": "D382A1F3051580190CF6C327936F2AD968A65475EB99F53A8DBFBF081E3B0481"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "reset_count": 632,
+    "content_hash": "AAC7D0A5A7208B981F826295083377EDF217540C4FDD085B2C9D6A6D48A7D7ED"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "reset_count": 701,
+    "content_hash": "18B94D420D5FA0C4DF73F8AB3D1E56ADF258F65626918D5602986A67B9B609DC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "reset_count": 680,
+    "content_hash": "7797D73677F3FE7774ECE9FB645F8C26E05ECB57BB3E9026BCAE5ED73A6C6396"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "reset_count": 775,
+    "content_hash": "647AB02059C0114F4C294E2B95917037677FCFCFFA0C84CA315F9DE4F360EE2C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "reset_count": 813,
+    "content_hash": "42A64CEF6AFC952FB685830E939524FE75468C3BAA432E7CF7D38B34B92ABABC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "reset_count": 804,
+    "content_hash": "627DA8612D9D6147853ABD43C94E4184CCE600B8ABC7CB7F894974CFC57F44E5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "reset_count": 660,
+    "content_hash": "C86D7C3E1985DC7D0D6F5A1655D952D357DDDE25C7087A4FCB08BE7588F9ADAB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "reset_count": 687,
+    "content_hash": "4D8B0A79D8F1808C3770BFD1D134B838999746C2D66C395F17BD0194EE93CCF5"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "reset_count": 661,
+    "content_hash": "30FF31D37EF063362797EDF8B01226F081853256F262EBEBAAC50461DDB5FB08"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "reset_count": 649,
+    "content_hash": "44E05250B4973CB263ED36004626971CA90179AEBF8474131AF6041E5AD95BF4"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCAD",
+    "reset_count": 690,
+    "content_hash": "BD6DBC82B78E1971FE2F09399C5EC05FC3005B84538FBA8EE4822DE8A4F0D6CB"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDCHF",
+    "reset_count": 692,
+    "content_hash": "9E20B332768C67FB76EC9E5A7AA84214909E2CE9E280B0AB80ABD2F61AB410F2"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDJPY",
+    "reset_count": 674,
+    "content_hash": "2195B5654E42DBBBB6EB0A5CD642DCD56D171EF7BCEF14F51B35EA7297A0CA97"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDNZD",
+    "reset_count": 484,
+    "content_hash": "8E00C43F3E6A761C2062E674790C188BEB356FC38DBCFBCCAF996226CF7987BA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "AUDUSD",
+    "reset_count": 589,
+    "content_hash": "CE44E5AB88FE1B79D8228CDD84784BB88B4BD66913ED21966042AF849C40A4F9"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADCHF",
+    "reset_count": 654,
+    "content_hash": "9328822F8A89A59CBFF6643D98B21C6613E132C99A6233546C114DCC4D06AE47"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CADJPY",
+    "reset_count": 622,
+    "content_hash": "914955AC1F7096A646E72EF22CD9C7FD543C25A3D282D67EA192038B90471CF8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "CHFJPY",
+    "reset_count": 599,
+    "content_hash": "05620E75EA07D40201A97D48DFB438DABB84C51F1AE6B11CA8A5C8453FC2A70C"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURAUD",
+    "reset_count": 632,
+    "content_hash": "806885531E001CD2D94593B8FB692CA35883C44DF7FC68D0E74FBD27085DAF1D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCAD",
+    "reset_count": 663,
+    "content_hash": "ECD6CF4161208D68E36BB8E57B7DFA5AD806CF43007FAAC9C5EB87C0E7F36380"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURCHF",
+    "reset_count": 469,
+    "content_hash": "D4DA2A562A11703D826916D47FC407464C28970ACD67EEDDEA0E74DF2328C3EA"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURGBP",
+    "reset_count": 594,
+    "content_hash": "CFA9A522F0D6C47CBB90A3EEA39F06DCBC46074A00AA87D1AB827085907DD898"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURJPY",
+    "reset_count": 550,
+    "content_hash": "F7D006EF111F579EFD24F9CAE593A8EF3DE6CF3ED26D0FAFE651C4CB3B9CBC1B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURNZD",
+    "reset_count": 691,
+    "content_hash": "2D146F97D6F3D0DBA66E66341C9C72AE699F76920E783B6FDC467CF909FD247E"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "EURUSD",
+    "reset_count": 573,
+    "content_hash": "758A9975416C5300CEE34B55E7934489F901DD3BB588608B514ECBE669EABD6D"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPAUD",
+    "reset_count": 622,
+    "content_hash": "09394B5ADC8672463BC3AEB0C82ED1220D520B69C10064A376AE58A45DA18CB8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCAD",
+    "reset_count": 562,
+    "content_hash": "EB4AF36C2E3787243602CE5DA4EB2030085E1C9EBD5E3B44BCFFFFF683486A4A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPCHF",
+    "reset_count": 586,
+    "content_hash": "2778B072DE5FB2C6131475DCFB7DC6E8D2031291F45AD8DF8A3E573450381821"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPJPY",
+    "reset_count": 588,
+    "content_hash": "242F1D3F24B92B0E5D184568227642C15BF68967722F023356BDE893363C5E79"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPNZD",
+    "reset_count": 642,
+    "content_hash": "1820F9671213D470714F11C0E0823C1F2F463769E448C5AED75D9FB5499302AC"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "GBPUSD",
+    "reset_count": 600,
+    "content_hash": "08F6E71710F215F46F97EEFDF825E199F703DE6743EBD68AC58D5916EB99FAFE"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCAD",
+    "reset_count": 697,
+    "content_hash": "33178FC3453D3D04C57A026055C26CE7A1061544BE23BB266CEDAF0C905097F7"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDCHF",
+    "reset_count": 683,
+    "content_hash": "ED69074B84B7CE1F5DE47BE45FC27BEE745BBC39CD20051AC0FD23550ADB8A9A"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDJPY",
+    "reset_count": 718,
+    "content_hash": "1154B0DB52C608096AA4C72D4A21C2C3EFF2FAF3DF8003748FCE7A1E70D9E838"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "NZDUSD",
+    "reset_count": 564,
+    "content_hash": "653C0DA409640D7A3B5BDBD01280CEDDD8505771D8BEE7FF141F0D4DEB9B3C12"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCAD",
+    "reset_count": 622,
+    "content_hash": "2DEE43B83ECCEBEA4A9D3CFDE5C6A827C751D3CB614DB6DB0D1F8C4CA297C4D3"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDCHF",
+    "reset_count": 573,
+    "content_hash": "51BD23DF13806B0C29D74BB810B5D58EB33A24F4588496191B9A2CF9FE7B356B"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "pair": "USDJPY",
+    "reset_count": 585,
+    "content_hash": "920DA61159E8BDE797B85343AFF8CE9160AA2C4FF311C9893BC8DA60E0D8A16C"
+  }
+]

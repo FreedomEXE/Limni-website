@@ -1,0 +1,8 @@
+EnableRevma=true
+EnableKyma=false
+EnableKatarakti=false
+UniverseMode=1
+ExecutionMode=2
+AllowLiveTrading=false
+BrokerSymbolSuffix=.i
+ShowSystemDashboard=false

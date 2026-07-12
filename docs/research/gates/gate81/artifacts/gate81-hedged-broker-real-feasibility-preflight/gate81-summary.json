@@ -1,0 +1,36 @@
+{
+  "gate_id": "Gate 81: hedged-broker-real-feasibility-preflight",
+  "command": "npm run engine:gate81:hedged-broker-real-feasibility-preflight",
+  "generated_at": "2026-06-30T18:27:50.718Z",
+  "git_commit": "30a8c75a9b172f3d693b9da9e605db8bba8c6886",
+  "gate80_git_commit": "d46472571627e0043bbcce02146318d65e21636c",
+  "artifact_only_no_replay": true,
+  "elapsed_ms": 785,
+  "verdict": "PASS_HEDGED_FEASIBILITY_PREFLIGHT__ONE_PAIR_MT5_PROTOTYPE_NEXT_NO_PROMOTION",
+  "gate80_verdict": "PASS_HEDGED_BASELINE_PROMISING_BUT_COST_MARGIN_VALIDATION_REQUIRED_NO_PROMOTION",
+  "gate80_warehouse": {
+    "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "weeks_replayed": 373,
+    "pairs_replayed": 28,
+    "pair_week_rows_replayed": 10444,
+    "gate74b_summary_hash_matched": true
+  },
+  "normal_hedged_final_adr": 51434.077719,
+  "normal_directional_final_adr": 12879.999764,
+  "stress_hedged_final_adr": 42637.417719,
+  "stress_directional_final_adr": 9334.109764,
+  "hedged_average_fills_per_week": 548.932976,
+  "hedged_p95_fills_per_week": 696,
+  "hedged_max_fills_per_week": 852,
+  "hedged_return_per_margin_proxy_unit": 32.077829,
+  "frozen_areas": [
+    "no Candidate B mutation",
+    "no COT/Strength/Regime work",
+    "no risk layer",
+    "no pair pruning",
+    "no AUDNZD exclusion",
+    "no MT5/live/app/runtime code",
+    "no promotion"
+  ]
+}

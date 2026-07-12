@@ -1,0 +1,165 @@
+{
+  "gate_id": "Gate 68B: brain-mode-selector-test-matrix",
+  "candidates": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 4706,
+        "QUOTE_CURRENCY": 5738
+      },
+      "participating_cell_counts": {
+        "cot": 6374,
+        "regime": 10444,
+        "strength": 6374
+      },
+      "cell_role_counts": {
+        "cot|CONFIRM": 1204,
+        "cot|CONTEXT": 7460,
+        "cot|WARNING": 1780,
+        "regime|ANCHOR": 7576,
+        "regime|CONTEXT": 2868,
+        "strength|CONFIRM": 4944,
+        "strength|CONTEXT": 3198,
+        "strength|TIE_BREAKER": 2274,
+        "strength|WARNING": 28
+      },
+      "cell_quality_counts": {
+        "cot|CLEAN": 9956,
+        "cot|DEGRADED": 488,
+        "regime|CLEAN": 5113,
+        "regime|DEGRADED": 5331,
+        "strength|CLEAN": 10416,
+        "strength|DEGRADED": 28
+      },
+      "source_quality_exposure": {
+        "CLEAN": 25485,
+        "DEGRADED": 5847
+      },
+      "warning_rows": 691,
+      "fallback_rows": 4761,
+      "veto_rows": 691,
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 5678,
+        "QUOTE_CURRENCY": 4766
+      },
+      "participating_cell_counts": {
+        "cot": 10444,
+        "regime": 10444,
+        "strength": 10444
+      },
+      "cell_role_counts": {
+        "cot|CONFIRM": 1204,
+        "cot|CONTEXT": 7460,
+        "cot|WARNING": 1780,
+        "regime|ANCHOR": 7576,
+        "regime|CONTEXT": 2868,
+        "strength|CONFIRM": 4944,
+        "strength|CONTEXT": 3198,
+        "strength|TIE_BREAKER": 2274,
+        "strength|WARNING": 28
+      },
+      "cell_quality_counts": {
+        "cot|CLEAN": 9956,
+        "cot|DEGRADED": 488,
+        "regime|CLEAN": 5113,
+        "regime|DEGRADED": 5331,
+        "strength|CLEAN": 10416,
+        "strength|DEGRADED": 28
+      },
+      "source_quality_exposure": {
+        "CLEAN": 25485,
+        "DEGRADED": 5847
+      },
+      "warning_rows": 1292,
+      "fallback_rows": 1292,
+      "veto_rows": 1292,
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 4924,
+        "QUOTE_CURRENCY": 5520
+      },
+      "participating_cell_counts": {
+        "cot": 10444,
+        "regime": 10444,
+        "strength": 10444
+      },
+      "cell_role_counts": {
+        "cot|CONFIRM": 1204,
+        "cot|CONTEXT": 7460,
+        "cot|WARNING": 1780,
+        "regime|ANCHOR": 7576,
+        "regime|CONTEXT": 2868,
+        "strength|CONFIRM": 4944,
+        "strength|CONTEXT": 3198,
+        "strength|TIE_BREAKER": 2274,
+        "strength|WARNING": 28
+      },
+      "cell_quality_counts": {
+        "cot|CLEAN": 9956,
+        "cot|DEGRADED": 488,
+        "regime|CLEAN": 5113,
+        "regime|DEGRADED": 5331,
+        "strength|CLEAN": 10416,
+        "strength|DEGRADED": 28
+      },
+      "source_quality_exposure": {
+        "CLEAN": 25485,
+        "DEGRADED": 5847
+      },
+      "warning_rows": 1813,
+      "fallback_rows": 5883,
+      "veto_rows": 1813,
+      "mode_counts": null
+    },
+    {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "selected_direction_counts": {
+        "BASE_CURRENCY": 4862,
+        "QUOTE_CURRENCY": 5582
+      },
+      "participating_cell_counts": {
+        "cot": 6947,
+        "regime": 10444,
+        "strength": 6947
+      },
+      "cell_role_counts": {
+        "cot|CONFIRM": 1204,
+        "cot|CONTEXT": 7460,
+        "cot|WARNING": 1780,
+        "regime|ANCHOR": 7576,
+        "regime|CONTEXT": 2868,
+        "strength|CONFIRM": 4944,
+        "strength|CONTEXT": 3198,
+        "strength|TIE_BREAKER": 2274,
+        "strength|WARNING": 28
+      },
+      "cell_quality_counts": {
+        "cot|CLEAN": 9956,
+        "cot|DEGRADED": 488,
+        "regime|CLEAN": 5113,
+        "regime|DEGRADED": 5331,
+        "strength|CLEAN": 10416,
+        "strength|DEGRADED": 28
+      },
+      "source_quality_exposure": {
+        "CLEAN": 25485,
+        "DEGRADED": 5847
+      },
+      "warning_rows": 1353,
+      "fallback_rows": 4850,
+      "veto_rows": 1353,
+      "mode_counts": {
+        "CONSERVATIVE": 6762,
+        "NORMAL": 2811,
+        "PROTECTION": 871
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+gate_id Gate 65A: brain-atom-contract-v2-sync
+command npm run engine:gate65a:brain-atom-contract-v2-sync
+generated_at 2026-06-28T00:51:08.986Z
+git_commit 059a8ced9d507aa5f1130611898421b5baeb15d5
+contract_json CC63BFBC2F288CBD070FFFE7C3BFB9E9658CA7789A5D8E19356588A88B416AB7 docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/brain-atom-contract-v2.json
+diff_json 0E0E1DC0591888A6507B0C7BC970B8840277FB07339314F73F67F1C3A809CB70 docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/brain-atom-contract-v2-diff-vs-gate61a.json
+sync_report F0B3DEC4E7D58628DEEDDDF82D3AE8626A60201ECF196E43EFFED25CDE6FCCD0 docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/valuation-gap-architecture-sync-report.json
+summary_json 13FF56C195A96D48C2E9D0A5A342B2C31D01298030517545AB8524145C5E522E docs/research/gates/gate65a/artifacts/gate65a-brain-atom-contract-v2-sync/gate65a-summary.json
+report 7EF0F21DF0783F3984BDE52444FE336C4860467AC1271DA9C4BDA31BD56A863A docs/research/gates/gate65a/GATE65A_BRAIN_ATOM_CONTRACT_V2_SYNC_2026-06-27.md

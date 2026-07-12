@@ -1,0 +1,29 @@
+
+
+TerminalId         : 94497
+Pid                : 3932
+ExitCode           : -1
+TimedOut           : True
+QProfile           : FAST_5000
+TesterModel        : OpenPrices
+TesterModelValue   : 2
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T22:23:03.5565729-04:00
+EndedAt            : 2026-07-08T22:27:05.5610495-04:00
+WallSeconds        : 242.004
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate105\artifacts\hwm-mechanics-s
+                     moke-94497-20260708\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate105\artifacts\hwm-mechanics-s
+                     moke-94497-20260708\LimniPortfolioEA.set
+RunManifest        : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate105\artifacts\hwm-mechanics-s
+                     moke-94497-20260708\fx28-run-manifest.json
+RunProfileSha256   : 91767F612C641EBF365539AD6732D9313A2CF8AD7E23D1A3848FCCE389CB2B13
+TesterConfigSha256 : 67A07242B6D9E12E14CA604345CE19C8F3D2E30090AED821746A0EFD011E1E8C
+OutputFolder       : LPEA_Rv_FX28_F5K_OpenPrices_AHwm_RC_TP0p750_SL0p000_20260708-222302
+OutputFolderPrefix : LPEA_Rv_FX28_F5K_OpenPrices_AHwm_RC_TP0p750_SL0p000_20260708-222302
+Report             : GATE104_SPEED_FAST_5000_OpenPrices_20260708-222302
+
+
+
+

@@ -1,0 +1,9 @@
+gate_id Gate 67D: architecture-lock-readiness-review
+command npm run engine:gate67d:architecture-lock-readiness-review
+generated_at 2026-06-28T02:53:38.470Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+readiness_summary 3309CE18EE033D4808106FB615EAD14000729DE573BC656E5E3EEE2D4BD51473 docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/architecture-lock-readiness-summary.json
+blockers_json BE3EED3D01A17A21512AF404BDFC19A62EF7703B6A9AA9B27F1CCB48B63B82D3 docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/architecture-lock-blockers.json
+recommended_next_gate 12EB47672B773BF5FB74CB430BD7E11A4DA1DD0234A41C9449D6E5471F62520D docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/recommended-next-gate.md
+cross_gate_hash_manifest DFDA6D68E9832EF1B6153A9BB731EECD337EFCFFB168281ECF1A7929945D96ED docs/research/gates/gate67d/artifacts/gate67d-architecture-lock-readiness-review/gate67d-cross-gate-hash-manifest.txt
+report 2473F6BF6A85202FB4322295FEDAA18556DAC5E34F5A115B5ACD2D7286770572 docs/research/gates/gate67d/GATE67D_ARCHITECTURE_LOCK_READINESS_REVIEW_2026-06-28.md

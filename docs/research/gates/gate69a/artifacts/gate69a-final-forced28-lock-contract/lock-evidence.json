@@ -1,0 +1,53 @@
+{
+  "gate_id": "Gate 69A: final-forced28-lock-contract",
+  "metric_table": [
+    {
+      "role": "default_lock",
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "adr_grid": 2341.080708,
+      "rdd": 9.693556,
+      "pf": 1.25407,
+      "weekly_hold": 638.603176,
+      "weekly_hold_rdd": 5.468441,
+      "negative_years": 1
+    },
+    {
+      "role": "shadow_canary",
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "adr_grid": 2276.283276,
+      "rdd": 8.276299,
+      "pf": 1.242893,
+      "weekly_hold": 732.900462,
+      "weekly_hold_rdd": 5.805533,
+      "negative_years": 0
+    },
+    {
+      "role": "rejected_selector",
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "adr_grid": 2235.61899,
+      "rdd": 5.748052,
+      "pf": 1.239439,
+      "weekly_hold": 846.072114,
+      "weekly_hold_rdd": 7.273626,
+      "negative_years": 1
+    }
+  ],
+  "default_vs_shadow_delta": {
+    "adr_grid_adr_delta": 64.797432,
+    "adr_grid_rdd_delta": 1.417257,
+    "adr_grid_pf_delta": 0.011177,
+    "weekly_hold_adr_delta": -94.297286,
+    "weekly_hold_rdd_delta": -0.337092,
+    "weekly_hold_pf_delta": -0.018624,
+    "negative_adr_grid_year_delta": 1
+  },
+  "default_candidate_source": "Gate 67C best ADR Grid R/DD and PF, confirmed by Gate 68E recommendation.",
+  "shadow_candidate_source": "Gate 67C zero-negative-year and Gate 68E shadow/canary recommendation.",
+  "rejected_selector_source": "Gate 68B/68E Candidate D genuinely new but not lock-ready.",
+  "input_hashes": {
+    "gate67c_rows_hash": "968DA2A989047B74CACE2E3260C8398CFE59D12B6EED2D9732F4EA404B1B3433",
+    "gate68c_manifest_hash": "5409501357CA48154B0F8E64BADFDAAC9A66036CCD8137959379502AD4698B97",
+    "gate68e_summary_hash": "F39AAAF82EF05F7D9B0F75BF121B2677DEEA07F96E0CE14C051876CA7D44A0DC",
+    "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3"
+  }
+}

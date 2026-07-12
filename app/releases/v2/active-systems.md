@@ -54,7 +54,7 @@ kernel readiness gate.
 
 TradingView verifier file:
 
-- [`scripts/pinescript/limni-adr-verifier.pine`](../../scripts/pinescript/limni-adr-verifier.pine)
+- [`automation/indicators/tradingview/limni-adr-verifier.pine`](../../../automation/indicators/tradingview/limni-adr-verifier.pine)
 
 Modes and controls:
 

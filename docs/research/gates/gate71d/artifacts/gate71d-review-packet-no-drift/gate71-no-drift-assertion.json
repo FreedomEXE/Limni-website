@@ -1,0 +1,18 @@
+{
+  "gate_id": "Gate 71D: review-packet-no-drift",
+  "candidate_b_mutated": false,
+  "all_28_signal_rows_preserved": true,
+  "candidate_c_shadow_only": true,
+  "risk_filters_slipped_in": false,
+  "pair_specific_exits_slipped_in": false,
+  "regime_specific_exits_slipped_in": false,
+  "fair_value_pruning_slipped_in": false,
+  "source_mutation_slipped_in": false,
+  "mt5_live_runtime_work_slipped_in": false,
+  "alpha_v2_promotion_slipped_in": false,
+  "exit_promotion_performed": false,
+  "legacy_adr_grid_foundation_used": false,
+  "basket_path_warehouse_materialized": true,
+  "exit_policy_replay_from_frozen_warehouse": true,
+  "raw_m1_rebuild_performed_during_replay": false
+}

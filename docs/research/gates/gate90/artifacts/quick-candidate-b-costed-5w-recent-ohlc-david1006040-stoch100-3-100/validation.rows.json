@@ -1,0 +1,121 @@
+[
+  {
+    "check": "gate74b_verdict",
+    "value": "PASS_GATE74B_TRADE_LEG_PATH_MATERIALIZATION__POLICY_NEUTRAL_PAIR_WEEK_PATH_WAREHOUSE_READY",
+    "expected": "PASS_GATE74B",
+    "passed": true,
+    "content_hash": "4A9421FC8E2D8C6E15956595F739F44278369DF696A358771ABE68BADA16C282"
+  },
+  {
+    "check": "continuous_carried_inventory",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "999AC3ADA559B4F12014017576F9811928A9330BA6573396987480339BB5C168"
+  },
+  {
+    "check": "weekly_sample_end_close_disabled",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "515D23601F0BA5204B938B73641B523074B29D0B67302BAFDF4E102718F523D1"
+  },
+  {
+    "check": "target_reset_uses_price_adr_pnl",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "AC7DFBAD56965746F7E147EF070C5C50CDA4A3F364C734DC8D71297525934D0F"
+  },
+  {
+    "check": "bar_path_mode",
+    "value": "ohlc_high_low",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "D7662FC79B46AB6334122CDF1E594406A6D6CB84FC9AB9B437CDC6559BF46735"
+  },
+  {
+    "check": "quote_currency_pnl_converted_to_usd",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "F7A15A95F98153C5A08A778EDE21FFC1C279900C5C032239D4BACBBFE8EB4D89"
+  },
+  {
+    "check": "swap_triggers_target_reset",
+    "value": false,
+    "expected": false,
+    "passed": true,
+    "content_hash": "93E1DD425FAAD5072618DDC878AB3887AF2876D747398D6C8DBAEDC6BAAC0249"
+  },
+  {
+    "check": "activation_rule_ids",
+    "value": "raw_both,candidate_b,david_contra,david_stoch_release",
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "DF0F96E25B7CB0561EBEB47181826E9A4C777CB126AA4919391E7160CCF457BB"
+  },
+  {
+    "check": "activation_controls_initial_cycle_start_only",
+    "value": true,
+    "expected": true,
+    "passed": true,
+    "content_hash": "749785F8129265AE045898B832B2733A4EE972998BEB85FB1842C9A3D6CC859F"
+  },
+  {
+    "check": "david_ma_settings",
+    "value": "LWMA35_RSI100_60_40",
+    "expected": "explicit CLI/default settings",
+    "passed": true,
+    "content_hash": "348045A83F134F57AEF0C13CEA43E7E8087EC78F6B1ECF6652B08632BA44ED2D"
+  },
+  {
+    "check": "stochastic_settings",
+    "value": "100_3_100_80_20_low_high_simple_main_only",
+    "expected": "explicit CLI/default settings",
+    "passed": true,
+    "content_hash": "09068F226ED4274A08949ED0F35B868B1FD6DF92F5D1C84A44DE6C3C75BD97FE"
+  },
+  {
+    "check": "summary_only",
+    "value": true,
+    "expected": "explicit",
+    "passed": true,
+    "content_hash": "EC2EE49EB24702F15E67F6F55CB2861C6C5B994DFF067BBF5AAF1AB3DE526175"
+  },
+  {
+    "check": "commission_per_entry_per_001_lot_usd",
+    "value": 0.06,
+    "expected": 0.06,
+    "passed": true,
+    "content_hash": "FE3F374121A703E0D22F4DB1E9284FB882CE3F4260AEBEF733DCDFA1AB632033"
+  },
+  {
+    "check": "eurusd_long_swap_per_001_lot_day_usd",
+    "value": -0.0917,
+    "expected": "MT5-derived approx",
+    "passed": true,
+    "content_hash": "761DAA39F61168C51C12BA9710F5FCA049F715CB9EE1726E190FFDC049F116D9"
+  },
+  {
+    "check": "eurusd_short_swap_per_001_lot_day_usd",
+    "value": 0.01,
+    "expected": "MT5-derived approx",
+    "passed": true,
+    "content_hash": "C1386EA02784412EA757DA00226F73E20BF9569FB5B556AF732DBD6DC9D319C5"
+  },
+  {
+    "check": "selected_week_count",
+    "value": 5,
+    "expected": ">=1",
+    "passed": true,
+    "content_hash": "8286204BFC85774FC9196FFF174C074E6C690A59903BDA83D48D9C09658C0C7B"
+  },
+  {
+    "check": "selected_pair_count",
+    "value": 28,
+    "expected": ">=1",
+    "passed": true,
+    "content_hash": "6CE9D38D37A11D89DC777AEFA36246E50B9D3229E089C828FCBF3356D80A78B3"
+  }
+]

@@ -1,0 +1,37 @@
+gate_id Gate 79: flip-loss-and-adverse-inventory-root-cause-audit
+command npm run engine:gate79:flip-loss-adverse-inventory-root-cause-audit
+generated_at 2026-06-30T16:11:17.113Z
+git_commit a8732f1738536537ac825ac5da6a23ccccaf884f
+scorecard_rows_json D83F306F6D299589D5F51019FDCDC8F609A4E26E210D53951DE5777E16F196DF docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/gate79-scorecard.rows.json
+scorecard_rows_csv 9F444B877D7B9BB57016D3E53E5CB14BD0ACB55131E561E8E3A6936A2934D4E3 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/gate79-scorecard.rows.csv
+weekly_equity_rows_json A65B36651D94B6C9CCCE45977AC053B2BB505E8987A7C73D5AF210C869A7032E docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/weekly-equity-truth.rows.json
+weekly_equity_rows_csv B81220B529E0E255DF67F232D719CD97BCDBF68111A9448146488B3B8AA0E18E docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/weekly-equity-truth.rows.csv
+annual_rows_json 704C0E99547287C2B88673919D13EBCEF49D092325512879C7C644C2073AB36F docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/annual-summary.rows.json
+annual_rows_csv 0B9FECC73A404E9FFCC5A5D066CABA3C79EE66DCF1B661742798A73A679176A4 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/annual-summary.rows.csv
+close_reason_rows_json 523E647EB42B8A88555C0A9459995227AE2EBF587BC98397861BCECC34D4B6EE docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/close-reason-breakdown.rows.json
+close_reason_rows_csv 431783E98D2B1A8801197760CA30C5DD8B21982988074BC38D1F65DD817D0F76 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/close-reason-breakdown.rows.csv
+flip_anatomy_rows_json 6DCB268362844EF1C057615DCC93937557B5AFC99CA7C9743A61C9A0D1BDF581 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/flip-loss-anatomy.rows.json
+flip_anatomy_rows_csv EF88EDB358B85D6AF69241FD14C5D65BD2546732193C80D621FC645E4E10CEF1 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/flip-loss-anatomy.rows.csv
+reset_ordinal_rows_json EFB7834DC19A19A38FB69D60EE291F16158ED27B92C8A0855B886ADC6E9D9652 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/reset-ordinal-breakdown.rows.json
+reset_ordinal_rows_csv D2882F20BA867233D3B41795228B817C7363660262EB5D67600B5DCFEC7AF5B5 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/reset-ordinal-breakdown.rows.csv
+age_bucket_rows_json 9323EB72C31A2E49B5FCAE27B2C53213558C53DB6F996073EB0D0FBD687E3F31 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/age-bucket-breakdown.rows.json
+age_bucket_rows_csv 0F5DF3E2C4F5E98DB4E6FCF9FE53AE25DFD0832371FEA366363782A2C2A8B887 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/age-bucket-breakdown.rows.csv
+pair_attribution_rows_json ACF0710224A70055469A563A14B88F80E891D5E4012C11D5E2DFBA13DECF2B0B docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/pair-tail-attribution.rows.json
+pair_attribution_rows_csv 9ECE389C2101EEB38F0B7C7D06C5872228948DE1E6EA996095CFB48E8E8921FC docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/pair-tail-attribution.rows.csv
+currency_attribution_rows_json 82DC10B8A572784F9506F6C6AAB81C299094EB268FF5D06E9B51555FCDD7D4F0 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/currency-tail-attribution.rows.json
+currency_attribution_rows_csv 1F1B775638C13BEF0F3378FDBC405B48F1723ADD062138587AD9256C9D24A4B0 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/currency-tail-attribution.rows.csv
+audnzd_sentinel_rows_json 89424184D30573BDE9E4644B905296D571A2144B1BBB9BC6B9B4B6D9612B47D0 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/audnzd-sentinel.rows.json
+audnzd_sentinel_rows_csv 6EA32E10BB2A5618DD52DA96ECC975E9C8229B5AE9C42D17B109678B47A42872 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/audnzd-sentinel.rows.csv
+counterfactual_rows_json 02D7A3D98757CFEA48CC3929EEA2219606B6F324958FC1E5A8D299E072BE5DF8 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/flip-policy-counterfactual.rows.json
+counterfactual_rows_csv 65D18588CB33B69125FC428B431D72C910D404E74577C0C2C6280BC12645FEA1 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/flip-policy-counterfactual.rows.csv
+fully_hedged_benchmark_rows_json 976703EA36DB6FD47DA982E0148E1F5B240A0D8722582DA6FEE135015F41EABA docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/fully-hedged-benchmark.rows.json
+fully_hedged_benchmark_rows_csv C2B3BF0B7904F5DD5A39329E00B4EC8BCFD4F1CD6D70B742DC24996AA84A17EC docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/fully-hedged-benchmark.rows.csv
+return_target_gap_rows_json 43506D33707D6F10525D5D88AA7FA53AE1500C54053AD5F73C10FC864133642C docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/return-target-gap.rows.json
+return_target_gap_rows_csv F815F2B1B2CCED4B86F155F2EC97CF6807300E3ABCBE864532D4ACC881824324 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/return-target-gap.rows.csv
+decision_rows_json F316B6F43BAF4242E1A0FC7225EF5D6A1163386F75CD69BE725ABC0787EBD3DE docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/final-decision-table.rows.json
+decision_rows_csv 43E678CB0A290804472BAB1B0C84EB0B47207FA8AF9F1D463DE4A40F0EC2C5CA docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/final-decision-table.rows.csv
+direct_answer_rows_json EC2CECDBBF24EF6AF9A492D367A527F59A29FEA69233ADA1BFC835B8815B0302 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/direct-answers.rows.json
+direct_answer_rows_csv 42D2E9F7F3DD776DF0DD1E617008FF47D46624BDEA702319F8E62BFF7281843B docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/direct-answers.rows.csv
+command_receipt 63C6A4ED99B41110870B4C3D1DA03806CFF01B25DD746909676805DFBF21312D docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/command-receipt.json
+summary_json 0393B4D6B98FCDD1281E25A4A1D6C94A6968E125D41FB28B55DD7801AE35DA02 docs/research/gates/gate79/artifacts/gate79-flip-loss-adverse-inventory-root-cause-audit/gate79-summary.json
+report F221173F81AC283842E2B4A2C8280ED07BCDADA5DEAD56B6E0FDC337DBE4EC24 docs/research/gates/gate79/GATE79_FLIP_LOSS_ADVERSE_INVENTORY_ROOT_CAUSE_AUDIT_2026-06-30.md

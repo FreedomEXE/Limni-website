@@ -1,0 +1,12 @@
+gate_id Gate 68D: forward-decision-receipt-and-drift-monitor
+command npm run engine:gate68d:forward-decision-receipt-and-drift-monitor
+generated_at 2026-06-28T04:48:04.532Z
+git_commit 710c02c79261e44a5f066513a2b258aea2d2840d
+decision_receipt_schema A2A116DC30A9EE74CC971C5E7B0EB5B4D49173798BDA8E9A6C0753C5AD9C280C docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-weekly-decision-receipt.schema.json
+outcome_observation_schema 540AA34B0A343D5678FCC35ED55E87BFD2AD7F2F6D6E77FA9F78A965E693213A docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-outcome-observation.schema.json
+drift_monitor_contract 1B4156A27F20DC83390718C19D5A53D39B15F27DB6ED95D3390DFBB0FB2CB039 docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-contract.json
+drift_thresholds 097170C639091AB54FB6E8FB8CE4750106AE903FD1B1B41E38B961B326D730D4 docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/drift-monitor-thresholds-predeclared.json
+replay_contract B416E2AAF075A9554668B533CB3841D278C03E6FD9132EECCF4CE1CBC080489E docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/no-drift-replay-contract.json
+append_only_contract 8C66F37203300BC683D21D23B4FE9CAF16C0C37145434E180D51ADE1168FDB40 docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/forward-ledger-append-only-contract.json
+summary_json E915FE3DBC7300455C001745296F2C2FAB8F8A4DC26673898691A4240BC2BAA6 docs/research/gates/gate68d/artifacts/gate68d-forward-decision-receipt-and-drift-monitor/gate68d-summary.json
+report 34DDEE68A9CFC67DE5AB23AB744E3FCA969BAB00CD89575F355FA6EC7D2C8379 docs/research/gates/gate68d/GATE68D_FORWARD_DECISION_RECEIPT_AND_DRIFT_MONITOR_CONTRACT_2026-06-28.md

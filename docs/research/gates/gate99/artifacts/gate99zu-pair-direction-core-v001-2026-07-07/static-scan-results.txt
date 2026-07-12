@@ -1,0 +1,18 @@
+StateMap includes_pair_direction_core=True
+StateMap direction_uses_confirmed_core=True
+PairDirection formula_id=g99zu-pair-direction-v001
+PairDirection formula_hash=2125347990034264618
+PairDirection confirm_events=5
+PairDirection min_flip_score=0.25
+PairDirection has_replay_function=True
+PairDirection no_chart_objects=True
+PairDirection no_common_files=True
+PairDirection no_trade_calls=True
+Stochastic source_untouched_by_gate99zu=True
+Stochastic no_LimniVisual=True
+Working tree changed files before commit:
+ M automation/mt5/Indicators/Limni/StateMap.ex5
+ M automation/mt5/Indicators/Limni/StateMap.mq5
+?? automation/mt5/Indicators/Include/LimniPairDirectionCore.mqh
+?? docs/research/gates/gate99/GATE99ZU_PAIR_DIRECTION_CORE_V001_2026-07-07.md
+?? docs/research/gates/gate99/artifacts/gate99zu-pair-direction-core-v001-2026-07-07/

@@ -1,0 +1,41 @@
+{
+  "diagnostic_only": true,
+  "formulas": {
+    "valuation_gap_reer_deviation": {
+      "pair_rows": 10444,
+      "inverse_direction_counts": {
+        "BASE_CURRENCY": 3545,
+        "QUOTE_CURRENCY": 6899
+      },
+      "natural_direction_counts": {
+        "BASE_CURRENCY": 6899,
+        "QUOTE_CURRENCY": 3545
+      },
+      "spread_tier3_breaks": [
+        2.85,
+        7.38
+      ],
+      "agrees_with_cot": 5924,
+      "agrees_with_strength": 5632,
+      "agrees_with_bpr": 5884
+    },
+    "valuation_gap_neer_reer_relative": {
+      "pair_rows": 10444,
+      "inverse_direction_counts": {
+        "BASE_CURRENCY": 4498,
+        "QUOTE_CURRENCY": 5946
+      },
+      "natural_direction_counts": {
+        "BASE_CURRENCY": 5946,
+        "QUOTE_CURRENCY": 4498
+      },
+      "spread_tier3_breaks": [
+        1.34,
+        5.2
+      ],
+      "agrees_with_cot": 5665,
+      "agrees_with_strength": 5261,
+      "agrees_with_bpr": 5403
+    }
+  }
+}

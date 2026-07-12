@@ -1,0 +1,28 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "statuses": {
+    "replayable_now": [
+      "controls",
+      "pair_net_grid_cycle_reset",
+      "pair_profit_floor_trail",
+      "pair_stop_floor_universal",
+      "max_fill_max_age_containment",
+      "partial_close_let_rest_run",
+      "hedge_freeze_lock_visible_loss"
+    ],
+    "requires_synchronized_account_replay": [
+      "account_net_adr_reset",
+      "account_profit_floor_trail",
+      "account_stop_recovery_close",
+      "one_reset_and_stop_weekly",
+      "no_reentry_after_reset",
+      "pair_grid_plus_account_override",
+      "pair_cycle_with_account_floor",
+      "partial_pair_close_plus_account_runner_preservation"
+    ],
+    "requires_new_trade_event_materialization": [],
+    "parked": []
+  },
+  "rule": "Gate 75B may only execute replayable_now families unless Freedom explicitly opens synchronized account replay materialization first.",
+  "content_hash": "04DD370256F18B153825ABBD15711BA1B17CF14CDB396CEF24029DE1CE684739"
+}

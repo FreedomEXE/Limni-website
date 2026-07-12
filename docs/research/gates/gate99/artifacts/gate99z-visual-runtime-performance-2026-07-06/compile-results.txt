@@ -1,0 +1,16 @@
+Gate 99Z visual runtime performance compile results
+Date: 2026-07-06
+
+repo StateMap:
+Result: 0 errors, 0 warnings, 12466 msec elapsed, cpu='X64 Regular'
+
+active StateMap:
+Result: 0 errors, 0 warnings, 13410 msec elapsed, cpu='X64 Regular'
+
+repo Stochastic:
+Result: 0 errors, 0 warnings, 3817 msec elapsed, cpu='X64 Regular'
+
+active Stochastic:
+Result: 0 errors, 0 warnings, 4029 msec elapsed, cpu='X64 Regular'
+
+Scope: StateMap and Stochastic runtime/performance cleanup only. No q-state formula, EA strategy, persistence, threshold, Katarakti, live trading, or backtest-performance claim changed.

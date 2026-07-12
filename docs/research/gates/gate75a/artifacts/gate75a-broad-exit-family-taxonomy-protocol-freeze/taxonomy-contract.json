@@ -1,0 +1,407 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "contract_version": "gate75a_broad_exit_family_taxonomy_v1",
+  "family_count": 15,
+  "families": [
+    {
+      "family_id": "controls",
+      "group": "control",
+      "description": "Baseline controls and already-observed reference rows that every Gate 75B comparison must preserve beside new families.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "CONTROL_WEEKLY_FORCED_CLOSE"
+        },
+        {
+          "adapter_id": "CONTROL_CARRY_UNTIL_FLIP"
+        },
+        {
+          "adapter_id": "CONTROL_PAIR_NET_GRID_FOCUS_T075_S020"
+        },
+        {
+          "adapter_id": "CONTROL_GATE74E_MAX_FILL_075_REFERENCE"
+        },
+        {
+          "adapter_id": "CONTROL_GATE74E_MAX_AGE_2160H_REFERENCE"
+        },
+        {
+          "adapter_id": "CONTROL_GATE74E_RECOVERY_CLOSE_15_TO_MINUS_250_REFERENCE"
+        }
+      ],
+      "evidence_basis": [
+        "Gate 72C no-promotion shortlist",
+        "Gate 73A right-tail dependency",
+        "Gate 74C/74D focus adapter parity",
+        "Gate 74E negative containment result"
+      ],
+      "constraints": [
+        "reference controls do not imply promotion eligibility",
+        "Gate 74E references must carry closed and equity PnL side by side"
+      ]
+    },
+    {
+      "family_id": "pair_net_grid_cycle_reset",
+      "group": "pair_level_lifecycle",
+      "description": "Independent pair-level net-grid harvest cycles with fixed target/spacing and restart until Candidate B flip.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "PAIR_NET_GRID_T050_S020",
+          "target_adr": 0.5,
+          "spacing_adr": 0.2
+        },
+        {
+          "adapter_id": "PAIR_NET_GRID_T075_S020",
+          "target_adr": 0.75,
+          "spacing_adr": 0.2
+        },
+        {
+          "adapter_id": "PAIR_NET_GRID_T100_S020",
+          "target_adr": 1,
+          "spacing_adr": 0.2
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74C gross replay adapter pack",
+        "Gate 74D open-loss forensics"
+      ],
+      "constraints": [
+        "no spacing optimization sweep",
+        "no pair/date exclusions",
+        "close-mark semantics unless explicitly versioned"
+      ]
+    },
+    {
+      "family_id": "pair_profit_floor_trail",
+      "group": "pair_level_lifecycle",
+      "description": "Pair-level runner-preserving floor/trail mechanics applied to a single pair cycle, not to the whole account basket.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "PAIR_TRAIL_A075_F025",
+          "activation_adr": 0.75,
+          "floor_adr": 0.25
+        },
+        {
+          "adapter_id": "PAIR_TRAIL_A100_F050",
+          "activation_adr": 1,
+          "floor_adr": 0.5
+        }
+      ],
+      "evidence_basis": [
+        "Gate 73A runner-preserving recommendation",
+        "Gate 74B pair path warehouse"
+      ],
+      "constraints": [
+        "must report right-tail retention",
+        "cannot clip top winners silently"
+      ]
+    },
+    {
+      "family_id": "pair_stop_floor_universal",
+      "group": "pair_level_lifecycle",
+      "description": "Universal pair lifecycle stop/floor mechanics used as diagnostics, not pair pruning.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "PAIR_STOP_15_REFERENCE",
+          "stop_loss_adr": 15
+        },
+        {
+          "adapter_id": "PAIR_STOP_20_REFERENCE",
+          "stop_loss_adr": 20
+        },
+        {
+          "adapter_id": "PAIR_STOP_20_RECOVER_TO_MINUS_250",
+          "stop_loss_adr": 20,
+          "recovery_close_adr": -2.5
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74E pair stops destroyed harvest",
+        "Gate 74E recovery close retained harvest but did not beat focus"
+      ],
+      "constraints": [
+        "not pair pruning",
+        "must expose destroyed-harvest cases",
+        "old 15 ADR clue remains unverified beyond observed Gate 74E result"
+      ]
+    },
+    {
+      "family_id": "max_fill_max_age_containment",
+      "group": "pair_level_lifecycle",
+      "description": "Simple universal fill-count or age guards around pair cycles.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "MAX_FILL_075_REFERENCE",
+          "max_fill_count": 75
+        },
+        {
+          "adapter_id": "MAX_AGE_2160H_REFERENCE",
+          "max_age_hours": 2160
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74E best containment trade-offs were max-fill/max-age but not promotion-positive"
+      ],
+      "constraints": [
+        "diagnostic containment only",
+        "no fill/age grid expansion"
+      ]
+    },
+    {
+      "family_id": "partial_close_let_rest_run",
+      "group": "pair_level_lifecycle",
+      "description": "Close part of a profitable pair cycle at a fixed level while preserving a runner until flip or floor.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "allowed",
+      "fixed_configs": [
+        {
+          "adapter_id": "PARTIAL_50_AT_T075_REST_TO_FLIP",
+          "close_fraction": 0.5,
+          "trigger_adr": 0.75,
+          "runner_exit": "candidate_b_flip"
+        },
+        {
+          "adapter_id": "PARTIAL_50_AT_T075_REST_TRAIL_F025",
+          "close_fraction": 0.5,
+          "trigger_adr": 0.75,
+          "runner_floor_adr": 0.25
+        }
+      ],
+      "evidence_basis": [
+        "Gate 73A warns against clipping runners",
+        "Gate 74B supports pair path replay"
+      ],
+      "constraints": [
+        "runner retention must be reported",
+        "no cost assumptions yet",
+        "no additional partial-close grid"
+      ]
+    },
+    {
+      "family_id": "account_net_adr_reset",
+      "group": "account_level_lifecycle",
+      "description": "Reset all currently open expression when account-level net ADR reaches a fixed target.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "ACCOUNT_NET_RESET_075",
+          "target_adr": 0.75
+        },
+        {
+          "adapter_id": "ACCOUNT_NET_RESET_125",
+          "target_adr": 1.25
+        }
+      ],
+      "evidence_basis": [
+        "Gate 75 parking lot",
+        "Gate 74E account-level synchronous containment not started"
+      ],
+      "constraints": [
+        "requires all-pair timestamp ordering",
+        "must not mutate Candidate B",
+        "must keep reset closed/equity PnL visible"
+      ]
+    },
+    {
+      "family_id": "account_profit_floor_trail",
+      "group": "account_level_lifecycle",
+      "description": "Account-level profit floor/trail that attempts to protect a basket while preserving right-tail weeks.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "ACCOUNT_TRAIL_A100_F050",
+          "activation_adr": 1,
+          "floor_adr": 0.5
+        },
+        {
+          "adapter_id": "ACCOUNT_TRAIL_A150_F075",
+          "activation_adr": 1.5,
+          "floor_adr": 0.75
+        }
+      ],
+      "evidence_basis": [
+        "Gate 72C fixed basket exits clipped top winners",
+        "Gate 73A runner-preserving requirement"
+      ],
+      "constraints": [
+        "Pareto ranking required",
+        "top-20 winner retention required",
+        "no final-equity-only ranking"
+      ]
+    },
+    {
+      "family_id": "account_stop_recovery_close",
+      "group": "account_level_lifecycle",
+      "description": "Universal account-level adverse threshold followed by recovery close, treated as lifecycle containment rather than risk layer.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "ACCOUNT_STOP_300_RECOVER_TO_MINUS_050",
+          "adverse_adr": -3,
+          "recovery_close_adr": -0.5
+        },
+        {
+          "adapter_id": "ACCOUNT_STOP_500_RECOVER_TO_MINUS_100",
+          "adverse_adr": -5,
+          "recovery_close_adr": -1
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74E pair recovery-close did not beat focus",
+        "Gate 75A opens taxonomy only"
+      ],
+      "constraints": [
+        "not a risk/correlation layer",
+        "must report freezes/resets/stops count"
+      ]
+    },
+    {
+      "family_id": "one_reset_and_stop_weekly",
+      "group": "account_level_lifecycle",
+      "description": "A conservative weekly account reset rule that allows one reset then no more expression that week.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "ACCOUNT_ONE_RESET_STOP_WEEK_TARGET_100",
+          "target_adr": 1
+        }
+      ],
+      "evidence_basis": [
+        "Gate 72C fixed exits risk right-tail clipping",
+        "Gate 75A protocol requirement"
+      ],
+      "constraints": [
+        "must report missed runner opportunity",
+        "no weekly forced close unless rule explicitly defines it"
+      ]
+    },
+    {
+      "family_id": "no_reentry_after_reset",
+      "group": "account_level_lifecycle",
+      "description": "Account reset variant that prevents re-entry after reset until the next Candidate B week.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "ACCOUNT_RESET_100_NO_REENTRY",
+          "target_adr": 1,
+          "no_reentry_until_next_week": true
+        }
+      ],
+      "evidence_basis": [
+        "Gate 75A protocol requirement"
+      ],
+      "constraints": [
+        "must report exposure reduction separately from edge",
+        "no hidden risk pruning"
+      ]
+    },
+    {
+      "family_id": "pair_grid_plus_account_override",
+      "group": "hybrid",
+      "description": "Pair cycle harvesting with deterministic account-level reset or override.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "PAIR_GRID_T075_S020_ACCOUNT_RESET_125",
+          "pair_target_adr": 0.75,
+          "pair_spacing_adr": 0.2,
+          "account_reset_adr": 1.25
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74C pair net-grid harvest edge",
+        "Gate 74E simple pair containment negative result"
+      ],
+      "constraints": [
+        "account override must not delete pair floating loss",
+        "no promotion"
+      ]
+    },
+    {
+      "family_id": "pair_cycle_with_account_floor",
+      "group": "hybrid",
+      "description": "Pair cycle harvesting under an account-level profit floor intended to preserve right-tail weeks.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "PAIR_GRID_T075_S020_ACCOUNT_TRAIL_A150_F075",
+          "pair_target_adr": 0.75,
+          "pair_spacing_adr": 0.2,
+          "account_activation_adr": 1.5,
+          "account_floor_adr": 0.75
+        }
+      ],
+      "evidence_basis": [
+        "Gate 73A right-tail dependency",
+        "Gate 74E focus baseline"
+      ],
+      "constraints": [
+        "top-20 winner retention mandatory",
+        "no final-equity-only ranking"
+      ]
+    },
+    {
+      "family_id": "partial_pair_close_plus_account_runner_preservation",
+      "group": "hybrid",
+      "description": "Partial pair close plus account-level runner preservation.",
+      "feasibility": "requires_synchronized_account_replay",
+      "gate75b_status": "parked",
+      "fixed_configs": [
+        {
+          "adapter_id": "PARTIAL_PAIR_50_ACCOUNT_RUNNER_FLOOR",
+          "pair_close_fraction": 0.5,
+          "pair_trigger_adr": 0.75,
+          "account_floor_adr": 0.5
+        }
+      ],
+      "evidence_basis": [
+        "Gate 73A runner preservation",
+        "Gate 75 parking lot"
+      ],
+      "constraints": [
+        "requires synchronized runner accounting",
+        "no costs yet"
+      ]
+    },
+    {
+      "family_id": "hedge_freeze_lock_visible_loss",
+      "group": "hedge_freeze_lock",
+      "description": "High-risk freeze/lock diagnostics where locked loss remains visible in equity accounting.",
+      "feasibility": "replayable_now",
+      "gate75b_status": "reference_only",
+      "fixed_configs": [
+        {
+          "adapter_id": "FREEZE_LOCK_15_REFERENCE_ONLY",
+          "freeze_loss_adr": 15,
+          "locked_loss_visible": true
+        }
+      ],
+      "evidence_basis": [
+        "Gate 74E freeze/lock reduced drawdown but destroyed equity"
+      ],
+      "constraints": [
+        "high-risk reference only",
+        "must not delete floating loss",
+        "no adapter may erase loss"
+      ]
+    }
+  ],
+  "ranking_contract_hash": "2430FCCD7DAE196DE35C0A0BCE97345A220599E8B8E3C9940BFAD7D2A6A6B251",
+  "forbidden_behavior_count": 25,
+  "content_hash": "7251F391EF816B957A14D27B8C86E4BBD378315BD469D05E8844756CC467BBEA"
+}

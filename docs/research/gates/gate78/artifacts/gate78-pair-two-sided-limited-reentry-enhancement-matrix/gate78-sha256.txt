@@ -1,0 +1,21 @@
+gate_id Gate 78: pair-two-sided-limited-reentry-enhancement-matrix
+command npm run engine:gate78:pair-two-sided-limited-reentry-enhancement-matrix
+generated_at 2026-06-30T00:24:03.194Z
+git_commit 6b529aaa1e295a0a818b58e7b3b54cc3b27d18dc
+adapter_summary_rows 6ED8F88BCE28E8368D64DB8F3F0E66C7AF8D0957B37AE8A06B5C84696C7552B0 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/adapter-summary.rows.json
+weekly_equity_rows 3A8DA91CF650DE67A6BBD141851DA9B450E794003B37D2A5BACF275F4F8111D4 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/weekly-equity-truth.rows.json
+annual_rows FB70251CAF0B5BD93321C77A5EB172A18B222662D7DAB31249B36E6843C13A21 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/annual-summary.rows.json
+expansion_attribution_rows BA7B35621386494523E3BE13FA7331A93164975978E42D63DC85EAEFCD06EA54 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/expansion-attribution-vs-adverse-focus.rows.json
+fill_side_attribution_rows AF6A1844059EA3CBCB195712BB62B60A891816545AA31606D8DA8ABD7014357B docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/fill-side-attribution.rows.json
+runner_contribution_rows C26EFC11C4A0FACC93737DE3F92A0883A6D3C19AAE7C5776CF1E2BF3FB921B26 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/runner-contribution.rows.json
+runner_ranking_rows D5F946FE3899005CF981E28D056B9D87023AA12250E78C32B8099D1D011E3A6C docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/runner-ranking.rows.json
+right_tail_retention_rows 56EDE0D4D24BEDA5F91E3428B903C65DD68C8C962BE94C589CFFAEDA5D732C67 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/right-tail-retention.rows.json
+account_emergency_sl_rows 16A80AD2AE8C3E4224856C2C2C16E72BF2D995E92D2C4E48E1584FA153FF423F docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/account-emergency-sl-attribution.rows.json
+failure_anatomy_rows 76A916A6FA3CAF22F7CE7A374B8E10151BDFC0FD497EB777E3A758BE6A38ED66 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/failure-anatomy.rows.json
+reset_count_week_rows 6EDD2933AA4B8D1545F1335856E30DC7468F0AFA55366AED139A39972C656414 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/reset-count-week.rows.json
+reset_count_pair_rows D3003958E3C33309B3F732059E89E65F92649DFC6856DDD94ED41B0C29FFB654 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/reset-count-pair.rows.json
+tail_concentration_pair_rows AD9A2A0205FC19DF3F95008DEBA7A347895EA0BB1E50B1B241CE01FF41AA1811 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/tail-concentration-pair.rows.json
+tail_concentration_currency_rows 24FE28DC8A43AD2EAD1943585D1A0278A3CA02570FAB4B1E5FFC0D256385AB85 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/tail-concentration-currency.rows.json
+command_receipt 56DF7E8CFE6C2F8B17E3591ED8060E1C03158C5100238E89D3B802ADFEA7FFAD docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/command-receipt.json
+summary_json D15AFCC539146BC3C2E158967F08A65F7F3064ECA6BDEF8A7E691A2186192CD6 docs/research/gates/gate78/artifacts/gate78-pair-two-sided-limited-reentry-enhancement-matrix/gate78-summary.json
+report 7D1B998BD83F774A8CB2257DD808A102780CE3A602C7EE95C6B1863DE5299B93 docs/research/gates/gate78/GATE78_PAIR_TWO_SIDED_LIMITED_REENTRY_ENHANCEMENT_MATRIX_2026-06-29.md

@@ -32,6 +32,7 @@ import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirecti
 import { deriveCotReportDate } from "@/lib/dataSectionWeeks";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { readFrozenSourceLedgerWeek } from "@/lib/sourceFreeze/sourceLedger";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 
 // ─── Public types ───────────────────────────────────────────────
 
@@ -57,6 +58,16 @@ export type CanonicalBasketWeek = {
 // ─── Internal: COT-based resolution (dealer/commercial) ────────
 
 const ASSET_CLASSES: AssetClass[] = ["fx", "indices", "commodities", "crypto"];
+const CANONICAL_BASKET_WEEK_CACHE_TTL_MS = Number(
+  process.env.CANONICAL_BASKET_WEEK_CACHE_TTL_MS ?? String(5 * 60 * 1000),
+);
+const ALL_BASKET_MODELS: BaseBasketModel[] = ["dealer", "commercial", "sentiment", "strength"];
+
+function getCanonicalBasketWeekCacheTtlMs() {
+  return Number.isFinite(CANONICAL_BASKET_WEEK_CACHE_TTL_MS) && CANONICAL_BASKET_WEEK_CACHE_TTL_MS >= 0
+    ? Math.floor(CANONICAL_BASKET_WEEK_CACHE_TTL_MS)
+    : 5 * 60 * 1000;
+}
 
 async function resolveCotBasket(
   model: "dealer" | "commercial",
@@ -196,6 +207,15 @@ async function resolveStrengthBasket(
   }
 }
 
+async function resolveBasketModel(
+  model: BaseBasketModel,
+  weekOpenUtc: string,
+): Promise<CanonicalBasketSignal[]> {
+  if (model === "dealer" || model === "commercial") return resolveCotBasket(model, weekOpenUtc);
+  if (model === "sentiment") return resolveSentimentBasket(weekOpenUtc);
+  return resolveStrengthBasket(weekOpenUtc);
+}
+
 // ─── Public API ─────────────────────────────────────────────────
 
 /**
@@ -205,25 +225,63 @@ async function resolveStrengthBasket(
 export async function getCanonicalBasketWeek(
   weekOpenUtc: string,
 ): Promise<CanonicalBasketWeek> {
-  const frozenLedger = await readFrozenSourceLedgerWeek(weekOpenUtc);
-  if (frozenLedger) {
-    return {
-      weekOpenUtc: frozenLedger.weekOpenUtc,
-      signals: frozenLedger.signals,
-    };
-  }
+  return getOrSetRuntimeCache(
+    `canonicalBasketWeek:${weekOpenUtc}`,
+    getCanonicalBasketWeekCacheTtlMs(),
+    async () => {
+      const frozenLedger = await readFrozenSourceLedgerWeek(weekOpenUtc);
+      if (frozenLedger) {
+        return {
+          weekOpenUtc: frozenLedger.weekOpenUtc,
+          signals: frozenLedger.signals,
+        };
+      }
 
-  const [dealer, commercial, sentiment, strength] = await Promise.all([
-    resolveCotBasket("dealer", weekOpenUtc),
-    resolveCotBasket("commercial", weekOpenUtc),
-    resolveSentimentBasket(weekOpenUtc),
-    resolveStrengthBasket(weekOpenUtc),
-  ]);
+      const [dealer, commercial, sentiment, strength] = await Promise.all([
+        resolveCotBasket("dealer", weekOpenUtc),
+        resolveCotBasket("commercial", weekOpenUtc),
+        resolveSentimentBasket(weekOpenUtc),
+        resolveStrengthBasket(weekOpenUtc),
+      ]);
 
-  return {
-    weekOpenUtc,
-    signals: [...dealer, ...commercial, ...sentiment, ...strength],
-  };
+      return {
+        weekOpenUtc,
+        signals: [...dealer, ...commercial, ...sentiment, ...strength],
+      };
+    },
+  );
+}
+
+export async function getCanonicalBasketWeekForModels(
+  weekOpenUtc: string,
+  models: BaseBasketModel[],
+): Promise<CanonicalBasketWeek> {
+  const uniqueModels = [...new Set(models)]
+    .filter((model): model is BaseBasketModel => ALL_BASKET_MODELS.includes(model))
+    .sort();
+  if (uniqueModels.length === 0) return { weekOpenUtc, signals: [] };
+  if (uniqueModels.length === ALL_BASKET_MODELS.length) return getCanonicalBasketWeek(weekOpenUtc);
+
+  return getOrSetRuntimeCache(
+    `canonicalBasketWeek:${weekOpenUtc}:models:${uniqueModels.join(",")}`,
+    getCanonicalBasketWeekCacheTtlMs(),
+    async () => {
+      const frozenLedger = await readFrozenSourceLedgerWeek(weekOpenUtc);
+      if (frozenLedger) {
+        const wanted = new Set(uniqueModels);
+        return {
+          weekOpenUtc: frozenLedger.weekOpenUtc,
+          signals: frozenLedger.signals.filter((signal) => wanted.has(signal.model)),
+        };
+      }
+
+      const signals = await Promise.all(uniqueModels.map((model) => resolveBasketModel(model, weekOpenUtc)));
+      return {
+        weekOpenUtc,
+        signals: signals.flat(),
+      };
+    },
+  );
 }
 
 /**

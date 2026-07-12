@@ -1,0 +1,432 @@
+{
+  "generatedAtUtc": "2026-06-22T19:38:02.110Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Differential FRED/ALFRED reconstruction diagnosis for stale canonical 3m-rate rows and diagnostic rate-family manifest proof.",
+  "controls": {
+    "noPnlComputed": true,
+    "noStrategyFilterComputed": true,
+    "noMacroSignalComputed": true,
+    "noWarehouseWrites": true,
+    "noActiveManifestBuilt": true,
+    "diagnosticNonActiveManifestsBuilt": true,
+    "outcomeConsumable": false,
+    "credentialsRedacted": true,
+    "fredApiKeyAcceptedFrom": "FRED_API_KEY",
+    "fredRequestDelayMs": 0,
+    "fredMaxRetries": 5
+  },
+  "cli": {
+    "macroRegimeDatasetId": "01a3b789-2928-4886-a627-eaf5ae689790",
+    "limit": 1
+  },
+  "rateSelectionContract": {
+    "selectionRule": "latest_eligible_vintage_as_of_weekly_freeze",
+    "selectedWeeklyValue": "latest eligible FRED/ALFRED vintage known at the weekly freeze",
+    "fredAsOfQuery": "fred/series/observations output_type=1 with realtime_start=realtime_end=freeze date",
+    "releaseAwareCarryRule": "Carry the latest eligible vintage known at the weekly freeze until FRED/ALFRED exposes a newer eligible observation vintage at or before that freeze; do not stale solely because a fixed age threshold is exceeded.",
+    "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+    "fixedAgeRuleDisposition": "superseded_for_rate_3m_market_family_v1"
+  },
+  "diagnosticRateManifests": {
+    "status": "SEALED_DIAGNOSTIC_NON_ACTIVE_REBUILD_REQUIRED",
+    "familyManifest": {
+      "manifestType": "rate_family_manifest",
+      "familyManifestId": "rate_3m_market_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC_REBUILD_REQUIRED",
+      "manifestState": "SEALED",
+      "diagnosticOnly": true,
+      "promotionEligible": false,
+      "outcomeConsumable": false,
+      "instrument": "oecd_3m_interbank_rate",
+      "selectionRule": "latest_eligible_vintage_as_of_weekly_freeze",
+      "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+      "releaseAwareCarryRule": "Carry the latest eligible vintage known at the weekly freeze until FRED/ALFRED exposes a newer eligible observation vintage at or before that freeze; do not stale solely because a fixed age threshold is exceeded.",
+      "missingRule": "Missing means no valued observation exists from the contracted endpoint after a query window that includes the selected observation and all eligible vintages through the freeze.",
+      "revisionRule": "If FRED/ALFRED revises an observation before a later freeze, the later weekly snapshot must use that latest eligible vintage; prior frozen snapshots are not rewritten.",
+      "requiredCurrencySet": [
+        "AUD",
+        "CAD",
+        "CHF",
+        "EUR",
+        "GBP",
+        "JPY",
+        "NZD",
+        "USD"
+      ],
+      "requiredCurrencySetHash": "ab33d1a362068c31e5a32e56f710a4572b45c334cf0d15020abc2dbf10e8a0c5",
+      "branchContractHashes": {
+        "AUD": "c8fb7f4b66a97f5adf84714f2d11afb1cba28209a58001aec47020e2221a1f66",
+        "CAD": "76ca8fd1a03574f2f5e98968057334f34a60c90ce7354e8cadcca69d72007e4c",
+        "CHF": "603284a9a7456dfdc804be47bd7419c5314158bfe21abb5d54e31a6d5acdc1e9",
+        "EUR": "4b9751d0fe39abdd55e7e71f184e013d6770f715bfbfdb332293521ca7ceaeae",
+        "GBP": "0f6385492a3ea55cb7711648cc871c5bc2a40df196ea3a12c02c498131e74fbe",
+        "JPY": "aeb4b68e8939d624278eb76e3c88cebfaac9ab61c6fa288414ee50afc65a37e4",
+        "NZD": "2fcbc62af9f8a76e42a8e2a930abfbe7f74321ee44067b39cdf1242d7f636b88",
+        "USD": "7127df95462a0d70e38fdee943655716a879434b012ae0ad649dd10af24ef817"
+      },
+      "sourceIds": {
+        "AUD": "fred_IR3TIB01AUM156N",
+        "CAD": "",
+        "CHF": "",
+        "EUR": "",
+        "GBP": "",
+        "JPY": "",
+        "NZD": "",
+        "USD": ""
+      },
+      "seriesIds": {
+        "AUD": "IR3TIB01AUM156N",
+        "CAD": "",
+        "CHF": "",
+        "EUR": "",
+        "GBP": "",
+        "JPY": "",
+        "NZD": "",
+        "USD": ""
+      },
+      "classificationCounts": {
+        "legitimate_revision": 0,
+        "wrong_vintage": 0,
+        "reconstruction_defect": 0,
+        "valid_carry_incorrectly_marked_stale": 1,
+        "genuine_missing_observation": 0
+      },
+      "caveats": [
+        "This manifest is diagnostic and non-ACTIVE.",
+        "Current sealed dataset uses the older fixed-age stale flag and must be rebuilt before RRP promotion.",
+        "Currency branches with legitimate revisions require snapshot rebuild under latest eligible vintage as of freeze."
+      ],
+      "familyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e"
+    },
+    "currencyBundleManifests": [
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_aud_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "AUD",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "fred_IR3TIB01AUM156N",
+        "rateSeriesId": "IR3TIB01AUM156N",
+        "branchContractHash": "c8fb7f4b66a97f5adf84714f2d11afb1cba28209a58001aec47020e2221a1f66",
+        "rowsAudited": 1,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 1,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "9c20ac05ccf36e85177ef227c633e04c14f624f2cf0b302b2a76f9da4882810b"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_cad_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "CAD",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "76ca8fd1a03574f2f5e98968057334f34a60c90ce7354e8cadcca69d72007e4c",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "62d937dddb4bdaf60546293215a951a5ed8ee6363feb68c04c3cc14aca844087"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_chf_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "CHF",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "603284a9a7456dfdc804be47bd7419c5314158bfe21abb5d54e31a6d5acdc1e9",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "8a0a511c9f68abae25538686021aacac3eb007a53b90b4013d60b45c4cb6d74f"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_eur_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "EUR",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "4b9751d0fe39abdd55e7e71f184e013d6770f715bfbfdb332293521ca7ceaeae",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "58ab4df5b4dee4a54fd50db3ccc67cf9f1bd51eabc5d4de5fd0ec878d671d388"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_gbp_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "GBP",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "0f6385492a3ea55cb7711648cc871c5bc2a40df196ea3a12c02c498131e74fbe",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "9af2069fba70a640d1258876a32d011f7d7ac948815b8b6801f8b9584da8e969"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_jpy_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "JPY",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "aeb4b68e8939d624278eb76e3c88cebfaac9ab61c6fa288414ee50afc65a37e4",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "0d45c5db95a6d14c9ced5c7ac0ce8bd5a46e545fb35dd09b1662fc5993ecddeb"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_nzd_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "NZD",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "2fcbc62af9f8a76e42a8e2a930abfbe7f74321ee44067b39cdf1242d7f636b88",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "c7da3365acc49f8a59a8ec02594d3142b868e0e53d27d0e41d588aaa2e060b6c"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_usd_rate_diagnostic_v1",
+        "bundleScope": "RATE_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "USD",
+        "rateFamilyManifestId": "rate_3m_market_family_v1",
+        "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+        "rateSourceId": "",
+        "rateSeriesId": "",
+        "branchContractHash": "7127df95462a0d70e38fdee943655716a879434b012ae0ad649dd10af24ef817",
+        "rowsAudited": 0,
+        "classificationCounts": {
+          "legitimate_revision": 0,
+          "wrong_vintage": 0,
+          "reconstruction_defect": 0,
+          "valid_carry_incorrectly_marked_stale": 0,
+          "genuine_missing_observation": 0
+        },
+        "rebuildRequired": false,
+        "missingForRrpPromotion": [
+          "rebuilt_rate_weekly_snapshots",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "currencyMacroBundleHash": "2ac6f2afc5820f7668445e56c31775d29cffd8aa9ec500a068b43a49aa6c7805"
+      }
+    ],
+    "promotionDecision": {
+      "promotionEligible": false,
+      "outcomeConsumable": false,
+      "blockingReason": "RATE_WEEKLY_SNAPSHOTS_NOT_REBUILT_UNDER_LATEST_ELIGIBLE_VINTAGE_RULE"
+    }
+  },
+  "rows": [
+    {
+      "weekOpenUtc": "2024-03-24T23:00:00.000Z",
+      "freezeDate": "2024-03-24",
+      "currency": "AUD",
+      "sourceId": "fred_IR3TIB01AUM156N",
+      "seriesId": "IR3TIB01AUM156N",
+      "selected": {
+        "observationDate": "2023-12-01",
+        "availableAtUtc": "2024-01-11T23:59:59.999Z",
+        "ratePercent": 4.35,
+        "stalenessDays": 72,
+        "maxStaleDays": 70,
+        "staleReason": "selected_observation_available_at_exceeds_family_max_stale_days",
+        "selectedVintageDate": "2024-01-11"
+      },
+      "canonicalSelectionRule": "latest_eligible_vintage_as_of_weekly_freeze",
+      "releaseAwareStalenessRule": "rate_3m_market_release_aware_carry_v1",
+      "releaseAwareDisposition": "valid_carry_until_newer_eligible_vintage_exists",
+      "fredAsOfFreeze": {
+        "outputType": 1,
+        "observationCount": 22,
+        "latestObservationDate": "2023-12-01",
+        "latestRatePercent": 4.35,
+        "latestRealtimeStart": "2024-03-24",
+        "latestRealtimeEnd": "2024-03-24"
+      },
+      "fredInitialRelease": {
+        "outputType": 4,
+        "observationCount": 8,
+        "latestObservationDate": "2023-12-01",
+        "latestRatePercent": 4.35,
+        "latestRealtimeStart": "2024-01-11",
+        "latestRealtimeEnd": "2024-03-24"
+      },
+      "vintageWindow": {
+        "realtimeStart": "2023-06-01",
+        "realtimeEnd": "2024-03-24",
+        "vintageDateCount": 8,
+        "latestVintageDates": [
+          "2023-06-13",
+          "2023-07-07",
+          "2023-08-10",
+          "2023-09-09",
+          "2023-10-07",
+          "2023-11-10",
+          "2023-12-09",
+          "2024-01-11"
+        ]
+      },
+      "requestErrors": [],
+      "classification": "valid_carry_incorrectly_marked_stale"
+    }
+  ],
+  "summary": {
+    "macroRegimeDatasetId": "01a3b789-2928-4886-a627-eaf5ae689790",
+    "rowsAudited": 1,
+    "distinctSources": 1,
+    "classificationCounts": {
+      "legitimate_revision": 0,
+      "wrong_vintage": 0,
+      "reconstruction_defect": 0,
+      "valid_carry_incorrectly_marked_stale": 1,
+      "genuine_missing_observation": 0
+    },
+    "sourceCounts": {
+      "AUD|fred_IR3TIB01AUM156N": 1
+    },
+    "selectionRule": "latest_eligible_vintage_as_of_weekly_freeze",
+    "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+    "rateFamilyManifestStatus": "BUILT_DIAGNOSTIC_REBUILD_REQUIRED",
+    "rateFamilyManifestHash": "7c1af320b94c8f6b74b7a73c36c0adee15b5345149b1ef1baf5a2250b789258e",
+    "currencyBundleManifestBranches": 8,
+    "overallPromotionStatus": "FAIL_CLOSED",
+    "promotionEligible": false,
+    "outcomeConsumable": false,
+    "nextRequiredBuild": "rebuild_rate_weekly_snapshots_under_latest_eligible_vintage_rule",
+    "receiptHash": "6edfae404cda83490bd8657c09e84cedf03fbab269e2c3d65f7319336dcd14e6"
+  },
+  "files": {
+    "jsonPath": "app/reports/data-verification/macro-regime/gate50-rate-audit-smoke-temp.json",
+    "mdPath": "app/reports/data-verification/macro-regime/gate50-rate-audit-smoke-temp.md"
+  }
+}

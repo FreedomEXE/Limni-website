@@ -1,0 +1,34 @@
+[
+  {
+    "variant_id": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR",
+    "close_reason": "target",
+    "event_count": 28297,
+    "realized_or_open_adr": 31940.162404,
+    "fill_count": 113754,
+    "content_hash": "562B6366F8DAAA5FEA8A2B980A34BCCE49A0789B234BD67A115D6E61737CAA43"
+  },
+  {
+    "variant_id": "HEDGED_GRID_V2_RAW_PRICE_ANCHOR",
+    "close_reason": "sample_end",
+    "event_count": 11327,
+    "realized_or_open_adr": -32069.49199,
+    "fill_count": 58814,
+    "content_hash": "BDD8AFABA3D1659D69F0DA6E79618891614CB3C1678DC4EB12359B7201AACFED"
+  },
+  {
+    "variant_id": "HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+    "close_reason": "target",
+    "event_count": 25155,
+    "realized_or_open_adr": 28202.238439,
+    "fill_count": 101289,
+    "content_hash": "D21F91F392FE80E4E6E9A3CC02F0A3A6BB5F3AF0A588D808E56F8B9E4BA0CF17"
+  },
+  {
+    "variant_id": "HEDGED_GRID_V2_GRID_CAP_3_PRICE_ANCHOR",
+    "close_reason": "sample_end",
+    "event_count": 9226,
+    "realized_or_open_adr": -28149.50214,
+    "fill_count": 49983,
+    "content_hash": "64FE504E89B12F9FDF6F30EE99784EB8001836349D877D951E579A4644900963"
+  }
+]

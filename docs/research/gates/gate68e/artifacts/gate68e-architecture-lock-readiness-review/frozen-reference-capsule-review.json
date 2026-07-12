@@ -1,0 +1,8 @@
+{
+  "gate_id": "Gate 68E: architecture-lock-readiness-review",
+  "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+  "complete": true,
+  "no_drift_contract_present": true,
+  "future_observations_append_only": true
+}

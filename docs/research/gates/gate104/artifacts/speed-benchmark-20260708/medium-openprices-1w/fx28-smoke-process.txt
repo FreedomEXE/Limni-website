@@ -1,0 +1,25 @@
+
+
+TerminalId         : 14275
+Pid                : 17688
+ExitCode           : 0
+TimedOut           : False
+QProfile           : MEDIUM_50000
+TesterModel        : OpenPrices
+TesterModelValue   : 2
+ReceiptMode        : CompactLongRun
+BenchmarkMode      : True
+StartedAt          : 2026-07-08T18:12:39.6183069-04:00
+EndedAt            : 2026-07-08T18:13:24.0242666-04:00
+WallSeconds        : 44.406
+Config             : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\speed-benchmark
+                     -20260708\medium-openprices-1w\gate102-fx28-smoke.ini
+RunProfile         : C:\Users\User\Documents\GitHub\limni-website\docs\research\gates\gate104\artifacts\speed-benchmark
+                     -20260708\medium-openprices-1w\LimniPortfolioEA_speed_benchmark.set
+OutputFolder       : AUTO
+OutputFolderPrefix : LimniPortfolioEA_Rv_FX28_MEDIUM_50000_APct_TP0p750_SL0p000_L0p010_G0p10Q_RC_NCG_NEG_AC_
+Report             : GATE104_SPEED_MEDIUM_50000_OpenPrices_20260708-181239
+
+
+
+

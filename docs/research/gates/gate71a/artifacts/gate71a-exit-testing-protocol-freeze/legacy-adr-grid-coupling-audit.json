@@ -1,0 +1,21 @@
+{
+  "gate_id": "Gate 71A: exit-testing-protocol-freeze",
+  "evaluator_version": "research_decision_evaluator_adr_grid_weekly_hold_v1",
+  "path_contract_id": "research_decision_pair_week_path_outcome_adr_grid_weekly_hold_v1",
+  "evaluator_params": {
+    "spacing_adr": 0.2,
+    "reset_adr": 1,
+    "entry_reset_buffer_adr": 0.2,
+    "max_levels_per_side": 50
+  },
+  "coupled_entry_exit_behaviors_found": [
+    "grid level entries",
+    "per-fill take-profit",
+    "reset target",
+    "entries stopped for week after reset",
+    "week-close liquidation"
+  ],
+  "classification": "coupled_entry_exit_control_only",
+  "can_be_foundation_for_clean_basket_path": false,
+  "can_be_gate71_control": true
+}

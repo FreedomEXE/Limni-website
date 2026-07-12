@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T04:00:49.136Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+summary_json DAF3A06C0DE86C8A2E3E18CE50CB23EFDF29E63962D626C8F95FDB8D84D349C4 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/activation-summary.rows.json
+weekly_json 4320E0ECB01F2C506539531F2807198DDCE7E8BA549A0299F0DE916961446728 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/weekly-activation-truth.rows.json
+close_events_json 22EF8881A1D8F68E26CF2C2FDF41B948F9D1F1EDA18A4AF86BF65DF906B7A08D docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/close-events.rows.json
+close_event_breakdowns_json 863D16CE0A8468EDA6F98EEA2BB26C89FF573D6CD327C2C14CF556D9F45DE225 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/terminal-inventory.rows.json
+validation_json 0943A666C4F41AD6F612D55BF5EA2B0999A8F083B7222C8473E92D83588C0EBD docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/validation.rows.json
+metric_definitions_json 16B43E7E916A36F26A48E64E61CA96F22A59A884356516F03902A82785D57296 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/metric-definitions.rows.json
+command_receipt 320E780D66BB9BCB277EA81F115641DE39120D2496F73A69479AF291BFE75CF2 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/command-receipt.json
+run_summary_json 70EB4F878D518BD72AF807CBCA740763EF90956BC72901D5D5438F495CE078DA docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/gate90-run-summary.json
+report 7F5811B02090A1BACB22B20C88406F8CCED94E509A8F90ABF6E6F656CD34C1F3 docs/research/gates/gate90/artifacts/gate90d-2019-open-protection-sweep-no-candidate-b/GATE90D_2019_OPEN_PROTECTION_SWEEP_NO_CANDIDATE_B.md

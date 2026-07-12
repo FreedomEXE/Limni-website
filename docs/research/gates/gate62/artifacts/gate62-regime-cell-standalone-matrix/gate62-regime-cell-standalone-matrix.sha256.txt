@@ -1,0 +1,13 @@
+gate_id Gate 62: regime-cell-standalone-matrix
+command npm run engine:gate62:regime-cell-standalone-matrix
+generated_at 2026-06-27T18:10:40.641Z
+git_commit a2acb8600019db03ea90ad1a6f8b9bfb88604342
+verdict PASS_REGIME_CELL_STANDALONE_MATRIX__FORCED28_PRESERVED__NO_GATE63
+candidate_contracts 0FBB45EFACAB6C6F86A7ED4BAB8A12659FB859B96CB08FC5BF8F60BEEE4DC490 docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-candidate-contracts.json
+matrix_rows_jsonl 8F1E40D2F1E0266D5C4842EFBFD3C98C2DED4E710EAA0640A4E7E21A660B627C docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-matrix.rows.jsonl
+summary_json 5CF902E7B9C6D1E79DC20FE89FBE707BA4DEF31EA443F440FF437ED3B26A137A docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-matrix.summary.json
+quality_cohorts_json AC2ACCC4E507AA5323B9940DBFA2FADC4F5131CB552CAD594B0C61F80EE7663A docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-quality-cohorts.json
+best_candidates_md 76A0B98502BCAB663415657FB9961479D3888177BDD9F7B1616EAD99E67A649A docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-best-candidates.md
+query_receipt B281F2114100CC78E1E95CFA575937368762D52ADDE27DDC6AF873CD0AFE375E docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-standalone-matrix.query-receipt.md
+report DF2852756FC83EF22E578FA395EBB5F55DF2CB8AFC8A74D443433E22A5F2D42D docs/research/gates/gate62/GATE62_REGIME_CELL_STANDALONE_MATRIX_2026-06-27.md
+content_invariant E89190F2B3D1B8E2C3F2982BFBA928F49CE95611463204DF17452E52436F5D4E content

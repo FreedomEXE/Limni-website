@@ -1,0 +1,19 @@
+[
+{"check":"gate95_original_accounting_invalidated","value":"docs/research/gates/gate95/GATE95_ERRATUM_INVALIDATED_BY_GATE96A_ACCOUNTING_2026-07-04.md","expected":"Gate95 original accounting not used","passed":true,"content_hash":"B304DA18A2E017A7DB16D6BB412055740F7B72666B55954E408A127AB9C3EAAB"},
+{"check":"corrected_accounting_helper_used","value":"engine/scripts/verification/limnihedge-corrected-accounting.ts::correctedFxPnl","expected":"corrected actual-USD helper","passed":true,"content_hash":"7738AB372C288A4F2FA523DEFDE73A02B0FE92BE129B05C4F08D7BFEAFF4BD60"},
+{"check":"old_gate95_modeled_conversion_used","value":false,"expected":false,"passed":true,"content_hash":"08CEB47E2978BD144DCA8825FCDEF9F67FBB67650AA3A4D947494B6148806BA4"},
+{"check":"cutoff_timezone_explicit","value":"America/New_York","expected":"America/New_York","passed":true,"content_hash":"16A349D66B7135C24DBA3308821B90C971EA1113FF61D4A1498EF36E85108ACA"},
+{"check":"same_gate95_oos_window","value":"2025-01-01T00:00:00.000Z..2026-05-31T23:59:59.999Z","expected":"2025-01-01T00:00:00.000Z..2026-05-31T23:59:59.999Z","passed":true,"content_hash":"B26D86FAFC55F479416FA176A0837FC838C110D602AB2F7E37651691A472D24B"},
+{"check":"no_2019_2024_rerun","value":"2025-01-01T00:00:00.000Z","expected":"starts 2025-01-01","passed":true,"content_hash":"4166B07EA12A3A15A4B98F8C8C1CBFE3C46B77ECB0A8041C7189D6953294F705"},
+{"check":"gate95_oos_validation_failures","value":0,"expected":0,"passed":true,"content_hash":"21CB8043663B655774CEAFAD4B3823A48995AE31D1E729A1425789DE1BEB962D"},
+{"check":"gate95r_validation_failures","value":0,"expected":0,"passed":true,"content_hash":"E180BFBC11E10A3462AF44F239A8A25C975C2676E5E0487E3721EAF34603F88C"},
+{"check":"target_variant_count","value":4,"expected":4,"passed":true,"content_hash":"E0038309085020805E0A34B1998D15006F62ECF77DE007B28976C3C30A6BE43D"},
+{"check":"matrix_rows","value":32,"expected":"4 variants x 4 cutoff hours x 2 profit conditions","passed":true,"content_hash":"89286EE2125FB8BB61E7B4EF163D7763B3083E08C20AED94A52A4FAB6E90B086"},
+{"check":"source_trade_count_preserved_no_new_entries","value":true,"expected":true,"passed":true,"content_hash":"5012ED616F811B3A6DD39E19125291B5897AE3206C6042AF9255F699615B4BB6"},
+{"check":"closed_plus_marked_equity_present","value":32,"expected":32,"passed":true,"content_hash":"89129F3DBA11C456B5897B17F61BB2F2A1B54A8CDA72BDF09954307DF7C277A6"},
+{"check":"cost_stress_present","value":32,"expected":32,"passed":true,"content_hash":"F8A3FE82DD03C8DDC7D005F0BA2E0584E304D5C3C796E9E08D0367BB473304A7"},
+{"check":"baseline_reconciles_to_gate95r_corrected_rows","value":0,"expected":"<= 1.00 USD max target-row delta","passed":true,"content_hash":"5FB82B1EA22D5ADB457B6A8E6F2B2293949A9642639E63ECAFB81146DA0054A8"},
+{"check":"price_bundle_id","value":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","expected":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","passed":true,"content_hash":"EF2D5C52C47BBA85CD7D22DF5FFD73B9682D77B631D66375208F013BC2CA6892"},
+{"check":"mt5_mutated","value":false,"expected":false,"passed":true,"content_hash":"29F60B604FEDE0068425918A246F24309B5959AEF63396497EAB0EAD0F7CCC43"},
+{"check":"new_signals_introduced","value":false,"expected":false,"passed":true,"content_hash":"C934A92CEF30F86E13AC5E148A903FEAB932045C68C3E4147EFF3B38B00E2CA4"}
+]

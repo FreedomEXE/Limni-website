@@ -1,0 +1,71 @@
+{
+  "gate_id": "Gate 69B: final-forced28-ledger-replay",
+  "locked_algorithm_id": "gate69_locked_unnamed_forced28_candidate_b_default",
+  "final_algorithm_name": null,
+  "final_algorithm_status": "locked_unnamed_default_forced28",
+  "default_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+  "shadow_candidate_id": "candidate_c_scenario_memory_guarded",
+  "frozen_reference_capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+  "frozen_reference_capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+  "gate68_decision_ledger_hash": "C33A7B81DC8FDD3D1048F1AF7EB2F7A8350B189506E4215E12EF78B705403D9A",
+  "gate68_outcome_scoring_hash": "38961DF0C194E9765619F3753F7975795838A9182DE37632403332BD02A4C0D2",
+  "final_ledger_hash": "5158742FE3E74221D1F2577A38F3169C6AF9B1FA7BC593B90C901A4F0E562390",
+  "shadow_ledger_hash": "DF4170736BC34CF95F616F8888849F018BB33A78EAEACC910E1E4C56B1408720",
+  "final_candidate_metrics": {
+    "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+    "adr_grid": {
+      "adr_sum": 2341.080708,
+      "adr_mean": 0.224156,
+      "max_drawdown": -241.508971,
+      "r_over_drawdown": 9.693556,
+      "row_pf": 1.25407
+    },
+    "weekly_hold": {
+      "adr_sum": 638.603176,
+      "adr_mean": 0.061145,
+      "max_drawdown": -116.779755,
+      "r_over_drawdown": 5.468441,
+      "row_pf": 1.118059
+    },
+    "negative_adr_grid_years": 1,
+    "worst_adr_grid_year": {
+      "year": 2019,
+      "adr_grid_adr": -127.613437,
+      "weekly_hold_adr": 108.7495
+    },
+    "degraded_row_count": 1292,
+    "decision_signature_sha256": "8C873CCCF9FA3D3A578EAC7160C8526EC25A0BEA528FE3C0A5304BE9413E6F01"
+  },
+  "shadow_candidate_metrics": {
+    "candidate_id": "candidate_c_scenario_memory_guarded",
+    "adr_grid": {
+      "adr_sum": 2276.283276,
+      "adr_mean": 0.217951,
+      "max_drawdown": -275.03638,
+      "r_over_drawdown": 8.276299,
+      "row_pf": 1.242893
+    },
+    "weekly_hold": {
+      "adr_sum": 732.900462,
+      "adr_mean": 0.070174,
+      "max_drawdown": -126.241709,
+      "r_over_drawdown": 5.805533,
+      "row_pf": 1.136683
+    },
+    "negative_adr_grid_years": 0,
+    "worst_adr_grid_year": {
+      "year": 2019,
+      "adr_grid_adr": 13.038684,
+      "weekly_hold_adr": 159.647828
+    },
+    "degraded_row_count": 1813,
+    "decision_signature_sha256": "81577C4BABEE192F9CACB4556B035A68A7C0D76AAD7C976EFA55F0FCD87B4D23"
+  },
+  "output_ledgers_include_outcomes": false,
+  "forced28_contract": {
+    "weeks": 373,
+    "pairs_per_week": 28,
+    "rows_per_ledger": 10444,
+    "duplicate_week_symbol_rows": 0
+  }
+}

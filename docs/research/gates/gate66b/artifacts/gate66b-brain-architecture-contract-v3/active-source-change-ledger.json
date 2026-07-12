@@ -1,0 +1,17 @@
+{
+  "gate_id": "Gate 66B: brain-architecture-contract-v3",
+  "changes": [
+    {
+      "path": "engine/src/brain/architecture.ts",
+      "change": "promoted active contract to gate66_brain_cells_atoms_v3; removed deprecated intermediate layer; reserved unnamed final forced-28 algorithm."
+    },
+    {
+      "path": "engine/src/brain/README.md",
+      "change": "updated active architecture prose to Brain -> Cells -> Atoms and risk as later portfolio expression."
+    },
+    {
+      "path": "engine/scripts/verification/build-gate65a-brain-atom-contract-v2-sync.ts",
+      "change": "compatibility update so the historical Gate 65A builder reads the v3 neutral final-algorithm boundary if rerun."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "gate_id": "Gate 68B: brain-mode-selector-test-matrix",
+  "candidates": [
+    {
+      "candidate_id": "candidate_a_macro_anchor_conservative",
+      "reason_code_counts": {
+        "A_ALPHA_FALLBACK_VALUATION_DID_NOT_CONFIRM_RRP": 4070,
+        "A_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 691,
+        "A_RRP_VALUATION_CONFIRMED_ANCHOR": 5683,
+        "STRENGTH_CONFIRMED_RRP": 3255,
+        "STRENGTH_CONTEXT_ONLY": 2631,
+        "STRENGTH_DID_NOT_CONFIRM_RRP": 488
+      },
+      "mode_reason_code_counts": null,
+      "warning_rows": 691,
+      "fallback_rows": 4761,
+      "veto_rows": 691
+    },
+    {
+      "candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "reason_code_counts": {
+        "B_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 1292,
+        "B_RRP_ANCHOR_NO_COT_WARNING": 9152,
+        "STRENGTH_CONFIRMED_RRP": 4607,
+        "STRENGTH_CONTEXT_ONLY": 4545,
+        "VALUATION_CONFIRMED_RRP": 6374,
+        "VALUATION_CONTEXT_ONLY": 4070
+      },
+      "mode_reason_code_counts": null,
+      "warning_rows": 1292,
+      "fallback_rows": 1292,
+      "veto_rows": 1292
+    },
+    {
+      "candidate_id": "candidate_c_scenario_memory_guarded",
+      "reason_code_counts": {
+        "C_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 1813,
+        "C_SCENARIO_MEMORY_ROBUST_NO_VETO": 8631,
+        "COT_STRENGTH_AGREE_BUT_NOT_BOTH_DIRECT": 1582,
+        "COT_STRENGTH_CLEAN_DIRECT_AGREEMENT": 231,
+        "VALUATION_CONFIRMED_RRP": 6374,
+        "VALUATION_DID_NOT_CONFIRM_RRP": 4070
+      },
+      "mode_reason_code_counts": null,
+      "warning_rows": 1813,
+      "fallback_rows": 5883,
+      "veto_rows": 1813
+    },
+    {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "reason_code_counts": {
+        "A_ALPHA_FALLBACK_VALUATION_DID_NOT_CONFIRM_RRP": 3497,
+        "A_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 251,
+        "A_RRP_VALUATION_CONFIRMED_ANCHOR": 3014,
+        "B_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 231,
+        "B_RRP_ANCHOR_NO_COT_WARNING": 2580,
+        "C_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871,
+        "COT_STRENGTH_AGREE_BUT_NOT_BOTH_DIRECT": 738,
+        "COT_STRENGTH_CLEAN_DIRECT_AGREEMENT": 133,
+        "MODE_CONSERVATIVE_CELL_QUALITY_CLEAN": 1161,
+        "MODE_CONSERVATIVE_CELL_QUALITY_NOT_CLEAN": 5601,
+        "MODE_CONSERVATIVE_MACRO_ANCHOR_CLEAN": 3894,
+        "MODE_CONSERVATIVE_MACRO_ANCHOR_NOT_CLEAN": 2868,
+        "MODE_CONSERVATIVE_QUALITY_CLEAN": 14439,
+        "MODE_CONSERVATIVE_QUALITY_DEGRADED": 5847,
+        "MODE_NORMAL_DEFAULT": 2811,
+        "MODE_PROTECTION_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871,
+        "STRENGTH_CONFIRMED_RRP": 3275,
+        "STRENGTH_CONTEXT_ONLY": 2370,
+        "STRENGTH_DID_NOT_CONFIRM_RRP": 200,
+        "VALUATION_CONFIRMED_RRP": 3109,
+        "VALUATION_CONTEXT_ONLY": 573
+      },
+      "mode_reason_code_counts": {
+        "MODE_CONSERVATIVE_CELL_QUALITY_CLEAN": 1161,
+        "MODE_CONSERVATIVE_CELL_QUALITY_NOT_CLEAN": 5601,
+        "MODE_CONSERVATIVE_MACRO_ANCHOR_CLEAN": 3894,
+        "MODE_CONSERVATIVE_MACRO_ANCHOR_NOT_CLEAN": 2868,
+        "MODE_CONSERVATIVE_QUALITY_CLEAN": 14439,
+        "MODE_CONSERVATIVE_QUALITY_DEGRADED": 5847,
+        "MODE_NORMAL_DEFAULT": 2811,
+        "MODE_PROTECTION_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871
+      },
+      "warning_rows": 1353,
+      "fallback_rows": 4850,
+      "veto_rows": 1353
+    }
+  ]
+}

@@ -1,0 +1,1887 @@
+{
+  "generatedAtUtc": "2026-06-23T04:09:37.706Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Bounded endpoint/sample, normalized source-contract, and diagnostic non-ACTIVE manifest proof for official CPI source contracts.",
+  "controls": {
+    "noPnlComputed": true,
+    "noStrategyFilterComputed": true,
+    "noMacroSignalComputed": true,
+    "noWarehouseWrites": true,
+    "noActiveManifestBuilt": true,
+    "diagnosticNonActiveManifestsBuilt": true,
+    "outcomeConsumable": false,
+    "credentialsRedacted": true
+  },
+  "requiredCurrencySet": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "normalizedObservationSchema": {
+    "schemaVersion": "cpi_normalized_observation_v1",
+    "familyCandidateId": "cpi_all_items_family_v1",
+    "requiredFields": [
+      "currency",
+      "economicAreaId",
+      "sourceContractId",
+      "observationPeriod",
+      "nativeFrequency",
+      "indexLevel",
+      "unit",
+      "seasonalAdjustment",
+      "baseOrReferencePeriod",
+      "releaseCalendarVersion",
+      "availabilityPrecision",
+      "availabilityTimezone",
+      "pointInTimeRule",
+      "revisionRebasingVersion",
+      "continuityDecisionId",
+      "parserVersion",
+      "parserLayoutDriftGuard",
+      "semanticSegments",
+      "artifactPayloadSha256",
+      "sourceContractHash",
+      "branchSemanticHash"
+    ],
+    "frequencyRule": "Preserve native monthly, quarterly, or explicitly mixed frequency; do not interpolate official CPI observations.",
+    "yoyRule": "Monthly CPI YoY uses t/t-12 - 1, quarterly CPI YoY uses t/t-4 - 1, and mixed branches use the branch's locked native segment."
+  },
+  "normalizedObservationContracts": [
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "USD",
+      "economicAreaId": "US",
+      "sourceContractId": "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1",
+      "semanticTarget": "CPI-U, U.S. city average, all items, not seasonally adjusted",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "1982-84=100",
+      "releaseCalendarVersion": "usd_2026-05_release_calendar_v1",
+      "availabilityPrecision": "exact_timestamp",
+      "availabilityTimezone": "America/New_York",
+      "pointInTimeRule": "A CPI-U observation is eligible only after the BLS release timestamp is at or before the weekly freeze target.",
+      "revisionRebasingVersion": "usd_revision_rebasing_v1",
+      "continuityDecisionId": "usd_bls_cpi_u_all_items_nsa_1982_84_v1",
+      "parserVersion": "bls_public_timeseries_html_table_parser_v1",
+      "parserLayoutDriftGuard": "Fail closed if the BLS table lacks parseable year rows/month cells or latest parsed period does not reach the required current sample.",
+      "semanticSegments": [
+        {
+          "segmentId": "usd_monthly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "A CPI-U observation is eligible only after the BLS release timestamp is at or before the weekly freeze target."
+        }
+      ],
+      "artifactPayloadSha256": "7ae81003cfc072325e4679bc827fd7bc40170769cb81942c372a7486d502f600",
+      "sourceContractHash": "55e8723a22ac9db105cd7a6874598889b9c3396c938f3746971dee157b76a764",
+      "branchSemanticHash": "870399c30bd41479f369df427fceaea58c1ae52e2e463b1d5b8b92368d3ac03a",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "CAD",
+      "economicAreaId": "CA",
+      "sourceContractId": "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1",
+      "semanticTarget": "Table 18-10-0004-01, Canada all-items CPI, not seasonally adjusted",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "2002=100",
+      "releaseCalendarVersion": "cad_2026-05_release_calendar_v1",
+      "availabilityPrecision": "date",
+      "availabilityTimezone": "America/Toronto",
+      "pointInTimeRule": "A Statistics Canada CPI row is eligible on the first weekly freeze strictly after the documented release date unless an exact timestamp artifact is added.",
+      "revisionRebasingVersion": "cad_revision_rebasing_v1",
+      "continuityDecisionId": "cad_statcan_1810000401_vector_41690973_all_items_canada_nsa_v1",
+      "parserVersion": "statcan_wds_vector_41690973_latest_periods_json_v1",
+      "parserLayoutDriftGuard": "Fail closed if vectorDataPoint is absent, refPer stops being an ISO date, or table/vector metadata no longer maps to Canada all-items CPI.",
+      "semanticSegments": [
+        {
+          "segmentId": "cad_monthly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "A Statistics Canada CPI row is eligible on the first weekly freeze strictly after the documented release date unless an exact timestamp artifact is added."
+        }
+      ],
+      "artifactPayloadSha256": "0ad2a8c1f0b4770cb38b16caaf4c05203d0d4bb3e2ac59400826d9672cc3851e",
+      "sourceContractHash": "39c7b1f47a6366e32d23b14900722b21d257783205cb940a2acaa99bcc86f9f3",
+      "branchSemanticHash": "81858391ae29583236187655f7c0efd6dd4c7e6d99a3a847ebeb01bae4e0c3a3",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "GBP",
+      "economicAreaId": "UK",
+      "sourceContractId": "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+      "semanticTarget": "D7BT CPI INDEX 00: ALL ITEMS 2015=100",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "2015=100",
+      "releaseCalendarVersion": "gbp_2026-05_release_calendar_v1",
+      "availabilityPrecision": "date",
+      "availabilityTimezone": "Europe/London",
+      "pointInTimeRule": "An ONS CPI row is eligible on the first weekly freeze strictly after the ONS release date unless exact release-time evidence is added.",
+      "revisionRebasingVersion": "gbp_revision_rebasing_v1",
+      "continuityDecisionId": "gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+      "parserVersion": "ons_timeseries_d7bt_mm23_json_v1",
+      "parserLayoutDriftGuard": "Fail closed if the months array is absent, labels no longer parse to months, or latest period is behind the required current sample.",
+      "semanticSegments": [
+        {
+          "segmentId": "gbp_monthly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "An ONS CPI row is eligible on the first weekly freeze strictly after the ONS release date unless exact release-time evidence is added."
+        }
+      ],
+      "artifactPayloadSha256": "54fb5c5be963841a74635d42e680364a13711a883529438eac6ba7f5c9ed8185",
+      "sourceContractHash": "4f00e4f7e975129a473cf82ba341bde09831590652fa336929cb3f6e74a34003",
+      "branchSemanticHash": "b996757dca21e71ece50474a3dcd159799b495caea0b5a791f59ce984d9d52f2",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "EUR",
+      "economicAreaId": "EA_DYNAMIC",
+      "sourceContractId": "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1",
+      "semanticTarget": "HICP ECOICOP v2 monthly index, total, dynamic euro-area aggregate, 2025=100",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "2025=100",
+      "releaseCalendarVersion": "eur_2026-05_release_calendar_v1",
+      "availabilityPrecision": "date",
+      "availabilityTimezone": "Europe/Luxembourg",
+      "pointInTimeRule": "A full HICP index row is eligible on the first weekly freeze strictly after the Eurostat full-data release date.",
+      "revisionRebasingVersion": "eur_revision_rebasing_v1",
+      "continuityDecisionId": "eur_eurostat_prc_hicp_minr_dynamic_ea_total_i25_v1",
+      "parserVersion": "eurostat_prc_hicp_minr_json_total_i25_ea_v1",
+      "parserLayoutDriftGuard": "Fail closed if the time dimension or values map is absent, if coicop18/unit/geo parameters change, or if the endpoint returns the archived ECOICOP1 dataset.",
+      "semanticSegments": [
+        {
+          "segmentId": "eur_ea20_through_2025_12_chain_index_v1",
+          "segmentType": "geo_composition",
+          "validFromPeriod": null,
+          "validToPeriod": "2025-12",
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "evolving_official_euro_area",
+          "memberCompositionId": "EA20",
+          "memberCompositionHash": "68702385ef0ee0498f0b114ef7c1de0b8ed47a753547d932c66c1e4a95c52275",
+          "chainLinkPolicy": "Eurostat evolving-composition euro-area aggregate; composition changes are incorporated using a chain index formula.",
+          "releaseEligibilityRule": "A full HICP index row is eligible on the first weekly freeze strictly after the Eurostat full-data release date."
+        },
+        {
+          "segmentId": "eur_ea21_from_2026_01_chain_index_v1",
+          "segmentType": "geo_composition",
+          "validFromPeriod": "2026-01",
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "evolving_official_euro_area",
+          "memberCompositionId": "EA21",
+          "memberCompositionHash": "cb6491b6e480c7fd126fdc1c20fffdb7f718822e231a0c66cc0e1e3ee3e9b609",
+          "chainLinkPolicy": "Eurostat evolving-composition euro-area aggregate; composition changes are incorporated using a chain index formula.",
+          "releaseEligibilityRule": "A full HICP index row is eligible on the first weekly freeze strictly after the Eurostat full-data release date."
+        }
+      ],
+      "artifactPayloadSha256": "16b34834a875e576becb11163128204bbb3cee07017dc318ea95635b2689be74",
+      "sourceContractHash": "e5751696a791080583fa833c070dee525f6b75dfbbba54d1ac29fcbbde7ca544",
+      "branchSemanticHash": "b58872ee85a8fb840905b5e86c3f8b53f29f98888358bd6e372e906387c5da0f",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "JPY",
+      "economicAreaId": "JP",
+      "sourceContractId": "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1",
+      "semanticTarget": "CPI Table 1-1 subgroup index, Japan all-items, 2020-base",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "2020=100",
+      "releaseCalendarVersion": "jpy_2026-05_release_calendar_v1",
+      "availabilityPrecision": "date",
+      "availabilityTimezone": "Asia/Tokyo",
+      "pointInTimeRule": "A Japan CPI row is eligible on the first weekly freeze strictly after the Statistics Bureau release date unless exact release-time evidence is added.",
+      "revisionRebasingVersion": "jpy_revision_rebasing_v1",
+      "continuityDecisionId": "jpy_estat_table_1_1_2020_base_until_2025_base_v2_audit_v1",
+      "parserVersion": "estat_get_stats_data_table_1_1_japan_all_items_2020_base_v1",
+      "parserLayoutDriftGuard": "Fail closed if e-Stat status is non-zero, time class metadata is missing, or the all-items category/table parameters stop returning monthly Japan rows.",
+      "semanticSegments": [
+        {
+          "segmentId": "jpy_monthly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "A Japan CPI row is eligible on the first weekly freeze strictly after the Statistics Bureau release date unless exact release-time evidence is added."
+        }
+      ],
+      "artifactPayloadSha256": "5829dace599e8911ed3d5f4665e10a188969d3fa443788089c8598e2d03863a7",
+      "sourceContractHash": "5c16b9eabba8cf2d73282f56223ae604e8e433a4d40d639cc8d4b64273e23391",
+      "branchSemanticHash": "53cfb42aad674216dfa25409cad73abbbeddfb993e5de12a461b48e58c9e9444",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "AUD",
+      "economicAreaId": "AU",
+      "sourceContractId": "cpi_aud_abs_cpi_all_groups_headline_native_frequency_v1",
+      "semanticTarget": "CPI all groups / headline index, weighted average of eight capital cities",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "mixed",
+      "periodFormat": "YYYY-QN_THEN_YYYY-MM",
+      "periodSegment": "quarterly_history_through_2025_Q3_then_monthly_headline_from_2025_10",
+      "yoyFormula": "native_segmented_t_over_lag_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "September 2025=100",
+      "releaseCalendarVersion": "aud_2026-04_release_calendar_v1",
+      "availabilityPrecision": "exact_timestamp",
+      "availabilityTimezone": "Australia/Sydney",
+      "pointInTimeRule": "Monthly CPI rows are eligible after the ABS release timestamp; quarterly rows remain eligible by their publication date/timestamp for pre-transition history.",
+      "revisionRebasingVersion": "aud_revision_rebasing_v1",
+      "continuityDecisionId": "aud_abs_quarterly_to_complete_monthly_headline_native_frequency_v1",
+      "parserVersion": "abs_sdmx_cpi_all_groups_csv_v1",
+      "parserLayoutDriftGuard": "Fail closed if TIME_PERIOD/OBS_VALUE fields are absent, series key changes, or monthly/quarterly rows are mixed without the continuity segment marker.",
+      "semanticSegments": [
+        {
+          "segmentId": "aud_quarterly_headline_through_2025_q3_v1",
+          "segmentType": "frequency",
+          "validFromPeriod": null,
+          "validToPeriod": "2025-Q3",
+          "frequency": "quarterly",
+          "yoyLagPeriods": 4,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "Quarterly rows are eligible only after their official ABS publication date or timestamp."
+        },
+        {
+          "segmentId": "aud_monthly_headline_from_2025_10_v1",
+          "segmentType": "frequency",
+          "validFromPeriod": "2025-10",
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "Monthly headline rows are eligible only after the complete Monthly CPI release timestamp; October 2025 first became eligible after 2025-11-26 11:30 Australia/Sydney."
+        }
+      ],
+      "artifactPayloadSha256": "f60b21f74c15939a5859ebba44631b928b6417d17041d7687ec5b8697a7a8a57",
+      "sourceContractHash": "8dead7cc810a3c23f957826a8879f5ec649db28b55e8cec7d1b7a7a2aa45e29b",
+      "branchSemanticHash": "cb62b14b33ce56001bd939104d62188fdf41056749e6401a72feca803472ade2",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "NZD",
+      "economicAreaId": "NZ",
+      "sourceContractId": "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1",
+      "semanticTarget": "Consumers price index, all groups CPI, seasonally unadjusted",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "quarterly",
+      "periodFormat": "YYYY-QN",
+      "periodSegment": "quarterly_all_rows",
+      "yoyFormula": "t_over_t_minus_4_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "June 2017 quarter=1000",
+      "releaseCalendarVersion": "nzd_2026-Q1_release_calendar_v1",
+      "availabilityPrecision": "date",
+      "availabilityTimezone": "Pacific/Auckland",
+      "pointInTimeRule": "A Stats NZ CPI quarter is eligible on the first weekly freeze strictly after the official information-release date unless exact release-time evidence is added.",
+      "revisionRebasingVersion": "nzd_revision_rebasing_v1",
+      "continuityDecisionId": "nzd_statsnz_infoshare_cpiq_se9ns1160_quarterly_all_groups_v1",
+      "parserVersion": "statsnz_infoshare_export_direct_sch_cpiq_se9ns1160_v1",
+      "parserLayoutDriftGuard": "Fail closed if hidden form controls are absent, the export returns HTML instead of CSV, or the CPIQ.SE9NS1160 row is missing.",
+      "semanticSegments": [
+        {
+          "segmentId": "nzd_quarterly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "quarterly",
+          "yoyLagPeriods": 4,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "A Stats NZ CPI quarter is eligible on the first weekly freeze strictly after the official information-release date unless exact release-time evidence is added."
+        }
+      ],
+      "artifactPayloadSha256": "6acc52b43f1cc618cb1dad26f43ebececf887b0fe20381c3d11426b4ebb9c27f",
+      "sourceContractHash": "827f59642861b86fd03d79860f9b8a82ae4d8450e50320421171d02a5b5694e9",
+      "branchSemanticHash": "57b1a6553bd5a1f0ae87395fbdf8a0beb6025367963c5e12ad931233ac767522",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    },
+    {
+      "schemaVersion": "cpi_normalized_observation_v1",
+      "familyCandidateId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "currency": "CHF",
+      "economicAreaId": "CH",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "semanticTarget": "Swiss CPI total / all-items, LIK25B25 detailed results since 1982, December 2025=100",
+      "observationPeriodField": "observationPeriod",
+      "indexLevelField": "indexLevel",
+      "nativeFrequency": "monthly",
+      "periodFormat": "YYYY-MM",
+      "periodSegment": "monthly_all_rows",
+      "yoyFormula": "t_over_t_minus_12_minus_1",
+      "unit": "index",
+      "seasonalAdjustment": "not_seasonally_adjusted",
+      "baseOrReferencePeriod": "December 2025=100",
+      "releaseCalendarVersion": "chf_2026-05_release_calendar_v1",
+      "availabilityPrecision": "exact_timestamp",
+      "availabilityTimezone": "Europe/Zurich",
+      "pointInTimeRule": "A Swiss CPI row is eligible after the FSO CPI press-release timestamp is at or before the weekly freeze target.",
+      "revisionRebasingVersion": "chf_revision_rebasing_v1",
+      "continuityDecisionId": "chf_fso_lik25b25_index_m_total_row_dec2025_100_v1",
+      "parserVersion": "swiss_fso_lik25b25_index_m_sheet1_row5_v1",
+      "parserLayoutDriftGuard": "Fail closed if sheet1.xml, row 4, row 5, numeric date serials, or numeric all-items values are absent.",
+      "semanticSegments": [
+        {
+          "segmentId": "chf_monthly_all_rows_v1",
+          "segmentType": "standard",
+          "validFromPeriod": null,
+          "validToPeriod": null,
+          "frequency": "monthly",
+          "yoyLagPeriods": 12,
+          "geoPolicy": "fixed_country",
+          "releaseEligibilityRule": "A Swiss CPI row is eligible after the FSO CPI press-release timestamp is at or before the weekly freeze target."
+        }
+      ],
+      "artifactPayloadSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+      "sourceContractHash": "e86a452cb16195013c1b55831c68030b2c5315adb469ad3b6c8198a3fb2abc21",
+      "branchSemanticHash": "a052d6a718f0403a4d4b31293ffb6c37e5234e2e6ba0bae60e241d1956c198aa",
+      "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ]
+    }
+  ],
+  "cpiFamilyValidation": {
+    "familyCandidateId": "cpi_all_items_family_v1",
+    "schemaVersion": "cpi_normalized_observation_v1",
+    "status": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+    "branches": [
+      {
+        "currency": "USD",
+        "sourceContractId": "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "CAD",
+        "sourceContractId": "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "GBP",
+        "sourceContractId": "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "EUR",
+        "sourceContractId": "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "JPY",
+        "sourceContractId": "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "AUD",
+        "sourceContractId": "cpi_aud_abs_cpi_all_groups_headline_native_frequency_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "NZD",
+        "sourceContractId": "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      {
+        "currency": "CHF",
+        "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+        "validationStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "checks": {
+          "endpointArtifactReachable": true,
+          "artifactPayloadHashRecorded": true,
+          "requiredWindowCovered": true,
+          "parsedObservationRowsPresent": true,
+          "officialAllItemsSemanticsRecorded": true,
+          "unitRecorded": true,
+          "seasonalAdjustmentRecorded": true,
+          "baseOrReferencePeriodRecorded": true,
+          "releaseCalendarRecorded": true,
+          "revisionRebasingRecorded": true,
+          "continuityDecisionLocked": true,
+          "parserContractRecorded": true,
+          "nativeFrequencyPreserved": true,
+          "semanticSegmentsRecorded": true,
+          "audFrequencyTransitionLocked": true,
+          "eurCompositionSegmentsLocked": true,
+          "sourceContractHashRecorded": true,
+          "branchSemanticHashRecorded": true
+        },
+        "failedChecks": [],
+        "blockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      }
+    ],
+    "promotionDecision": {
+      "promotionEligible": false,
+      "reason": "CPI diagnostic family and currency-bundle manifests are sealed here, but they are non-ACTIVE, CPI-only, not outcome-consumable, and complete RRP composition remains pending."
+    }
+  },
+  "diagnosticCpiManifests": {
+    "status": "SEALED_DIAGNOSTIC_NON_ACTIVE",
+    "familyManifest": {
+      "manifestType": "cpi_family_manifest",
+      "familyManifestId": "cpi_all_items_family_v1",
+      "familyManifestStatus": "BUILT_DIAGNOSTIC",
+      "manifestState": "SEALED",
+      "diagnosticOnly": true,
+      "promotionEligible": false,
+      "outcomeConsumable": false,
+      "requiredCurrencySet": [
+        "AUD",
+        "CAD",
+        "CHF",
+        "EUR",
+        "GBP",
+        "JPY",
+        "NZD",
+        "USD"
+      ],
+      "requiredCurrencySetHash": "ab33d1a362068c31e5a32e56f710a4572b45c334cf0d15020abc2dbf10e8a0c5",
+      "atomicSourceValidationStatus": "PASS",
+      "validatedBranches": 8,
+      "allItemsDefinition": "Official producer all-items/headline CPI/HICP index for each required currency or economic area.",
+      "seasonalAdjustmentPolicy": "not_seasonally_adjusted",
+      "nativeFrequencyPolicy": "Preserve native monthly, quarterly, or explicitly segmented official headline frequency. No interpolation.",
+      "frequencySegmentPolicy": "AUD is segmented quarterly through 2025-Q3 and monthly from 2025-10; all other current v1 branches preserve their native single cadence.",
+      "yoyTransformationRules": {
+        "monthly": "t_over_t_minus_12_minus_1",
+        "quarterly": "t_over_t_minus_4_minus_1",
+        "mixed": "native_segmented_t_over_lag_minus_1"
+      },
+      "availabilityPolicy": "Rows are eligible only after the branch release-calendar rule; date-only releases use the first weekly freeze strictly after the release date unless exact timestamp evidence exists.",
+      "stalenessPolicy": "CPI staleness is release-calendar aware and must not be inferred by widening age thresholds.",
+      "branchSemanticHashes": {
+        "AUD": "cb62b14b33ce56001bd939104d62188fdf41056749e6401a72feca803472ade2",
+        "CAD": "81858391ae29583236187655f7c0efd6dd4c7e6d99a3a847ebeb01bae4e0c3a3",
+        "CHF": "a052d6a718f0403a4d4b31293ffb6c37e5234e2e6ba0bae60e241d1956c198aa",
+        "EUR": "b58872ee85a8fb840905b5e86c3f8b53f29f98888358bd6e372e906387c5da0f",
+        "GBP": "b996757dca21e71ece50474a3dcd159799b495caea0b5a791f59ce984d9d52f2",
+        "JPY": "53cfb42aad674216dfa25409cad73abbbeddfb993e5de12a461b48e58c9e9444",
+        "NZD": "57b1a6553bd5a1f0ae87395fbdf8a0beb6025367963c5e12ad931233ac767522",
+        "USD": "870399c30bd41479f369df427fceaea58c1ae52e2e463b1d5b8b92368d3ac03a"
+      },
+      "sourceContractHashes": {
+        "AUD": "8dead7cc810a3c23f957826a8879f5ec649db28b55e8cec7d1b7a7a2aa45e29b",
+        "CAD": "39c7b1f47a6366e32d23b14900722b21d257783205cb940a2acaa99bcc86f9f3",
+        "CHF": "e86a452cb16195013c1b55831c68030b2c5315adb469ad3b6c8198a3fb2abc21",
+        "EUR": "e5751696a791080583fa833c070dee525f6b75dfbbba54d1ac29fcbbde7ca544",
+        "GBP": "4f00e4f7e975129a473cf82ba341bde09831590652fa336929cb3f6e74a34003",
+        "JPY": "5c16b9eabba8cf2d73282f56223ae604e8e433a4d40d639cc8d4b64273e23391",
+        "NZD": "827f59642861b86fd03d79860f9b8a82ae4d8450e50320421171d02a5b5694e9",
+        "USD": "55e8723a22ac9db105cd7a6874598889b9c3396c938f3746971dee157b76a764"
+      },
+      "releaseCalendarVersions": {
+        "AUD": "aud_2026-04_release_calendar_v1",
+        "CAD": "cad_2026-05_release_calendar_v1",
+        "CHF": "chf_2026-05_release_calendar_v1",
+        "EUR": "eur_2026-05_release_calendar_v1",
+        "GBP": "gbp_2026-05_release_calendar_v1",
+        "JPY": "jpy_2026-05_release_calendar_v1",
+        "NZD": "nzd_2026-Q1_release_calendar_v1",
+        "USD": "usd_2026-05_release_calendar_v1"
+      },
+      "failClosedGuards": [
+        "reject fewer or more than the exact eight required CPI branches",
+        "reject duplicate currency or economic-area branches",
+        "reject source-contract ids not approved by this family manifest",
+        "reject semantic, metadata, schema, parser, or branch hash drift",
+        "reject missing release evidence",
+        "reject partial or truncated API/file responses",
+        "reject unapproved base/reference-period changes",
+        "reject AUD segment overlap, gap, early monthly eligibility, or missing yoy_lag_periods",
+        "reject unresolved Euro-area composition segment identity",
+        "reject missing native frequency or unsupported YoY lag",
+        "reject revoked, quarantined, shadow-only, or validation-only branches",
+        "reject dynamic fallback to another table or provider"
+      ],
+      "caveats": [
+        "CPI diagnostic family manifest is sealed but not ACTIVE.",
+        "Currency bundles emitted from this receipt are CPI_DIAGNOSTIC/PARTIAL_SEALED only.",
+        "Rate vintage-selection and release-aware staleness contract remains unresolved before RRP promotion."
+      ],
+      "manifestHashPolicy": "familyManifestHash is a semantic composition hash over source contracts, branch semantic hashes, segment policies, and guards; live proof payload bytes remain tracked by livePayloadSetHash.",
+      "familyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c"
+    },
+    "currencyBundleManifests": [
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_aud_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "AUD",
+        "economicAreaId": "AU",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_aud_abs_cpi_all_groups_headline_native_frequency_v1",
+        "cpiSourceContractHash": "8dead7cc810a3c23f957826a8879f5ec649db28b55e8cec7d1b7a7a2aa45e29b",
+        "cpiBranchSemanticHash": "cb62b14b33ce56001bd939104d62188fdf41056749e6401a72feca803472ade2",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "f60b21f74c15939a5859ebba44631b928b6417d17041d7687ec5b8697a7a8a57",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "3d1f4a70e60627d3f83ba2a86018232ce243baa58d82dbbcc8258de4c6f2b7a5"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_cad_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "CAD",
+        "economicAreaId": "CA",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1",
+        "cpiSourceContractHash": "39c7b1f47a6366e32d23b14900722b21d257783205cb940a2acaa99bcc86f9f3",
+        "cpiBranchSemanticHash": "81858391ae29583236187655f7c0efd6dd4c7e6d99a3a847ebeb01bae4e0c3a3",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "0ad2a8c1f0b4770cb38b16caaf4c05203d0d4bb3e2ac59400826d9672cc3851e",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "8af4fe86cc5e59611bd5a9e17246a82759e7940ebca3a0c455c289f10a6c8f78"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_chf_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "CHF",
+        "economicAreaId": "CH",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+        "cpiSourceContractHash": "e86a452cb16195013c1b55831c68030b2c5315adb469ad3b6c8198a3fb2abc21",
+        "cpiBranchSemanticHash": "a052d6a718f0403a4d4b31293ffb6c37e5234e2e6ba0bae60e241d1956c198aa",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "de89634d4f1a8b3d41a7cdc204d91ad88c6d49935bb213ba02ae0e69e0607cb3"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_eur_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "EUR",
+        "economicAreaId": "EA_DYNAMIC",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1",
+        "cpiSourceContractHash": "e5751696a791080583fa833c070dee525f6b75dfbbba54d1ac29fcbbde7ca544",
+        "cpiBranchSemanticHash": "b58872ee85a8fb840905b5e86c3f8b53f29f98888358bd6e372e906387c5da0f",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "16b34834a875e576becb11163128204bbb3cee07017dc318ea95635b2689be74",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "dd650eb032159680066cf30cb975592346355ae83dbf9d23ff66ea834761dc72"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_gbp_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "GBP",
+        "economicAreaId": "UK",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+        "cpiSourceContractHash": "4f00e4f7e975129a473cf82ba341bde09831590652fa336929cb3f6e74a34003",
+        "cpiBranchSemanticHash": "b996757dca21e71ece50474a3dcd159799b495caea0b5a791f59ce984d9d52f2",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "54fb5c5be963841a74635d42e680364a13711a883529438eac6ba7f5c9ed8185",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "6c215798f38f23a4597b64c89e9a1ff4519473685fec70996d536028818a8145"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_jpy_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "JPY",
+        "economicAreaId": "JP",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1",
+        "cpiSourceContractHash": "5c16b9eabba8cf2d73282f56223ae604e8e433a4d40d639cc8d4b64273e23391",
+        "cpiBranchSemanticHash": "53cfb42aad674216dfa25409cad73abbbeddfb993e5de12a461b48e58c9e9444",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "5829dace599e8911ed3d5f4665e10a188969d3fa443788089c8598e2d03863a7",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "a9597a5f8e4adfd8a1df052510742d7c07fa697e9177f84d7f6ecae35f70f68c"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_nzd_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "NZD",
+        "economicAreaId": "NZ",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1",
+        "cpiSourceContractHash": "827f59642861b86fd03d79860f9b8a82ae4d8450e50320421171d02a5b5694e9",
+        "cpiBranchSemanticHash": "57b1a6553bd5a1f0ae87395fbdf8a0beb6025367963c5e12ad931233ac767522",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "6acc52b43f1cc618cb1dad26f43ebececf887b0fe20381c3d11426b4ebb9c27f",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "210c56316bba8ff1ab9b63b4519db760669ee0e55eddaec07d1cc4f26bb4f231"
+      },
+      {
+        "manifestType": "currency_macro_bundle_manifest",
+        "currencyMacroBundleId": "currency_macro_bundle_usd_cpi_diagnostic_v1",
+        "bundleScope": "CPI_DIAGNOSTIC",
+        "bundleState": "PARTIAL_SEALED",
+        "manifestState": "SEALED",
+        "diagnosticOnly": true,
+        "promotionEligible": false,
+        "outcomeConsumable": false,
+        "currency": "USD",
+        "economicAreaId": "US",
+        "cpiFamilyManifestId": "cpi_all_items_family_v1",
+        "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+        "cpiSourceContractId": "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1",
+        "cpiSourceContractHash": "55e8723a22ac9db105cd7a6874598889b9c3396c938f3746971dee157b76a764",
+        "cpiBranchSemanticHash": "870399c30bd41479f369df427fceaea58c1ae52e2e463b1d5b8b92368d3ac03a",
+        "sourceContractStatus": "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED",
+        "proofArtifactPayloadSha256": "7ae81003cfc072325e4679bc827fd7bc40170769cb81942c372a7486d502f600",
+        "missingForRrpPromotion": [
+          "rate_3m_market_family_v1",
+          "real_rate_pressure_attribution_v1"
+        ],
+        "caveats": [
+          "This is a CPI-only diagnostic currency bundle.",
+          "Do not label this as a complete RRP currency bundle.",
+          "Do not consume this bundle in macro outcome logic."
+        ],
+        "currencyMacroBundleHash": "661178ff4b15ea9888efef1f93634598cedc4cdb422c06feb79a95f2497715d9"
+      }
+    ],
+    "rootPromotionManifestStatus": "NOT_BUILT_RRP_COMPOSITION_PENDING",
+    "promotionDecision": {
+      "promotionEligible": false,
+      "outcomeConsumable": false,
+      "blockingReason": "RRP_COMPOSITION_PENDING_FOR_PROMOTION"
+    }
+  },
+  "probes": [
+    {
+      "currency": "USD",
+      "provider": "Bureau of Labor Statistics",
+      "sourceContractId": "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1",
+      "semanticTarget": "CPI-U, U.S. city average, all items, not seasonally adjusted",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_timeseries_html_table",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://data.bls.gov/timeseries/CUUR0000SA0"
+      },
+      "officialEvidenceUrls": [
+        "https://data.bls.gov/timeseries/CUUR0000SA0",
+        "https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly CPI release; BLS publishes the scheduled release timestamp.",
+          "precision": "exact_timestamp",
+          "timezone": "America/New_York",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-10",
+            "releaseTimeLocal": "08:30",
+            "nextReleaseDateLocal": "2026-07-14"
+          },
+          "pointInTimeRule": "A CPI-U observation is eligible only after the BLS release timestamp is at or before the weekly freeze target.",
+          "evidenceUrls": [
+            "https://www.bls.gov/cpi/",
+            "https://www.bls.gov/news.release/cpi.htm"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "Selected contract is CPI-U all items not seasonally adjusted; seasonally adjusted BLS CPI series are revised for annual seasonal-factor recalculation, while this contract avoids the seasonally adjusted path.",
+          "rebasingPolicy": "CPI-U all items stays on 1982-84=100; future methodology or series-definition changes require a new source contract version.",
+          "pointInTimeImplication": "Store the official BLS release artifact and release timestamp; do not substitute C-CPI-U or seasonally adjusted all-items rows.",
+          "evidenceUrls": [
+            "https://www.bls.gov/cpi/questions-and-answers.htm",
+            "https://www.bls.gov/cpi/seasonal-adjustment/using-seasonally-adjusted-data.htm",
+            "https://www.bls.gov/cpi/additional-resources/historical-changes.htm"
+          ]
+        },
+        "continuityDecision": {
+          "status": "standard_contract_pinned",
+          "decisionId": "usd_bls_cpi_u_all_items_nsa_1982_84_v1",
+          "decision": "Use BLS series CUUR0000SA0, CPI-U U.S. city average all-items, not seasonally adjusted, 1982-84=100.",
+          "implications": [
+            "No FRED CPI mirror is promoted when BLS direct source passes.",
+            "No chained CPI or seasonally adjusted CPI row can satisfy this contract."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "bls_public_timeseries_html_table_parser_v1",
+          "contract": "Parse official BLS time-series table year rows for CUUR0000SA0, with twelve monthly cells and numeric values.",
+          "layoutDriftGuard": "Fail closed if the BLS table lacks parseable year rows/month cells or latest parsed period does not reach the required current sample."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "text/html;charset=ISO-8859-1",
+        "payloadBytes": 62564,
+        "payloadSha256": "7ae81003cfc072325e4679bc827fd7bc40170769cb81942c372a7486d502f600"
+      },
+      "observations": {
+        "parsedCount": 124,
+        "firstPeriod": "2016-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 335.123,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "1982-84=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "BLS official public time-series table is reachable without an API key and avoids public API daily-threshold instability."
+      ]
+    },
+    {
+      "currency": "CAD",
+      "provider": "Statistics Canada",
+      "sourceContractId": "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1",
+      "semanticTarget": "Table 18-10-0004-01, Canada all-items CPI, not seasonally adjusted",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_wds_json_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods",
+        "sanitizedBody": [
+          {
+            "vectorId": 41690973,
+            "latestN": 120
+          }
+        ]
+      },
+      "officialEvidenceUrls": [
+        "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000401",
+        "https://www.statcan.gc.ca/en/developers/wds/user-guide"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly CPI table and The Daily release.",
+          "precision": "date",
+          "timezone": "America/Toronto",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-22",
+            "releaseTimeLocal": null,
+            "nextReleaseDateLocal": "2026-07-20"
+          },
+          "pointInTimeRule": "A Statistics Canada CPI row is eligible on the first weekly freeze strictly after the documented release date unless an exact timestamp artifact is added.",
+          "evidenceUrls": [
+            "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000401",
+            "https://www150.statcan.gc.ca/n1/daily-quotidien/260622/dq260622a-eng.htm",
+            "https://www.statcan.gc.ca/en/subjects-start/prices_and_price_indexes/consumer_price_indexes"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "Selected table is not seasonally adjusted; Statistics Canada documents annual CPI basket updates and separate revision behaviour for seasonally adjusted/core series.",
+          "rebasingPolicy": "All-items CPI remains 2002=100 while basket weights are updated; basket-link changes require source-contract metadata but not a FRED splice.",
+          "pointInTimeImplication": "Store table/vector metadata and The Daily release evidence for each observation vintage before promotion.",
+          "evidenceUrls": [
+            "https://www23.statcan.gc.ca/imdb/p2SV.pl?Function=getMainChange&Id=1583256",
+            "https://www.statcan.gc.ca/en/subjects-start/prices_and_price_indexes/consumer_price_indexes/faq",
+            "https://www150.statcan.gc.ca/n1/pub/62-001-x/2017001/technote-notetech1-eng.htm"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "cad_statcan_1810000401_vector_41690973_all_items_canada_nsa_v1",
+          "decision": "Pin table 18-10-0004-01 vector 41690973 for Canada all-items monthly CPI, not seasonally adjusted.",
+          "implications": [
+            "Vector identity must be preserved in the source map.",
+            "Future vector or table replacement requires a new source contract version and parity audit."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "statcan_wds_vector_41690973_latest_periods_json_v1",
+          "contract": "POST getDataFromVectorsAndLatestNPeriods for vector 41690973 and parse vectorDataPoint.refPer/value.",
+          "layoutDriftGuard": "Fail closed if vectorDataPoint is absent, refPer stops being an ISO date, or table/vector metadata no longer maps to Canada all-items CPI."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json",
+        "payloadBytes": 27632,
+        "payloadSha256": "0ad2a8c1f0b4770cb38b16caaf4c05203d0d4bb3e2ac59400826d9672cc3851e"
+      },
+      "observations": {
+        "parsedCount": 120,
+        "firstPeriod": "2016-06",
+        "lastPeriod": "2026-05",
+        "latestValue": 169.6,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2002=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "WDS vector sample covers the seven-year window and latest 2026 sample without an account."
+      ]
+    },
+    {
+      "currency": "GBP",
+      "provider": "Office for National Statistics",
+      "sourceContractId": "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+      "semanticTarget": "D7BT CPI INDEX 00: ALL ITEMS 2015=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_ons_time_series_json",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23/data"
+      },
+      "officialEvidenceUrls": [
+        "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23",
+        "https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/consumerpriceindices"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly ONS consumer price inflation dataset release.",
+          "precision": "date",
+          "timezone": "Europe/London",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-17",
+            "releaseTimeLocal": null,
+            "nextReleaseDateLocal": "2026-07-22"
+          },
+          "pointInTimeRule": "An ONS CPI row is eligible on the first weekly freeze strictly after the ONS release date unless exact release-time evidence is added.",
+          "evidenceUrls": [
+            "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23",
+            "https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/consumerpriceindices"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "ONS exposes previous versions for the time series; any back data/version change must be captured as a new artifact and compared before promotion.",
+          "rebasingPolicy": "D7BT is CPI all-items 2015=100; a future CPI rebasing requires a new contract version.",
+          "pointInTimeImplication": "Use ONS previous-version artifacts for point-in-time reconstruction instead of reading only latest time-series JSON.",
+          "evidenceUrls": [
+            "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23/previous/v107/previous",
+            "https://www.ons.gov.uk/economy/inflationandpriceindices/methodologies/consumerpricesindicestechnicalmanual2019"
+          ]
+        },
+        "continuityDecision": {
+          "status": "standard_contract_pinned",
+          "decisionId": "gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+          "decision": "Use ONS MM23 time series D7BT for CPI index 00: all items, 2015=100.",
+          "implications": [
+            "Use ONS as the producer source, not a FRED/OECD mirror.",
+            "ONS previous-version data is the vintage audit path."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "ons_timeseries_d7bt_mm23_json_v1",
+          "contract": "Parse months array from the D7BT MM23 JSON endpoint with MMM-YYYY labels and numeric values.",
+          "layoutDriftGuard": "Fail closed if the months array is absent, labels no longer parse to months, or latest period is behind the required current sample."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json;charset=utf-8",
+        "payloadBytes": 124726,
+        "payloadSha256": "54fb5c5be963841a74635d42e680364a13711a883529438eac6ba7f5c9ed8185"
+      },
+      "observations": {
+        "parsedCount": 461,
+        "firstPeriod": "1988-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 142.4,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2015=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "ONS D7BT public JSON sample covers the seven-year window and latest 2026 sample."
+      ]
+    },
+    {
+      "currency": "EUR",
+      "provider": "Eurostat",
+      "sourceContractId": "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1",
+      "semanticTarget": "HICP ECOICOP v2 monthly index, total, dynamic euro-area aggregate, 2025=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_eurostat_json_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr?format=JSON&lang=en&freq=M&unit=I25&coicop18=TOTAL&geo=EA"
+      },
+      "officialEvidenceUrls": [
+        "https://ec.europa.eu/eurostat/databrowser/product/view/prc_hicp_midx",
+        "https://ec.europa.eu/eurostat/web/hicp/database"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly Eurostat HICP full-data release; flash estimate is not the selected contract.",
+          "precision": "date",
+          "timezone": "Europe/Luxembourg",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-17",
+            "releaseTimeLocal": null,
+            "nextReleaseDateLocal": null
+          },
+          "pointInTimeRule": "A full HICP index row is eligible on the first weekly freeze strictly after the Eurostat full-data release date.",
+          "evidenceUrls": [
+            "https://ec.europa.eu/eurostat/cache/metadata/en/prc_hicp_esms.htm",
+            "https://ec.europa.eu/eurostat/news/euro-indicators/release-calendar",
+            "https://ec.europa.eu/eurostat/web/products-euro-indicators/w/2-02062026-ap"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "HICP is published as final but can be revised for errors, provisional finalisation, or major methodological changes; first-published HICP data exists as a vintage evidence path.",
+          "rebasingPolicy": "ECOICOP v2 dataset uses 2025=100; prc_hicp_midx/ECOICOP1 is archived and frozen, so prc_hicp_minr supersedes it for this contract.",
+          "pointInTimeImplication": "Use prc_hicp_minr for latest contract rows and preserve prc_hicp_fpd or release artifacts for first-published/vintage validation where required.",
+          "evidenceUrls": [
+            "https://ec.europa.eu/eurostat/cache/metadata/en/prc_hicp_esms.htm",
+            "https://ec.europa.eu/eurostat/web/hicp/information-data",
+            "https://ec.europa.eu/eurostat/web/products-euro-indicators/w/2-04022026-ap"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "eur_eurostat_prc_hicp_minr_dynamic_ea_total_i25_v1",
+          "decision": "Use Eurostat prc_hicp_minr ECOICOP v2 TOTAL, unit I25, geo=EA dynamic euro-area aggregate.",
+          "implications": [
+            "This formally supersedes archived prc_hicp_midx for the promoted branch.",
+            "Dynamic euro-area composition is accepted for v1 because it is Eurostat's published EA aggregate; fixed-area history would require a separate candidate contract."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "eurostat_prc_hicp_minr_json_total_i25_ea_v1",
+          "contract": "Parse JSON-stat time dimension indices and value map for freq=M, unit=I25, coicop18=TOTAL, geo=EA.",
+          "layoutDriftGuard": "Fail closed if the time dimension or values map is absent, if coicop18/unit/geo parameters change, or if the endpoint returns the archived ECOICOP1 dataset."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json",
+        "payloadBytes": 21090,
+        "payloadSha256": "16b34834a875e576becb11163128204bbb3cee07017dc318ea95635b2689be74"
+      },
+      "observations": {
+        "parsedCount": 365,
+        "firstPeriod": "1996-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 103.13,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2025=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "Eurostat ECOICOP v2 endpoint replaces the archived pre-2026 prc_hicp_midx branch and reaches the current 2026 sample."
+      ]
+    },
+    {
+      "currency": "JPY",
+      "provider": "Statistics Bureau of Japan / e-Stat",
+      "sourceContractId": "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1",
+      "semanticTarget": "CPI Table 1-1 subgroup index, Japan all-items, 2020-base",
+      "nativeFrequency": "monthly",
+      "endpointMode": "estat_json_api",
+      "credential": {
+        "required": true,
+        "used": true,
+        "variableName": "ESTAT_APP_ID"
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData",
+        "sanitizedParams": {
+          "appId": "REDACTED",
+          "statsDataId": "0003427113",
+          "cdArea": "00000",
+          "cdCat01": "0001",
+          "cdTab": "1",
+          "limit": "10000",
+          "metaGetFlg": "Y",
+          "cntGetFlg": "N",
+          "sectionHeaderFlg": "1"
+        }
+      },
+      "officialEvidenceUrls": [
+        "https://www.stat.go.jp/english/data/cpi/1581-z.html",
+        "https://www.e-stat.go.jp/en/stat-search/files?cycle=1&layout=datalist&month=12040604&page=1&result_back=1&tclass1=000001150149&tclass2val=0&toukei=00200573&tstat=000001150147&year=20250"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly Statistics Bureau/e-Stat Japan CPI release schedule.",
+          "precision": "date",
+          "timezone": "Asia/Tokyo",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-19",
+            "releaseTimeLocal": null,
+            "nextReleaseDateLocal": "2026-07-24"
+          },
+          "pointInTimeRule": "A Japan CPI row is eligible on the first weekly freeze strictly after the Statistics Bureau release date unless exact release-time evidence is added.",
+          "evidenceUrls": [
+            "https://www.stat.go.jp/english/data/cpi/1582.html",
+            "https://www.stat.go.jp/english/data/cpi/1581-z.html"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "Statistics Bureau/e-Stat publishes update dates for monthly tables; later updates must be captured as new artifacts before point-in-time promotion.",
+          "rebasingPolicy": "2020-base Table 1-1 is the current selected contract through July 2026; 2025-base historical data and linked index become a new candidate source version when released.",
+          "pointInTimeImplication": "Do not splice 2015, 2020, and 2025 bases silently; promote 2020-base v1 through its valid segment, then open a v2 continuity audit for the 2025-base release.",
+          "evidenceUrls": [
+            "https://www.stat.go.jp/english/data/cpi/index.html",
+            "https://www.e-stat.go.jp/en/stat-search/files?cycle=1&layout=datalist&month=12040604&page=1&result_back=1&tclass1=000001150149&tclass2val=0&toukei=00200573&tstat=000001150147&year=20250"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "jpy_estat_table_1_1_2020_base_until_2025_base_v2_audit_v1",
+          "decision": "Use e-Stat Table 1-1 monthly Subgroup Index for Japan all-items, 2020-base, and treat 2025-base as a future supersession gate with linked-index validation.",
+          "implications": [
+            "2015-base tables are historical validation only for this v1 contract.",
+            "2025-base rows cannot replace 2020-base rows until the linked-index and historical-recalculation artifacts are audited."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "estat_get_stats_data_table_1_1_japan_all_items_2020_base_v1",
+          "contract": "Call e-Stat getStatsData with statsDataId 0003427113, cdArea=00000, cdCat01=0001, cdTab=1; map Japanese month labels to YYYY-MM.",
+          "layoutDriftGuard": "Fail closed if e-Stat status is non-zero, time class metadata is missing, or the all-items category/table parameters stop returning monthly Japan rows."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json; charset=utf-8",
+        "payloadBytes": 131217,
+        "payloadSha256": "5829dace599e8911ed3d5f4665e10a188969d3fa443788089c8598e2d03863a7"
+      },
+      "observations": {
+        "parsedCount": 677,
+        "firstPeriod": "1970-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 113.5,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2020=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "e-Stat Table 1-1 all-items sample is credentialed, parsed, and covers the seven-year window."
+      ]
+    },
+    {
+      "currency": "AUD",
+      "provider": "Australian Bureau of Statistics",
+      "sourceContractId": "cpi_aud_abs_cpi_all_groups_headline_native_frequency_v1",
+      "semanticTarget": "CPI all groups / headline index, weighted average of eight capital cities",
+      "nativeFrequency": "mixed",
+      "endpointMode": "public_abs_sdmx_csv_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://data.api.abs.gov.au/rest/data/CPI/1.10001.10.1.Q?startPeriod=2019-Q1&format=csvfile"
+      },
+      "officialEvidenceUrls": [
+        "https://www.abs.gov.au/statistics/application-programming-interfaces-apis/data-api-user-guide",
+        "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia/latest-release",
+        "https://www.abs.gov.au/about/key-priorities/big-data-timely-insights-phase-2/complete-monthly-measure-cpi/monthly-and-quarterly-data-series"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly CPI from October 2025 onward; quarterly CPI remains available for indexation and history.",
+          "precision": "exact_timestamp",
+          "timezone": "Australia/Sydney",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-04",
+            "releaseDateLocal": "2026-05-27",
+            "releaseTimeLocal": "11:30",
+            "nextReleaseDateLocal": "2026-06-24"
+          },
+          "pointInTimeRule": "Monthly CPI rows are eligible after the ABS release timestamp; quarterly rows remain eligible by their publication date/timestamp for pre-transition history.",
+          "evidenceUrls": [
+            "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia",
+            "https://www.abs.gov.au/about/key-priorities/big-data-timely-insights-phase-2/complete-monthly-measure-cpi/release-schedule"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "ABS publishes current and previous CPI releases; any revised/re-referenced historical row must be captured by artifact hash before promotion.",
+          "rebasingPolicy": "September 2025 is the current monthly/quarterly CPI reference period; re-referencing changes index levels but preserves underlying quarterly movements.",
+          "pointInTimeImplication": "Keep quarterly native history through 2025-Q3 and monthly headline rows from October 2025; do not fabricate monthly history before the official monthly series.",
+          "evidenceUrls": [
+            "https://www.abs.gov.au/about/key-priorities/big-data-timely-insights-phase-2/complete-monthly-measure-cpi/monthly-and-quarterly-data-series",
+            "https://www.abs.gov.au/statistics/detailed-methodology-information/information-papers/re-referencing-quarterly-consumer-price-index",
+            "https://www.abs.gov.au/statistics/detailed-methodology-information/concepts-sources-methods/consumer-price-index-concepts-sources-and-methods/2025/re-referencing-and-linking-price-indexes"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "aud_abs_quarterly_to_complete_monthly_headline_native_frequency_v1",
+          "decision": "Use native quarterly CPI all-groups weighted-average history through September quarter 2025 and official complete monthly CPI headline from October 2025 forward.",
+          "implications": [
+            "Weekly snapshots carry the newest official observation at its native frequency.",
+            "CPI YoY uses t/t-4 for quarterly rows and t/t-12 for monthly rows; no interpolation is allowed."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "abs_sdmx_cpi_all_groups_csv_v1",
+          "contract": "Parse ABS SDMX CSV TIME_PERIOD and OBS_VALUE for CPI all-groups weighted average of eight capital cities.",
+          "layoutDriftGuard": "Fail closed if TIME_PERIOD/OBS_VALUE fields are absent, series key changes, or monthly/quarterly rows are mixed without the continuity segment marker."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/vnd.sdmx.data+csv; charset=utf-8",
+        "payloadBytes": 1685,
+        "payloadSha256": "f60b21f74c15939a5859ebba44631b928b6417d17041d7687ec5b8697a7a8a57"
+      },
+      "observations": {
+        "parsedCount": 29,
+        "firstPeriod": "2019-Q1",
+        "lastPeriod": "2026-Q1",
+        "latestValue": 101.81,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "September 2025=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-Q1",
+        "minimumCurrentPeriodSeen": "2026-Q1",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "ABS Data API is public and machine-readable, but this candidate branch is not yet the full CPI family contract."
+      ]
+    },
+    {
+      "currency": "NZD",
+      "provider": "Stats NZ",
+      "sourceContractId": "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1",
+      "semanticTarget": "Consumers price index, all groups CPI, seasonally unadjusted",
+      "nativeFrequency": "quarterly",
+      "endpointMode": "public_infoshare_export_direct_csv",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://infoshare.stats.govt.nz/ExportDirect.aspx",
+        "sanitizedBody": {
+          "searchFileSeriesIdentifiers": [
+            "CPIQ.SE9NS1160"
+          ],
+          "selectedPeriods": "2019M01-2026M06",
+          "csvFormat": "rows"
+        }
+      },
+      "officialEvidenceUrls": [
+        "https://www.stats.govt.nz/indicators/consumers-price-index-cpi/",
+        "https://www.stats.govt.nz/tools/stats-infoshare/",
+        "https://www.stats.govt.nz/tools/we-are-changing-our-data-tools/",
+        "https://infoshare.stats.govt.nz/Help/export-direct.asp"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "quarterly CPI information release; Stats NZ has announced future monthly CPI from 2027.",
+          "precision": "date",
+          "timezone": "Pacific/Auckland",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-Q1",
+            "releaseDateLocal": "2026-04-20",
+            "releaseTimeLocal": null,
+            "nextReleaseDateLocal": null
+          },
+          "pointInTimeRule": "A Stats NZ CPI quarter is eligible on the first weekly freeze strictly after the official information-release date unless exact release-time evidence is added.",
+          "evidenceUrls": [
+            "https://www.stats.govt.nz/indicators/consumers-price-index-cpi/",
+            "https://www.stats.govt.nz/information-releases/consumers-price-index-march-2026-quarter/",
+            "https://www.stats.govt.nz/tools/stats-infoshare/",
+            "https://infoshare.stats.govt.nz/Help/export-direct.asp"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "Stats NZ CPI review material documents basket/weight reviews; later revised Infoshare exports must be captured as new artifacts for point-in-time promotion.",
+          "rebasingPolicy": "Infoshare CPIQ.SE9NS1160 all-groups quarterly index remains the selected v1 branch; CPI reviews and future monthly CPI require explicit source-version changes.",
+          "pointInTimeImplication": "Use the .sch Export Direct artifact for reproducible acquisition; future monthly CPI stays shadow-only until the full history or a new tested contract exists.",
+          "evidenceUrls": [
+            "https://www.stats.govt.nz/methods/consumers-price-index-review-2024/",
+            "https://datainfoplus.stats.govt.nz/Item/nz.govt.stats/8b0860b8-cf63-4f12-a578-8eed8ba69ac3",
+            "https://www.stats.govt.nz/methods/monthly-consumers-price-index-updates-on-progress/"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "nzd_statsnz_infoshare_cpiq_se9ns1160_quarterly_all_groups_v1",
+          "decision": "Use Stats NZ Infoshare Export Direct .sch contract for CPIQ.SE9NS1160 all-groups quarterly CPI.",
+          "implications": [
+            "The Export Direct form POST and .sch series identifier are part of the contract, not an incidental scrape.",
+            "Monthly CPI from 2027 is a future v2 candidate only."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "statsnz_infoshare_export_direct_sch_cpiq_se9ns1160_v1",
+          "contract": "Upload a .sch file containing CPIQ.SE9NS1160 to ExportDirect.aspx, request rows CSV, and parse Mar/Jun/Sep/Dec quarter columns.",
+          "layoutDriftGuard": "Fail closed if hidden form controls are absent, the export returns HTML instead of CSV, or the CPIQ.SE9NS1160 row is missing."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "text/csv; charset=utf-8",
+        "payloadBytes": 725,
+        "payloadSha256": "6acc52b43f1cc618cb1dad26f43ebececf887b0fe20381c3d11426b4ebb9c27f"
+      },
+      "observations": {
+        "parsedCount": 29,
+        "firstPeriod": "2019-Q1",
+        "lastPeriod": "2026-Q1",
+        "latestValue": 1339,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "June 2017 quarter=1000"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-Q1",
+        "minimumCurrentPeriodSeen": "2026-Q1",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "Stats NZ Infoshare Export Direct returns the all-groups quarterly CPI series from a .sch file without an account."
+      ]
+    },
+    {
+      "currency": "CHF",
+      "provider": "Swiss Federal Statistical Office",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "semanticTarget": "Swiss CPI total / all-items, LIK25B25 detailed results since 1982, December 2025=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_open_data_xlsx_asset",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://dam-api.bfs.admin.ch/hub/api/dam/assets/36669836/master"
+      },
+      "officialEvidenceUrls": [
+        "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html",
+        "https://opendata.swiss/en/dataset/lik-dezember-2025100-detailresultate-seit-1982-warenkorbstruktur-2025-inkl-sondergliederungen-l",
+        "https://www.bfs.admin.ch/asset/en/su-e-05.02.66"
+      ],
+      "sourceContractProof": {
+        "proofStatus": "recorded_manifest_pending",
+        "releaseCalendar": {
+          "status": "documented",
+          "cadence": "monthly Swiss CPI publication at the beginning of the following month.",
+          "precision": "exact_timestamp",
+          "timezone": "Europe/Zurich",
+          "latestSamplePublication": {
+            "observationPeriod": "2026-05",
+            "releaseDateLocal": "2026-06-04",
+            "releaseTimeLocal": "08:30",
+            "nextReleaseDateLocal": null
+          },
+          "pointInTimeRule": "A Swiss CPI row is eligible after the FSO CPI press-release timestamp is at or before the weekly freeze target.",
+          "evidenceUrls": [
+            "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html",
+            "https://www.bfs.admin.ch/bfs/en/home/statistiken/preise/landesindex-konsumentenpreise.html",
+            "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index/detailresultate.gnpdetail.2026-0054.html"
+          ]
+        },
+        "revisionRebasing": {
+          "status": "documented",
+          "revisionPolicy": "FSO publishes monthly CPI press releases and detailed result workbooks; revised or replacement workbooks must be captured by artifact hash.",
+          "rebasingPolicy": "The selected workbook is LIK25B25 on December 2025=100; FSO 2025 revision and annual basket reweighting are explicit contract metadata.",
+          "pointInTimeImplication": "Use the exact workbook artifact hash and parser guard; do not switch between December 2020 and December 2025 bases without a source-version change.",
+          "evidenceUrls": [
+            "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/revisions.html",
+            "https://www.bfs.admin.ch/asset/en/36435330",
+            "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index/indexierung.html"
+          ]
+        },
+        "continuityDecision": {
+          "status": "locked",
+          "decisionId": "chf_fso_lik25b25_index_m_total_row_dec2025_100_v1",
+          "decision": "Use Swiss FSO LIK25B25 detailed results workbook, INDEX_m all-items total row, December 2025=100.",
+          "implications": [
+            "The parser is intentionally tied to the current INDEX_m workbook layout.",
+            "A workbook layout drift or basis change fails closed pending review."
+          ]
+        },
+        "parserContract": {
+          "parserVersion": "swiss_fso_lik25b25_index_m_sheet1_row5_v1",
+          "contract": "Parse sheet1.xml row 4 as month headers and row 5 as the all-items INDEX_m total row; convert Excel serial dates to YYYY-MM.",
+          "layoutDriftGuard": "Fail closed if sheet1.xml, row 4, row 5, numeric date serials, or numeric all-items values are absent."
+        },
+        "residualPromotionBlockers": [
+          "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+        ]
+      },
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "payloadBytes": 5561298,
+        "payloadSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda"
+      },
+      "observations": {
+        "parsedCount": 522,
+        "firstPeriod": "1982-12",
+        "lastPeriod": "2026-05",
+        "latestValue": 101.2587,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "December 2025=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Diagnostic CPI family and currency-bundle manifests are sealed, but they are CPI-only, non-ACTIVE, not outcome-consumable, and rate/RRP promotion contracts remain unresolved."
+      ],
+      "notes": [
+        "Swiss FSO current LIK25B25 workbook is public and parsable through the open-data XLSX artifact."
+      ]
+    }
+  ],
+  "summary": {
+    "overallStatus": "CPI_FAMILY_MANIFEST_BUILT_DIAGNOSTIC",
+    "overallPromotionStatus": "FAIL_CLOSED",
+    "atomicSourceValidationStatus": "PASS",
+    "familyManifestStatus": "BUILT_DIAGNOSTIC",
+    "currencyBundleStatus": "PARTIAL_SEALED_DIAGNOSTIC",
+    "blockingReason": "RRP_COMPOSITION_PENDING_FOR_PROMOTION",
+    "promotionEligible": false,
+    "outcomeConsumable": false,
+    "fullWindowCoverageBranches": 8,
+    "fullWindowCandidates": 0,
+    "pendingBranches": 8,
+    "sourceContractProofBranches": 8,
+    "releaseCalendarProofBranches": 8,
+    "revisionRebasingProofBranches": 8,
+    "continuityLockedBranches": 8,
+    "parserContractBranches": 8,
+    "normalizedSchemaBranches": 8,
+    "sourceFamilyValidationPassBranches": 8,
+    "manifestBuiltBranches": 8,
+    "familyManifestBlockedBranches": 0,
+    "cpiFamilyManifestHash": "1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c",
+    "currencyBundleManifestBranches": 8,
+    "residualPromotionBlockerBranches": 8,
+    "statusCounts": {
+      "sample_pass_continuity_pending": 8
+    },
+    "familyValidationStatusCounts": {
+      "PASS_SOURCE_CONTRACT_SCHEMA_DIAGNOSTIC_MANIFEST_SEALED": 8
+    },
+    "contractProofStatusCounts": {
+      "recorded_manifest_pending": 8
+    },
+    "currencyStatus": {
+      "USD": "sample_pass_continuity_pending",
+      "CAD": "sample_pass_continuity_pending",
+      "GBP": "sample_pass_continuity_pending",
+      "EUR": "sample_pass_continuity_pending",
+      "JPY": "sample_pass_continuity_pending",
+      "AUD": "sample_pass_continuity_pending",
+      "NZD": "sample_pass_continuity_pending",
+      "CHF": "sample_pass_continuity_pending"
+    },
+    "receiptHash": "0f70d9412af1e458260e73f06586222c471c1458236a57c2b3d122a185f8eeed",
+    "livePayloadSetHash": "1ee100e3f4ef9e6dc309fcc63aac7ffefa3dece8f8e0d177c3d89a3f54b7beef"
+  },
+  "files": {
+    "jsonPath": "app\\reports\\data-verification\\macro-regime\\gate50-official-cpi-endpoint-feasibility-20260622.json",
+    "mdPath": "app\\reports\\data-verification\\macro-regime\\gate50-official-cpi-endpoint-feasibility-20260622.md"
+  }
+}

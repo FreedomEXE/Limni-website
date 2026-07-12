@@ -1,0 +1,44 @@
+[
+  {
+    "metric": "pair_week_lifecycle_profit_factor",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; requires pair-week lifecycle replay instrumentation",
+    "content_hash": "F04AC9B618D63FF9A18243036425AF580CED7F313C197369ACFC21F2757941A5"
+  },
+  {
+    "metric": "account_week_mfe_mae",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; weekly MTM rolling losses and week-end open-unrealized values reported instead",
+    "content_hash": "DBD28BEC8CF9FFB7331081A83C74DF6D3CE827BC8EFB661D6C4D957745852A4D"
+  },
+  {
+    "metric": "pair_week_lifecycle_mfe_mae",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; max cycle MFE and total giveback proxies reported",
+    "content_hash": "EFD2A45DE077EF199ECFD3D4CA88F48FBF31244E1D15A8403795043E17BCCC7E"
+  },
+  {
+    "metric": "average_open_inventory",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; fill and reset burden proxies reported",
+    "content_hash": "4B3CA25704536A3AF2ABD5A19DB0E9787F8FED09677F2CA5B8755567718B1C4C"
+  },
+  {
+    "metric": "max_open_inventory",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; max weekly fill and reset counts reported",
+    "content_hash": "A3EEB12E0DD3003F3207B94D4B6F812954885BC8102439E0A0F5E88E6150FED7"
+  },
+  {
+    "metric": "max_holding_time",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; average closed cycle hold hours reported",
+    "content_hash": "DB59112C90B96B910F33BE80848CA49F716CDA0AF517C836A0AA36459797C62A"
+  },
+  {
+    "metric": "runner_mfe_mae",
+    "availability": "not_available_from_gate78_artifacts",
+    "gate78a_handling": "reported null; runner realized/unrealized contribution and close counts reported",
+    "content_hash": "C57531506558073293235369CF8A19AA84DD541BC5696AE9CE1BF48F8151E07C"
+  }
+]

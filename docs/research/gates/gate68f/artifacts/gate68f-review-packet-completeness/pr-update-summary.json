@@ -1,0 +1,105 @@
+{
+  "gate_id": "Gate 68F: review-packet-completeness",
+  "pr_number": 2,
+  "repository": "FreedomEXE/Limni-website",
+  "local_packet_ready_for_pr_update": true,
+  "live_pr_update_performed_by_script": false,
+  "reason": "PR body is updated after final commit and push so the final head SHA is live truth.",
+  "gate68b_candidate_d_review": {
+    "candidate_d": {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "family": "brain_mode_selector",
+      "adr_grid": {
+        "adr_sum": 2235.61899,
+        "adr_mean": 0.214058,
+        "max_drawdown": -388.935048,
+        "r_over_drawdown": 5.748052,
+        "row_pf": 1.239439
+      },
+      "weekly_hold": {
+        "adr_sum": 846.072114,
+        "adr_mean": 0.08101,
+        "max_drawdown": -116.320546,
+        "r_over_drawdown": 7.273626,
+        "row_pf": 1.159472
+      },
+      "degraded_row_count": 7864,
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -3.699695,
+        "weekly_hold_adr": 198.47955
+      },
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "mode_counts": {
+        "CONSERVATIVE": 6762,
+        "NORMAL": 2811,
+        "PROTECTION": 871
+      }
+    },
+    "mode_counts": {
+      "CONSERVATIVE": 6762,
+      "NORMAL": 2811,
+      "PROTECTION": 871
+    },
+    "reason_code_counts": {
+      "A_ALPHA_FALLBACK_VALUATION_DID_NOT_CONFIRM_RRP": 3497,
+      "A_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 251,
+      "A_RRP_VALUATION_CONFIRMED_ANCHOR": 3014,
+      "B_COT_HIGH_CONF_WARNING_FALLBACK_ALPHA": 231,
+      "B_RRP_ANCHOR_NO_COT_WARNING": 2580,
+      "C_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871,
+      "COT_STRENGTH_AGREE_BUT_NOT_BOTH_DIRECT": 738,
+      "COT_STRENGTH_CLEAN_DIRECT_AGREEMENT": 133,
+      "MODE_CONSERVATIVE_CELL_QUALITY_CLEAN": 1161,
+      "MODE_CONSERVATIVE_CELL_QUALITY_NOT_CLEAN": 5601,
+      "MODE_CONSERVATIVE_MACRO_ANCHOR_CLEAN": 3894,
+      "MODE_CONSERVATIVE_MACRO_ANCHOR_NOT_CLEAN": 2868,
+      "MODE_CONSERVATIVE_QUALITY_CLEAN": 14439,
+      "MODE_CONSERVATIVE_QUALITY_DEGRADED": 5847,
+      "MODE_NORMAL_DEFAULT": 2811,
+      "MODE_PROTECTION_SCENARIO_MEMORY_ROBUST_GUARD_ENABLED": 871,
+      "STRENGTH_CONFIRMED_RRP": 3275,
+      "STRENGTH_CONTEXT_ONLY": 2370,
+      "STRENGTH_DID_NOT_CONFIRM_RRP": 200,
+      "VALUATION_CONFIRMED_RRP": 3109,
+      "VALUATION_CONTEXT_ONLY": 573
+    },
+    "delta_vs_candidate_b": {
+      "adr_grid_adr_delta": -105.461718,
+      "adr_grid_rdd_delta": -3.945504,
+      "adr_grid_pf_delta": -0.014631,
+      "weekly_hold_adr_delta": 207.468938,
+      "weekly_hold_rdd_delta": 1.805185,
+      "weekly_hold_pf_delta": 0.041413,
+      "negative_adr_grid_year_delta": 0
+    },
+    "delta_vs_candidate_c": {
+      "adr_grid_adr_delta": -40.664286,
+      "adr_grid_rdd_delta": -2.528247,
+      "adr_grid_pf_delta": -0.003454,
+      "weekly_hold_adr_delta": 113.171652,
+      "weekly_hold_rdd_delta": 1.468093,
+      "weekly_hold_pf_delta": 0.022789,
+      "negative_adr_grid_year_delta": 1
+    },
+    "signature_collapse": {
+      "candidate_id": "candidate_d_brain_mode_selector",
+      "decision_signature_sha256": "5FC0C033E0464597AAC0DCC3E50C2F7133C55C2BC05262BE545E1FBC5682D78B",
+      "equivalent_gate64c_candidate_id": null,
+      "equivalent_gate65e_candidate_id": null,
+      "equivalent_gate67_candidate_id": null,
+      "genuinely_new_vs_gate64_65_67": true
+    },
+    "improved_vs_candidate_b_on_adr_grid_rdd": false,
+    "preserves_candidate_c_zero_negative_years": false,
+    "no_promotion": true
+  },
+  "gate68c_capsule": {
+    "capsule_id": "gate68c_frozen_reference_capsule_C8DC7E99DE640C2D",
+    "capsule_sha256": "C8DC7E99DE640C2DEA0817C0F48F604575D4FB5CCBC9A9C787261FB4E63073A3",
+    "decision_ledger_hash": "C33A7B81DC8FDD3D1048F1AF7EB2F7A8350B189506E4215E12EF78B705403D9A",
+    "outcome_scoring_hash": "38961DF0C194E9765619F3753F7975795838A9182DE37632403332BD02A4C0D2"
+  },
+  "gate68e_readiness_verdict": "NOT_READY_LOCK_CANDIDATE_B_REFERENCE_AND_CARRY_C_SHADOW"
+}

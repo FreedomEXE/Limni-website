@@ -1,0 +1,107 @@
+[
+  {
+    "metric": "continuous_carried_position_truth_replay",
+    "definition": "keeps side grid state open across warehouse week boundaries until target reset or terminal liquidation",
+    "content_hash": "16EA7DFBC2337177695F0655A00E8BBCE2138BAABB76D0DD24321F721F8C0C1E"
+  },
+  {
+    "metric": "session_window_position_truth_replay",
+    "definition": "keeps side grid state open inside the configured session window, allows target closes whenever ticks exist, and force-closes unresolved cycles at session flatten",
+    "content_hash": "7ED8573A0F8E987D91EA0AC00F8D896379BFD22A9210A194A5B8F27B86A8BE20"
+  },
+  {
+    "metric": "bar_path_mode",
+    "definition": "intrabar path used for each warehouse M1 bar; close mode uses close-only marks, OHLC modes synthesize four tester-like marks per bar",
+    "content_hash": "691C9E0D45BBC91488B89BAB75140FE1F298CFC9F743DF47A2148DB63BA46EFE"
+  },
+  {
+    "metric": "signal_clock",
+    "definition": "clock used to update David MA/RSI/Stoch signal state; m1 updates on every M1 close, adr_event updates only after a configured ADR movement brick completes",
+    "content_hash": "E9D68C9263FD7EE4BB0A5AC25810E73EAF73E2AA7B4C8B7262878D94896088E4"
+  },
+  {
+    "metric": "signal_adr_brick",
+    "definition": "ADR movement required to complete one synthetic signal bar when signal_clock is adr_event",
+    "content_hash": "CFB40CEFF037A5E0CFF9803FFF7E26832A102FE2475DA827370967CF4F2EFD52"
+  },
+  {
+    "metric": "session_mode",
+    "definition": "continuous keeps the original carried-position replay; ny_daily_window allows starts/adds only inside the configured New York session and force-closes remaining cycles at the daily flatten boundary",
+    "content_hash": "6EA22EA33730F543E93FA09A02010DA8C4F04F7D236E9AA65D0D8EF88A9EBA7C"
+  },
+  {
+    "metric": "session_flatten_count",
+    "definition": "number of side cycles closed by the configured daily session flatten boundary, a missed no-tick boundary, or the session-mode endpoint cleanup rather than a target reset or final end-of-test liquidation",
+    "content_hash": "C2B74B304C9CEA425BFC5129E9DF009E3A6940615F159A00B456920663E81A69"
+  },
+  {
+    "metric": "session_flatten_price_pnl_usd",
+    "definition": "price PnL from cycles force-closed by the configured daily session flatten boundary",
+    "content_hash": "1EA3FC748FBEB0642A86221EE6DE68B5CEDE9F3CE28C361C2484072DC4883422"
+  },
+  {
+    "metric": "closed_price_pnl_usd",
+    "definition": "target-reset price PnL before swap and commission, with quote-currency PnL converted to USD at the close timestamp/tick when a USD conversion leg is selected",
+    "content_hash": "4AE0AD4F8AE10BC27022933903BDEEC605FB564497E4A4F1600191177950808C"
+  },
+  {
+    "metric": "total_commission_usd",
+    "definition": "entry commission charged at MT5-observed 0.06 USD per 0.01 lot entry; exits have zero commission in the reference report",
+    "content_hash": "E1A2EAC2AC167CF0A73B8E98D0BE62B3CE9796B7CED79D28997FA2AB214FA949"
+  },
+  {
+    "metric": "total_swap_usd",
+    "definition": "position-day carry fee accrued per fill by side using MT5-derived EURUSD average swap rates",
+    "content_hash": "E517BC4E5F48E44D54EDD90E8D479DA04C75B77DA2DDAA87A13FA7BD9B4B3A04"
+  },
+  {
+    "metric": "end_liquidation_price_pnl_usd",
+    "definition": "price PnL from all positions still open at the final warehouse mark",
+    "content_hash": "33E97BBB72805A1BD4A6FA0A0BFA6A4DF84B2F29CCDF3EAD05142B4B8D3C0C63"
+  },
+  {
+    "metric": "terminal_inventory_rows",
+    "definition": "one row per side cycle that survived until terminal liquidation; used to attribute unresolved inventory by pair, side, age, MA distance, fill depth, and liquidation PnL",
+    "content_hash": "443A7EDADAE119647FE011CD559227AC8F5D074EEC98F345579A0C346776F150"
+  },
+  {
+    "metric": "side_exit_distance_to_ma_adr",
+    "definition": "side-specific ADR distance from terminal mark back to the David MA exit line; positive means the cycle still needs that many ADR to return to MA",
+    "content_hash": "132BE3D00A35485837AE160CCF2BE2B26778E887377D04870504EDB886377CE1"
+  },
+  {
+    "metric": "max_open_positions",
+    "definition": "maximum simultaneous fill count across carried side grids",
+    "content_hash": "A94FEBA70FC36C3C649A27D1C61561B6042252954A69C1FCD3DECD2A7398A110"
+  },
+  {
+    "metric": "activation_rule_id",
+    "definition": "one-sided start rule used when a side cycle is missing; existing cycles are not flattened by later signal changes",
+    "content_hash": "EF696CA2EAE54048F61A32FFCA5D466651CE8D5FAC6649C2740657822517AAFC"
+  },
+  {
+    "metric": "min_ma_expansion_adr",
+    "definition": "minimum side-specific distance from current David MA required before a missing side can start; long requires price below MA, short requires price above MA",
+    "content_hash": "EB16F1581DCF78A1A2CD1F8C027D11A2F967F2FDC0904A39024A33FC8D308A2A"
+  },
+  {
+    "metric": "grid_add_mode",
+    "definition": "adverse_and_favorable keeps both recovery and favorable expansion adds; adverse_only adds only when price moves against the side from its cycle anchor",
+    "content_hash": "93CE73D3D40073849ADF687C2C2FAE83C228B9D0792EDD9A522BBAA9EF57BB75"
+  },
+  {
+    "metric": "activation_started_long/short",
+    "definition": "number of initial side cycles started after the activation gate allowed that side",
+    "content_hash": "03A65190EA3B13A3A2C9C62B315E0F711BEE68FBA3BE2F3650C156B79E885876"
+  },
+  {
+    "metric": "activation_blocked_long/short",
+    "definition": "number of missing-side start checks rejected by the activation gate",
+    "content_hash": "240738E5EACC0DA05E2B91A1DBF18B2A7BAF8ED21CDC25DDECABC74C30D5B2B8"
+  },
+  {
+    "metric": "activation_blocked_expansion",
+    "definition": "number of missing-side start checks where the signal allowed the side but price was not far enough from the David MA",
+    "content_hash": "99F1DDFC200A6A576681732B86AC170BB21D094C1BA606F3D7ACA069F62766AD"
+  }
+]

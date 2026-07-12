@@ -1,0 +1,9 @@
+# Gate 58 COT x Strength Forensic Matrix identity
+
+2E93104E8D610964A0F07A6CE12A531A83F7C4A2764BDF94EDDF94DDF665EF08  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.rows.jsonl
+3E4BB7294923A4EE9A70ABF90A9C014DE05A2A0EB0FF43C0A7F66AF4D680AA68  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.summary.json
+68F83ADD69490B94613ECAC75EAB67E429794FCA7920A57B57A671F44D4E888B  docs/research/gates/gate58/artifacts/gate58-cot-strength-forensic-matrix/gate58-cot-strength-forensic-matrix.result.json
+A16A39BB15397A42A1A4A36E2479C6D1299CE55972CEE868968647359908D0C2  docs/research/gates/gate58/GATE58_COT_STRENGTH_FORENSIC_MATRIX_2026-06-27.md.receipt-text
+
+combined_hash D9EC8F1475D4EC573C987DA411E7B29638C3DEF073500124DD5A0DE3DC106F58
+rebuild_command npm run engine:gate58:cot-strength-forensic-matrix

@@ -1,0 +1,112 @@
+[
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "rule_family": "control",
+    "initial_fill_closed_adr": 638.115405,
+    "recovery_fill_closed_adr": 0,
+    "expansion_fill_closed_adr": 0,
+    "adverse_recovery_fill_count": 0,
+    "favorable_expansion_fill_count": 0,
+    "content_hash": "B98ACA252075BD8F59660D655A9CBA49EDDD859A4D101CCD7B31104D19CF5EAC"
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "rule_family": "control",
+    "initial_fill_closed_adr": 694.688146,
+    "recovery_fill_closed_adr": 0,
+    "expansion_fill_closed_adr": 0,
+    "adverse_recovery_fill_count": 0,
+    "favorable_expansion_fill_count": 0,
+    "content_hash": "57DAD1C1D48DBA514C28B071C61807E79FA6D54B36BFEB361C74F46A3FC6A988"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "initial_fill_closed_adr": 694.063804,
+    "recovery_fill_closed_adr": 13687.248787,
+    "expansion_fill_closed_adr": 0,
+    "adverse_recovery_fill_count": 95487,
+    "favorable_expansion_fill_count": 0,
+    "content_hash": "6D266C094A7CBC881B066EAE62F4A20E3BA41126E2539629C02285F84C166617"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "initial_fill_closed_adr": 699.412841,
+    "recovery_fill_closed_adr": 14311.377119,
+    "expansion_fill_closed_adr": 1523.205823,
+    "adverse_recovery_fill_count": 99405,
+    "favorable_expansion_fill_count": 35010,
+    "content_hash": "62C447EED8CB540852A77CA8C379BFED24E1DAEAB142C4B076883EE8DAF87C60"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "initial_fill_closed_adr": 707.046955,
+    "recovery_fill_closed_adr": 15053.409654,
+    "expansion_fill_closed_adr": 1902.009873,
+    "adverse_recovery_fill_count": 84709,
+    "favorable_expansion_fill_count": 34448,
+    "content_hash": "6F55B4E440431DDD498654EC2399D1F05855016522124791F07DDC4AF4559E7F"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "initial_fill_closed_adr": 698.96308,
+    "recovery_fill_closed_adr": 15606.245343,
+    "expansion_fill_closed_adr": 1707.215318,
+    "adverse_recovery_fill_count": 79815,
+    "favorable_expansion_fill_count": 30168,
+    "content_hash": "144AEA8E085F830FE5B033519723A0DA33434627192399D30499F6ABF4DA8A48"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "initial_fill_closed_adr": 422.950133,
+    "recovery_fill_closed_adr": 9494.227543,
+    "expansion_fill_closed_adr": 601.606427,
+    "adverse_recovery_fill_count": 47416,
+    "favorable_expansion_fill_count": 16693,
+    "content_hash": "E7FA05600D377D457926C25A418986590868209E163E05AF35AEAD8DCCBC7690"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "initial_fill_closed_adr": 516.77013,
+    "recovery_fill_closed_adr": 12691.814431,
+    "expansion_fill_closed_adr": 813.362931,
+    "adverse_recovery_fill_count": 63510,
+    "favorable_expansion_fill_count": 22252,
+    "content_hash": "0D15D4118422771E994727363B827E876EA3B718C36E1F5645AE4863CE8415CD"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "initial_fill_closed_adr": 541.054788,
+    "recovery_fill_closed_adr": 12585.255488,
+    "expansion_fill_closed_adr": 1047.163304,
+    "adverse_recovery_fill_count": 82882,
+    "favorable_expansion_fill_count": 28716,
+    "content_hash": "8FD71A6BFFD18651AFF56169A6183F35F7F51E7D09789DE69B98D53E39EB6E72"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "initial_fill_closed_adr": 597.924879,
+    "recovery_fill_closed_adr": 14539.545594,
+    "expansion_fill_closed_adr": 986.613805,
+    "adverse_recovery_fill_count": 65843,
+    "favorable_expansion_fill_count": 20468,
+    "content_hash": "9D7DFE492038FA85A4FD62BC724EA7B3F78DA30FAD6CA7227B4759311834FAB8"
+  },
+  {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "initial_fill_closed_adr": 598.005173,
+    "recovery_fill_closed_adr": 15664.490386,
+    "expansion_fill_closed_adr": 1222.968135,
+    "adverse_recovery_fill_count": 66112,
+    "favorable_expansion_fill_count": 26629,
+    "content_hash": "3838C8109F92B3A58E921AAFFCE3D2AC833777E23E0E57C66178DFD21537980A"
+  }
+]

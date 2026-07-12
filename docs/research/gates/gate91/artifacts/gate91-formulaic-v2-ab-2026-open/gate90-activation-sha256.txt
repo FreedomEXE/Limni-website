@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T20:58:48.714Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json 28D18DFF88AF9770DD2CCD2B8BCF3CED8165B77470DD786428FE8ADF2A9E524A docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/activation-summary.rows.json
+weekly_json F71F5D72ABB9F5C1E18D4493491487CAF3091D119DC38A7DDAB14F22CFDA38DE docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/close-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/terminal-inventory.rows.json
+validation_json 0FDD8438FD134E241F69E042BC1F0781E03CE77829C87DF394EB51021E65657A docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/validation.rows.json
+metric_definitions_json 890F5EA19F30E000FDF35E70E4352D3FDEB4B6CC59ED236595567FE555A8BBAA docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/metric-definitions.rows.json
+command_receipt 7DE975B8C7F06B456DA83882D959B3B42F1F7BFAFA5ECFD319F19EDC83365DF5 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/command-receipt.json
+run_summary_json 5AF4BD58DDC70F464D322D7E95B36DAAE5866818DE682DFFD5FA36529307A45D docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/gate90-run-summary.json
+report 1DFBCADC5E6CC1662C4F00EA2DB7AA9D53737DF31413CF0E2FA41B289D32D1E7 docs/research/gates/gate91/artifacts/gate91-formulaic-v2-ab-2026-open/GATE91_FORMULAIC_V2_AB_2026_OPEN.md

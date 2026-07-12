@@ -1,0 +1,7 @@
+metric,definition,content_hash
+movement_surface_id,"Fixed ADR movement-candle surface built from canonical Gate 74B M1-derived paths, not H1 candles.",DBADAA4F9D082817F351E153E2092D6E8039750F1F1197EEEB529CBCE3BDA140
+movement_type3_combo,Legacy Type 3 five-candle combination evaluated on completed movement candles before the saved MT5 entry timestamp.,6A2EE71186A0A382FFC23B55D7008DE3CD3B07B28FE8B7102348E1E708333E9F
+movement_type3_matches_saved_side,True when movement candles show both the legacy four-candle counter move and the David regime side matching the saved Type 3 entry side.,D74CDF23B0F21877EB3D190E0E3FAB4406C0DEA0DD8D05A85ABF544EAE31B48A
+match_bucket,Diagnostic classification of each saved Type 3 entry on the movement-candle surface.,4D4521B9F439DDCD7EB30FF1FB98FCDFE64268A5A37903ED1ADFA5C3D62F828C
+exact_match_net_profit,"Saved MT5 net profit retained if hard-gating saved Type 3 rows to movement-candle exact Type 3 matches. Diagnostic only, not a replay.",04F27A9F3F32B9B0ADC84A8A305B077CDE31C80A449917C192406F54EDAEF93F
+missing_coverage,Entry could not be evaluated because Gate 74B canonical M1 warehouse does not cover that saved report timestamp or lacks enough movement candles.,7FA5444D11DE4EF24BEE1852FC50BC8D4BD31F38E4B8ED30B859A7C9F4F4FEC0

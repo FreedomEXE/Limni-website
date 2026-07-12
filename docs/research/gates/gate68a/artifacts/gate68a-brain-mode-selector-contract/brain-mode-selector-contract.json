@@ -1,0 +1,104 @@
+{
+  "gate_id": "Gate 68A: brain-mode-selector-contract",
+  "selector_id": "candidate_d_brain_mode_selector",
+  "selector_label": "Candidate D - Brain Mode Selector",
+  "contract_version": "gate68_brain_mode_selector_v0",
+  "architecture_version": "gate66_brain_cells_atoms_v3",
+  "brain_contract": "Brain -> Cells -> Atoms",
+  "final_algorithm_name": null,
+  "final_algorithm_status": "candidate_test_only_unnamed",
+  "exactly_one_combined_selector": true,
+  "default_mode": "NORMAL",
+  "modes": [
+    {
+      "mode": "NORMAL",
+      "behavior_candidate_id": "candidate_b_macro_anchor_with_cot_warning",
+      "behavior_label": "Candidate B - Macro Anchor with COT Warning",
+      "purpose": "Default macro-anchor behavior with COT high-confidence warning/fallback inside the mode."
+    },
+    {
+      "mode": "PROTECTION",
+      "behavior_candidate_id": "candidate_c_scenario_memory_guarded",
+      "behavior_label": "Candidate C - Scenario-Memory Guarded",
+      "purpose": "Use only when fixed scenario-memory and cell-state context says robust protection is required."
+    },
+    {
+      "mode": "CONSERVATIVE",
+      "behavior_candidate_id": "candidate_a_macro_anchor_conservative",
+      "behavior_label": "Candidate A - Macro Anchor Conservative",
+      "purpose": "Use when source quality, macro-anchor confirmation, or evidence clarity is degraded or ambiguous."
+    }
+  ],
+  "selector_rules": [
+    {
+      "rule_id": "SELECT_CONSERVATIVE_ON_DEGRADED_OR_AMBIGUOUS_EVIDENCE",
+      "priority": 1,
+      "selected_mode": "CONSERVATIVE",
+      "inputs_used": [
+        "cell_quality",
+        "cell_role",
+        "warning_active",
+        "source-quality warning flags"
+      ],
+      "description": "If any cell opinion is degraded or fail-closed, or the Regime cell is not an ANCHOR, use Candidate A conservative behavior. This is a source-quality and macro-anchor rule only."
+    },
+    {
+      "rule_id": "SELECT_PROTECTION_ON_ROBUST_SCENARIO_GUARD",
+      "priority": 2,
+      "selected_mode": "PROTECTION",
+      "inputs_used": [
+        "scenario support count",
+        "scenario years covered",
+        "scenario low-support flag",
+        "scenario concentration flags",
+        "COT vs Strength vs Regime agreement"
+      ],
+      "description": "If the already-defined Candidate C guard would activate from robust scenario memory and clean COT/Strength agreement against the anchor, use Candidate C protection behavior."
+    },
+    {
+      "rule_id": "SELECT_NORMAL_DEFAULT",
+      "priority": 3,
+      "selected_mode": "NORMAL",
+      "inputs_used": [
+        "default mode only",
+        "COT warning remains inside Candidate B behavior"
+      ],
+      "description": "Otherwise use Candidate B normal behavior."
+    }
+  ],
+  "allowed_mode_selection_inputs": [
+    "cell role",
+    "cell quality",
+    "cell confidence",
+    "direct_vote_allowed",
+    "warning_active",
+    "COT vs Regime agreement",
+    "Strength vs Regime agreement",
+    "valuation confirmation via Regime role",
+    "scenario support count",
+    "scenario years covered",
+    "scenario low-support flag",
+    "scenario concentration flags",
+    "source-quality warning flags",
+    "reason codes from cell opinions"
+  ],
+  "forbidden_mode_selection_inputs": [
+    "ADR Grid outcome",
+    "Weekly Hold outcome",
+    "future returns",
+    "future data",
+    "best historical candidate per week",
+    "learned weights",
+    "optimized thresholds",
+    "pair exclusions",
+    "date exclusions"
+  ],
+  "no_adaptive_learning": true,
+  "no_self_modifying_model": true,
+  "no_rolling_retraining": true,
+  "no_optimized_thresholds": true,
+  "no_learned_weights": true,
+  "no_pair_or_date_exclusions": true,
+  "no_final_algorithm_name": true,
+  "no_final_promotion": true
+}

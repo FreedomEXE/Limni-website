@@ -1,0 +1,30 @@
+{
+  "gate_id": "Gate 71A: exit-testing-protocol-freeze",
+  "primary_objective": "maximize profitable-week rate subject to no tail-risk degradation, no total-ADR collapse, and no year/regime concentration",
+  "tier_1_weekly_consistency": [
+    "profitable_week_rate",
+    "year_by_year_profitable_week_rate",
+    "no_bad_year_collapse"
+  ],
+  "tier_2_tail_control": [
+    "worst_week",
+    "worst_5_week_cluster",
+    "max_drawdown_adr",
+    "peak_to_friday_giveback_reduction"
+  ],
+  "tier_3_return_quality": [
+    "total_adr_return",
+    "median_weekly_adr",
+    "average_weekly_adr",
+    "return_to_drawdown",
+    "profit_factor_adr"
+  ],
+  "tier_4_simplicity": "prefer simpler global basket rules when performance is close",
+  "forbidden_promotion_shortcuts": [
+    "highest win rate alone",
+    "pair-specific optimization in first pass",
+    "regime-specific behavior in first pass",
+    "hidden date or pair exclusions",
+    "future outcome leakage"
+  ]
+}

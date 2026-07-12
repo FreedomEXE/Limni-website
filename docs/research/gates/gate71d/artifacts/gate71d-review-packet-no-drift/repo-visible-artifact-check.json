@@ -1,0 +1,112 @@
+{
+  "gate_id": "Gate 71D: review-packet-no-drift",
+  "checked_path_count": 26,
+  "missing_path_count": 0,
+  "missing_paths": [],
+  "checks": [
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/GATE71A_EXIT_TESTING_PROTOCOL_FREEZE_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/clean-entry-exposure-model.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/exit-testing-protocol-freeze.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/gate71a-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/legacy-adr-grid-coupling-audit.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71a/artifacts/gate71a-exit-testing-protocol-freeze/ranking-and-promotion-criteria.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/GATE71B_BASKET_ADR_PATH_DIAGNOSTICS_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/GATE71B_M_EXIT_PATH_MATERIALIZATION_WAREHOUSE_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/candidate-b-basket-adr-path-diagnostics.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/gate71b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/gate71b-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/threshold-hit-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse/gate71bm-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse/gate71bm-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/GATE71C_EXIT_BASELINE_MATRIX_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.candidate-summaries.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.weekly.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/gate71c-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/gate71c-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/predeclared-exit-baseline-matrix.json",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate71a\\artifacts\\gate71a-exit-testing-protocol-freeze\\gate71a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate71b\\artifacts\\gate71b-basket-adr-path-diagnostics\\gate71b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate71b\\artifacts\\gate71bm-exit-path-materialization-warehouse\\gate71bm-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate71c\\artifacts\\gate71c-exit-baseline-matrix\\gate71c-sha256.txt",
+      "exists": true
+    }
+  ]
+}

@@ -28,7 +28,7 @@ and active process docs before treating any entry as current work.
   - Proposed internal id: `weekly_hold_trail_1x_adr_040`.
   - Keep this visibly separate from baseline Weekly Hold if it graduates into v2.0.3 or later.
 - Active indicator work:
-  - Revamp `scripts/pinescript/limni-adr-verifier.pine` ADR Grid mode to match the current app close-and-rearm model.
+  - Revamp `automation/indicators/tradingview/limni-adr-verifier.pine` ADR Grid mode to match the current app close-and-rearm model.
   - Show level activation count with colored grid lines, capped visually at `3+` for Pair Fill Cap.
   - Use aggregate red DD, green realized-TP, and light-green favorable-excursion boxes.
   - Use compact entry markers at fill levels and TP markers at the actual fill TP price; avoid partial-close or runner visuals.
@@ -216,7 +216,7 @@ and active process docs before treating any entry as current work.
 
 ## MT5 Weekend Fixes (5ERS execution blockers found on 2026-02-16 UTC)
 - Scope:
-  - `mt5/Experts/LimniBasketEA.mq5`
+  - `automation/mt5/Experts/LimniBasketEAAlphaV1.mq5`
   - Runtime evidence from terminal logs:
     - `AppData/Roaming/MetaQuotes/Terminal/14275C4F9441C73E9E6547075C33FE6C/MQL5/Logs/20260215.log`
     - `AppData/Roaming/MetaQuotes/Terminal/94497F60A2BFEA1AFAB110FCF3E331BB/MQL5/Logs/20260215.log`

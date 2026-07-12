@@ -1,0 +1,16 @@
+{
+  "gate_id": "Gate 68D: forward-decision-receipt-and-drift-monitor",
+  "contract_version": "gate68d_predeclared_drift_thresholds_v0",
+  "threshold_status": "predeclared_alert_thresholds_only_not_optimization",
+  "thresholds": {
+    "mode_distribution_share_delta_alert": 0.15,
+    "reason_code_share_delta_alert": 0.2,
+    "source_quality_degraded_share_alert": 0.25,
+    "warning_fallback_veto_share_alert": 0.25,
+    "top_pair_share_alert": 0.25,
+    "top_week_abs_share_alert": 0.35,
+    "decision_replay_mismatch_alert": 1,
+    "missing_or_late_source_alert": 1
+  },
+  "thresholds_can_change_decisions": false
+}

@@ -1,0 +1,14 @@
+check,value,content_hash
+exact_hedged_rules,T100/S020/L3 weekly bounded long+short on every forced-28 pair; no Candidate B mutation; diagnostic only,F393BE69F1543417AD28FF2CC17C9578B2137FE685BAA4C6C8447E0297F7B056
+long_side_lifecycle,"tracked as independent LONG cycle with its own fills, target resets, terminal reset-limit close, and data-end open inventory",CA77C7E9918B44ED782F2114695A4A2EA28A28F3672B4020E9B7243D84A602F4
+short_side_lifecycle,"tracked as independent SHORT cycle with identical fill, target reset, terminal reset-limit, and data-end inventory logic",7A2ED1362B1396873E2140B83DF52A5DD4BE42F3FA671079B13317809D86B2EE
+long_short_netting,not netted; long and short cycles are tracked separately and summed only at weekly/account reporting,E5E7CEA9A8D2D32BBD1A75567EC72B7DD1B9119783CABF231EA0D3AB8BA30F04
+realized_unrealized_pnl,same cycleNetPnlAdr math as directional replay; mark price reconstructed from Gate74B warehouse path,9C8BE830D7A5B0296E003D331AD41E5AF37F0991B4AB4F72700D651CACC7CCE5
+open_inventory_visible,yes; weekly open_unrealized_adr and data_end sample_end events are written,4274F88AA03E237AEC04FE6A85A941E50A33B338E8DAFED6E73D4B01A907D391
+future_costs,both sides must pay costs in any full broker model; Gate80 uses preliminary per-fill stress only,4C817FC675C1D89DDFD9F5A270B4A2C2D558C7C6969C06B6EF37298925312A2E
+margin_exposure,"both sides consume gross pair-side exposure; Gate80 reports gross side-slot and margin proxies, not broker margin",5B1494CF7E75478DCF55C17C8A5F5A1CFAAF6C3441E643AF57DE139E20A52C9A
+close_event_symmetry,"yes; closeCycle is shared by long, short, hedged, and directional rules",D539D6042863EE3BD7DEC2658F21C79F7EE209BB5443811E7959EFD24BB6488B
+reset_event_symmetry,yes; target reset and terminal reset-limit logic are shared for both sides,FC845ABDD6150AAE6D0463432822EF9D2EA654B4839BB2406007FC8935092A5C
+data_end_inventory,included through sample_end close events and weekly open snapshots,881773FB0D99DFA7698A0CF6B37B1D326177B73F8895E6E2AEBFD4C43FF6DDC4
+overlap_counting,gross exposure is double-counted for long+short; PnL is not netted; normalized tables expose this explicitly,99199679461461DAAAC724D010C7C79F9C8852DF36B0247C6F9C18A7A3CDD2BD
+mechanical_validity_answer,mechanically_valid_under_gross_no_cost_replay_semantics,E49735E03D46517C7ABE63AB65E6749BE49B631C61204F6F451370807FB862CA

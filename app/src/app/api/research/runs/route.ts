@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runBacktest } from "@/lib/research/backtestEngine";
-import { hashResearchConfig } from "@/lib/research/hash";
+import { hashResearchConfig } from "@engine/research/hash";
 import { findRunByConfigHash, saveResearchRun } from "@/lib/researchRuns";
 import type { ResearchConfig } from "@/lib/research/types";
 

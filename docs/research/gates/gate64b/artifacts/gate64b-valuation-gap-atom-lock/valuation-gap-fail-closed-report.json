@@ -1,0 +1,53 @@
+{
+  "gate_id": "Gate 64B: valuation-gap-atom-lock",
+  "fail_closed_formulas": [
+    {
+      "formula_id": "valuation_gap_ppp_spot",
+      "formula_version": null,
+      "status": "fail_closed",
+      "label": "PPP versus spot valuation gap",
+      "parent_atom_keys": [
+        "ppp"
+      ],
+      "currency_value_definition": null,
+      "pair_spread_definition": null,
+      "natural_direction_definition": null,
+      "inverse_direction_definition": null,
+      "tie_rule": null,
+      "required_inputs": [
+        "ppp",
+        "point_in_time_spot_or_fair_value_fx"
+      ],
+      "fail_closed_reason": "missing_hash_bound_point_in_time_spot_or_fair_value_input",
+      "quality_flags": [
+        "fail_closed_no_hidden_spot_normalization"
+      ]
+    },
+    {
+      "formula_id": "valuation_gap_composite_ppp_neer_reer",
+      "formula_version": null,
+      "status": "fail_closed",
+      "label": "Composite PPP, NEER, and REER valuation gap",
+      "parent_atom_keys": [
+        "ppp",
+        "neer",
+        "reer"
+      ],
+      "currency_value_definition": null,
+      "pair_spread_definition": null,
+      "natural_direction_definition": null,
+      "inverse_direction_definition": null,
+      "tie_rule": null,
+      "required_inputs": [
+        "ppp",
+        "neer",
+        "reer",
+        "versioned_cross_unit_normalization"
+      ],
+      "fail_closed_reason": "ppp_xdc_per_usd_not_comparable_with_neer_reer_indices_without_versioned_normalization",
+      "quality_flags": [
+        "fail_closed_no_hidden_cross_unit_normalization"
+      ]
+    }
+  ]
+}

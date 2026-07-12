@@ -1,0 +1,10 @@
+Gate 99Z State Map cleanup compile results
+Date: 2026-07-06
+
+Repo StateMap:
+Result: 0 errors, 0 warnings, 8030 msec elapsed, cpu='X64 Regular'
+
+Active terminal StateMap:
+Result: 0 errors, 0 warnings, 8168 ms elapsed, cpu='X64 Regular'
+
+MetaEditor process exit code was 1 for both runs; clean proof is the log line above reporting 0 errors, 0 warnings.

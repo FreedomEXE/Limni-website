@@ -1,0 +1,12 @@
+gate_id Gate 90D: bad-cycle-origin-and-trailing-research
+command npm run engine:gate90d:bad-cycle-origin-diagnostic
+generated_at 2026-07-03T18:08:57.390Z
+git_commit 7adf1ea42d8e280eda5a36e2a737318501b10aed
+variant_rows_json 6FD60085965D26F37B48977658EF888C3563D095616A05708AC06C1160B7E7D0 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-origin-variant-summary.rows.json
+origin_rows_json 5F750637768D790D3612883A4DCDB9CF77CADCFA1669D3AFFB1010E27078F3A0 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-origin-summary.rows.json
+live_state_rows_json E452D5A1406815193F46B5EBCF838FD57270A85CA4190BDB3583AE4F116BD3B9 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-live-state-summary.rows.json
+pair_side_origin_rows_json 51235F1B902C15E18734495D6C2D042C9F872A51D409D523BD891830D7B3EA4E docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-origin-pair-side.rows.json
+close_reason_rows_json DE639B16D43E9D4623BFFF5593F80D68421F7BA99748F22F133183BAD1281999 docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-origin-close-reason.rows.json
+start_date_origin_rows_json D180074076697C65CAC1D6991AD24B5379F88D5E71FB4406B61B46D763F4E07E docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/cycle-origin-start-date.rows.json
+command_receipt 84DCCD41F9A2E22A31622E73EE37EB8B019076A6036EA802A63EEA53C268F5BC docs/research/gates/gate90/artifacts/gate90d-2019-open-live-state-excursion-diagnostic/command-receipt.json
+report 864046A455EA115B0382D84F405DFB80555010C322D8E203906EBC4D9B011614 docs/research/gates/gate90/GATE90D_2019_OPEN_LIVE_STATE_EXCURSION_RECEIPTS_2026-07-03.md

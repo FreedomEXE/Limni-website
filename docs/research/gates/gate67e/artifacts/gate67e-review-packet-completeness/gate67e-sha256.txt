@@ -1,0 +1,9 @@
+gate_id Gate 67E: review-packet-completeness
+command npm run engine:gate67e:review-packet-completeness
+generated_at 2026-06-28T02:53:46.271Z
+git_commit 320c328f918f089b80877bf4d8691076d0608f77
+repo_visible_artifact_check D620DE2E0D0558C63282DD67298A24C49620E118EADFA5EEDE62A77401624F2C docs/research/gates/gate67e/artifacts/gate67e-review-packet-completeness/repo-visible-artifact-check.json
+pr_update_summary EEA10A5E09EF19C4DF0B5EE6C335DB6C2833057561823BC0B8369B6E4CB2EB78 docs/research/gates/gate67e/artifacts/gate67e-review-packet-completeness/pr-update-summary.json
+recovery_state_summary 005AC60563D4E43873BCD001E015464FBFF549511D16E8E4275FB4F85503FCA8 docs/research/gates/gate67e/artifacts/gate67e-review-packet-completeness/recovery-state-summary.json
+summary_json AFD2380FCF10B7CD6245EC2E97F9C35F1727D252929398E048CD7BA73223F60E docs/research/gates/gate67e/artifacts/gate67e-review-packet-completeness/gate67e-summary.json
+report 3DF3EFADF0DF70334D65770F3B92397BE0717B591D8C88A60B0F258674FADEA1 docs/research/gates/gate67e/GATE67E_REVIEW_PACKET_COMPLETENESS_2026-06-28.md

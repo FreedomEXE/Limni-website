@@ -1,0 +1,111 @@
+name: Temporary StateMap MetaEditor compile
+
+on:
+  push:
+    branches:
+      - codex/gate88-mt5-lifecycle-protection-controls
+    paths:
+      - automation/mt5/Indicators/Limni/StateMap.mq5
+      - .github/workflows/statemap-metaeditor-compile.yml
+  pull_request:
+    branches:
+      - codex/gate88-mt5-lifecycle-protection-controls
+    paths:
+      - automation/mt5/Indicators/Limni/StateMap.mq5
+      - .github/workflows/statemap-metaeditor-compile.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout exact review source
+        uses: actions/checkout@v4
+
+      - name: Install MetaTrader 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $setup = Join-Path $env:RUNNER_TEMP "mt5setup.exe"
+          Invoke-WebRequest `
+            -Uri "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe" `
+            -OutFile $setup
+
+          function Wait-ForFile([string]$Path, [int]$Minutes) {
+            $deadline = (Get-Date).AddMinutes($Minutes)
+            while (-not (Test-Path -LiteralPath $Path) -and (Get-Date) -lt $deadline) {
+              Start-Sleep -Seconds 5
+            }
+            return Test-Path -LiteralPath $Path
+          }
+
+          $install = "C:\Program Files\MetaTrader 5"
+          $editor = Join-Path $install "MetaEditor64.exe"
+          Start-Process -FilePath $setup -ArgumentList "/auto" | Out-Null
+          if (-not (Wait-ForFile $editor 10)) {
+            $found = Get-ChildItem -Path "C:\" -Recurse -Filter "MetaEditor64.exe" -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+            if (-not $found) { throw "MetaEditor64.exe was not installed" }
+            $install = Split-Path $found.FullName -Parent
+            $editor = $found.FullName
+          }
+
+          Get-Process terminal64 -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          "MT5_DIR=$install" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "METAEDITOR=$editor" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile standalone StateMap
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $source = Join-Path $env:GITHUB_WORKSPACE "automation\mt5\Indicators\Limni\StateMap.mq5"
+          $targetDir = Join-Path $env:MT5_DIR "MQL5\Indicators\Limni"
+          $target = Join-Path $targetDir "StateMap.mq5"
+          $binary = Join-Path $targetDir "StateMap.ex5"
+          $log = Join-Path $env:GITHUB_WORKSPACE "StateMap-compile.log"
+
+          New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+          Copy-Item -LiteralPath $source -Destination $target -Force
+          Remove-Item -LiteralPath $binary -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+
+          Start-Process -FilePath $env:METAEDITOR `
+            -ArgumentList "/portable", "/compile:`"$target`"", "/log:`"$log`"" `
+            -Wait | Out-Null
+
+          if (-not (Test-Path -LiteralPath $log)) {
+            throw "MetaEditor did not produce a compile log"
+          }
+
+          $text = Get-Content -LiteralPath $log -Encoding Unicode -Raw
+          Write-Host "---------------- MetaEditor log ----------------"
+          Write-Host $text
+          Write-Host "------------------------------------------------"
+
+          $match = [regex]::Match($text, "Result:\s*(\d+)\s*errors?,\s*(\d+)\s*warnings?")
+          if (-not $match.Success) {
+            throw "MetaEditor result line missing"
+          }
+
+          $errors = [int]$match.Groups[1].Value
+          $warnings = [int]$match.Groups[2].Value
+          $binaryExists = Test-Path -LiteralPath $binary
+          if ($errors -ne 0 -or $warnings -ne 0 -or -not $binaryExists) {
+            throw "StateMap compilation failed: $errors errors, $warnings warnings, ex5=$binaryExists"
+          }
+
+          Write-Host "Result: 0 errors, 0 warnings"
+
+      - name: Upload compile log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StateMap-compile-log
+          path: StateMap-compile.log
+          if-no-files-found: ignore
+          retention-days: 1

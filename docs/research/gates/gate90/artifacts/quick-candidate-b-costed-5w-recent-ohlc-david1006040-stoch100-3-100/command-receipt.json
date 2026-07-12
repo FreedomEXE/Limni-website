@@ -1,0 +1,46 @@
+{
+  "gate_id": "Gate 90: grid-activation-accuracy-one-sided-selection",
+  "command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection",
+  "durable_command": "npm run engine:gate90:grid-activation-accuracy-one-sided-selection -- --all-pairs --week-from=2026-05-03 --week-to=2026-05-31 --activation-rules=raw_both,candidate_b,david_contra,david_stoch_release --bar-path-mode=ohlc_high_low --david-ma-period=35 --david-rsi-period=100 --david-rsi-overbought=60 --david-rsi-oversold=40 --stoch-k-period=100 --stoch-d-period=3 --stoch-slowing=100 --stoch-overbought=80 --stoch-oversold=20 --summary-only --artifact-dir=docs/research/gates/gate90/artifacts/quick-candidate-b-costed-5w-recent-ohlc-david1006040-stoch100-3-100 --report-path=docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_5W_RECENT_OHLC_DAVID1006040_STOCH100_3_100_2026-07-02.md",
+  "git_commit": "568d72c41872e92dd50040745fc25c232ca5a388",
+  "generated_at": "2026-07-02T09:51:23.834Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate90/artifacts/quick-candidate-b-costed-5w-recent-ohlc-david1006040-stoch100-3-100",
+    "reportPath": "docs/research/gates/gate90/GATE90_QUICK_CANDIDATE_B_COSTED_5W_RECENT_OHLC_DAVID1006040_STOCH100_3_100_2026-07-02.md",
+    "manifestId": null,
+    "onlyPair": null,
+    "pairs": null,
+    "allPairs": true,
+    "weekFrom": "2026-05-03",
+    "weekTo": "2026-05-31",
+    "maxWeeks": null,
+    "initialDepositUsd": 10000,
+    "lotSize": 0.01,
+    "commissionPerEntryPer001LotUsd": 0.06,
+    "longSwapPer001LotDayUsd": -0.0917,
+    "shortSwapPer001LotDayUsd": 0.01,
+    "maxPositionsPerPair": 250,
+    "barPathMode": "ohlc_high_low",
+    "activationRuleId": "raw_both",
+    "activationRuleIds": [
+      "raw_both",
+      "candidate_b",
+      "david_contra",
+      "david_stoch_release"
+    ],
+    "logProgress": false,
+    "summaryOnly": true,
+    "signalSettings": {
+      "davidMaPeriod": 35,
+      "davidRsiPeriod": 100,
+      "davidRsiOverbought": 60,
+      "davidRsiOversold": 40,
+      "stochKPeriod": 100,
+      "stochDPeriod": 3,
+      "stochSlowing": 100,
+      "stochOverbought": 80,
+      "stochOversold": 20
+    }
+  }
+}

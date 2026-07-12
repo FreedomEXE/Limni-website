@@ -1,0 +1,2 @@
+status=PASS
+case=current_source_version_contract|PASS|source_changed=True|version=1.038|source_bundle_short=c46d482c8b6b

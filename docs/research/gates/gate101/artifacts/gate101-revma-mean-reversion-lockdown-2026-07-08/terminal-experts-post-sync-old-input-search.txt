@@ -1,0 +1,5 @@
+Gate 101 terminal Experts old-input search - 2026-07-08T01:53:07.4334112-04:00
+ROOT C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\14275C4F9441C73E9E6547075C33FE6C\MQL5\Experts
+NO MATCHES
+ROOT C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Experts
+NO MATCHES

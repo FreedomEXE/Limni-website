@@ -1,0 +1,92 @@
+{
+  "gate_id": "Gate 72D: review-packet-no-promotion",
+  "checked_path_count": 21,
+  "missing_path_count": 0,
+  "missing_paths": [],
+  "checks": [
+    {
+      "path": "docs/backlog/CURRENT_WORK.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71b-basket-adr-path-diagnostics/gate71b-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse/gate71bm-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.candidate-summaries.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.weekly.rows.jsonl",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/gate71c-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/predeclared-exit-baseline-matrix.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72a/GATE72A_WAREHOUSE_MANIFEST_BINDING_AUDIT_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/gate72a-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72a/artifacts/gate72a-warehouse-manifest-binding-audit/warehouse-manifest-binding-audit.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72b/GATE72B_MATRIX_LEDGER_SANITY_REVIEW_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/gate72b-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/matrix-ledger-integrity.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72c/GATE72C_EXIT_FAMILY_RANKING_SHORTLIST_2026-06-28.md",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-ranking-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-ranking.rows.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/exit-family-review-shortlist.json",
+      "exists": true
+    },
+    {
+      "path": "docs/research/gates/gate72c/artifacts/gate72c-exit-family-ranking-shortlist/gate72c-summary.json",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate72a\\artifacts\\gate72a-warehouse-manifest-binding-audit\\gate72a-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate72b\\artifacts\\gate72b-matrix-ledger-sanity-review\\gate72b-sha256.txt",
+      "exists": true
+    },
+    {
+      "path": "docs\\research\\gates\\gate72c\\artifacts\\gate72c-exit-family-ranking-shortlist\\gate72c-sha256.txt",
+      "exists": true
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+gate_id Gate 71B-M: exit-path-materialization-warehouse
+command npm run engine:gate71bm:exit-path-materialization-warehouse
+generated_at 2026-06-28T22:18:07.309Z
+git_commit d7db6a677eeb46dbf044b23160dd83bd07764384
+summary_json F7BC6754E7133B2B35C7FF682E366F55F1BA4DF2F3A7B6F140D6E12FD7F78D9E docs/research/gates/gate71b/artifacts/gate71bm-exit-path-materialization-warehouse-smoke/gate71bm-summary.json
+report 60767AAE6775F780E1C27CC7A4349D2CB4EB8703B79161CC8C4DD79E2D4A3C2E docs/research/gates/gate71b/GATE71B_M_EXIT_PATH_MATERIALIZATION_WAREHOUSE_SMOKE_2026-06-28.md

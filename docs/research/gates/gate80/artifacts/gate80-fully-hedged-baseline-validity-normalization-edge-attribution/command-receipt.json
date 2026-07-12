@@ -1,0 +1,23 @@
+{
+  "gate_id": "Gate 80: fully-hedged-baseline-validity-normalization-edge-attribution",
+  "command": "npm run engine:gate80:fully-hedged-baseline-validity-normalization-edge-attribution",
+  "generated_at": "2026-06-30T17:39:01.896Z",
+  "git_commit": "d46472571627e0043bbcce02146318d65e21636c",
+  "mode": "implementation_research_fully_hedged_baseline_validity_normalization_edge_attribution_no_promotion",
+  "audit_contract": {
+    "spacing_adr": 0.2,
+    "default_pair_reset_limit_per_week": 3,
+    "flip_warehouse_recovery_adr": 0,
+    "flip_warehouse_expiry_hours": 2184,
+    "flip_warehouse_hard_loss_adr": -15,
+    "flip_grace_hours": 168,
+    "flip_small_loss_threshold_adr": -3,
+    "fully_hedged_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+    "fully_hedged_no_limit_reference_rule_id": "FULLY_HEDGED_LONG_SHORT_28_PAIR_WEEKLY_T100_S020_NO_LIMIT_REFERENCE",
+    "long_only_reference_rule_id": "LONG_ONLY_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+    "short_only_reference_rule_id": "SHORT_ONLY_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+    "deterministic_random_side_reference_rule_id": "DETERMINISTIC_RANDOM_SIDE_28_PAIR_WEEKLY_T100_S020_L3_REFERENCE",
+    "preliminary_cost_sensitivity_only": true,
+    "unbounded_parameter_search_started": false
+  }
+}

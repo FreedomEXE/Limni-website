@@ -1,0 +1,840 @@
+{
+  "gate_id": "Gate 77: pair-two-sided-reset-limit-confirmation-and-failure-anatomy",
+  "generated_at": "2026-06-29T21:50:35.868Z",
+  "git_commit": "901587399ddb0a3ff61f5f21eae25d052db02d0e",
+  "command": "npm run engine:gate77:pair-two-sided-reset-limit-confirmation-failure-anatomy",
+  "verdict": "PASS_GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY__PAIR_LIMIT3_PROMISING_RESEARCH_ONLY_NO_PROMOTION",
+  "purpose": "confirm Gate 76 pair reset-limit behavior and explain failure modes without broad search or promotion",
+  "warehouse": {
+    "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+    "warehouse_hash": "36290BFDD28B47AFF31CA798C75ED1E7736A4778EBAA3E5FFAB64ECA07C462CC",
+    "weeks_replayed": 373,
+    "pairs_replayed": 28,
+    "pair_week_rows_replayed": 10444,
+    "gate74b_summary_hash_matched": true
+  },
+  "baseline_binding": {
+    "gate74e_focus_rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "gate74e_focus_closed_adr": 14381.312614,
+    "gate74e_focus_final_equity_adr": 9901.156008,
+    "gate74e_focus_final_open_unrealized_adr": -4480.156606,
+    "gate74e_focus_max_drawdown_adr": -5462.545131,
+    "gate75a_closed_as_prior_packet": true,
+    "gate76_key_rows_reproduced_before_comparison": true
+  },
+  "matrix_scope": {
+    "controls": 2,
+    "adverse_only_focus_baseline": 1,
+    "pair_two_sided_no_limit_targets": [
+      0.75,
+      1.25,
+      1.5
+    ],
+    "pair_reset_limits_at_target_075": [
+      2,
+      3,
+      5
+    ],
+    "controlled_structure_checks": [
+      {
+        "target": 1,
+        "limit": 3
+      },
+      {
+        "target": 1.25,
+        "limit": 3
+      }
+    ],
+    "account_reset_targets": [],
+    "account_reset_limits": [],
+    "fixed_rule_count": 11
+  },
+  "best_adapter_by_final_equity": {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T100_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "scope": "pair",
+    "target_adr": 1,
+    "spacing_adr": 0.2,
+    "two_sided_grid": true,
+    "reset_limit_per_week": 3,
+    "closed_total_adr": 16124.084275,
+    "final_equity_adr": 13772.999764,
+    "equity_profit_factor": 1.561828,
+    "max_equity_drawdown_adr": -1989.442654,
+    "final_open_unrealized_adr": -2351.084511,
+    "closed_adr_retention_vs_gate74e_focus": 1.121183,
+    "final_equity_retention_vs_gate74e_focus": 1.39105,
+    "top20_winner_retention_vs_weekly_forced": 11.769378,
+    "worst_week_loss_adr": -1151.146735,
+    "worst_5_week_loss_adr": -4601.201676,
+    "worst_13_week_loss_adr": -8525.307355,
+    "negative_years": 1,
+    "profitable_week_rate": 0.595174,
+    "closed_cycles": 19769,
+    "target_reset_cycles": 19367,
+    "account_reset_events": 0,
+    "flip_loss_adr": -6297.282489,
+    "negative_cycles": 19333,
+    "recovered_negative_cycles": 18912,
+    "negative_cycle_recovery_rate": 0.978224,
+    "fill_count": 106080,
+    "adverse_recovery_fill_count": 65843,
+    "favorable_expansion_fill_count": 20468,
+    "closed_adr_from_initial_fills": 597.924879,
+    "closed_adr_from_recovery_fills": 14539.545594,
+    "closed_adr_from_expansion_fills": 986.613805,
+    "average_closed_cycle_hold_hours": 22.7,
+    "max_cycle_mfe_adr": 25.528312,
+    "total_giveback_adr": 6465.432528,
+    "content_hash": "BBC603D68EC79B2E87AC038CDA22305EF142CC55AA27F95AAAFC2A3BAFCFEF49"
+  },
+  "adverse_focus_baseline": {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "adverse_only_pair_net_grid",
+    "scope": "pair",
+    "target_adr": 0.75,
+    "spacing_adr": 0.2,
+    "two_sided_grid": false,
+    "reset_limit_per_week": null,
+    "closed_total_adr": 14381.312614,
+    "final_equity_adr": 9901.156008,
+    "equity_profit_factor": 1.254319,
+    "max_equity_drawdown_adr": -5462.545131,
+    "final_open_unrealized_adr": -4480.156606,
+    "closed_adr_retention_vs_gate74e_focus": 1,
+    "final_equity_retention_vs_gate74e_focus": 1,
+    "top20_winner_retention_vs_weekly_forced": 16.1365,
+    "worst_week_loss_adr": -1582.117861,
+    "worst_5_week_loss_adr": -6462.22487,
+    "worst_13_week_loss_adr": -12815.828748,
+    "negative_years": 1,
+    "profitable_week_rate": 0.533512,
+    "closed_cycles": 29202,
+    "target_reset_cycles": 28300,
+    "account_reset_events": 0,
+    "flip_loss_adr": -10815.950986,
+    "negative_cycles": 28456,
+    "recovered_negative_cycles": 27545,
+    "negative_cycle_recovery_rate": 0.967986,
+    "fill_count": 124689,
+    "adverse_recovery_fill_count": 95487,
+    "favorable_expansion_fill_count": 0,
+    "closed_adr_from_initial_fills": 694.063804,
+    "closed_adr_from_recovery_fills": 13687.248787,
+    "closed_adr_from_expansion_fills": 0,
+    "average_closed_cycle_hold_hours": 22.716667,
+    "max_cycle_mfe_adr": 53.563337,
+    "total_giveback_adr": 11046.86115,
+    "content_hash": "2AED751FB40297104388953402944A967DEE6E032423E35481DE402A59094C13"
+  },
+  "gate76_best_no_limit_t150": {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "scope": "pair",
+    "target_adr": 1.5,
+    "spacing_adr": 0.2,
+    "two_sided_grid": true,
+    "reset_limit_per_week": null,
+    "closed_total_adr": 18012.423714,
+    "final_equity_adr": 12295.79489,
+    "equity_profit_factor": 1.282295,
+    "max_equity_drawdown_adr": -7565.450203,
+    "final_open_unrealized_adr": -5716.628824,
+    "closed_adr_retention_vs_gate74e_focus": 1.252488,
+    "final_equity_retention_vs_gate74e_focus": 1.241854,
+    "top20_winner_retention_vs_weekly_forced": 18.703482,
+    "worst_week_loss_adr": -1570.62905,
+    "worst_5_week_loss_adr": -7361.455451,
+    "worst_13_week_loss_adr": -14861.678507,
+    "negative_years": 2,
+    "profitable_week_rate": 0.544236,
+    "closed_cycles": 19605,
+    "target_reset_cycles": 18703,
+    "account_reset_events": 0,
+    "flip_loss_adr": -14668.815258,
+    "negative_cycles": 19282,
+    "recovered_negative_cycles": 18355,
+    "negative_cycle_recovery_rate": 0.951924,
+    "fill_count": 129588,
+    "adverse_recovery_fill_count": 79815,
+    "favorable_expansion_fill_count": 30168,
+    "closed_adr_from_initial_fills": 698.96308,
+    "closed_adr_from_recovery_fills": 15606.245343,
+    "closed_adr_from_expansion_fills": 1707.215318,
+    "average_closed_cycle_hold_hours": 31.683333,
+    "max_cycle_mfe_adr": 31.205943,
+    "total_giveback_adr": 15173.387931,
+    "content_hash": "FD3C2C2344B1410972459D5ECC1D0EEB80BB8A97C6D73DAAF86E7B90ED39B28B"
+  },
+  "gate76_promising_pair_reset_limit3": {
+    "rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+    "rule_family": "pair_reset_limit",
+    "scope": "pair",
+    "target_adr": 0.75,
+    "spacing_adr": 0.2,
+    "two_sided_grid": true,
+    "reset_limit_per_week": 3,
+    "closed_total_adr": 14021.947533,
+    "final_equity_adr": 11713.727501,
+    "equity_profit_factor": 1.51746,
+    "max_equity_drawdown_adr": -1811.737115,
+    "final_open_unrealized_adr": -2308.220032,
+    "closed_adr_retention_vs_gate74e_focus": 0.975012,
+    "final_equity_retention_vs_gate74e_focus": 1.183067,
+    "top20_winner_retention_vs_weekly_forced": 9.623613,
+    "worst_week_loss_adr": -1139.447341,
+    "worst_5_week_loss_adr": -4088.571521,
+    "worst_13_week_loss_adr": -7753.393942,
+    "negative_years": 1,
+    "profitable_week_rate": 0.613941,
+    "closed_cycles": 21969,
+    "target_reset_cycles": 21658,
+    "account_reset_events": 0,
+    "flip_loss_adr": -5132.272395,
+    "negative_cycles": 21358,
+    "recovered_negative_cycles": 21035,
+    "negative_cycle_recovery_rate": 0.984877,
+    "fill_count": 107731,
+    "adverse_recovery_fill_count": 63510,
+    "favorable_expansion_fill_count": 22252,
+    "closed_adr_from_initial_fills": 516.77013,
+    "closed_adr_from_recovery_fills": 12691.814431,
+    "closed_adr_from_expansion_fills": 813.362931,
+    "average_closed_cycle_hold_hours": 16.333333,
+    "max_cycle_mfe_adr": 28.620761,
+    "total_giveback_adr": 5242.433744,
+    "content_hash": "5272FB9AC9E112717864AD16521A097F22031C2EC08FCB12AB9E49E5AA689B24"
+  },
+  "reset_limit_failure_anatomy": [
+    {
+      "comparison_role": "gate76_t075_reset_limit_2_vs_same_target_no_limit",
+      "candidate_rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_2_PAIR_RESETS_WEEK",
+      "baseline_no_limit_rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+      "helped_week_count": 187,
+      "helped_total_adr": 32522.059571,
+      "hurt_week_count": 186,
+      "hurt_total_adr": -33221.358172,
+      "net_equity_delta_vs_no_limit_adr": -699.298601,
+      "closed_delta_vs_no_limit_adr": -6015.211822,
+      "max_drawdown_improvement_vs_no_limit_adr": 6218.306977,
+      "final_open_improvement_vs_no_limit_adr": 5315.913221,
+      "flip_loss_improvement_vs_no_limit_adr": 10120.547376,
+      "worst_week_loss_improvement_vs_no_limit_adr": 496.553414,
+      "worst_5_week_loss_improvement_vs_no_limit_adr": 4184.411084,
+      "worst_13_week_loss_improvement_vs_no_limit_adr": 9126.895376,
+      "top20_winner_adr_candidate": 4288.249951,
+      "top20_winner_adr_no_limit": 12239.12493,
+      "top20_winner_retention_loss_vs_no_limit_adr": 7950.874979,
+      "top20_winner_retention_delta_vs_no_limit_adr": -7950.874979,
+      "reset_count_delta_vs_no_limit": -16911,
+      "fill_count_delta_vs_no_limit": -87949,
+      "expansion_fill_count_delta_vs_no_limit": -18317,
+      "recovery_rate_delta_vs_no_limit": 0.01658,
+      "tail_reduction_attribution": {
+        "open_tail_improved_pair_count": 23,
+        "open_tail_worsened_pair_count": 3,
+        "total_positive_open_tail_improvement_adr": 5320.65965,
+        "audnzd_open_tail_improvement_adr": 2963.293224,
+        "audnzd_share_of_positive_open_tail_improvement": 0.556941,
+        "aud_pair_open_tail_improvement_adr": 5231.17162,
+        "aud_pair_share_of_positive_open_tail_improvement": 0.983181,
+        "top_open_tail_improvement_pairs": [
+          {
+            "pair": "AUDNZD",
+            "open_improvement_adr": 2963.293224,
+            "baseline_final_open_unrealized_adr": -3109.926411,
+            "candidate_final_open_unrealized_adr": -146.633187
+          },
+          {
+            "pair": "AUDJPY",
+            "open_improvement_adr": 1950.296503,
+            "baseline_final_open_unrealized_adr": -1950.296503,
+            "candidate_final_open_unrealized_adr": 0
+          },
+          {
+            "pair": "GBPAUD",
+            "open_improvement_adr": 292.139105,
+            "baseline_final_open_unrealized_adr": -292.139105,
+            "candidate_final_open_unrealized_adr": 0
+          },
+          {
+            "pair": "USDJPY",
+            "open_improvement_adr": 26.355136,
+            "baseline_final_open_unrealized_adr": -38.3596,
+            "candidate_final_open_unrealized_adr": -12.004464
+          },
+          {
+            "pair": "EURAUD",
+            "open_improvement_adr": 24.810429,
+            "baseline_final_open_unrealized_adr": -24.810429,
+            "candidate_final_open_unrealized_adr": 0
+          }
+        ],
+        "concentration_read": "concentrated_audnzd_tail_suppression"
+      },
+      "top_help_weeks": [
+        {
+          "week_open_utc": "2022-09-18T23:00:00.000Z",
+          "candidate_equity_delta_adr": -192.29669,
+          "baseline_equity_delta_adr": -1494.22604,
+          "delta_vs_no_limit_adr": 1301.92935
+        },
+        {
+          "week_open_utc": "2026-01-19T00:00:00.000Z",
+          "candidate_equity_delta_adr": -158.718589,
+          "baseline_equity_delta_adr": -1422.202802,
+          "delta_vs_no_limit_adr": 1263.484213
+        },
+        {
+          "week_open_utc": "2026-02-16T00:00:00.000Z",
+          "candidate_equity_delta_adr": -242.495002,
+          "baseline_equity_delta_adr": -1449.699827,
+          "delta_vs_no_limit_adr": 1207.204825
+        },
+        {
+          "week_open_utc": "2026-02-02T00:00:00.000Z",
+          "candidate_equity_delta_adr": -108.484745,
+          "baseline_equity_delta_adr": -1238.348686,
+          "delta_vs_no_limit_adr": 1129.863941
+        },
+        {
+          "week_open_utc": "2026-02-23T00:00:00.000Z",
+          "candidate_equity_delta_adr": -199.380257,
+          "baseline_equity_delta_adr": -1250.225397,
+          "delta_vs_no_limit_adr": 1050.84514
+        }
+      ],
+      "top_hurt_weeks": [
+        {
+          "week_open_utc": "2022-09-25T23:00:00.000Z",
+          "candidate_equity_delta_adr": 183.937828,
+          "baseline_equity_delta_adr": 2513.158235,
+          "delta_vs_no_limit_adr": -2329.220407
+        },
+        {
+          "week_open_utc": "2026-02-09T00:00:00.000Z",
+          "candidate_equity_delta_adr": -130.693262,
+          "baseline_equity_delta_adr": 1264.257457,
+          "delta_vs_no_limit_adr": -1394.950719
+        },
+        {
+          "week_open_utc": "2019-10-06T23:00:00.000Z",
+          "candidate_equity_delta_adr": 401.122727,
+          "baseline_equity_delta_adr": 1742.57733,
+          "delta_vs_no_limit_adr": -1341.454603
+        },
+        {
+          "week_open_utc": "2022-10-09T23:00:00.000Z",
+          "candidate_equity_delta_adr": 44.477343,
+          "baseline_equity_delta_adr": 1384.119391,
+          "delta_vs_no_limit_adr": -1339.642048
+        },
+        {
+          "week_open_utc": "2026-03-22T23:00:00.000Z",
+          "candidate_equity_delta_adr": 389.77572,
+          "baseline_equity_delta_adr": 1183.098895,
+          "delta_vs_no_limit_adr": -793.323175
+        }
+      ],
+      "content_hash": "97EB26D82FEF6D41F19B1E96A8673EC7648DAEDED7D676A62847FA4F13B16D1C"
+    },
+    {
+      "comparison_role": "gate76_t075_reset_limit_3_vs_same_target_no_limit",
+      "candidate_rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+      "baseline_no_limit_rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+      "helped_week_count": 198,
+      "helped_total_adr": 27457.57028,
+      "hurt_week_count": 175,
+      "hurt_total_adr": -26580.688938,
+      "net_equity_delta_vs_no_limit_adr": 876.881342,
+      "closed_delta_vs_no_limit_adr": -2512.04837,
+      "max_drawdown_improvement_vs_no_limit_adr": 5800.811865,
+      "final_open_improvement_vs_no_limit_adr": 3388.929712,
+      "flip_loss_improvement_vs_no_limit_adr": 8777.854507,
+      "worst_week_loss_improvement_vs_no_limit_adr": 386.873984,
+      "worst_5_week_loss_improvement_vs_no_limit_adr": 3196.892839,
+      "worst_13_week_loss_improvement_vs_no_limit_adr": 7053.026203,
+      "top20_winner_adr_candidate": 6616.134275,
+      "top20_winner_adr_no_limit": 12239.12493,
+      "top20_winner_retention_loss_vs_no_limit_adr": 5622.990655,
+      "top20_winner_retention_delta_vs_no_limit_adr": -5622.990655,
+      "reset_count_delta_vs_no_limit": -11528,
+      "fill_count_delta_vs_no_limit": -60772,
+      "expansion_fill_count_delta_vs_no_limit": -12758,
+      "recovery_rate_delta_vs_no_limit": 0.012792,
+      "tail_reduction_attribution": {
+        "open_tail_improved_pair_count": 22,
+        "open_tail_worsened_pair_count": 2,
+        "total_positive_open_tail_improvement_adr": 3393.6251,
+        "audnzd_open_tail_improvement_adr": 1036.376236,
+        "audnzd_share_of_positive_open_tail_improvement": 0.305389,
+        "aud_pair_open_tail_improvement_adr": 3304.073013,
+        "aud_pair_share_of_positive_open_tail_improvement": 0.973612,
+        "top_open_tail_improvement_pairs": [
+          {
+            "pair": "AUDJPY",
+            "open_improvement_adr": 1950.296503,
+            "baseline_final_open_unrealized_adr": -1950.296503,
+            "candidate_final_open_unrealized_adr": 0
+          },
+          {
+            "pair": "AUDNZD",
+            "open_improvement_adr": 1036.376236,
+            "baseline_final_open_unrealized_adr": -3109.926411,
+            "candidate_final_open_unrealized_adr": -2073.550175
+          },
+          {
+            "pair": "GBPAUD",
+            "open_improvement_adr": 292.139105,
+            "baseline_final_open_unrealized_adr": -292.139105,
+            "candidate_final_open_unrealized_adr": 0
+          },
+          {
+            "pair": "USDJPY",
+            "open_improvement_adr": 26.355136,
+            "baseline_final_open_unrealized_adr": -38.3596,
+            "candidate_final_open_unrealized_adr": -12.004464
+          },
+          {
+            "pair": "EURAUD",
+            "open_improvement_adr": 24.810429,
+            "baseline_final_open_unrealized_adr": -24.810429,
+            "candidate_final_open_unrealized_adr": 0
+          }
+        ],
+        "concentration_read": "concentrated_aud_tail_suppression"
+      },
+      "top_help_weeks": [
+        {
+          "week_open_utc": "2026-01-19T00:00:00.000Z",
+          "candidate_equity_delta_adr": -72.086453,
+          "baseline_equity_delta_adr": -1422.202802,
+          "delta_vs_no_limit_adr": 1350.116349
+        },
+        {
+          "week_open_utc": "2026-02-23T00:00:00.000Z",
+          "candidate_equity_delta_adr": -232.008989,
+          "baseline_equity_delta_adr": -1250.225397,
+          "delta_vs_no_limit_adr": 1018.216408
+        },
+        {
+          "week_open_utc": "2026-02-02T00:00:00.000Z",
+          "candidate_equity_delta_adr": -222.717593,
+          "baseline_equity_delta_adr": -1238.348686,
+          "delta_vs_no_limit_adr": 1015.631093
+        },
+        {
+          "week_open_utc": "2022-09-18T23:00:00.000Z",
+          "candidate_equity_delta_adr": -618.449821,
+          "baseline_equity_delta_adr": -1494.22604,
+          "delta_vs_no_limit_adr": 875.776219
+        },
+        {
+          "week_open_utc": "2026-04-05T23:00:00.000Z",
+          "candidate_equity_delta_adr": -6.650212,
+          "baseline_equity_delta_adr": -852.284102,
+          "delta_vs_no_limit_adr": 845.63389
+        }
+      ],
+      "top_hurt_weeks": [
+        {
+          "week_open_utc": "2026-02-09T00:00:00.000Z",
+          "candidate_equity_delta_adr": -250.12523,
+          "baseline_equity_delta_adr": 1264.257457,
+          "delta_vs_no_limit_adr": -1514.382687
+        },
+        {
+          "week_open_utc": "2022-09-25T23:00:00.000Z",
+          "candidate_equity_delta_adr": 1024.828442,
+          "baseline_equity_delta_adr": 2513.158235,
+          "delta_vs_no_limit_adr": -1488.329793
+        },
+        {
+          "week_open_utc": "2022-10-09T23:00:00.000Z",
+          "candidate_equity_delta_adr": 76.936579,
+          "baseline_equity_delta_adr": 1384.119391,
+          "delta_vs_no_limit_adr": -1307.182812
+        },
+        {
+          "week_open_utc": "2019-10-06T23:00:00.000Z",
+          "candidate_equity_delta_adr": 811.645466,
+          "baseline_equity_delta_adr": 1742.57733,
+          "delta_vs_no_limit_adr": -930.931864
+        },
+        {
+          "week_open_utc": "2020-03-08T23:00:00.000Z",
+          "candidate_equity_delta_adr": -216.760265,
+          "baseline_equity_delta_adr": 663.699082,
+          "delta_vs_no_limit_adr": -880.459347
+        }
+      ],
+      "content_hash": "788E1861D516223FBA9DDDFF2BD4A83694B2633AF3F4814E839F734135491848"
+    },
+    {
+      "comparison_role": "gate76_t075_reset_limit_5_vs_same_target_no_limit",
+      "candidate_rule_id": "PAIR_TWO_SIDED_GRID_T075_S020_STOP_AFTER_5_PAIR_RESETS_WEEK",
+      "baseline_no_limit_rule_id": "PAIR_TWO_SIDED_GRID_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+      "helped_week_count": 192,
+      "helped_total_adr": 13723.124837,
+      "hurt_week_count": 181,
+      "hurt_total_adr": -14087.061244,
+      "net_equity_delta_vs_no_limit_adr": -363.936407,
+      "closed_delta_vs_no_limit_adr": -2360.522563,
+      "max_drawdown_improvement_vs_no_limit_adr": 1974.169965,
+      "final_open_improvement_vs_no_limit_adr": 1996.586156,
+      "flip_loss_improvement_vs_no_limit_adr": 3134.595536,
+      "worst_week_loss_improvement_vs_no_limit_adr": 28.131556,
+      "worst_5_week_loss_improvement_vs_no_limit_adr": 1099.445152,
+      "worst_13_week_loss_improvement_vs_no_limit_adr": 2731.984705,
+      "top20_winner_adr_candidate": 9816.111547,
+      "top20_winner_adr_no_limit": 12239.12493,
+      "top20_winner_retention_loss_vs_no_limit_adr": 2423.013383,
+      "top20_winner_retention_delta_vs_no_limit_adr": -2423.013383,
+      "reset_count_delta_vs_no_limit": -5241,
+      "fill_count_delta_vs_no_limit": -28382,
+      "expansion_fill_count_delta_vs_no_limit": -6294,
+      "recovery_rate_delta_vs_no_limit": 0.006265,
+      "tail_reduction_attribution": {
+        "open_tail_improved_pair_count": 10,
+        "open_tail_worsened_pair_count": 4,
+        "total_positive_open_tail_improvement_adr": 2000.985094,
+        "audnzd_open_tail_improvement_adr": 0,
+        "audnzd_share_of_positive_open_tail_improvement": 0,
+        "aud_pair_open_tail_improvement_adr": 1950.30494,
+        "aud_pair_share_of_positive_open_tail_improvement": 0.974672,
+        "top_open_tail_improvement_pairs": [
+          {
+            "pair": "AUDJPY",
+            "open_improvement_adr": 1950.027686,
+            "baseline_final_open_unrealized_adr": -1950.296503,
+            "candidate_final_open_unrealized_adr": -0.268817
+          },
+          {
+            "pair": "USDCHF",
+            "open_improvement_adr": 12.134406,
+            "baseline_final_open_unrealized_adr": -28.169186,
+            "candidate_final_open_unrealized_adr": -16.03478
+          },
+          {
+            "pair": "GBPNZD",
+            "open_improvement_adr": 11.734005,
+            "baseline_final_open_unrealized_adr": -34.395084,
+            "candidate_final_open_unrealized_adr": -22.661079
+          },
+          {
+            "pair": "NZDUSD",
+            "open_improvement_adr": 9.367727,
+            "baseline_final_open_unrealized_adr": -28.872685,
+            "candidate_final_open_unrealized_adr": -19.504958
+          },
+          {
+            "pair": "EURCAD",
+            "open_improvement_adr": 7.080342,
+            "baseline_final_open_unrealized_adr": -7.080342,
+            "candidate_final_open_unrealized_adr": 0
+          }
+        ],
+        "concentration_read": "concentrated_aud_tail_suppression"
+      },
+      "top_help_weeks": [
+        {
+          "week_open_utc": "2026-04-05T23:00:00.000Z",
+          "candidate_equity_delta_adr": -292.482061,
+          "baseline_equity_delta_adr": -852.284102,
+          "delta_vs_no_limit_adr": 559.802041
+        },
+        {
+          "week_open_utc": "2020-06-07T23:00:00.000Z",
+          "candidate_equity_delta_adr": 93.100268,
+          "baseline_equity_delta_adr": -339.425821,
+          "delta_vs_no_limit_adr": 432.526089
+        },
+        {
+          "week_open_utc": "2025-10-26T23:00:00.000Z",
+          "candidate_equity_delta_adr": -360.311736,
+          "baseline_equity_delta_adr": -790.975533,
+          "delta_vs_no_limit_adr": 430.663797
+        },
+        {
+          "week_open_utc": "2026-01-19T00:00:00.000Z",
+          "candidate_equity_delta_adr": -1060.836732,
+          "baseline_equity_delta_adr": -1422.202802,
+          "delta_vs_no_limit_adr": 361.36607
+        },
+        {
+          "week_open_utc": "2026-02-02T00:00:00.000Z",
+          "candidate_equity_delta_adr": -889.682237,
+          "baseline_equity_delta_adr": -1238.348686,
+          "delta_vs_no_limit_adr": 348.666449
+        }
+      ],
+      "top_hurt_weeks": [
+        {
+          "week_open_utc": "2020-03-08T23:00:00.000Z",
+          "candidate_equity_delta_adr": -11.334844,
+          "baseline_equity_delta_adr": 663.699082,
+          "delta_vs_no_limit_adr": -675.033926
+        },
+        {
+          "week_open_utc": "2020-05-31T23:00:00.000Z",
+          "candidate_equity_delta_adr": -30.374222,
+          "baseline_equity_delta_adr": 499.212286,
+          "delta_vs_no_limit_adr": -529.586508
+        },
+        {
+          "week_open_utc": "2025-11-03T00:00:00.000Z",
+          "candidate_equity_delta_adr": 48.924048,
+          "baseline_equity_delta_adr": 486.988761,
+          "delta_vs_no_limit_adr": -438.064713
+        },
+        {
+          "week_open_utc": "2026-02-09T00:00:00.000Z",
+          "candidate_equity_delta_adr": 848.797427,
+          "baseline_equity_delta_adr": 1264.257457,
+          "delta_vs_no_limit_adr": -415.46003
+        },
+        {
+          "week_open_utc": "2026-03-22T23:00:00.000Z",
+          "candidate_equity_delta_adr": 778.628786,
+          "baseline_equity_delta_adr": 1183.098895,
+          "delta_vs_no_limit_adr": -404.470109
+        }
+      ],
+      "content_hash": "E45156C7CDF36490ECE31A794C9295AAE90F92225F4937C595A1D3B2F29F0479"
+    },
+    {
+      "comparison_role": "structure_t125_reset_limit_3_vs_same_target_no_limit",
+      "candidate_rule_id": "PAIR_TWO_SIDED_GRID_T125_S020_STOP_AFTER_3_PAIR_RESETS_WEEK",
+      "baseline_no_limit_rule_id": "PAIR_TWO_SIDED_GRID_TARGET_125_SPACING_020_RESTART_UNTIL_FLIP",
+      "helped_week_count": 194,
+      "helped_total_adr": 19758.082215,
+      "hurt_week_count": 179,
+      "hurt_total_adr": -18706.155779,
+      "net_equity_delta_vs_no_limit_adr": 1051.926436,
+      "closed_delta_vs_no_limit_adr": -177.002865,
+      "max_drawdown_improvement_vs_no_limit_adr": 3557.473533,
+      "final_open_improvement_vs_no_limit_adr": 1228.929301,
+      "flip_loss_improvement_vs_no_limit_adr": 7147.137853,
+      "worst_week_loss_improvement_vs_no_limit_adr": 238.063038,
+      "worst_5_week_loss_improvement_vs_no_limit_adr": 1745.5271,
+      "worst_13_week_loss_improvement_vs_no_limit_adr": 4747.715054,
+      "top20_winner_adr_candidate": 9208.564698,
+      "top20_winner_adr_no_limit": 12494.14926,
+      "top20_winner_retention_loss_vs_no_limit_adr": 3285.584562,
+      "top20_winner_retention_delta_vs_no_limit_adr": -3285.584562,
+      "reset_count_delta_vs_no_limit": -4479,
+      "fill_count_delta_vs_no_limit": -31302,
+      "expansion_fill_count_delta_vs_no_limit": -7819,
+      "recovery_rate_delta_vs_no_limit": 0.012002,
+      "tail_reduction_attribution": {
+        "open_tail_improved_pair_count": 18,
+        "open_tail_worsened_pair_count": 2,
+        "total_positive_open_tail_improvement_adr": 1229.78697,
+        "audnzd_open_tail_improvement_adr": 0,
+        "audnzd_share_of_positive_open_tail_improvement": 0,
+        "aud_pair_open_tail_improvement_adr": 1144.355816,
+        "aud_pair_share_of_positive_open_tail_improvement": 0.930532,
+        "top_open_tail_improvement_pairs": [
+          {
+            "pair": "AUDJPY",
+            "open_improvement_adr": 1127.677071,
+            "baseline_final_open_unrealized_adr": -1918.999081,
+            "candidate_final_open_unrealized_adr": -791.32201
+          },
+          {
+            "pair": "USDJPY",
+            "open_improvement_adr": 26.355136,
+            "baseline_final_open_unrealized_adr": -38.3596,
+            "candidate_final_open_unrealized_adr": -12.004464
+          },
+          {
+            "pair": "AUDCHF",
+            "open_improvement_adr": 16.492848,
+            "baseline_final_open_unrealized_adr": -16.674129,
+            "candidate_final_open_unrealized_adr": -0.181281
+          },
+          {
+            "pair": "USDCHF",
+            "open_improvement_adr": 13.206617,
+            "baseline_final_open_unrealized_adr": -29.241397,
+            "candidate_final_open_unrealized_adr": -16.03478
+          },
+          {
+            "pair": "GBPNZD",
+            "open_improvement_adr": 12.837759,
+            "baseline_final_open_unrealized_adr": -35.498838,
+            "candidate_final_open_unrealized_adr": -22.661079
+          }
+        ],
+        "concentration_read": "concentrated_aud_tail_suppression"
+      },
+      "top_help_weeks": [
+        {
+          "week_open_utc": "2026-01-19T00:00:00.000Z",
+          "candidate_equity_delta_adr": -385.913761,
+          "baseline_equity_delta_adr": -1373.996446,
+          "delta_vs_no_limit_adr": 988.082685
+        },
+        {
+          "week_open_utc": "2026-02-23T00:00:00.000Z",
+          "candidate_equity_delta_adr": -456.425645,
+          "baseline_equity_delta_adr": -1263.226524,
+          "delta_vs_no_limit_adr": 806.800879
+        },
+        {
+          "week_open_utc": "2026-02-02T00:00:00.000Z",
+          "candidate_equity_delta_adr": -449.194009,
+          "baseline_equity_delta_adr": -1240.797459,
+          "delta_vs_no_limit_adr": 791.60345
+        },
+        {
+          "week_open_utc": "2025-11-10T00:00:00.000Z",
+          "candidate_equity_delta_adr": 217.967667,
+          "baseline_equity_delta_adr": -442.193936,
+          "delta_vs_no_limit_adr": 660.161603
+        },
+        {
+          "week_open_utc": "2025-10-05T23:00:00.000Z",
+          "candidate_equity_delta_adr": -146.91621,
+          "baseline_equity_delta_adr": -789.260307,
+          "delta_vs_no_limit_adr": 642.344097
+        }
+      ],
+      "top_hurt_weeks": [
+        {
+          "week_open_utc": "2026-02-09T00:00:00.000Z",
+          "candidate_equity_delta_adr": -165.899236,
+          "baseline_equity_delta_adr": 1270.595211,
+          "delta_vs_no_limit_adr": -1436.494447
+        },
+        {
+          "week_open_utc": "2019-10-06T23:00:00.000Z",
+          "candidate_equity_delta_adr": 872.790637,
+          "baseline_equity_delta_adr": 1748.912454,
+          "delta_vs_no_limit_adr": -876.121817
+        },
+        {
+          "week_open_utc": "2020-03-08T23:00:00.000Z",
+          "candidate_equity_delta_adr": 70.640651,
+          "baseline_equity_delta_adr": 664.714228,
+          "delta_vs_no_limit_adr": -594.073577
+        },
+        {
+          "week_open_utc": "2025-11-03T00:00:00.000Z",
+          "candidate_equity_delta_adr": -60.489354,
+          "baseline_equity_delta_adr": 495.267083,
+          "delta_vs_no_limit_adr": -555.756437
+        },
+        {
+          "week_open_utc": "2020-05-31T23:00:00.000Z",
+          "candidate_equity_delta_adr": -35.110582,
+          "baseline_equity_delta_adr": 509.334496,
+          "delta_vs_no_limit_adr": -544.445078
+        }
+      ],
+      "content_hash": "691E84695E06BAADF5DC6720BCD8E16B1CA1CDB8B666DAF9E4049EE56BD29DD2"
+    }
+  ],
+  "top_pair_two_sided_by_final_equity": {
+    "rule_id": "PAIR_TWO_SIDED_GRID_TARGET_150_SPACING_020_RESTART_UNTIL_FLIP",
+    "rule_family": "pair_directional_two_sided_grid",
+    "scope": "pair",
+    "target_adr": 1.5,
+    "spacing_adr": 0.2,
+    "two_sided_grid": true,
+    "reset_limit_per_week": null,
+    "closed_total_adr": 18012.423714,
+    "final_equity_adr": 12295.79489,
+    "equity_profit_factor": 1.282295,
+    "max_equity_drawdown_adr": -7565.450203,
+    "final_open_unrealized_adr": -5716.628824,
+    "closed_adr_retention_vs_gate74e_focus": 1.252488,
+    "final_equity_retention_vs_gate74e_focus": 1.241854,
+    "top20_winner_retention_vs_weekly_forced": 18.703482,
+    "worst_week_loss_adr": -1570.62905,
+    "worst_5_week_loss_adr": -7361.455451,
+    "worst_13_week_loss_adr": -14861.678507,
+    "negative_years": 2,
+    "profitable_week_rate": 0.544236,
+    "closed_cycles": 19605,
+    "target_reset_cycles": 18703,
+    "account_reset_events": 0,
+    "flip_loss_adr": -14668.815258,
+    "negative_cycles": 19282,
+    "recovered_negative_cycles": 18355,
+    "negative_cycle_recovery_rate": 0.951924,
+    "fill_count": 129588,
+    "adverse_recovery_fill_count": 79815,
+    "favorable_expansion_fill_count": 30168,
+    "closed_adr_from_initial_fills": 698.96308,
+    "closed_adr_from_recovery_fills": 15606.245343,
+    "closed_adr_from_expansion_fills": 1707.215318,
+    "average_closed_cycle_hold_hours": 31.683333,
+    "max_cycle_mfe_adr": 31.205943,
+    "total_giveback_adr": 15173.387931,
+    "content_hash": "FD3C2C2344B1410972459D5ECC1D0EEB80BB8A97C6D73DAAF86E7B90ED39B28B"
+  },
+  "validation": {
+    "gate74b_passed": true,
+    "gate74e_passed": true,
+    "gate75a_passed_and_closed": true,
+    "gate75a_matrix_not_executed_by_this_gate": true,
+    "manifest_complete": true,
+    "warehouse_hash_matches_gate74b_summary": true,
+    "candidate_b_forced28_preserved": true,
+    "candidate_b_directions_mutated": false,
+    "pairs_replayed": 28,
+    "audnzd_excluded": false,
+    "weeks_replayed": 373,
+    "expected_weeks_replayed": 373,
+    "pair_week_rows_replayed": 10444,
+    "fixed_rule_count": 11,
+    "pair_two_sided_target_count": 3,
+    "optional_1_5_target_included": true,
+    "account_reset_target_count": 0,
+    "pair_reset_limit_variant_count": 5,
+    "account_level_replay_started": false,
+    "pair_series_only_account_reset_claim_started": false,
+    "unbounded_parameter_search_started": false,
+    "costs_applied": false,
+    "spread_slippage_swap_commission_applied": false,
+    "risk_layer_started": false,
+    "correlation_pruning_started": false,
+    "pair_pruning_started": false,
+    "fair_value_pruning_started": false,
+    "exit_promotion_started": false,
+    "mt5_live_runtime_started": false,
+    "app_runtime_started": false,
+    "brain_truth_mutated": false,
+    "source_mutation_started": false,
+    "candidate_c_promotion_started": false,
+    "candidate_d_retest_started": false,
+    "candidate_e_started": false,
+    "alpha_v2_started": false,
+    "focus_closed_matches_gate74e": true,
+    "focus_equity_matches_gate74e": true,
+    "focus_open_matches_gate74e": true,
+    "focus_drawdown_matches_gate74e": true,
+    "focus_flip_loss_matches_gate74e": true,
+    "gate76_best_no_limit_t150_reproduced": true,
+    "gate76_pair_reset_limit3_reproduced": true,
+    "gate76_key_rows_reproduced_before_comparison": true,
+    "closed_and_equity_reported_side_by_side": true
+  },
+  "artifacts": {
+    "adapterSummaryRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/adapter-summary.rows.json",
+    "weeklyEquityRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/weekly-equity-truth.rows.json",
+    "annualRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/annual-summary.rows.json",
+    "expansionAttributionRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/expansion-attribution-vs-adverse-focus.rows.json",
+    "fillSideAttributionRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/fill-side-attribution.rows.json",
+    "failureAnatomyRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/failure-anatomy.rows.json",
+    "resetCountWeeklyRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/reset-count-week.rows.json",
+    "resetCountPairRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/reset-count-pair.rows.json",
+    "tailConcentrationPairRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/tail-concentration-pair.rows.json",
+    "tailConcentrationCurrencyRows": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/tail-concentration-currency.rows.json",
+    "commandReceipt": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/command-receipt.json",
+    "summaryJson": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/gate77-summary.json",
+    "shaIdentity": "docs/research/gates/gate77/artifacts/gate77-pair-two-sided-reset-limit-confirmation-failure-anatomy/gate77-sha256.txt",
+    "report": "docs/research/gates/gate77/GATE77_PAIR_TWO_SIDED_RESET_LIMIT_CONFIRMATION_FAILURE_ANATOMY_2026-06-29.md"
+  }
+}

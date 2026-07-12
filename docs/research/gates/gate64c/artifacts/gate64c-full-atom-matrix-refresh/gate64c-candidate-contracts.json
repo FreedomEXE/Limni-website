@@ -1,0 +1,804 @@
+{
+  "gate_id": "Gate 64C: full-atom-matrix-refresh",
+  "brain_architecture": {
+    "version": "gate61a_brain_cells_atoms_v1",
+    "system": "Brain",
+    "cells": [
+      {
+        "cell_id": "cot",
+        "label": "COT cell",
+        "path": "engine/src/brain/cells/cot",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "cot_side",
+            "label": "locked COT side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_tei_spread",
+            "label": "base-minus-quote COT TEI spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cot_carry_flags",
+            "label": "COT carry-forward and carry-previous flags",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "cot_lifecycle_state",
+            "label": "COT report lifecycle state",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "strength",
+        "label": "Strength cell",
+        "path": "engine/src/brain/cells/strength",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "strength_gate57e_side",
+            "label": "locked Gate 57E Strength side",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_score_spread",
+            "label": "FRS15 base-minus-quote score spread",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "strength_lifecycle_bucket",
+            "label": "Strength lifecycle bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "strength_phase_bucket",
+            "label": "Strength phase bucket",
+            "status": "locked",
+            "source_gate": "Gate 59",
+            "forced_28_role": "source_quality_atom"
+          }
+        ]
+      },
+      {
+        "cell_id": "regime",
+        "label": "Regime cell",
+        "path": "engine/src/brain/cells/regime",
+        "forced_28_required": true,
+        "atoms": [
+          {
+            "atom_id": "bpr_futures",
+            "label": "BPR futures required source atom",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "bpr_futures_and_options",
+            "label": "BPR futures/options shadow source atom",
+            "status": "shadow",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "shadow_atom"
+          },
+          {
+            "atom_id": "bpr_futures_carried_state",
+            "label": "BPR futures carried source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "bpr_futures_synthetic_usd_state",
+            "label": "BPR synthetic USD source state",
+            "status": "building",
+            "source_gate": "Gate 60G",
+            "forced_28_role": "source_quality_atom"
+          },
+          {
+            "atom_id": "nominal_rate_3m",
+            "label": "nominal 3m interbank rate",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "cpi_inflation_yoy",
+            "label": "CPI inflation year-over-year",
+            "status": "sealed_parent",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "rrp_derived",
+            "label": "real-rate-pressure derived atom",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "ppp",
+            "label": "purchasing power parity",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "neer",
+            "label": "nominal effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          },
+          {
+            "atom_id": "reer",
+            "label": "real effective exchange rate",
+            "status": "building",
+            "source_gate": "Gate 60C",
+            "forced_28_role": "signal_atom"
+          }
+        ]
+      }
+    ],
+    "body": {
+      "path": "engine/src/brain/body",
+      "status": "reserved_for_later_integrated_forced28_decision_algorithm",
+      "may_reduce_expression_below_28": false
+    },
+    "risk": {
+      "path": "engine/src/brain/risk",
+      "status": "reserved_for_later_permission_layer",
+      "may_reduce_expression_below_28": true
+    },
+    "standing_rule": "Alpha-style cells and Regime-style cells preserve forced-28 weekly pair directions; only the later risk layer may reduce actual trade expression."
+  },
+  "atom_inventory": [
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_side",
+      "label": "locked COT side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_tei_spread",
+      "label": "base-minus-quote COT TEI spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_carry_flags",
+      "label": "COT carry-forward and carry-previous flags",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "cot",
+      "cell_label": "COT cell",
+      "atom_id": "cot_lifecycle_state",
+      "label": "COT report lifecycle state",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_gate57e_side",
+      "label": "locked Gate 57E Strength side",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_score_spread",
+      "label": "FRS15 base-minus-quote score spread",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_lifecycle_bucket",
+      "label": "Strength lifecycle bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "strength",
+      "cell_label": "Strength cell",
+      "atom_id": "strength_phase_bucket",
+      "label": "Strength phase bucket",
+      "status": "locked",
+      "source_gate": "Gate 59",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures",
+      "label": "BPR futures required source atom",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_and_options",
+      "label": "BPR futures/options shadow source atom",
+      "status": "shadow",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "shadow_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_carried_state",
+      "label": "BPR futures carried source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "bpr_futures_synthetic_usd_state",
+      "label": "BPR synthetic USD source state",
+      "status": "building",
+      "source_gate": "Gate 60G",
+      "forced_28_role": "source_quality_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "nominal_rate_3m",
+      "label": "nominal 3m interbank rate",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "cpi_inflation_yoy",
+      "label": "CPI inflation year-over-year",
+      "status": "sealed_parent",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "rrp_derived",
+      "label": "real-rate-pressure derived atom",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "ppp",
+      "label": "purchasing power parity",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "neer",
+      "label": "nominal effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    },
+    {
+      "cell_id": "regime",
+      "cell_label": "Regime cell",
+      "atom_id": "reer",
+      "label": "real effective exchange rate",
+      "status": "building",
+      "source_gate": "Gate 60C",
+      "forced_28_role": "signal_atom"
+    }
+  ],
+  "candidate_contracts": [
+    {
+      "candidate_id": "gate63_alpha_v1_frozen_final_side",
+      "family": "gate63_continuity",
+      "label": "Gate 63 Alpha v1 baseline",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "alpha_v1_final_side"
+      ],
+      "source_cells": [
+        "alpha_v1"
+      ],
+      "transform_version": "gate64c_gate63_alpha_v1_frozen_final_side_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow frozen Alpha v1",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "gate63_rrp_derived_inverse",
+      "family": "gate63_continuity",
+      "label": "Gate 63 RRP inverse reference",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_gate63_rrp_derived_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow RRP inverse",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "gate63_cot_strength_rrp_inverse_majority",
+      "family": "gate63_continuity",
+      "label": "Gate 63 COT + Strength + RRP inverse majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_gate63_cot_strength_rrp_inverse_majority_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "three-vote majority",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "bpr_follow_source_direction",
+      "family": "follow_fade",
+      "label": "Follow BPR source direction",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "bpr"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_bpr_follow_source_direction_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow BPR source direction with degraded rows explicit",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "bpr_fade_source_direction",
+      "family": "follow_fade",
+      "label": "Fade BPR source direction",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "bpr"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_bpr_fade_source_direction_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "fade BPR source direction with degraded rows explicit",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "rrp_derived_natural",
+      "family": "follow_fade",
+      "label": "Follow RRP natural",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_rrp_derived_natural_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow RRP natural polarity",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "valuation_gap_reer_deviation_natural",
+      "family": "valuation_gap_single",
+      "label": "Valuation gap REER deviation natural",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_reer_deviation_natural_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow valuation gap natural polarity",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "valuation_gap_reer_deviation_inverse",
+      "family": "valuation_gap_single",
+      "label": "Valuation gap REER deviation inverse",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_reer_deviation_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "fade valuation gap via inverse polarity",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "valuation_gap_neer_reer_relative_natural",
+      "family": "valuation_gap_single",
+      "label": "Valuation gap NEER/REER relative natural",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_neer_reer_relative"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_neer_reer_relative_natural_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "follow valuation gap natural polarity",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "valuation_gap_neer_reer_relative_inverse",
+      "family": "valuation_gap_single",
+      "label": "Valuation gap NEER/REER relative inverse",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_neer_reer_relative"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_neer_reer_relative_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "fade valuation gap via inverse polarity",
+      "complexity": 1
+    },
+    {
+      "candidate_id": "valuation_gap_reer_inverse_extreme_else_rrp_inverse",
+      "family": "valuation_gap_tiered",
+      "label": "Use valuation REER inverse on extreme valuation spreads else RRP inverse",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_reer_deviation",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_reer_inverse_extreme_else_rrp_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "valuation gap as fixed tier context flag",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "valuation_gap_relative_inverse_extreme_else_rrp_inverse",
+      "family": "valuation_gap_tiered",
+      "label": "Use valuation relative inverse on extreme valuation spreads else RRP inverse",
+      "candidate_direction_kind": "candidate_atom_direction",
+      "atom_keys": [
+        "valuation_gap_neer_reer_relative",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_valuation_gap_relative_inverse_extreme_else_rrp_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "valuation gap as fixed tier context flag",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "cot_strength_tie_breaker_valuation_reer_inverse",
+      "family": "valuation_gap_tie_breaker",
+      "label": "Use valuation REER inverse when COT and Strength disagree",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_strength_tie_breaker_valuation_reer_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "valuation gap as tie-breaker",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "cot_strength_tie_breaker_valuation_relative_inverse",
+      "family": "valuation_gap_tie_breaker",
+      "label": "Use valuation relative inverse when COT and Strength disagree",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "valuation_gap_neer_reer_relative"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_strength_tie_breaker_valuation_relative_inverse_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "valuation gap as tie-breaker",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "rrp_inverse_when_agrees_valuation_reer_else_alpha",
+      "family": "atom_dependency",
+      "label": "Use RRP inverse only when it agrees with valuation REER inverse else Alpha",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "rrp_derived",
+        "valuation_gap_reer_deviation",
+        "alpha_v1_final_side"
+      ],
+      "source_cells": [
+        "alpha_v1",
+        "regime"
+      ],
+      "transform_version": "gate64c_rrp_inverse_when_agrees_valuation_reer_else_alpha_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "RRP depends on valuation confirmation",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "rrp_inverse_when_disagrees_valuation_reer_else_valuation",
+      "family": "atom_dependency",
+      "label": "Use RRP inverse only when it contradicts valuation REER inverse else valuation",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "rrp_derived",
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_rrp_inverse_when_disagrees_valuation_reer_else_valuation_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "RRP contradiction diagnostic",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "bpr_when_agrees_valuation_reer_else_rrp",
+      "family": "atom_dependency",
+      "label": "Use BPR only when it agrees with valuation REER inverse else RRP",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "bpr",
+        "valuation_gap_reer_deviation",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "regime"
+      ],
+      "transform_version": "gate64c_bpr_when_agrees_valuation_reer_else_rrp_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "BPR depends on valuation confirmation",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "cot_when_agrees_valuation_reer_else_rrp",
+      "family": "atom_dependency",
+      "label": "Use COT only when it agrees with valuation REER inverse else RRP",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "valuation_gap_reer_deviation",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "cot",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_when_agrees_valuation_reer_else_rrp_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "COT depends on valuation confirmation",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "strength_when_agrees_valuation_reer_else_rrp",
+      "family": "atom_dependency",
+      "label": "Use Strength only when it agrees with valuation REER inverse else RRP",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "strength_gate57e_side",
+        "valuation_gap_reer_deviation",
+        "rrp_derived"
+      ],
+      "source_cells": [
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_strength_when_agrees_valuation_reer_else_rrp_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "Strength depends on valuation confirmation",
+      "complexity": 3
+    },
+    {
+      "candidate_id": "cot_strength_rrp_valuation_reer_majority",
+      "family": "cross_cell_composite",
+      "label": "COT + Strength + RRP inverse + valuation REER inverse majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived",
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_strength_rrp_valuation_reer_majority_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "four-vote majority, tie to RRP inverse",
+      "complexity": 4
+    },
+    {
+      "candidate_id": "cot_strength_rrp_valuation_relative_majority",
+      "family": "cross_cell_composite",
+      "label": "COT + Strength + RRP inverse + valuation relative inverse majority",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived",
+        "valuation_gap_neer_reer_relative"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_strength_rrp_valuation_relative_majority_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "four-vote majority, tie to RRP inverse",
+      "complexity": 4
+    },
+    {
+      "candidate_id": "cot_strength_regime_valuation_bundle_reer",
+      "family": "cross_cell_composite",
+      "label": "COT + Strength + RRP/PPP/NEER/REER + valuation REER inverse bundle",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "strength_gate57e_side",
+        "rrp_derived",
+        "ppp",
+        "neer",
+        "reer",
+        "valuation_gap_reer_deviation"
+      ],
+      "source_cells": [
+        "cot",
+        "strength",
+        "regime"
+      ],
+      "transform_version": "gate64c_cot_strength_regime_valuation_bundle_reer_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "seven-vote valuation bundle majority",
+      "complexity": 7
+    },
+    {
+      "candidate_id": "cot_extreme_follow_else_alpha",
+      "family": "follow_fade",
+      "label": "Follow COT only at top-quintile COT spread else Alpha",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "cot_abs_tei_spread"
+      ],
+      "source_cells": [
+        "cot",
+        "alpha_v1"
+      ],
+      "transform_version": "gate64c_cot_extreme_follow_else_alpha_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "COT extreme context flag",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "cot_extreme_fade_else_alpha",
+      "family": "follow_fade",
+      "label": "Fade COT only at top-quintile COT spread else Alpha",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "cot_side",
+        "cot_abs_tei_spread"
+      ],
+      "source_cells": [
+        "cot",
+        "alpha_v1"
+      ],
+      "transform_version": "gate64c_cot_extreme_fade_else_alpha_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "COT extreme fade context flag",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "strength_persistent_follow_else_alpha",
+      "family": "follow_fade",
+      "label": "Follow Strength when phase is persistent else Alpha",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "strength_gate57e_side",
+        "strength_phase_bucket"
+      ],
+      "source_cells": [
+        "strength",
+        "alpha_v1"
+      ],
+      "transform_version": "gate64c_strength_persistent_follow_else_alpha_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "Strength persistent state context flag",
+      "complexity": 2
+    },
+    {
+      "candidate_id": "strength_persistent_fade_else_alpha",
+      "family": "follow_fade",
+      "label": "Fade Strength when phase is persistent else Alpha",
+      "candidate_direction_kind": "candidate_composite_direction",
+      "atom_keys": [
+        "strength_gate57e_side",
+        "strength_phase_bucket"
+      ],
+      "source_cells": [
+        "strength",
+        "alpha_v1"
+      ],
+      "transform_version": "gate64c_strength_persistent_fade_else_alpha_v1",
+      "tie_rule": "predeclared simple majority or explicit fallback, no optimized threshold",
+      "dependency_rule": "Strength persistent state fade context flag",
+      "complexity": 2
+    }
+  ]
+}

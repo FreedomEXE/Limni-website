@@ -1,0 +1,30 @@
+{
+  "gate_id": "Gate 76: pair-directional-two-sided-grid-and-reset-limit-lifecycle-discovery",
+  "command": "npm run engine:gate76:pair-directional-two-sided-grid-reset-limit-lifecycle-discovery",
+  "generated_at": "2026-06-29T20:31:16.014Z",
+  "git_commit": "0838a961b65e035350c12257d28edad55d8227f5",
+  "mode": "implementation_research_discovery_no_promotion",
+  "matrix_contract": {
+    "spacing_adr": 0.2,
+    "pair_two_sided_targets": [
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5
+    ],
+    "account_reset_targets": [
+      1,
+      1.5,
+      2,
+      3
+    ],
+    "reset_limits": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "unbounded_parameter_search_started": false
+  }
+}

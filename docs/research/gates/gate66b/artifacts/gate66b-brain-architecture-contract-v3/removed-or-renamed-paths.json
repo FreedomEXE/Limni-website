@@ -1,0 +1,20 @@
+{
+  "gate_id": "Gate 66B: brain-architecture-contract-v3",
+  "removed_or_renamed_paths": [
+    {
+      "previous_path": "engine/src/brain/body/arbitration/index.ts",
+      "current_path": null,
+      "reason": "deprecated placeholder namespace removed; no active imports."
+    },
+    {
+      "previous_path": "engine/src/brain/body/contracts/index.ts",
+      "current_path": null,
+      "reason": "deprecated placeholder namespace removed; no active imports."
+    },
+    {
+      "previous_path": "engine/src/brain/body/ledgers/index.ts",
+      "current_path": null,
+      "reason": "deprecated placeholder namespace removed; no active imports."
+    }
+  ]
+}

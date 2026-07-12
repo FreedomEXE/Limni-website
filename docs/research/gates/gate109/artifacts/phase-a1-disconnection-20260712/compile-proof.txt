@@ -1,0 +1,15 @@
+status=PASS
+compiler=C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5\MetaEditor64.exe
+source=
+C:\Users\User\Documents\GitHub\limni-website\automation\mt5\Experts\Limni\LimniPortfolioEA.mq5
+compile_invocations=1
+compile_result=
+Result: 0 errors, 0 warnings, 303193 ms elapsed, cpu='X64 Regular'
+compile_wrapper_exit_code=not-captured-after-compile-timeout
+source_count=
+53
+source_closure_delta=exactly_five_removed_files
+strategy_tester_run=false
+optimization_run=false
+benchmark_run=false
+terminal_synchronization=false

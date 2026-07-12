@@ -1,0 +1,83 @@
+=== all-28 universe switch ===
+automation/mt5/Experts/Include/Core/Config.mqh:49:input LP_UniverseMode RevmaUniverseMode = LP_UNIVERSE_CURRENT_CHART;
+automation/mt5/Experts/Include/Core/Config.mqh:111:   config.revma_universe_mode = RevmaUniverseMode;
+automation/mt5/Experts/Include/Core/Types.mqh:50:   LP_SYMBOL_COUNT = 28
+automation/mt5/Experts/Include/Core/Types.mqh:73:   LP_UNIVERSE_FX28 = 1
+automation/mt5/Experts/Include/Core/Engine.mqh:173:   bool RevmaSymbolActive(const LP_SymbolMeta &meta)
+automation/mt5/Experts/Include/Core/Engine.mqh:177:      if(m_config.revma_universe_mode == LP_UNIVERSE_FX28)
+automation/mt5/Experts/Include/Core/Engine.mqh:462:      if(m_config.revma_universe_mode != LP_UNIVERSE_FX28)
+automation/mt5/Experts/Include/Core/Engine.mqh:542:   int EvaluateRevmaSymbol(
+automation/mt5/Experts/Include/Core/Engine.mqh:835:      int new_symbol_ids[LP_SYMBOL_COUNT];
+automation/mt5/Experts/Include/Core/Engine.mqh:842:         if(m_config.enable_revma_system && !RevmaSymbolActive(meta))
+automation/mt5/Experts/Include/Core/Engine.mqh:860:            new_symbol_ids[new_symbol_count] = meta.symbol_id;
+automation/mt5/Experts/Include/Core/Engine.mqh:872:               if(!m_symbol_cache.Get(new_symbol_ids[i], meta))
+automation/mt5/Experts/Include/Core/Engine.mqh:874:               if(!RevmaSymbolActive(meta))
+automation/mt5/Experts/Include/Core/Engine.mqh:876:               EvaluateRevmaSymbol(meta, harvest, basic_sltp_block_new_entries);
+
+=== temporary basic SL/TP config and manifest ===
+automation/mt5/Experts/Include/Core/Config.mqh:61:input bool EnableBasicStopTakeProfit = false;
+automation/mt5/Experts/Include/Core/Config.mqh:62:input double BasicTakeProfitQ = 2.0;
+automation/mt5/Experts/Include/Core/Config.mqh:63:input double BasicStopLossQ = 2.0;
+automation/mt5/Experts/Include/Core/Config.mqh:64:input double BasicTakeProfitPct = 1.0;
+automation/mt5/Experts/Include/Core/Config.mqh:65:input double BasicStopLossPct = 1.0;
+automation/mt5/Experts/Include/Core/Config.mqh:122:   config.enable_basic_stop_take_profit = EnableBasicStopTakeProfit;
+automation/mt5/Experts/Include/Core/Config.mqh:123:   config.basic_take_profit_q = MathMax(0.0, BasicTakeProfitQ);
+automation/mt5/Experts/Include/Core/Config.mqh:124:   config.basic_stop_loss_q = MathMax(0.0, BasicStopLossQ);
+automation/mt5/Experts/Include/Core/Config.mqh:125:   config.basic_take_profit_pct = MathMax(0.0, BasicTakeProfitPct);
+automation/mt5/Experts/Include/Core/Config.mqh:126:   config.basic_stop_loss_pct = MathMax(0.0, BasicStopLossPct);
+automation/mt5/Experts/Include/Receipts/RunManifest.mqh:49:         "|basic_sltp_enabled=" + LP_BoolText(config.enable_basic_stop_take_profit) +
+automation/mt5/Experts/Include/Receipts/RunManifest.mqh:50:         "|basic_sltp_effective_mode=" + (config.revma_universe_mode == LP_UNIVERSE_FX28 ? "all28_account_pct" : "single_pair_q") +
+automation/mt5/Experts/Include/Receipts/RunManifest.mqh:110:   receipts.Summary("basic_sltp_enabled", LP_BoolText(config.enable_basic_stop_take_profit));
+automation/mt5/Experts/Include/Receipts/RunManifest.mqh:111:   receipts.Summary("basic_sltp_effective_mode", config.revma_universe_mode == LP_UNIVERSE_FX28 ? "all28_account_pct" : "single_pair_q");
+
+=== single-pair q SL/TP order path ===
+automation/mt5/Experts/Include/Receipts/DecisionLog.mqh:38:             intent.basic_take_profit_distance_price,
+automation/mt5/Experts/Include/Receipts/DecisionLog.mqh:39:             intent.basic_stop_loss_distance_price
+automation/mt5/Experts/Include/Receipts/DecisionLog.mqh:82:            plan.basic_take_profit_distance_price,
+automation/mt5/Experts/Include/Receipts/DecisionLog.mqh:83:            plan.basic_stop_loss_distance_price
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:93:   void BuildBasicStopTakeProfitPrices(
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:111:         "|basic_tp_distance_price=" + DoubleToString(MathMax(0.0, plan.basic_take_profit_distance_price), 8) +
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:112:         "|basic_sl_distance_price=" + DoubleToString(MathMax(0.0, plan.basic_stop_loss_distance_price), 8);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:115:         (plan.basic_take_profit_distance_price <= 0.0 && plan.basic_stop_loss_distance_price <= 0.0))
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:143:      if(plan.basic_stop_loss_distance_price > 0.0)
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:145:         if(min_stop_distance > 0.0 && plan.basic_stop_loss_distance_price < min_stop_distance)
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:148:            stop_loss = NormalizeDouble(entry_reference - plan.basic_stop_loss_distance_price, digits);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:150:            stop_loss = NormalizeDouble(entry_reference + plan.basic_stop_loss_distance_price, digits);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:153:      if(plan.basic_take_profit_distance_price > 0.0)
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:155:         if(min_stop_distance > 0.0 && plan.basic_take_profit_distance_price < min_stop_distance)
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:162:            take_profit = NormalizeDouble(entry_reference + plan.basic_take_profit_distance_price, digits);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:164:            take_profit = NormalizeDouble(entry_reference - plan.basic_take_profit_distance_price, digits);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:445:      BuildBasicStopTakeProfitPrices(plan, stop_loss, take_profit, entry_reference, sltp_detail);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:449:         "open_request",
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:455:         ok = m_trade.Buy(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
+automation/mt5/Experts/Include/Execution/TradeRouter.mqh:457:         ok = m_trade.Sell(normalized_lots, plan.symbol, 0.0, stop_loss, take_profit, plan.comment);
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:447:      intent.basic_take_profit_distance_price = 0.0;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:448:      intent.basic_stop_loss_distance_price = 0.0;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:458:   void ApplyBasicStopTakeProfit(
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:464:      intent.basic_take_profit_distance_price = 0.0;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:465:      intent.basic_stop_loss_distance_price = 0.0;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:476:         intent.basic_take_profit_distance_price = q_distance_basis * config.basic_take_profit_q;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:478:         intent.basic_stop_loss_distance_price = q_distance_basis * config.basic_stop_loss_q;
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:480:      if(intent.basic_take_profit_distance_price > 0.0 || intent.basic_stop_loss_distance_price > 0.0)
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:818:         ApplyBasicStopTakeProfit(spacing_q, config, add_intent);
+automation/mt5/Experts/Include/Strategies/RevmaGridSleeve.mqh:889:      ApplyBasicStopTakeProfit(signal.q, config, open_intent);
+automation/mt5/Experts/Include/Portfolio/RiskArbiter.mqh:140:      plan.basic_take_profit_distance_price = intent.basic_take_profit_distance_price;
+automation/mt5/Experts/Include/Portfolio/RiskArbiter.mqh:141:      plan.basic_stop_loss_distance_price = intent.basic_stop_loss_distance_price;
+
+=== all-28 account percent guard ===
+automation/mt5/Experts/Include/Receipts/ReceiptTypes.mqh:38:      case LP_RECEIPT_BASIC_SLTP_GUARD: return "basic_sltp_guard";
+automation/mt5/Experts/Include/Core/Types.mqh:217:   LP_RECEIPT_BASIC_SLTP_GUARD = 26
+automation/mt5/Experts/Include/Core/Engine.mqh:451:   bool EvaluateBasicStopTakeProfitGuard(
+automation/mt5/Experts/Include/Core/Engine.mqh:469:         reason = "basic_account_tp_pct";
+automation/mt5/Experts/Include/Core/Engine.mqh:471:         reason = "basic_account_sl_pct";
+automation/mt5/Experts/Include/Core/Engine.mqh:484:         LP_RECEIPT_BASIC_SLTP_GUARD,
+automation/mt5/Experts/Include/Core/Engine.mqh:504:   void AddBasicStopTakeProfitCloseIntent(
+automation/mt5/Experts/Include/Core/Engine.mqh:539:      WriteBasicStopTakeProfitGuardReceipt(portfolio, "account_exit_intent", reason, open_pnl_pct);
+automation/mt5/Experts/Include/Core/Engine.mqh:545:      const bool basic_sltp_block_new_entries
+automation/mt5/Experts/Include/Core/Engine.mqh:562:      if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
+automation/mt5/Experts/Include/Core/Engine.mqh:811:      bool basic_sltp_block_new_entries = EvaluateBasicStopTakeProfitGuard(
+automation/mt5/Experts/Include/Core/Engine.mqh:816:      if(basic_sltp_block_new_entries)
+automation/mt5/Experts/Include/Core/Engine.mqh:826:            AddBasicStopTakeProfitCloseIntent(
+automation/mt5/Experts/Include/Core/Engine.mqh:876:               EvaluateRevmaSymbol(meta, harvest, basic_sltp_block_new_entries);
+automation/mt5/Experts/Include/Core/Engine.mqh:910:               if(!harvest.block_new_entries && !basic_sltp_block_new_entries && m_config.enable_strategy_evaluation)
+automation/mt5/Experts/Include/Core/Engine.mqh:989:               "|basic_sltp_block_new_entries=" + LP_BoolText(basic_sltp_block_new_entries) +

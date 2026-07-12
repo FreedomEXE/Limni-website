@@ -1,0 +1,87 @@
+[
+  {
+    "metric": "final_equity_adr",
+    "definition": "cumulative closed ADR plus final week-end open unrealized ADR",
+    "content_hash": "EA1A36C4C0B7765B9F91C434943428A7F4EDB3DFD24AE8009FF1A6A036A01E03"
+  },
+  {
+    "metric": "closed_adr",
+    "definition": "sum of realized non-sample-end closes in ADR units",
+    "content_hash": "3E8BE1C4F86603091ED885084306491F81961B6BF3F65E1CCFC33C4A7D659D95"
+  },
+  {
+    "metric": "final_open_unrealized_adr",
+    "definition": "week-end open unrealized ADR at the final replay week",
+    "content_hash": "8663045C89BBA9E108D9CC9B2D4036AEFEF886D60D35C26BBF8088DD3812948B"
+  },
+  {
+    "metric": "worst_open_unrealized_adr",
+    "definition": "most negative week-end open unrealized ADR across the replay",
+    "content_hash": "063BAE121912D2DB5CF23D7F35D33F0962341518A96FB6198A0E246F743386AD"
+  },
+  {
+    "metric": "max_drawdown_adr",
+    "definition": "max peak-to-trough drawdown of weekly mark-to-market equity snapshots",
+    "content_hash": "6241E859D7A0E2A761E077E40E783C1A33597936F0E7F0D51B3FAEA343EFA609"
+  },
+  {
+    "metric": "return_dd_ratio",
+    "definition": "final equity ADR divided by absolute max drawdown ADR",
+    "content_hash": "CAA25377BC2A9918CDA4F23842699497D1E8893B1BB8BE5AF279F21A473169BB"
+  },
+  {
+    "metric": "weekly_mtm_profit_factor",
+    "definition": "profit factor over weekly mark-to-market equity deltas",
+    "content_hash": "DC38BF6A787D8A5D887DB49C61A3D20FE456A6A14C0A02D09BBCA1B05DD705CE"
+  },
+  {
+    "metric": "weekly_sharpe",
+    "definition": "ADR-normalized mean weekly MTM delta divided by weekly standard deviation; diagnostic only",
+    "content_hash": "8100A8FFBE2214BF5F2CAD1E6434D8A9F9A2B24D39224A4DB989EBAF4A72CD37"
+  },
+  {
+    "metric": "weekly_sortino",
+    "definition": "ADR-normalized mean weekly MTM delta divided by downside weekly standard deviation; diagnostic only",
+    "content_hash": "3EFCB65C3478EAF7A5CC6EFD836CCD1C89BD81ED1B1A3F1FF86D4473DD1E9C3C"
+  },
+  {
+    "metric": "weekly_win_rate",
+    "definition": "share of replay weeks with positive weekly MTM delta",
+    "content_hash": "9482532EADF5C4BC72030A0F1FDF87C9EA5E9D3A1EA4881E307D25F3E0FD3D03"
+  },
+  {
+    "metric": "monthly_win_rate",
+    "definition": "share of calendar months with positive summed weekly MTM delta",
+    "content_hash": "995244C66850794520F779ED7C88FB57D6871F3D7485800C6CDF3ACE59E3BC24"
+  },
+  {
+    "metric": "fills",
+    "definition": "sum of open and closed cycle fill quantities, including initial fills and sample-end open inventory fills",
+    "content_hash": "73BC3482CEC1B89C16A9527F3B89078E24FAB69498251E78CA6E01E496D25796"
+  },
+  {
+    "metric": "resets",
+    "definition": "side target resets; GRID_CAP_3 inherits a three-reset side cap per pair/week/side",
+    "content_hash": "747D064CC6F8810CF157F37061720CC1D38DAEF2B03999AD212823CD254B309A"
+  },
+  {
+    "metric": "pair_net_flatten_reset_count",
+    "definition": "kept as zero-valued schema continuity with Gate 82; Gate 82D does not replay pair-net flattening",
+    "content_hash": "EBB9341B425F211AB6B665B60C2064A28F9AA94C5E237AB4794FF6ED6EC4D580"
+  },
+  {
+    "metric": "active_side_week_count",
+    "definition": "count of pair/week/side slots that opened at least one cycle",
+    "content_hash": "A1F6FA0E527EA64CBF430F5963E78030BF3FD2B82CCD9D364FDF3849E1B10333"
+  },
+  {
+    "metric": "gate81_style_stressed_cost_final_equity_adr",
+    "definition": "gross final equity less 0.05 ADR per fill and 0.01 ADR per active side-week",
+    "content_hash": "F62F1B0E27AFCF0730E3C8BB3EE6C8AD1783F340DE2A8643AFA8BDAFF793AA6F"
+  },
+  {
+    "metric": "price_anchor_v2_replay",
+    "definition": "weekly price anchor is seeded first; first-entry levels use previous anchor high/low and row entry-price ADR-distance proxy",
+    "content_hash": "68228ED25E5C76B2ECC4FF9FC8BB3F9D7BB794BC6728BC3B307C0D93D1E17496"
+  }
+]

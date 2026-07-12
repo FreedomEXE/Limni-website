@@ -1,0 +1,21 @@
+{
+  "gate_id": "Gate 83: raw-hedged-grid-speed-simplification",
+  "command": "npm run engine:gate83:raw-hedged-grid-speed-simplification",
+  "speed_profile": "FULL_PAIR_HISTORY",
+  "durable_command": "npm run engine:gate83:raw-hedged-grid-speed-simplification -- --profile=FULL_PAIR_HISTORY --artifact-dir=docs/research/gates/gate83/artifacts/full-eurusd --report-path=docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FULL_EURUSD_2026-07-01.md",
+  "git_commit": "1bf6202fbf418e0943b6b0a8de31b78ce0f41cdf",
+  "generated_at": "2026-07-01T09:36:57.680Z",
+  "options": {
+    "gate74bDir": "docs/research/gates/gate74b/artifacts/gate74b-trade-leg-path-materialization",
+    "artifactDir": "docs/research/gates/gate83/artifacts/full-eurusd",
+    "reportPath": "docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FULL_EURUSD_2026-07-01.md",
+    "manifestId": null,
+    "speedProfile": "FULL_PAIR_HISTORY",
+    "onlyPair": "EURUSD",
+    "pairs": null,
+    "maxWeeks": null,
+    "weekFrom": null,
+    "weekTo": null,
+    "logProgress": true
+  }
+}

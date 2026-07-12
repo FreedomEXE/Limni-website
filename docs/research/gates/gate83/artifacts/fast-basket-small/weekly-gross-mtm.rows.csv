@@ -1,0 +1,2 @@
+variant_id,speed_profile,week_open_utc,closed_pnl_adr,open_unrealized_pnl_adr,equity_delta_adr,equity_snapshot_adr,fills,resets,content_hash
+RAW_HEDGED_GRID_T100_S020_NO_BOUNDARY,FAST_BASKET,2019-04-14T23:00:00.000Z,21.450233,-11.888479,9.561754,9.561754,106,18,BF31842CA9879E21E7AB1799598A31E41F20DB2F7BE645F8CE818E9C3E1B0B26

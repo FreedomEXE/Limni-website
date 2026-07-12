@@ -1,0 +1,820 @@
+{
+  "diagnostic_only": true,
+  "cot": {
+    "side_counts": {
+      "LONG": 5209,
+      "SHORT": 5235
+    },
+    "tei_spread_bucket_counts": {
+      "q1_low": 2692,
+      "q2_mid_low": 2632,
+      "q3_mid_high": 2556,
+      "q4_high": 2564
+    },
+    "lifecycle_state_counts": {
+      "carry_forward_2025_lapse_source_ambiguous_no_lookahead": 364,
+      "exact_report_date_available": 10024,
+      "holiday_adjusted_report_date_available": 56
+    },
+    "tie_flag_rows": 68,
+    "carry_forward_rows": 420,
+    "carry_previous_rows": 68,
+    "cohorts": [
+      {
+        "cohort_id": "cot_side_long",
+        "description": "COT rows with LONG side.",
+        "rows": 5209,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 841.680573,
+          "adr_mean": 0.161582,
+          "max_drawdown": -384.500919,
+          "r_over_drawdown": 2.189021,
+          "row_pf": 1.167964
+        },
+        "weekly_hold": {
+          "adr_sum": 257.453698,
+          "adr_mean": 0.049425,
+          "max_drawdown": -141.21633,
+          "r_over_drawdown": 1.823116,
+          "row_pf": 1.093641
+        }
+      },
+      {
+        "cohort_id": "cot_side_short",
+        "description": "COT rows with SHORT side.",
+        "rows": 5235,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 575.841323,
+          "adr_mean": 0.109998,
+          "max_drawdown": -223.84109,
+          "r_over_drawdown": 2.572545,
+          "row_pf": 1.110611
+        },
+        "weekly_hold": {
+          "adr_sum": 96.515666,
+          "adr_mean": 0.018437,
+          "max_drawdown": -118.668479,
+          "r_over_drawdown": 0.813322,
+          "row_pf": 1.034443
+        }
+      },
+      {
+        "cohort_id": "cot_tei_spread_bucket_q1_low",
+        "description": "COT rows in TEI spread bucket q1_low.",
+        "rows": 2692,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 339.424914,
+          "adr_mean": 0.126087,
+          "max_drawdown": -156.886537,
+          "r_over_drawdown": 2.163506,
+          "row_pf": 1.124949
+        },
+        "weekly_hold": {
+          "adr_sum": 78.129988,
+          "adr_mean": 0.029023,
+          "max_drawdown": -61.073353,
+          "r_over_drawdown": 1.279281,
+          "row_pf": 1.054137
+        }
+      },
+      {
+        "cohort_id": "cot_tei_spread_bucket_q2_mid_low",
+        "description": "COT rows in TEI spread bucket q2_mid_low.",
+        "rows": 2632,
+        "weeks": 370,
+        "adr_grid": {
+          "adr_sum": 348.858515,
+          "adr_mean": 0.132545,
+          "max_drawdown": -122.817825,
+          "r_over_drawdown": 2.840455,
+          "row_pf": 1.136121
+        },
+        "weekly_hold": {
+          "adr_sum": 22.513303,
+          "adr_mean": 0.008554,
+          "max_drawdown": -67.694089,
+          "r_over_drawdown": 0.332574,
+          "row_pf": 1.016147
+        }
+      },
+      {
+        "cohort_id": "cot_tei_spread_bucket_q3_mid_high",
+        "description": "COT rows in TEI spread bucket q3_mid_high.",
+        "rows": 2556,
+        "weeks": 358,
+        "adr_grid": {
+          "adr_sum": 542.959429,
+          "adr_mean": 0.212425,
+          "max_drawdown": -132.202108,
+          "r_over_drawdown": 4.107041,
+          "row_pf": 1.229045
+        },
+        "weekly_hold": {
+          "adr_sum": 140.078887,
+          "adr_mean": 0.054804,
+          "max_drawdown": -55.719796,
+          "r_over_drawdown": 2.513988,
+          "row_pf": 1.105454
+        }
+      },
+      {
+        "cohort_id": "cot_tei_spread_bucket_q4_high",
+        "description": "COT rows in TEI spread bucket q4_high.",
+        "rows": 2564,
+        "weeks": 370,
+        "adr_grid": {
+          "adr_sum": 186.279038,
+          "adr_mean": 0.072652,
+          "max_drawdown": -272.601117,
+          "r_over_drawdown": 0.683339,
+          "row_pf": 1.072562
+        },
+        "weekly_hold": {
+          "adr_sum": 113.247186,
+          "adr_mean": 0.044168,
+          "max_drawdown": -136.235326,
+          "r_over_drawdown": 0.831262,
+          "row_pf": 1.081726
+        }
+      },
+      {
+        "cohort_id": "cot_lifecycle_carry_forward_2025_lapse_source_ambiguous_no_lookahead",
+        "description": "COT lifecycle state carry_forward_2025_lapse_source_ambiguous_no_lookahead.",
+        "rows": 364,
+        "weeks": 13,
+        "adr_grid": {
+          "adr_sum": 98.296051,
+          "adr_mean": 0.270044,
+          "max_drawdown": -102.824654,
+          "r_over_drawdown": 0.955958,
+          "row_pf": 1.306631
+        },
+        "weekly_hold": {
+          "adr_sum": 19.969679,
+          "adr_mean": 0.054862,
+          "max_drawdown": -32.165083,
+          "r_over_drawdown": 0.62085,
+          "row_pf": 1.102253
+        }
+      },
+      {
+        "cohort_id": "cot_lifecycle_exact_report_date_available",
+        "description": "COT lifecycle state exact_report_date_available.",
+        "rows": 10024,
+        "weeks": 358,
+        "adr_grid": {
+          "adr_sum": 1454.278568,
+          "adr_mean": 0.14508,
+          "max_drawdown": -344.994076,
+          "r_over_drawdown": 4.215373,
+          "row_pf": 1.149871
+        },
+        "weekly_hold": {
+          "adr_sum": 330.83651,
+          "adr_mean": 0.033004,
+          "max_drawdown": -151.931271,
+          "r_over_drawdown": 2.177541,
+          "row_pf": 1.062162
+        }
+      },
+      {
+        "cohort_id": "cot_lifecycle_holiday_adjusted_report_date_available",
+        "description": "COT lifecycle state holiday_adjusted_report_date_available.",
+        "rows": 56,
+        "weeks": 2,
+        "adr_grid": {
+          "adr_sum": -135.052723,
+          "adr_mean": -2.411656,
+          "max_drawdown": -151.643523,
+          "r_over_drawdown": -0.890593,
+          "row_pf": 0.300116
+        },
+        "weekly_hold": {
+          "adr_sum": 3.163175,
+          "adr_mean": 0.056485,
+          "max_drawdown": 0,
+          "r_over_drawdown": null,
+          "row_pf": 1.092782
+        }
+      },
+      {
+        "cohort_id": "cot_tie_flag",
+        "description": "COT rows with tie flag.",
+        "rows": 68,
+        "weeks": 58,
+        "adr_grid": {
+          "adr_sum": 61.241862,
+          "adr_mean": 0.900616,
+          "max_drawdown": -7.502521,
+          "r_over_drawdown": 8.162838,
+          "row_pf": 4.726323
+        },
+        "weekly_hold": {
+          "adr_sum": -3.903188,
+          "adr_mean": -0.0574,
+          "max_drawdown": -9.78463,
+          "r_over_drawdown": -0.39891,
+          "row_pf": 0.882409
+        }
+      },
+      {
+        "cohort_id": "cot_carry_forward",
+        "description": "COT rows with carry-forward flag.",
+        "rows": 420,
+        "weeks": 15,
+        "adr_grid": {
+          "adr_sum": -36.756672,
+          "adr_mean": -0.087516,
+          "max_drawdown": -169.295347,
+          "r_over_drawdown": -0.217116,
+          "row_pf": 0.928424
+        },
+        "weekly_hold": {
+          "adr_sum": 23.132854,
+          "adr_mean": 0.055078,
+          "max_drawdown": -32.165083,
+          "r_over_drawdown": 0.719191,
+          "row_pf": 1.100845
+        }
+      },
+      {
+        "cohort_id": "cot_carry_previous",
+        "description": "COT rows with carry-previous flag.",
+        "rows": 68,
+        "weeks": 58,
+        "adr_grid": {
+          "adr_sum": 61.241862,
+          "adr_mean": 0.900616,
+          "max_drawdown": -7.502521,
+          "r_over_drawdown": 8.162838,
+          "row_pf": 4.726323
+        },
+        "weekly_hold": {
+          "adr_sum": -3.903188,
+          "adr_mean": -0.0574,
+          "max_drawdown": -9.78463,
+          "r_over_drawdown": -0.39891,
+          "row_pf": 0.882409
+        }
+      },
+      {
+        "cohort_id": "cot_agrees_with_strength",
+        "description": "COT rows agreeing with Strength Gate 57E.",
+        "rows": 6692,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 730.878633,
+          "adr_mean": 0.109217,
+          "max_drawdown": -307.199758,
+          "r_over_drawdown": 2.379164,
+          "row_pf": 1.110112
+        },
+        "weekly_hold": {
+          "adr_sum": 377.747063,
+          "adr_mean": 0.056448,
+          "max_drawdown": -130.755195,
+          "r_over_drawdown": 2.888964,
+          "row_pf": 1.106997
+        }
+      },
+      {
+        "cohort_id": "cot_disagrees_with_strength",
+        "description": "COT rows disagreeing with Strength Gate 57E.",
+        "rows": 3752,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 686.643263,
+          "adr_mean": 0.183007,
+          "max_drawdown": -236.679184,
+          "r_over_drawdown": 2.901156,
+          "row_pf": 1.191826
+        },
+        "weekly_hold": {
+          "adr_sum": -23.777699,
+          "adr_mean": -0.006337,
+          "max_drawdown": -108.029937,
+          "r_over_drawdown": -0.220103,
+          "row_pf": 0.988235
+        }
+      },
+      {
+        "cohort_id": "cot_agrees_with_rrp_inverse",
+        "description": "COT rows agreeing with RRP inverse.",
+        "rows": 4842,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 873.594658,
+          "adr_mean": 0.18042,
+          "max_drawdown": -177.508233,
+          "r_over_drawdown": 4.921432,
+          "row_pf": 1.195235
+        },
+        "weekly_hold": {
+          "adr_sum": 521.14273,
+          "adr_mean": 0.10763,
+          "max_drawdown": -90.875365,
+          "r_over_drawdown": 5.734698,
+          "row_pf": 1.215455
+        }
+      },
+      {
+        "cohort_id": "cot_disagrees_with_rrp_inverse",
+        "description": "COT rows disagreeing with RRP inverse.",
+        "rows": 5602,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 543.927238,
+          "adr_mean": 0.097095,
+          "max_drawdown": -353.908276,
+          "r_over_drawdown": 1.536916,
+          "row_pf": 1.09472
+        },
+        "weekly_hold": {
+          "adr_sum": -167.173366,
+          "adr_mean": -0.029842,
+          "max_drawdown": -260.077799,
+          "r_over_drawdown": -0.642782,
+          "row_pf": 0.946636
+        }
+      }
+    ]
+  },
+  "strength": {
+    "side_counts": {
+      "LONG": 4993,
+      "SHORT": 5451
+    },
+    "score_spread_bucket_counts": {
+      "q1_low": 2611,
+      "q2_mid_low": 2611,
+      "q3_mid_high": 2611,
+      "q4_high": 2611
+    },
+    "lifecycle_bucket_counts": {
+      "compressed": 2611,
+      "extreme": 2611,
+      "middle": 5222
+    },
+    "phase_bucket_counts": {
+      "flip": 1299,
+      "initial": 28,
+      "persistent": 9117
+    },
+    "action_label_counts": {
+      "fade": 7348,
+      "selected": 3096
+    },
+    "cohorts": [
+      {
+        "cohort_id": "strength_side_long",
+        "description": "Strength rows with LONG side.",
+        "rows": 4993,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 849.805138,
+          "adr_mean": 0.170199,
+          "max_drawdown": -203.597729,
+          "r_over_drawdown": 4.173942,
+          "row_pf": 1.178823
+        },
+        "weekly_hold": {
+          "adr_sum": 281.231397,
+          "adr_mean": 0.056325,
+          "max_drawdown": -110.277271,
+          "r_over_drawdown": 2.550221,
+          "row_pf": 1.107868
+        }
+      },
+      {
+        "cohort_id": "strength_side_short",
+        "description": "Strength rows with SHORT side.",
+        "rows": 5451,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 536.476174,
+          "adr_mean": 0.098418,
+          "max_drawdown": -278.750851,
+          "r_over_drawdown": 1.924572,
+          "row_pf": 1.098066
+        },
+        "weekly_hold": {
+          "adr_sum": 120.293365,
+          "adr_mean": 0.022068,
+          "max_drawdown": -158.601689,
+          "r_over_drawdown": 0.758462,
+          "row_pf": 1.041188
+        }
+      },
+      {
+        "cohort_id": "strength_score_spread_bucket_q1_low",
+        "description": "Strength rows in score spread bucket q1_low.",
+        "rows": 2611,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 573.566234,
+          "adr_mean": 0.219673,
+          "max_drawdown": -128.163268,
+          "r_over_drawdown": 4.475278,
+          "row_pf": 1.242613
+        },
+        "weekly_hold": {
+          "adr_sum": 31.075803,
+          "adr_mean": 0.011902,
+          "max_drawdown": -87.348249,
+          "r_over_drawdown": 0.355769,
+          "row_pf": 1.021997
+        }
+      },
+      {
+        "cohort_id": "strength_score_spread_bucket_q2_mid_low",
+        "description": "Strength rows in score spread bucket q2_mid_low.",
+        "rows": 2611,
+        "weeks": 370,
+        "adr_grid": {
+          "adr_sum": 394.814928,
+          "adr_mean": 0.151212,
+          "max_drawdown": -209.116361,
+          "r_over_drawdown": 1.888015,
+          "row_pf": 1.154152
+        },
+        "weekly_hold": {
+          "adr_sum": 158.346242,
+          "adr_mean": 0.060646,
+          "max_drawdown": -97.559481,
+          "r_over_drawdown": 1.623074,
+          "row_pf": 1.117041
+        }
+      },
+      {
+        "cohort_id": "strength_score_spread_bucket_q3_mid_high",
+        "description": "Strength rows in score spread bucket q3_mid_high.",
+        "rows": 2611,
+        "weeks": 365,
+        "adr_grid": {
+          "adr_sum": 398.211702,
+          "adr_mean": 0.152513,
+          "max_drawdown": -131.242379,
+          "r_over_drawdown": 3.03417,
+          "row_pf": 1.156713
+        },
+        "weekly_hold": {
+          "adr_sum": 49.457989,
+          "adr_mean": 0.018942,
+          "max_drawdown": -62.742827,
+          "r_over_drawdown": 0.788265,
+          "row_pf": 1.036243
+        }
+      },
+      {
+        "cohort_id": "strength_score_spread_bucket_q4_high",
+        "description": "Strength rows in score spread bucket q4_high.",
+        "rows": 2611,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 19.688448,
+          "adr_mean": 0.007541,
+          "max_drawdown": -222.37443,
+          "r_over_drawdown": 0.088537,
+          "row_pf": 1.007143
+        },
+        "weekly_hold": {
+          "adr_sum": 162.644728,
+          "adr_mean": 0.062292,
+          "max_drawdown": -120.155685,
+          "r_over_drawdown": 1.353617,
+          "row_pf": 1.116384
+        }
+      },
+      {
+        "cohort_id": "strength_lifecycle_compressed",
+        "description": "Strength lifecycle bucket compressed.",
+        "rows": 2611,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 697.549198,
+          "adr_mean": 0.267158,
+          "max_drawdown": -118.874051,
+          "r_over_drawdown": 5.867969,
+          "row_pf": 1.308039
+        },
+        "weekly_hold": {
+          "adr_sum": 83.933189,
+          "adr_mean": 0.032146,
+          "max_drawdown": -53.82446,
+          "r_over_drawdown": 1.559387,
+          "row_pf": 1.060533
+        }
+      },
+      {
+        "cohort_id": "strength_lifecycle_extreme",
+        "description": "Strength lifecycle bucket extreme.",
+        "rows": 2611,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": -13.414655,
+          "adr_mean": -0.005138,
+          "max_drawdown": -216.338757,
+          "r_over_drawdown": -0.062008,
+          "row_pf": 0.995259
+        },
+        "weekly_hold": {
+          "adr_sum": 119.562878,
+          "adr_mean": 0.045792,
+          "max_drawdown": -115.747209,
+          "r_over_drawdown": 1.032966,
+          "row_pf": 1.084689
+        }
+      },
+      {
+        "cohort_id": "strength_lifecycle_middle",
+        "description": "Strength lifecycle bucket middle.",
+        "rows": 5222,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 702.146769,
+          "adr_mean": 0.134459,
+          "max_drawdown": -323.035285,
+          "r_over_drawdown": 2.173592,
+          "row_pf": 1.136907
+        },
+        "weekly_hold": {
+          "adr_sum": 198.028695,
+          "adr_mean": 0.037922,
+          "max_drawdown": -114.046157,
+          "r_over_drawdown": 1.736391,
+          "row_pf": 1.072555
+        }
+      },
+      {
+        "cohort_id": "strength_phase_flip",
+        "description": "Strength phase bucket flip.",
+        "rows": 1299,
+        "weeks": 352,
+        "adr_grid": {
+          "adr_sum": 211.727351,
+          "adr_mean": 0.162993,
+          "max_drawdown": -116.087671,
+          "r_over_drawdown": 1.823857,
+          "row_pf": 1.171949
+        },
+        "weekly_hold": {
+          "adr_sum": 44.802589,
+          "adr_mean": 0.03449,
+          "max_drawdown": -61.715184,
+          "r_over_drawdown": 0.725957,
+          "row_pf": 1.065532
+        }
+      },
+      {
+        "cohort_id": "strength_phase_initial",
+        "description": "Strength phase bucket initial.",
+        "rows": 28,
+        "weeks": 1,
+        "adr_grid": {
+          "adr_sum": 27.916476,
+          "adr_mean": 0.997017,
+          "max_drawdown": 0,
+          "r_over_drawdown": null,
+          "row_pf": 7.027978
+        },
+        "weekly_hold": {
+          "adr_sum": 5.648293,
+          "adr_mean": 0.201725,
+          "max_drawdown": 0,
+          "r_over_drawdown": null,
+          "row_pf": 1.466521
+        }
+      },
+      {
+        "cohort_id": "strength_phase_persistent",
+        "description": "Strength phase bucket persistent.",
+        "rows": 9117,
+        "weeks": 372,
+        "adr_grid": {
+          "adr_sum": 1146.637485,
+          "adr_mean": 0.125769,
+          "max_drawdown": -297.84679,
+          "r_over_drawdown": 3.849756,
+          "row_pf": 1.127592
+        },
+        "weekly_hold": {
+          "adr_sum": 351.07388,
+          "adr_mean": 0.038508,
+          "max_drawdown": -172.806651,
+          "r_over_drawdown": 2.031599,
+          "row_pf": 1.072657
+        }
+      },
+      {
+        "cohort_id": "strength_action_fade",
+        "description": "Strength Gate 57E action label fade.",
+        "rows": 7348,
+        "weeks": 372,
+        "adr_grid": {
+          "adr_sum": 741.743564,
+          "adr_mean": 0.100945,
+          "max_drawdown": -326.044111,
+          "r_over_drawdown": 2.274979,
+          "row_pf": 1.100312
+        },
+        "weekly_hold": {
+          "adr_sum": 334.909851,
+          "adr_mean": 0.045578,
+          "max_drawdown": -193.660807,
+          "r_over_drawdown": 1.729363,
+          "row_pf": 1.08643
+        }
+      },
+      {
+        "cohort_id": "strength_action_selected",
+        "description": "Strength Gate 57E action label selected.",
+        "rows": 3096,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 644.537748,
+          "adr_mean": 0.208184,
+          "max_drawdown": -116.654818,
+          "r_over_drawdown": 5.52517,
+          "row_pf": 1.22788
+        },
+        "weekly_hold": {
+          "adr_sum": 66.614911,
+          "adr_mean": 0.021516,
+          "max_drawdown": -65.236573,
+          "r_over_drawdown": 1.021128,
+          "row_pf": 1.040304
+        }
+      },
+      {
+        "cohort_id": "strength_agrees_with_cot",
+        "description": "Strength rows agreeing with COT.",
+        "rows": 6692,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 730.878633,
+          "adr_mean": 0.109217,
+          "max_drawdown": -307.199758,
+          "r_over_drawdown": 2.379164,
+          "row_pf": 1.110112
+        },
+        "weekly_hold": {
+          "adr_sum": 377.747063,
+          "adr_mean": 0.056448,
+          "max_drawdown": -130.755195,
+          "r_over_drawdown": 2.888964,
+          "row_pf": 1.106997
+        }
+      },
+      {
+        "cohort_id": "strength_disagrees_with_cot",
+        "description": "Strength rows disagreeing with COT.",
+        "rows": 3752,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 655.402679,
+          "adr_mean": 0.174681,
+          "max_drawdown": -165.022827,
+          "r_over_drawdown": 3.971588,
+          "row_pf": 1.18281
+        },
+        "weekly_hold": {
+          "adr_sum": 23.777699,
+          "adr_mean": 0.006337,
+          "max_drawdown": -105.994336,
+          "r_over_drawdown": 0.22433,
+          "row_pf": 1.011905
+        }
+      },
+      {
+        "cohort_id": "strength_agrees_with_rrp_inverse",
+        "description": "Strength rows agreeing with RRP inverse.",
+        "rows": 4954,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 1238.943355,
+          "adr_mean": 0.250089,
+          "max_drawdown": -148.422565,
+          "r_over_drawdown": 8.347406,
+          "row_pf": 1.292864
+        },
+        "weekly_hold": {
+          "adr_sum": 544.920429,
+          "adr_mean": 0.109996,
+          "max_drawdown": -90.260611,
+          "r_over_drawdown": 6.03719,
+          "row_pf": 1.218888
+        }
+      },
+      {
+        "cohort_id": "strength_disagrees_with_rrp_inverse",
+        "description": "Strength rows disagreeing with RRP inverse.",
+        "rows": 5490,
+        "weeks": 373,
+        "adr_grid": {
+          "adr_sum": 147.337957,
+          "adr_mean": 0.026838,
+          "max_drawdown": -555.669627,
+          "r_over_drawdown": 0.265154,
+          "row_pf": 1.024588
+        },
+        "weekly_hold": {
+          "adr_sum": -143.395667,
+          "adr_mean": -0.026119,
+          "max_drawdown": -251.993265,
+          "r_over_drawdown": -0.569046,
+          "row_pf": 0.952803
+        }
+      }
+    ]
+  },
+  "bpr": {
+    "base_quality_counts": {
+      "carried_fresh": 369,
+      "carried_stale": 668,
+      "raw_present": 7082,
+      "synthetic_usd": 1110,
+      "timing_blocked_carry": 25,
+      "unresolved_no_prior": 1170,
+      "unresolved_source_ambiguous": 20
+    },
+    "quote_quality_counts": {
+      "carried_fresh": 548,
+      "carried_stale": 1369,
+      "raw_present": 5553,
+      "synthetic_usd": 1480,
+      "timing_blocked_carry": 24,
+      "unresolved_no_prior": 1455,
+      "unresolved_source_ambiguous": 15
+    },
+    "direction_rule_counts": {
+      "deterministic_unresolved_currency_rank_fallback": 259,
+      "numeric_value_comparison": 8043,
+      "single_numeric_state_degraded": 2142
+    },
+    "cohorts": [
+      {
+        "cohort_id": "bpr_promotion_eligible_pair_direction",
+        "description": "Rows where Gate 60H marks the BPR pair direction promotion eligible.",
+        "rows": 5113,
+        "weeks": 369,
+        "adr_grid": {
+          "adr_sum": 665.675935,
+          "adr_mean": 0.130193,
+          "max_drawdown": -292.768688,
+          "r_over_drawdown": 2.273727,
+          "row_pf": 1.136496
+        },
+        "weekly_hold": {
+          "adr_sum": 203.369635,
+          "adr_mean": 0.039775,
+          "max_drawdown": -65.767043,
+          "r_over_drawdown": 3.092273,
+          "row_pf": 1.075481
+        }
+      },
+      {
+        "cohort_id": "bpr_source_direction_eligible",
+        "description": "Rows where Gate 60G source-direction eligibility is true regardless of promotion eligibility.",
+        "rows": 8043,
+        "weeks": 370,
+        "adr_grid": {
+          "adr_sum": 711.478752,
+          "adr_mean": 0.088459,
+          "max_drawdown": -322.166963,
+          "r_over_drawdown": 2.208416,
+          "row_pf": 1.087523
+        },
+        "weekly_hold": {
+          "adr_sum": 252.135375,
+          "adr_mean": 0.031348,
+          "max_drawdown": -161.138816,
+          "r_over_drawdown": 1.564709,
+          "row_pf": 1.058556
+        }
+      },
+      {
+        "cohort_id": "bpr_promotion_ineligible_pair_direction",
+        "description": "Rows where BPR forced-28 direction exists but promotion eligibility is false.",
+        "rows": 5331,
+        "weeks": 275,
+        "adr_grid": {
+          "adr_sum": 251.017164,
+          "adr_mean": 0.047086,
+          "max_drawdown": -666.963698,
+          "r_over_drawdown": 0.376358,
+          "row_pf": 1.043677
+        },
+        "weekly_hold": {
+          "adr_sum": 79.471703,
+          "adr_mean": 0.014907,
+          "max_drawdown": -128.149761,
+          "r_over_drawdown": 0.620147,
+          "row_pf": 1.027473
+        }
+      }
+    ]
+  }
+}

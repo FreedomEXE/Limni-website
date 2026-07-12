@@ -1,0 +1,9 @@
+StateMap has_Toronto_ASOF_detail=True
+StateMap has_Toronto_DST_helper=True
+StateMap has_broker_to_utc_helper=True
+StateMap has_12_hour_suffix=True
+StateMap no_VISUAL_ONLY=True
+StateMap no_PAIR_SIGNAL=True
+StateMap no_LimniVisual=True
+Stochastic source_untouched_by_gate99zt=True
+Stochastic no_LimniVisual=True

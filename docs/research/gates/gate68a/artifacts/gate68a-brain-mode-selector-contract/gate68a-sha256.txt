@@ -1,0 +1,10 @@
+gate_id Gate 68A: brain-mode-selector-contract
+command npm run engine:gate68a:brain-mode-selector-contract
+generated_at 2026-06-28T04:40:24.280Z
+git_commit f0cf4f358a56865c68a17097f36d886ca7a0f8d5
+contract_json 796C86E90DC374E6E9807AB005C65EFF23A80F89C161F824AB62E0F620777BBA docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-contract.json
+rules_markdown 81B8A4925D3142BAA4C5C72FCD22610C405AFFBB0E5C58A1386C4FD098F5E10A docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-rules.md
+mode_map_json E4A5B05A2E6A8DCADCF1BE1A04017FF482CADB512578AAEAADC05E1FDD8F95A2 docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-mode-map.json
+reason_code_contract 87BE7BFFB87E932B1C852ED16F1025B93336B76D5481D654776B004F55E74D5F docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/brain-mode-selector-reason-code-contract.json
+summary_json E4EA19DF93B3B396098C74D6B2B48C8D190BABEBB388A948F8ABDDB62C38E0D2 docs/research/gates/gate68a/artifacts/gate68a-brain-mode-selector-contract/gate68a-summary.json
+report 4FA3B153F4443E446F49A151F3CEFCF472B1C6ACF7BEA6635842C27FC516F424 docs/research/gates/gate68a/GATE68A_BRAIN_MODE_SELECTOR_CONTRACT_2026-06-28.md

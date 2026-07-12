@@ -1,0 +1,15 @@
+StateMap version_1_58=True
+Stochastic version_1_15_unchanged=True
+StateMap local_qstate_builder_removed=True
+StateMap portfolio_qstate_hash_removed=True
+StateMap qstate_write_removed=True
+StateMap qstate_features_from_stack_removed=True
+StateMap qstate_read_only=True
+StateMap snapshot_missing_nonblocking_status=True
+StateMap qstate_attempt_marked_once_per_closed_m1=True
+StateMap qstate_refresh_after_projection=True
+StateMap local_qstate_no_longer_blocks_panel=True
+StateMap direct_cached_before_snapshot_read=True
+Stochastic direct_cached_before_snapshot_read=True
+EA files changed=False
+Katarakti files changed=False

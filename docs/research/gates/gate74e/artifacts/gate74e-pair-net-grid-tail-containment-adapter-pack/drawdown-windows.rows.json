@@ -1,0 +1,92 @@
+[
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 14735.376222,
+    "trough_equity_adr": 9272.831091,
+    "drawdown_adr": -5462.545131,
+    "content_hash": "1227E5BC6E43DC6D660CC4D1F5FAA3B4659720E2464CEC72355E41322C783916"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_050_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-10-12T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-01-19T00:00:00.000Z",
+    "peak_equity_adr": 6355.210036,
+    "trough_equity_adr": 5122.293117,
+    "drawdown_adr": -1232.916919,
+    "content_hash": "94D4AFD0EFC6E6AD9C8BCAC49911DF6046C346C1D0C71E776923B5C82B00FC5E"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_FILL_075_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-10T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-02-02T00:00:00.000Z",
+    "peak_equity_adr": 9330.986929,
+    "trough_equity_adr": 7437.298893,
+    "drawdown_adr": -1893.688036,
+    "content_hash": "FEA4C6FB741E9774E33CAEDDC897D8BEDFAB91DB87E000B5C352A60743D02D36"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_720H_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": null,
+    "drawdown_trough_week_open_utc": "2019-07-28T23:00:00.000Z",
+    "peak_equity_adr": 6743.057556,
+    "trough_equity_adr": -1017.983578,
+    "drawdown_adr": -1017.983578,
+    "content_hash": "847DED1DAE9A0E7AF360C570B40670EE921AE2D02010D25DC79AF9FAC4AEE455"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_MAX_AGE_2160H_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-10-12T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-02-23T00:00:00.000Z",
+    "peak_equity_adr": 10330.889428,
+    "trough_equity_adr": 7718.585569,
+    "drawdown_adr": -2612.303859,
+    "content_hash": "159F1F9BDEC64C6FA8822AA19B97D590245AED04311523E7B52745DA634C4C32"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_10_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2019-12-09T00:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-31T23:00:00.000Z",
+    "peak_equity_adr": 28.969838,
+    "trough_equity_adr": -1141.160536,
+    "drawdown_adr": -1170.130374,
+    "content_hash": "46A255E30B3A0A5CBDD9577172E70103E7877BF223FF9D83D657B6B1940BA454"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_15_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": null,
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "peak_equity_adr": 0,
+    "trough_equity_adr": -1155.925928,
+    "drawdown_adr": -1155.925928,
+    "content_hash": "41D1200F25B409150A146A4E12D155AE34A09F78D99F0DB7537CF272B3F48165"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_PAIR_STOP_20_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2021-06-27T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2024-06-30T23:00:00.000Z",
+    "peak_equity_adr": 342.254507,
+    "trough_equity_adr": -530.504007,
+    "drawdown_adr": -872.758514,
+    "content_hash": "47A64BE6D908E3D08BE0E47E35E14B855A797B23A9DC00E39786E4AEF1D52741"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_FREEZE_LOCK_15_UNTIL_FLIP_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": null,
+    "drawdown_trough_week_open_utc": "2022-08-14T23:00:00.000Z",
+    "peak_equity_adr": 0,
+    "trough_equity_adr": -621.810128,
+    "drawdown_adr": -621.810128,
+    "content_hash": "A9F4B3E55E10D3D8F3B1E7C17B8BC62665ABC54B67466B0258D84483DBBE9133"
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_T075_S020_RECOVERY_CLOSE_AFTER_15_TO_MINUS_250_RESTART_UNTIL_FLIP",
+    "drawdown_start_week_open_utc": "2025-08-17T23:00:00.000Z",
+    "drawdown_trough_week_open_utc": "2026-05-10T23:00:00.000Z",
+    "peak_equity_adr": 13006.189435,
+    "trough_equity_adr": 7906.17705,
+    "drawdown_adr": -5100.012385,
+    "content_hash": "DBD7A5B39D47D2458D54F02B3BB3CDFB039942E22A270CACC36A26AB7913B6BB"
+  }
+]

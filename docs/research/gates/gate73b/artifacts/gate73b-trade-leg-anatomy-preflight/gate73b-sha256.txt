@@ -1,0 +1,11 @@
+gate_id Gate 73B: candidate-b-trade-leg-anatomy-and-runner-preserving-exit-design-preflight
+command npm run engine:gate73b:trade-leg-anatomy-preflight
+generated_at 2026-06-29T01:26:42.935Z
+git_commit a561554a582dc2dc8532a5e140b8ce18f179d484
+trade_leg_final_composition 85B7BA51C883DB2ED6B1C83BD5D1E469BBDF553E8013567E0C5A5C1E68A893E9 docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/trade-leg-final-composition.rows.jsonl
+top_winner_decomposition B7FE3D8487D5E16754F4AE76F8FF6D15E6B31024BA4BE286E6A18A44967FF4EC docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/top-winner-decomposition.json
+green_giveback_endstate_composition 98C906A15075D0BA7E49C2B70244B413C5B0292E907CB3913230F9C3EE50129B docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/green-giveback-endstate-composition.json
+gate72_final_composition_forensics 9A59A00E27DF1A2CD7208DE426B96C32CA2385327B07ED3DC8F7D110F463AD9F docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/gate72-shortlist-final-composition-forensics.json
+trade_leg_path_timing_gap FF6EBEA52E1B22EDB5B35DB862B6ADAA32F0E4B205F332051B2ADEBC6E7E03AE docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/trade-leg-path-timing-gap.json
+summary_json 1E77B5DDD199CD1695E9EA69D4432F1E51E07DD9CCC1089E7156AD5BB78D538C docs/research/gates/gate73b/artifacts/gate73b-trade-leg-anatomy-preflight/gate73b-summary.json
+report 9DBC5D4F40EA979D5BDD91B6AB69D923D76E119E0FB5D7A9ABFB9F916C607624 docs/research/gates/gate73b/GATE73B_TRADE_LEG_ANATOMY_PREFLIGHT_2026-06-29.md

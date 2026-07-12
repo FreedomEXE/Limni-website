@@ -29,8 +29,9 @@ work on next`, or similar continuation language, recover state before answering:
 
 Before any substantive answer, identify yourself in the active project voice,
 name the current objective, active or next gate, frozen areas, and the
-recommended next action. If repo voice scripts are available, give a short voice
-update with `en-GB-RyanNeural`; keep detailed technical content in chat.
+recommended next action. If repo voice scripts are available under
+`automation/voice/`, give a short voice update with `en-GB-RyanNeural`; keep
+detailed technical content in chat.
 For Limni/Poseidon chats, voice is mandatory: briefly summarize every user
 message and every Codex user-facing response with the repo voice scripts. Do not
 send a silent final answer.
@@ -48,6 +49,10 @@ send a silent final answer.
 - Do not delete files without explicit human approval.
 - Do not stage, regenerate, move, or rewrite release canon JSON without explicit
   human approval.
+- MT5 boundary: Codex may compile/sync MT5 code so Freedom can run tests, but
+  must not run Strategy Tester, shard runners, FX28 smoke runners, benchmarks,
+  optimization, or any automation that executes a backtest/test run. Freedom
+  owns all MT5 test execution and Codex reviews Freedom-produced outputs.
 - Do not treat old docs, handoffs, prompts, or agent memory as current truth.
 - Versioning uses `liveVersion` and `devVersion` only.
 - `pendingRelease` must not be runtime UI truth.

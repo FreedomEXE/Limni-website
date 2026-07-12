@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T22:29:23.366Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json 7D2A72E271874648F08341C738052DC4DBF25BFD3CD5DC83737D78E12D1FAE53 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/activation-summary.rows.json
+weekly_json 8405D9E16D4DAA914BA244B3E7BE882E46AB4DE83BF0080AEA72527B7727E7AE docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/close-events.rows.json
+close_event_breakdowns_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/terminal-inventory.rows.json
+validation_json FE856715D51448B2BE639D13F5049613CA955322E1984E7061D718437F690D7E docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/validation.rows.json
+metric_definitions_json 0CF138C4871CF5DA4D5F81BC4E697467BB6B16457820D981B96B5D3947500C68 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/metric-definitions.rows.json
+command_receipt E0CB90740D1DA3FF53ED4612C9809FCE5E51E040FD367B40BC27B490942FD0AD docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/command-receipt.json
+run_summary_json 6B52B7AC50F74FC760A4A5CB4C620E5491D36CDED457383E421D6F9CB60F78DD docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/gate90-run-summary.json
+report 4F14792F823B8778E266E6DE3A78BD9D744DABD5F1E14505C2A93F6044536970 docs/research/gates/gate91/artifacts/gate91-formulaic-v21-ab-2019-open/GATE91_FORMULAIC_V21_AB_2019_OPEN.md

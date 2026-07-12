@@ -1,0 +1,74 @@
+[
+  {
+    "year": 2019,
+    "weeks": 38,
+    "weekly_forced_net_adr": 87.4695,
+    "carry_until_flip_net_adr": 107.6595,
+    "delta_adr": 20.19,
+    "weekly_forced_profit_factor": 1.440798,
+    "carry_until_flip_profit_factor": 1.568941
+  },
+  {
+    "year": 2020,
+    "weeks": 52,
+    "weekly_forced_net_adr": 45.483764,
+    "carry_until_flip_net_adr": 72.123764,
+    "delta_adr": 26.64,
+    "weekly_forced_profit_factor": 1.170654,
+    "carry_until_flip_profit_factor": 1.285472
+  },
+  {
+    "year": 2021,
+    "weeks": 52,
+    "weekly_forced_net_adr": 161.215592,
+    "carry_until_flip_net_adr": 187.875592,
+    "delta_adr": 26.66,
+    "weekly_forced_profit_factor": 2.128776,
+    "carry_until_flip_profit_factor": 2.416289
+  },
+  {
+    "year": 2022,
+    "weeks": 52,
+    "weekly_forced_net_adr": 28.47751,
+    "carry_until_flip_net_adr": 54.64751,
+    "delta_adr": 26.17,
+    "weekly_forced_profit_factor": 1.129491,
+    "carry_until_flip_profit_factor": 1.264015
+  },
+  {
+    "year": 2023,
+    "weeks": 52,
+    "weekly_forced_net_adr": 125.754449,
+    "carry_until_flip_net_adr": 152.174449,
+    "delta_adr": 26.42,
+    "weekly_forced_profit_factor": 1.69788,
+    "carry_until_flip_profit_factor": 1.904786
+  },
+  {
+    "year": 2024,
+    "weeks": 53,
+    "weekly_forced_net_adr": 20.341456,
+    "carry_until_flip_net_adr": 47.501456,
+    "delta_adr": 27.16,
+    "weekly_forced_profit_factor": 1.071045,
+    "carry_until_flip_profit_factor": 1.175385
+  },
+  {
+    "year": 2025,
+    "weeks": 52,
+    "weekly_forced_net_adr": -3.721961,
+    "carry_until_flip_net_adr": 22.338039,
+    "delta_adr": 26.06,
+    "weekly_forced_profit_factor": 0.984249,
+    "carry_until_flip_profit_factor": 1.100459
+  },
+  {
+    "year": 2026,
+    "weeks": 22,
+    "weekly_forced_net_adr": -35.297134,
+    "carry_until_flip_net_adr": -24.317134,
+    "delta_adr": 10.98,
+    "weekly_forced_profit_factor": 0.690362,
+    "carry_until_flip_profit_factor": 0.772904
+  }
+]

@@ -1,0 +1,11 @@
+Stochastic version_1_14=True
+StateMap version_1_56=True
+Stochastic stack_failure_returns_0=True
+StateMap stack_failure_returns_0=True
+Stochastic refresh_forces_full_projection=True
+StateMap refresh_forces_full_projection=True
+Stochastic full_projection_clears_buffer=True
+StateMap full_projection_clears_price_anchor=True
+StateMap full_projection_clears_state_anchor=True
+StateMap full_projection_resets_state_color=True
+Shared helper changed=False

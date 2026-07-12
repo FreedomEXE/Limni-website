@@ -1,0 +1,715 @@
+{
+  "manifest_id": "gate74b_trade_leg_path_ECDE7C4A6553",
+  "coverage": {
+    "complete_pair_weeks": 0,
+    "partial_pair_weeks": 10444,
+    "missing_pair_weeks": 0,
+    "default_adr_pair_weeks": 270,
+    "min_actual_bars": 3002,
+    "max_actual_bars": 6658,
+    "partial_samples": [
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "AUDCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6608,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "AUDCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5715,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "AUDJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6634,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "AUDNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6580,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "AUDUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 4969,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "CADCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5651,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "CADJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6630,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "CHFJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6637,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURAUD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5972,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6644,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5595,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURGBP",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5964,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6022,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6635,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "EURUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6160,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPAUD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6621,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6644,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6606,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6499,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6608,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "GBPUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5857,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "NZDCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6590,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "NZDCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5865,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "NZDJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6605,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "NZDUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5302,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "USDCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5682,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "USDCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 4596,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-14T23:00:00.000Z",
+        "pair": "USDJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6336,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "AUDCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6624,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "AUDCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5780,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "AUDJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6616,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "AUDNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6587,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "AUDUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5068,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "CADCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5809,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "CADJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6627,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "CHFJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6596,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURAUD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6148,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6649,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5716,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURGBP",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5983,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6133,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6646,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "EURUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6293,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPAUD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6607,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6646,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPCHF",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6607,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPJPY",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6508,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPNZD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6611,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "GBPUSD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 5968,
+        "coverage_state": "partial"
+      },
+      {
+        "week_open_utc": "2019-04-21T23:00:00.000Z",
+        "pair": "NZDCAD",
+        "expected_bar_count": 6660,
+        "actual_bar_count": 6619,
+        "coverage_state": "partial"
+      }
+    ]
+  },
+  "partial_samples": [
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6608,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5715,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6634,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6580,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "AUDUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 4969,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "CADCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5651,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "CADJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6630,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "CHFJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6637,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURAUD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5972,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6644,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5595,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURGBP",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5964,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6022,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6635,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "EURUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6160,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPAUD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6621,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6644,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6606,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6499,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6608,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "GBPUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5857,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "NZDCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6590,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "NZDCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5865,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "NZDJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6605,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "NZDUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5302,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "USDCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5682,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "USDCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 4596,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "pair": "USDJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6336,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "AUDCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6624,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "AUDCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5780,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "AUDJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6616,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "AUDNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6587,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "AUDUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5068,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "CADCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5809,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "CADJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6627,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "CHFJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6596,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURAUD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6148,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6649,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5716,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURGBP",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5983,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6133,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6646,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "EURUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6293,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPAUD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6607,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6646,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPCHF",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6607,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPJPY",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6508,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPNZD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6611,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "GBPUSD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 5968,
+      "coverage_state": "partial"
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "pair": "NZDCAD",
+      "expected_bar_count": 6660,
+      "actual_bar_count": 6619,
+      "coverage_state": "partial"
+    }
+  ]
+}

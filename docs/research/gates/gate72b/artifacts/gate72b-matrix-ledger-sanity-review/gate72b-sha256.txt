@@ -1,0 +1,10 @@
+gate_id Gate 72B: matrix-ledger-sanity-review
+command npm run engine:gate72b:matrix-ledger-sanity-review
+generated_at 2026-06-29T00:16:02.749Z
+git_commit dc2043d87e8e76763e674ffe2bac31bb313b3fe7
+matrix_integrity 72DCB6F1F8491F715B5D6CBC86522D0ECF36A99843D1E516283937C059A9D68E docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/matrix-ledger-integrity.json
+summary_json 9E5E5AF7C85D2CA7406E457F90E0DCB920A81A1286DE1D873427380CDBD43659 docs/research/gates/gate72b/artifacts/gate72b-matrix-ledger-sanity-review/gate72b-summary.json
+report BE8008E5CF20808FAF7CCB6AF7A6B0BBDA448D247BE8AD7D10F7E791677E4E02 docs/research/gates/gate72b/GATE72B_MATRIX_LEDGER_SANITY_REVIEW_2026-06-28.md
+gate71c_candidate_summaries 748BAE6915882030CF1D05347B56419AFB40973955DEB9A69643C54448DC02AB docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.candidate-summaries.json
+gate71c_weekly_rows 802B92668B6A9A3E974341F757360007616F8BD5646A4F925D24E445204623BB docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/exit-baseline-matrix.weekly.rows.jsonl
+gate71c_predeclared_matrix B93637942593C83B1987E94375694193F8D0B055D1968F438564099CAE434E95 docs/research/gates/gate71c/artifacts/gate71c-exit-baseline-matrix/predeclared-exit-baseline-matrix.json

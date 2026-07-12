@@ -1,0 +1,11 @@
+{
+  "flips": 902,
+  "flip_after_losing_streak_rate": 0.452328,
+  "flip_after_losing_last_week_rate": 0.511086,
+  "next_direction_first_week_positive_rate": 0.488914,
+  "flip_saved_loss_proxy_rate": 0.222838,
+  "flip_arrived_late_proxy_rate": 0.2051,
+  "average_prior_streak_adr": 0.78309,
+  "average_next_first_week_adr": -0.042999,
+  "average_next_streak_adr": 0.630346
+}

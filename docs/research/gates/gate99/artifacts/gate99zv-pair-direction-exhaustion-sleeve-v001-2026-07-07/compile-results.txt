@@ -1,0 +1,6 @@
+Gate 99ZV compile results
+formula_id: g99zv-pair-direction-exhaustion-v001
+formula_hash: 8337305153952970193
+repo StateMap: Result: 0 errors, 0 warnings, 6601 msec elapsed, cpu='X64 Regular'
+active StateMap: Result: 0 errors, 0 warnings, 5493 msec elapsed, cpu='X64 Regular'
+Stochastic: source not touched in Gate 99ZV; not recompiled.

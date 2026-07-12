@@ -1,0 +1,20 @@
+gate_id Gate 90D: triangle-reversion-grid-shadow-audit
+command npm run engine:gate90d:triangle-shadow-audit
+generated_at 2026-07-03T00:02:40.804Z
+git_commit ddc665ae2df6c9cdb1ee1f234eddc77f8ef411bb
+config C7AD0ADB51A4A64CEA92B747D227DFB4279B68FD72FE7F9A7C3FF8A73F065477 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/gate90d-config.json
+formula_config 5DF5FC23D0C817450C909AC853F5CC0E9261D64EF0063A591433F25842D87446 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/gate90d-formula-config.json
+pair_week_features_json AB46AF6EA69BF5D79D769031FACDAFF9A8B125F4CF3205CD7568B0AB4455E5F7 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/pair-week-feature.rows.json
+session_geometry_json BF65447B24B772CBC3D7BC6B66DA9C8D9A5CC7FD8BD3CEF844C4DDCB76EDBFED docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/session-geometry.rows.json
+katarakti_trigger_candidates_json F06EA7471D5F9F176D71EF785E7299B472F924230AA862E79D77E153510281C9 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/katarakti-trigger-candidates.rows.json
+grid_lock_shadow_json 8B09DCF1117DFFB085B8B0EB663D9F9746142D42146B0257B93714BFD07D7A74 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/grid-lock-shadow.rows.json
+summary_json 28EB94BC5C67F820046A0C897A4CEC99BECEFA2FF29EB436A6DA0481DD61D799 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/gate90d-summary.rows.json
+trigger_context_summary_json 79BBCDB7058C90037F7937135CEA4C70204A5692EEFAC8D3B91548153841A4A2 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/trigger-context-summary.rows.json
+grid_lock_shadow_by_variant_json E7081CC66621B44A86BE507462D40D75BE90B85FF23BA34216A02C3EE748C124 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/grid-lock-shadow-by-variant.rows.json
+geometry_regime_summary_json EAF3C6D3D970407FF9026E3A042B9D4BFC6FA36FAAD649E982FC92354BBEA9C0 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/geometry-regime-summary.rows.json
+session_geometry_regime_summary_json 4CC9B28B78920FC52F9A86C4996AAA754E2A25E5F2238EAC690DCAF8005C4CBE docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/session-geometry-regime-summary.rows.json
+start_traceability_json 38877EB9A8F230165C71D5F4D160786B09F779C3F69A2B5C862DB791B4A69449 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/start-traceability.rows.json
+start_traceability_summary_json 3201FC74D3C14FE972531D72245E967C6EDC134624EC8192E4C9BF60789DCEE2 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/start-traceability-summary.rows.json
+start_traceability_by_variant_json C86F1AF4BDBDFE90D5E55C7E6168404FB6C0AB4422F6BF339342177554F562B1 docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/start-traceability-by-variant.rows.json
+start_traceability_by_geometry_json 6BBF2BF9348B3F3031090E3DBC6B0588F083604CF9BDDCD4AFA6AA0298AE352B docs/research/gates/gate90/artifacts/gate90d-triangle-shadow-audit-oos4-5w/start-traceability-by-geometry.rows.json
+report 0E0822B655EE82B2070FFFAEE527E08442265AE992A7A66D97ECAF3536BA726E docs/research/gates/gate90/GATE90D_TRIANGLE_FEATURE_SHADOW_AUDIT_2026-07-02.md

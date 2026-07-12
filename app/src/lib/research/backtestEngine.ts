@@ -1,4 +1,4 @@
-import { hashResearchConfig } from "@/lib/research/hash";
+import { hashResearchConfig } from "@engine/research/hash";
 import type {
   ResearchConfig,
   ResearchModel,
@@ -9,6 +9,7 @@ import {
   computeTrailingDrawdownPct,
 } from "@/lib/risk/drawdown";
 
+// Deprecated app research UI mock. Do not use as institutional engine truth.
 const MODEL_ORDER = ["antikythera", "blended", "dealer", "commercial", "sentiment"] as const;
 
 function mulberry32(seed: number) {

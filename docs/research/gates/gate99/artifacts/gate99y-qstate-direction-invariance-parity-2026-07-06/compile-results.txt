@@ -1,0 +1,44 @@
+Gate 99Y - QState direction invariance and EA/indicator parity compile results
+Generated UTC: 2026-07-06T22:35:06Z
+Git HEAD at compile time: 37a4bdc076aa1941969a826baf27575fdfba628d
+Branch: codex/gate88-mt5-lifecycle-protection-controls
+
+repo-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 13774 msec elapsed, cpu='X64 Regular'
+Log SHA256: E713361EF6BC0FD61CEBD441352817AEB2E1C7EA5FB2E15AF19AF41973986C61
+
+repo-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2494 msec elapsed, cpu='X64 Regular'
+Log SHA256: F0014CA84340CDDF27B73C3E1244EF4E2AE388F337B524EEA25878E6F213530A
+
+active-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 13758 msec elapsed, cpu='X64 Regular'
+Log SHA256: 3DB21DFA729308459592A24677B4F6E9E546A4C27EDBFEDAE581EB4101A87E0B
+
+active-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2390 msec elapsed, cpu='X64 Regular'
+Log SHA256: 285BB01915E6A3460D7EF8A11092C8B0DD1245ED00B4AD0170E0DD507648A416
+
+Interpretation
+MetaEditor returned immediately in this local setup; the compile log result line is the proof surface. The known local clean pattern remains exit-code-insensitive when the log reports 0 errors and 0 warnings.
+
+Verdict
+PASS_GATE99Y_QSTATE_DIRECTION_INVARIANCE_PARITY_COMPILES_NO_LIVE_CLAIM_NO_BACKTEST_CLAIM
+
+Final push compile proof - 2026-07-06
+final-repo-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 12441 msec elapsed, cpu='X64 Regular'
+Log SHA256: 1D0562618F0907E9160FF11992E017CD317FB8B11BA772EC5BC4A51117014BBE
+
+final-repo-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2342 msec elapsed, cpu='X64 Regular'
+Log SHA256: 532492807D40D161F544CEFB44126C8CB01D2A911D6D0FACA31550AC58201656
+
+final-active-LimniPortfolioEA-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 12051 msec elapsed, cpu='X64 Regular'
+Log SHA256: 6BA8C1F338CE42FFE1889FC2D923DFAC6D0DBB31395CEB2BE401CDA919870B08
+
+final-active-QStateDirection-compile-log.txt
+Log result: Result: 0 errors, 0 warnings, 2425 msec elapsed, cpu='X64 Regular'
+Log SHA256: 6146C41622F2D324CE9D9453D82099CC96CC948E2D4EBAAC70440A4B1FB3F087
+

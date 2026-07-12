@@ -1,0 +1,18 @@
+{
+  "gate_id": "Gate 75A: broad-exit-family-taxonomy-and-matrix-protocol-freeze",
+  "source_verdict": "PASS_GATE74E_PAIR_NET_GRID_TAIL_CONTAINMENT_ADAPTER_PACK__TAIL_MECHANICS_AND_UNIVERSAL_CONTAINMENT_RANKING_VISIBLE_NO_PROMOTION",
+  "accepted_as_research_evidence": true,
+  "interpretation": "simple universal containment reduced tail pain but did not fix the Gate 74C/74D focus adapter; the uncontained baseline still ranked best by final equity",
+  "focus_baseline_final_equity_adr": 9901.156008,
+  "focus_baseline_equity_pf": 1.254319,
+  "focus_baseline_max_drawdown_adr": -5462.545131,
+  "focus_baseline_final_open_unrealized_adr": -4480.156606,
+  "no_local_74e_refinement_without_near_miss": true,
+  "negative_carry_forward": [
+    "pair stops contained tails but destroyed harvest",
+    "freeze/lock must keep loss visible and was not equity-positive",
+    "max-fill and max-age were survivability trade-offs, not promotion candidates",
+    "exact account-level lifecycle exits require synchronized all-pair replay"
+  ],
+  "content_hash": "0D36137030A6FBB93918CB2BAB76BABBB668FBC43294C16FC4916C6EE8F9CB24"
+}

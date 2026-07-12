@@ -4,7 +4,7 @@ Home for database-owned assets.
 
 ## Contents
 
-- `db/` - SQL schema and database helper scripts.
+- `db/` - Neutral DB client, root env loader, SQL schema, and migration helper.
 - `migrations/` - Durable migrations.
 - `contracts/` - Data and integration contracts.
 

@@ -1,5 +1,5 @@
 import { query, queryOne } from "@/lib/db";
-import { hashResearchConfig, stableStringify } from "@/lib/research/hash";
+import { hashResearchConfig, stableStringify } from "@engine/research/hash";
 import type { ResearchConfig, ResearchRunResult, ResearchRunStatus } from "@/lib/research/types";
 
 type ResearchRunRow = {

@@ -1,0 +1,17 @@
+gate_id Gate 96A: limnihedge-type3-adr-long-causality-accounting-inventory-audit
+command npm run engine:gate96a:limnihedge-type3-adr-long-causality-accounting-inventory-audit
+generated_at 2026-07-05T00:09:36.618Z
+git_commit adb88b90b272414de686a0e776b5f4119c208eb7
+config 608000FDF2A35E03F295FA5C4F00C243E9F68238933638E8E035AC6A011337C8 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/gate96a-config.json
+report CAB4A930AF97613D07DB93ABA52722A05DFAFD20D648DB03F5D281EF04172810 docs/research/gates/gate96a/GATE96A_LIMNIHEDGE_TYPE3_ADR_LONG_CAUSALITY_ACCOUNTING_INVENTORY_AUDIT_2026-07-04.md
+causality 63F98E72239C5695092392E75860D0D667ECA4712FD782FA1E2480065259EB13 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/causality-audit.rows.json
+pnl D04C886F45F6094C63264C800DFAABD5361EF61E807844F9FA43ACA5BFB79CAD docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/pnl-reconciliation.rows.json
+inventory BC264EE73FDDDC43A835BEEE140CB3923858573091B7FA1421C06C09CDD26733 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/inventory-markout.rows.json
+month_end_marked_equity 84FFEC1E43534E1C34118C161D90988526E137E50FBBF0F2E7556745C8F65AAF docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/month-end-marked-equity.rows.json
+pair_concentration 47C8C4174A87A17604C90420A4356DEC57CDA38C8A807E7F3EF2936442CBDA4B docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/pair-concentration.rows.json
+currency_exposure 3637473CA41C41E1C296185D09C4736BC8DD9C8A6F672499F96A7578729DA8EC docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/currency-exposure.rows.json
+null_controls C04DE38A2616FB2567EF04D6BB99457B513AEE52DD706C0ECE1A8531792E5AFC docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/null-control-summary.rows.json
+candidate_b_decomposition 252011621E86E620245B91C6887F22A6AA5FEDC36B7A2B76BEDE9C262B9CC54B docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/candidate-b-decomposition.rows.json
+validation E17175B99A0EADC4CB843C848D37582BD961AB5AF3FC3DB1B6182302E4BC95B9 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/validation.rows.json
+run_summary E9048A3190197256E8D24DE19719E53851138B8A5C0D39ACCABDDCC88B567F58 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/gate96a-run-summary.json
+command_receipt CB1300D1A10AD02F6D69FBB2C2222CEE1D4DE2B780FDF401DE3BDDD36F152360 docs/research/gates/gate96a/artifacts/limnihedge-type3-adr-long-causality-accounting-inventory-audit/command-receipt.json

@@ -1,0 +1,19 @@
+{
+  "forbidden_base_fields": [
+    "policy_id",
+    "policy_decision",
+    "open_state",
+    "closed_state",
+    "close_reason",
+    "realized_policy_pnl",
+    "unrealized_policy_pnl",
+    "policy_drawdown",
+    "promotion_flag",
+    "risk_sizing"
+  ],
+  "checked_field_count": 36,
+  "forbidden_field_violations": [],
+  "required_manifest_fields_present": true,
+  "required_path_point_fields_present": true,
+  "columnar_storage_note": "Path points are stored as compressed columnar arrays with pair-week path_hash and chunk_hash durability, not one physical DB row per minute point."
+}

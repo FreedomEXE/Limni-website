@@ -1,0 +1,84 @@
+{
+  "gate_id": "Gate 64A: silent-missing-atom-audit",
+  "command": "npm run engine:gate64a:silent-missing-atom-audit",
+  "generated_at": "2026-06-27T21:09:37.277Z",
+  "git_commit": "4c06a3aaddbb4ab5dba062a05cae722c4d8f3cae",
+  "verdict": "PASS_SILENT_MISSING_ATOM_AUDIT__VALUATION_GAP_REQUIRED_FOR_GATE64B__NO_OTHER_REQUIRED_MISSING",
+  "denominator": {
+    "alpha_rows": 10444,
+    "expected_alpha_rows": 10444,
+    "alpha_weeks": 373,
+    "expected_alpha_weeks": 373,
+    "symbols_per_week_histogram": {
+      "28": 373
+    },
+    "expected_symbols_per_week": 28,
+    "full_weeks": 373,
+    "duplicate_week_symbol_rows": 0,
+    "bpr_pair_direction_rows": 10444,
+    "expected_atom_count": 32,
+    "required_missing_count": 1,
+    "non_valuation_required_missing_count": 0,
+    "valuation_gap_missing": true,
+    "source_mutation_rows": 0
+  },
+  "decisions": {
+    "required_now": [
+      "valuation_gap"
+    ],
+    "optional_shadow_only": [
+      "bpr_futures_and_options"
+    ],
+    "already_covered": [
+      "cot_side",
+      "cot_tei_spread",
+      "cot_abs_tei_spread",
+      "cot_tei_spread_bucket",
+      "cot_tie_flag",
+      "cot_carry_forward_flag",
+      "cot_carry_previous_flag",
+      "cot_lifecycle_state",
+      "strength_gate57e_side",
+      "strength_parent_side",
+      "strength_score_spread",
+      "strength_abs_score_spread",
+      "strength_score_spread_bucket",
+      "strength_lifecycle_bucket",
+      "strength_phase_bucket",
+      "strength_lifecycle_phase_key",
+      "strength_gate57c_side",
+      "strength_gate57c_action_label",
+      "strength_gate57d_side",
+      "strength_gate57d_action_label",
+      "strength_gate57e_action_label",
+      "bpr_futures",
+      "bpr_futures_carried_state",
+      "bpr_futures_synthetic_usd_state",
+      "nominal_rate_3m",
+      "cpi_inflation_yoy",
+      "rrp_derived",
+      "ppp",
+      "neer",
+      "reer"
+    ],
+    "fail_closed_with_reason": []
+  },
+  "input_hashes": {
+    "gate59_alpha_ledger": "E4366A2218F91C9F19795BFAC677215F179ED89B68067F2F5B9A81DEAACB0633",
+    "gate60c_summary": "92AD0A5D45EFA0E08D7DDD01AA810DB41854A8396713590A694C87AF744F36C0",
+    "gate60c_registry": "21A589427CE62A28A4184F96438557BBC0CC29EB1331A86CB4D2C1229FC0E850",
+    "gate60g_bpr_pair_direction_ledger": "15FCBCD62973A889423A328D5C32D72965EAC584034EE202070B636881CB7939",
+    "gate60h_summary": "D3D7ECF367D0DCC598A818CE230D610CE588CFFC08AB9BF2E919A685DB942DC5",
+    "gate61b_inventory": "33C275B6FD15FC7CD63D7A008B520D2FD2800B911631D855179A541AA4C6D567",
+    "gate63_candidate_contracts": "E26E7E8ACC2C44ACCFAE19BF22BCD8F33164E4F9F10AB6AFD749F2AE8806C449"
+  },
+  "stop_line": "Stop Gate 64A after audit. Proceed to Gate 64B only because valuation_gap is the only required missing atom and it can be tested against existing valuation inputs without source mutation.",
+  "artifacts": {
+    "expectedInventory": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/expected-atom-inventory.contract.json",
+    "emittedMap": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/emitted-vs-expected-atom-map.json",
+    "missingReport": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/missing-atom-report.json",
+    "matrixVisibility": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/matrix-visibility-report.json",
+    "shaIdentity": "docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.sha256.txt",
+    "report": "docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md"
+  }
+}

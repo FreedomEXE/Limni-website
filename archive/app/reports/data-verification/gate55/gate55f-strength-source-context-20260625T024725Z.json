@@ -1,0 +1,113 @@
+{
+  "status": "PASS_CANONICAL_STRENGTH_SOURCE_CONTEXT_28_28_FULL_HORIZON",
+  "gate": "Gate 55F: canonical-strength-source-context-proof",
+  "generatedAtUtc": "2026-06-25T02:47:25.930Z",
+  "noWrite": false,
+  "identity": {
+    "priceBundleId": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "priceBundleReceipt": "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
+    "derivationVersion": "fx_m1_currency_strength_v1",
+    "sourceTable": "canonical_price_bars",
+    "sourceTimeframe": "1m",
+    "sourceProvider": "canonical_price_bars",
+    "localSqliteSourceAllowed": false,
+    "localSqliteEnv": {
+      "LIMNI_M1_WAREHOUSE": null,
+      "LIMNI_M1_SQLITE_PATH": null
+    }
+  },
+  "options": {
+    "fromWeek": "2019-01-07T00:00:00.000Z",
+    "toWeek": "2026-06-07T23:00:00.000Z",
+    "windows": [
+      "1h",
+      "4h",
+      "24h",
+      "1w",
+      "1m"
+    ],
+    "cadenceMinutes": 15,
+    "marketOpenForwardMinutes": 180,
+    "holidayMarketOpenForwardMinutes": 2880,
+    "fridayBackwardMinutes": 60,
+    "minPairCoveragePct": 100,
+    "batchWeeks": 16,
+    "outDir": "app\\reports\\data-verification\\gate55",
+    "noWrite": false
+  },
+  "summary": {
+    "weeks": 387,
+    "pairs": 28,
+    "expectedParentRowsPerPoint": 10836,
+    "points": [
+      "friday_close",
+      "market_open_confirmation"
+    ],
+    "snapshotTimes": 7686,
+    "snapshotRows": 307440,
+    "completeSnapshotRows": 279520,
+    "incompleteSnapshotRows": 27920,
+    "minCoveragePct": 0,
+    "maxCoveragePct": 100,
+    "elapsedSeconds": 2707.72
+  },
+  "pointSummaries": [
+    {
+      "pointId": "friday_close",
+      "weeks": 387,
+      "parentRows": 10836,
+      "retainedRows": 10836,
+      "removedRows": 0,
+      "fullSignalWeeks": 387,
+      "fullHorizonWeeks": 387,
+      "partialSignalWeeks": 0,
+      "unavailableWeeks": 0,
+      "partialHorizonWeeks": 0,
+      "longRows": 5598,
+      "shortRows": 5238,
+      "neutralRows": 0,
+      "missingWindowLookups": 0,
+      "minAvailableWindows": 5,
+      "maxAvailableWindows": 5,
+      "missingReasons": {}
+    },
+    {
+      "pointId": "market_open_confirmation",
+      "weeks": 387,
+      "parentRows": 10836,
+      "retainedRows": 10836,
+      "removedRows": 0,
+      "fullSignalWeeks": 387,
+      "fullHorizonWeeks": 387,
+      "partialSignalWeeks": 0,
+      "unavailableWeeks": 0,
+      "partialHorizonWeeks": 0,
+      "longRows": 5477,
+      "shortRows": 5359,
+      "neutralRows": 0,
+      "missingWindowLookups": 0,
+      "minAvailableWindows": 5,
+      "maxAvailableWindows": 5,
+      "missingReasons": {}
+    }
+  ],
+  "nonFullSignalWeeks": [],
+  "nonFullHorizonWeeks": [],
+  "hardLocks": {
+    "noCotStrengthCombination": true,
+    "noRegimeFilters": true,
+    "noBprRrpRetests": true,
+    "noPppNeerReer": true,
+    "noExecutionOptimization": true,
+    "noRiskOverlay": true,
+    "noMt5LiveBot": true,
+    "noFinalSystemSelection": true,
+    "noSelectedVsFadePerformanceRun": true
+  },
+  "command": "C:\\Users\\User\\AppData\\Local\\Volta\\tools\\image\\node\\24.8.0\\node.exe C:\\Users\\User\\Documents\\GitHub\\limni-website\\app\\scripts\\verification\\audit-gate55f-strength-source-context.ts --from-week=2019-01-07 --to-week=2026-06-08 --batch-weeks=16",
+  "receiptHash": "6A1E553CE7F5F1014F75A545FB0000B6C6238AB22813DF597766BDF14D9F9959",
+  "files": {
+    "json": "app\\reports\\data-verification\\gate55\\gate55f-strength-source-context-20260625T024725Z.json",
+    "markdown": "app\\reports\\data-verification\\gate55\\gate55f-strength-source-context-20260625T024725Z.md"
+  }
+}

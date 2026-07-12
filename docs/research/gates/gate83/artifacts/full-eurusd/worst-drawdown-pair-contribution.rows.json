@@ -1,0 +1,11 @@
+[
+  {
+    "variant_id": "RAW_HEDGED_GRID_T100_S020_NO_BOUNDARY",
+    "speed_profile": "FULL_PAIR_HISTORY",
+    "pair": "EURUSD",
+    "drawdown_window_start_utc": "2025-02-24T00:00:00.000Z",
+    "drawdown_window_end_utc": "2025-03-03T00:00:00.000Z",
+    "gross_mtm_contribution_adr": -87.134813,
+    "content_hash": "0A86EFDB8722C8BFE97453E78B471023B97E973B18505A1ABCC98B97A34FD3FD"
+  }
+]

@@ -1,0 +1,15 @@
+[
+{"check":"gate95_erratum_exists","value":"docs/research/gates/gate95/GATE95_ERRATUM_INVALIDATED_BY_GATE96A_ACCOUNTING_2026-07-04.md","expected":"erratum committed before Gate95R","passed":true,"content_hash":"955E680C2E1FBD73A2F1BF0AC7569EF28B827C42680D36F32F2E88F5384C0F56"},
+{"check":"gate95_oos_validation_failures","value":0,"expected":0,"passed":true,"content_hash":"21CB8043663B655774CEAFAD4B3823A48995AE31D1E729A1425789DE1BEB962D"},
+{"check":"same_gate95_oos_window","value":"2025-01-01T00:00:00.000Z..2026-05-31T23:59:59.999Z","expected":"2025-01-01T00:00:00.000Z..2026-05-31T23:59:59.999Z","passed":true,"content_hash":"B26D86FAFC55F479416FA176A0837FC838C110D602AB2F7E37651691A472D24B"},
+{"check":"variant_count","value":25,"expected":25,"passed":true,"content_hash":"9550F04FED24B0DC527AB7BF2DE05B08E3E4EC760485677235C9FED473BAC294"},
+{"check":"old_gate95_modeled_conversion_path_used_by_gate95r","value":"correctedFxPnl helper","expected":"no old Gate95 conversion function","passed":true,"content_hash":"D83C039995A810DB55FCF810DAC3D408C26FA14E042182E621BE8B2913B89CF6"},
+{"check":"corrected_conversion_gap_rows","value":0,"expected":0,"passed":true,"content_hash":"A66681619854CDB359B4236DC3A53237F5E58749D5BB5F73C03EB0597B1B9511"},
+{"check":"closed_plus_marked_equity_present","value":25,"expected":25,"passed":true,"content_hash":"DE2DEC796253DECE041090CA4BB32CCB8DF8307C260EE7A28469D2CE7E01AAC5"},
+{"check":"month_end_marked_equity_rows","value":425,"expected":"25 variants x 17 months","passed":true,"content_hash":"DD349B9E63AEAD8B524F0CFA42479FA0AF904CA5F04C8F42B485B644BA0F2A08"},
+{"check":"cost_stress_rows","value":100,"expected":100,"passed":true,"content_hash":"E7CF726B4CFB730CCE43D429D73D26ABA69A56392D7DB3759BE3D16D979F363B"},
+{"check":"price_bundle_id","value":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","expected":"gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953","passed":true,"content_hash":"EF2D5C52C47BBA85CD7D22DF5FFD73B9682D77B631D66375208F013BC2CA6892"},
+{"check":"config_hash_present","value":"36C5AEDF6901A0D072F8595F560AD63BDEC77BD0CB3F8DCDF87215AC4682F118","expected":"non-empty Gate95 config hash","passed":true,"content_hash":"DBA8EC4CC0D7AC8BF172797A314D64B0E1F11EF7F884F7D54C3D16BAE9C29173"},
+{"check":"command_receipt_emitted","value":"npm run engine:gate95r:limnihedge-type3-corrected-accounting-oos-replay","expected":"Gate95R command receipt","passed":true,"content_hash":"77F0607BC0CC84F4B5AD7F234ED0C3B1E921AB741D48991DB3F639CB25AA4EB1"},
+{"check":"swap_unavailable_blocker","value":true,"expected":true,"passed":true,"content_hash":"D3619353D06F268CDC214E8470072633DBC16A0D7739BA6FC6A56C9F8F43F47E"}
+]

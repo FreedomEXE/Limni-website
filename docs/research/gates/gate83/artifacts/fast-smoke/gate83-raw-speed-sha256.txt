@@ -1,0 +1,14 @@
+gate_id Gate 83: raw-hedged-grid-speed-simplification
+command npm run engine:gate83:raw-hedged-grid-speed-simplification
+generated_at 2026-07-01T09:09:21.493Z
+git_commit d18a34f33b047c0e8e1b85626a9016102a469660
+summary_json B72C84FCB66DA87C255B9DC4DE62EEB0AED9CEF5A7ACB84B22490B595133EE68 docs/research/gates/gate83/artifacts/fast-smoke/cost-ladder-summary.rows.json
+weekly_gross_json 53D4E04CE0D89A95B89150625F4B45A6F6CB010C4236BD850F46DCA16A48B43E docs/research/gates/gate83/artifacts/fast-smoke/weekly-gross-mtm.rows.json
+weekly_cost_json 0A49D2ED0F3BADA7AB57E12E2AA14B9358E09D71DE61AD727E45E14B7E986167 docs/research/gates/gate83/artifacts/fast-smoke/weekly-cost-ladder-mtm.rows.json
+close_events_json 673A65F3EB263FB429C5E3C5E95961418732B5DD6D321A481BBB814208AB3AE2 docs/research/gates/gate83/artifacts/fast-smoke/close-events.rows.json
+pair_contribution_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate83/artifacts/fast-smoke/worst-drawdown-pair-contribution.rows.json
+validation_json 7FF685F0A1E996C1676D7C3C424030900968CE7C4B0AFFAA79C525D6213FB1E9 docs/research/gates/gate83/artifacts/fast-smoke/validation.rows.json
+metric_definitions_json 08EC7429EE204395CC2759991F4BF3E1F5D1493A43B8DED599821F68674C6573 docs/research/gates/gate83/artifacts/fast-smoke/metric-definitions.rows.json
+command_receipt 84F0730FD9B6E6BE4427E37DF558B68678B8E010CB1FDCE6EA074A0AEE0D4253 docs/research/gates/gate83/artifacts/fast-smoke/command-receipt.json
+run_summary_json 4C5F359C8854B9564CB0A624118683A3B04F3CD49D8447B8D23E87732774DD23 docs/research/gates/gate83/artifacts/fast-smoke/gate83-run-summary.json
+report 75580FF2063C63A89BD24F9E00D793FDA99D82F80C29D242032665A52DDFCC31 docs/research/gates/gate83/GATE83_RAW_HEDGED_GRID_SPEED_SIMPLIFICATION_FAST_SMOKE_2026-07-01.md

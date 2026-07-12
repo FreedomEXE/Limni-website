@@ -1,0 +1,37 @@
+[
+  {
+    "rule_id": "WEEKLY_FORCED_CLOSE",
+    "top20_week_equity_adr": 687.48965,
+    "top20_week_equity_retention_vs_weekly_forced": 1
+  },
+  {
+    "rule_id": "CARRY_UNTIL_FLIP",
+    "top20_week_equity_adr": 679.502758,
+    "top20_week_equity_retention_vs_weekly_forced": 0.988383
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_020_SPACING_020_RESTART_UNTIL_FLIP",
+    "top20_week_equity_adr": 11344.277195,
+    "top20_week_equity_retention_vs_weekly_forced": 16.501015
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_030_SPACING_020_RESTART_UNTIL_FLIP",
+    "top20_week_equity_adr": 10798.725949,
+    "top20_week_equity_retention_vs_weekly_forced": 15.707474
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_050_SPACING_020_RESTART_UNTIL_FLIP",
+    "top20_week_equity_adr": 10578.684209,
+    "top20_week_equity_retention_vs_weekly_forced": 15.387409
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_075_SPACING_020_RESTART_UNTIL_FLIP",
+    "top20_week_equity_adr": 11093.6766,
+    "top20_week_equity_retention_vs_weekly_forced": 16.1365
+  },
+  {
+    "rule_id": "PAIR_NET_GRID_CYCLE_TARGET_100_SPACING_020_RESTART_UNTIL_FLIP",
+    "top20_week_equity_adr": 10145.920316,
+    "top20_week_equity_retention_vs_weekly_forced": 14.757924
+  }
+]

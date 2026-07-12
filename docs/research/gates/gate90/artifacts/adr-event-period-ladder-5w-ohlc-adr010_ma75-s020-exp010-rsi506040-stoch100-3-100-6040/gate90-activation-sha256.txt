@@ -1,0 +1,13 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-02T13:34:12.563Z
+git_commit d29a71c0105dc9133b3415a228d1796e9dedb693
+summary_json 12FC12C3D187C7B9FA7FED6193332B791FD9FD5F0C0E3FCCBFA4359BCDB4E3EA docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/activation-summary.rows.json
+weekly_json 78FB46F038F1B3BCB6E906F43AA3FCE21E0C0F73C6057605CB7399A9BA1494F7 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/weekly-activation-truth.rows.json
+close_events_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/close-events.rows.json
+terminal_inventory_json 1DF5E69BD06267AD046E17D3CAEA5851546667FBCF49569C7F4BF0A8D417B92F docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/terminal-inventory.rows.json
+validation_json 9672B08F61470AD3B04DB7EDC0DA2004A369687750F2CB1517D97A0E319C3ED7 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/validation.rows.json
+metric_definitions_json 3E2825BEA3A6C7F4A21FF337A53782A705E07AF6C6BC98911526D2C89A27003E docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/metric-definitions.rows.json
+command_receipt 0BCE1367AE72F5C11D194F0A328845BC6DC113EDEE371CA81040F8E8F126C90E docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/command-receipt.json
+run_summary_json C5A987A942B87B86E8CF1CD194E12994F73D3BF0D060716BD67069310D8FEED4 docs/research/gates/gate90/artifacts/adr-event-period-ladder-5w-ohlc-adr010_ma75-s020-exp010-rsi506040-stoch100-3-100-6040/gate90-run-summary.json
+report 263225B26F4F26AB633A6B4E604ADD2817D08432F755B190DD34E63CE9FD522D docs/research/gates/gate90/GATE90_ADR_EVENT_PERIOD_LADDER_5W_OHLC_ADR010_MA75_S020_EXP010_RSI506040_STOCH100_3_100_6040_2026-07-02.md

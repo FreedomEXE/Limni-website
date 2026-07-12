@@ -1,0 +1,14 @@
+gate_id Gate 90: grid-activation-accuracy-one-sided-selection
+command npm run engine:gate90:grid-activation-accuracy-one-sided-selection
+generated_at 2026-07-03T19:42:56.234Z
+git_commit 0f776093fb46b035fa5ed7a120fc99c8ac392897
+summary_json 07BAE5F2BD077A16BFC266230868ED8B6C59ADE5EDF9CBC81B44B50F9E0D9AEC docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/activation-summary.rows.json
+weekly_json 4B6A0C89CB0D5D180AE12B8FCB2DA56BF3AC872B265F4CD4E9F3E496EB20DAE1 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/weekly-activation-truth.rows.json
+close_events_json 05095A1F5EE7211161C28CE0C07D7BE523498EE8ECC575F51E1A8B242E73365C docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/close-events.rows.json
+close_event_breakdowns_json 3B1FB904336DE90DBAC36A487999DCC38D787C84A48E3E41D369233A267D6994 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/close-event-breakdown.rows.json
+terminal_inventory_json 37517E5F3DC66819F61F5A7BB8ACE1921282415F10551D2DEFA5C3EB0985B570 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/terminal-inventory.rows.json
+validation_json 2C3964263CE419900C9017F7003D0CEDBD740889C1C55BF6DAF4B11AC96D5140 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/validation.rows.json
+metric_definitions_json 93BCF3C2438073E1D6C07C9ACE11841CB3A42E1639CF9C426A14BA92D5D4DB30 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/metric-definitions.rows.json
+command_receipt C33B4130A9DEE4D8ADB4F4DAEC77DEE3BE8C6D6A597193DE426C57568F67DB4B docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/command-receipt.json
+run_summary_json 95AC8E2838C2875E190845953FB4EE58C6C780538527D39D33FDD7F8315640FA docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/gate90-run-summary.json
+report 70D73529CE493426D4408F8251B625EF73CA87B95BA4C9E79306A22E038ED434 docs/research/gates/gate91/artifacts/gate91-formulaic-smoke-audchf-2019-1w/GATE91_FORMULAIC_SMOKE_AUDCHF_2019_1W.md

@@ -1,0 +1,3 @@
+Repo LimniPortfolioEA: Result: 0 errors, 0 warnings, 24473 ms elapsed, cpu='X64 Regular' (MetaEditor exit code 1; log: repo-LimniPortfolioEA-compile-log.txt)
+Active-terminal LimniPortfolioEA: Result: 0 errors, 0 warnings, 22823 ms elapsed, cpu='X64 Regular' (MetaEditor exit code 1; log: active-terminal-LimniPortfolioEA-compile-log.txt)
+MetaEditor exit code 1 is the known local clean-log pattern; the Result lines are authoritative.
