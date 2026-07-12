@@ -1,0 +1,135 @@
+name: Temporary StateMap MetaEditor compile
+
+on:
+  push:
+    branches:
+      - codex/gate88-mt5-lifecycle-protection-controls
+    paths:
+      - automation/mt5/Indicators/Limni/StateMap.mq5
+      - .github/workflows/statemap-metaeditor-compile.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+
+      - name: Install MetaTrader 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $setup = Join-Path $env:RUNNER_TEMP "mt5setup.exe"
+          $url = "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $setup
+
+          function Wait-ForFile([string]$Path, [int]$Minutes) {
+            $deadline = (Get-Date).AddMinutes($Minutes)
+            while (-not (Test-Path -LiteralPath $Path) -and (Get-Date) -lt $deadline) {
+              Start-Sleep -Seconds 5
+            }
+            return Test-Path -LiteralPath $Path
+          }
+
+          $install = "C:\Program Files\MetaTrader 5"
+          $editor = Join-Path $install "MetaEditor64.exe"
+          Start-Process -FilePath $setup -ArgumentList "/auto" | Out-Null
+          if (-not (Wait-ForFile $editor 10)) {
+            $found = Get-ChildItem -Path "C:\" -Recurse -Filter "MetaEditor64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $found) { throw "MetaEditor64.exe was not installed" }
+            $install = Split-Path $found.FullName -Parent
+            $editor = $found.FullName
+          }
+
+          Get-Process terminal64 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          "MT5_DIR=$install" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "METAEDITOR=$editor" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile standalone StateMap
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $mql5 = Join-Path $env:MT5_DIR "MQL5"
+          $targetIndicators = Join-Path $mql5 "Indicators"
+          New-Item -ItemType Directory -Path $targetIndicators -Force | Out-Null
+          Copy-Item -Path "automation\mt5\Indicators\*" -Destination $targetIndicators -Recurse -Force
+
+          $source = Join-Path $targetIndicators "Limni\StateMap.mq5"
+          $binary = [System.IO.Path]::ChangeExtension($source, ".ex5")
+          $log = Join-Path $env:RUNNER_TEMP "StateMap-compile.log"
+          if (Test-Path -LiteralPath $binary) { Remove-Item -LiteralPath $binary -Force }
+          if (Test-Path -LiteralPath $log) { Remove-Item -LiteralPath $log -Force }
+
+          Start-Process -FilePath $env:METAEDITOR `
+            -ArgumentList "/portable", "/compile:`"$source`"", "/log:`"$log`"" `
+            -Wait | Out-Null
+
+          if (-not (Test-Path -LiteralPath $log)) { throw "MetaEditor did not produce a compile log" }
+          $text = Get-Content -LiteralPath $log -Encoding Unicode -Raw
+          Write-Host "---------------- MetaEditor log ----------------"
+          Write-Host $text
+          Write-Host "------------------------------------------------"
+          Copy-Item -LiteralPath $log -Destination (Join-Path $env:GITHUB_WORKSPACE "StateMap-compile.log") -Force
+
+          $match = [regex]::Match($text, "Result:\s*(\d+)\s*errors?,\s*(\d+)\s*warnings?")
+          $errors = if ($match.Success) { [int]$match.Groups[1].Value } else { 1 }
+          $warnings = if ($match.Success) { [int]$match.Groups[2].Value } else { 1 }
+          $binaryExists = Test-Path -LiteralPath $binary
+          $clean = $errors -eq 0 -and $warnings -eq 0 -and $binaryExists
+          $state = if ($clean) { "success" } else { "failure" }
+          $description = if ($match.Success) {
+            "MetaEditor: $errors errors, $warnings warnings"
+          } else {
+            "MetaEditor result line missing"
+          }
+          if (-not $binaryExists) { $description += "; EX5 missing" }
+
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $runUrl = "https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $statusUri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA"
+          $body = @{
+            state = $state
+            context = "statemap-metaeditor"
+            description = $description.Substring(0, [Math]::Min(140, $description.Length))
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri $statusUri -Headers $headers -Body $body -ContentType "application/json" | Out-Null
+
+          if (-not $clean) {
+            $diagnostics = @($text -split "`r?`n" | Where-Object { $_ -match ":\s+(error|warning)\s+" } | Select-Object -First 12)
+            for ($i = 0; $i -lt $diagnostics.Count; $i++) {
+              $line = ($diagnostics[$i] -replace "\s+", " ").Trim()
+              if ($line.Length -gt 140) { $line = $line.Substring(0, 140) }
+              $diagBody = @{
+                state = "failure"
+                context = ("statemap-metaeditor/diagnostic-{0:d2}" -f ($i + 1))
+                description = $line
+                target_url = $runUrl
+              } | ConvertTo-Json
+              Invoke-RestMethod -Method Post -Uri $statusUri -Headers $headers -Body $diagBody -ContentType "application/json" | Out-Null
+            }
+            throw "StateMap compilation failed: $errors errors, $warnings warnings, ex5=$binaryExists"
+          }
+
+          Write-Host "Result: 0 errors, 0 warnings"
+
+      - name: Upload compile log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StateMap-compile-log
+          path: StateMap-compile.log
+          if-no-files-found: ignore
+          retention-days: 1
