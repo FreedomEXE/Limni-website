@@ -269,7 +269,7 @@ $inputLines = @($profileOutput | Where-Object { $_ -match '^(input_group_metadat
 if (@($profileOutput | Select-String '^status=PASS$').Count -ne 1) { throw "Controlled profile proof failed." }
 
 $closure = @(Import-Csv -LiteralPath $sourceManifestPath)
-if ($closure.Count -ne 57) { throw "Canonical Gate108 source closure must contain 57 files." }
+if ($closure.Count -ne 58) { throw "Canonical Gate108 source closure must contain 58 files." }
 $expectedLocal = [string[]]@($closure.terminal_relative_path)
 $presetSource = $profileById['fx28_research'].source
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $presetSource).Hash -cne $expectedPresetHash) { throw "Controlled preset source hash mismatch." }
@@ -513,7 +513,7 @@ $presetRows | Export-Csv -LiteralPath (Join-Path $ArtifactDir 'gate108a-terminal
 $summary = @(
     'gate=Gate108A',
     'status=PASS',
-    'source_files=57',
+    'source_files=58',
     'terminals=94497',
     'compilers_equivalent=true',
     'compiler_observed_local_closure_match=true',

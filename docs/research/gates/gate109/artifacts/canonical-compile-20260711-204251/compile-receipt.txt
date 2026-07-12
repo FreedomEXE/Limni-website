@@ -1,0 +1,17 @@
+status=PASS
+canonical_terminal_id=94497
+compiler=C:\Users\User\AppData\Roaming\Five Percent Online MetaTrader 5\MetaEditor64.exe
+source=C:\Users\User\AppData\Roaming\MetaQuotes\Terminal\94497F60A2BFEA1AFAB110FCF3E331BB\MQL5\Experts\Limni\LimniPortfolioEA.mq5
+compile_invocations=1
+compile_result=Result: 0 errors, 0 warnings, 55605 ms elapsed, cpu='X64 Regular'
+compiler_process_exit_code=1
+source_bundle=bundle_id=sha256:cd8583306c2aa65b29e4eb4b407fafa9527b1e644d31d2a3ee54d0a73539fc7b
+source_count=58
+terminal_ex5_sha256=9EE1B772A0234C7DA64404D2CE5F873B88C882778B3907F2898AAC2608BB5964
+terminal_ex5_bytes=1026720
+repo_terminal_ex5_byte_identical=true
+strategy_tester_run=false
+optimization_run=false
+benchmark_run=false
+backtest_run=false
+completed_utc=2026-07-12T00:43:51.8760997Z

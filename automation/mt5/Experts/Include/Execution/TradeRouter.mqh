@@ -287,7 +287,15 @@ private:
       bool executed_retcode = IsExecutedFillRetcode(execution.retcode);
       bool deal_proof = !executed_retcode ||
          CaptureCanonicalDealSet(plan, execution);
-      execution.accepted = request_ok && executed_retcode && deal_proof;
+      bool deferred_single_pair_deal_proof = !plan.gate108 &&
+         executed_retcode && execution.deal_ticket > 0 &&
+         execution.executed_lots > 0.0;
+      // A tester fill can be reported before its history row is selectable.
+      // Keep the broker result accepted for single-pair mechanics and let the
+      // later DEAL_ADD/history reconciliation complete the linkage.  Gate108
+      // R keeps its stricter canonical deal-set requirement.
+      execution.accepted = request_ok && executed_retcode &&
+         (deal_proof || deferred_single_pair_deal_proof);
       execution.broker_rejected = !execution.accepted &&
          !executed_retcode && execution.retcode != TRADE_RETCODE_PLACED;
 
@@ -303,6 +311,8 @@ private:
          "|executed_fill=" + LP_BoolText(execution.accepted) +
          "|deal_set_complete=" + LP_BoolText(execution.deal_set_complete) +
          "|deal_linkage_clean=" + LP_BoolText(execution.deal_linkage_clean) +
+         "|deal_proof_deferred=" +
+            LP_BoolText(deferred_single_pair_deal_proof && !deal_proof) +
          "|deal_count=" + IntegerToString(execution.deal_count) +
          "|deal_set_hash=" + (string)execution.deal_set_hash;
    }

@@ -34,6 +34,7 @@
 #include "..\\Execution\\TradeRouter.mqh"
 #include "..\\Receipts\\ReceiptWriter.mqh"
 #include "..\\Receipts\\RunManifest.mqh"
+#include "..\\Receipts\\MandatoryDiagnostics.mqh"
 #include "..\\Receipts\\DecisionLog.mqh"
 #include "..\\Receipts\\StateSnapshot.mqh"
 #include "..\\Receipts\\RuntimeTelemetry.mqh"
@@ -90,11 +91,14 @@ private:
    bool m_gate108_execution_quarantine_flat_confirmed;
    ulong m_gate108_execution_quarantine_steps;
    string m_gate108_execution_quarantine_reason;
+   bool m_mandatory_history_waiting;
+   ulong m_last_mandatory_inventory_hash;
    LP_PortfolioState m_cached_portfolio;
    LP_SignalSnapshot m_latest_signals[LP_SYMBOL_COUNT];
    bool m_signal_available[LP_SYMBOL_COUNT];
 
    LP_ReceiptWriter m_receipts;
+   LP_MandatoryDiagnostics m_mandatory;
    LP_RuntimeTelemetry m_runtime_telemetry;
    LP_SymbolSpecCache m_symbol_cache;
    LP_NewsCalendar m_news_calendar;
@@ -183,26 +187,56 @@ private:
    void WriteError(const string status, const string message)
    {
       m_receipts.Write(LP_RECEIPT_ERROR, "", status, message, 0, 0, 0, 0, 0, 0);
+      m_mandatory.Event("error", "", 0, 0, 0, 0, 0, 0, status, message, false);
       Print(LP_EA_NAME, " ", status, ": ", message);
+   }
+
+   bool CloseAction(const int action)
+   {
+      return action == LP_INTENT_CLOSE_GRID ||
+         action == LP_INTENT_CLOSE_ALL_EA ||
+         action == LP_INTENT_REDUCE_GRID;
+   }
+
+   void FailInitialization(const string reason)
+   {
+      m_mandatory.FirstBlocker("initialization", "", 0, "", 0, 0, 0, 0,
+         reason);
+      m_mandatory.Event("initialization_failed", "", 0, 0, 0, 0, 0, 0,
+         reason, "", false);
+      m_mandatory.Complete("FAIL", reason, PositionsTotal(), OrdersTotal(),
+         AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_EQUITY),
+         false);
+      m_mandatory.Close();
    }
 
    void LatchFatalInvariant(const string reason)
    {
       if(m_fatal_invariant_latched)
          return;
-      if(m_initialized && !m_gate108_execution_quarantine_active &&
+      string first_reason = reason == "" ?
+         "fatal_invariant_unspecified" : reason;
+      m_mandatory.FirstBlocker("fatal_invariant", "", 0, "", 0, 0, 0, 0,
+         first_reason);
+      m_mandatory.Event("fatal_invariant", "", 0, 0, 0, 0, 0, 0,
+         first_reason, "", false);
+      if(m_gate108_research_active && m_initialized &&
+         !m_gate108_execution_quarantine_active &&
          (PositionsTotal() > 0 || OrdersTotal() > 0))
       {
          m_gate108_execution_quarantine_active = true;
          m_gate108_execution_quarantine_flat_confirmed = false;
-         m_gate108_execution_quarantine_reason = reason == "" ?
-            "gate108_fatal_with_broker_inventory" : reason;
+         m_gate108_execution_quarantine_reason = first_reason;
+         m_mandatory.Event("quarantine_start", "", 0, 0, 0, 0, 0, 0,
+            m_gate108_execution_quarantine_reason,
+            "owner=gate108_execution_quarantine", false);
          WriteError("gate108_execution_quarantine_latched",
             m_gate108_execution_quarantine_reason);
       }
       m_fatal_invariant_latched = true;
-      m_strategy_registry.InvalidateRevmaDiscovery(reason);
-      WriteError("fatal_invariant_latched", reason);
+      if(m_gate108_research_active)
+         m_strategy_registry.InvalidateRevmaDiscovery(first_reason);
+      WriteError("fatal_invariant_latched", first_reason);
    }
 
    ulong NextSystemIntentId()
@@ -245,6 +279,18 @@ private:
       return true;
    }
 
+   long VolumeStepUnits(const double volume, const double step)
+   {
+      if(volume <= 0.0 || step <= 0.0 ||
+         !MathIsValidNumber(volume) || !MathIsValidNumber(step))
+         return 0;
+      long units = (long)MathRound(volume / step);
+      if(units <= 0 || MathAbs(volume - ((double)units * step)) >
+         MathMax(0.000000000001, step * 0.00000001))
+         return 0;
+      return units;
+   }
+
    bool Gate108SymbolExecutionContractValid(string &reason)
    {
       reason = "";
@@ -259,8 +305,8 @@ private:
          if(!LP_RevmaSymbolActive(m_config, meta, _Symbol))
             continue;
          double atom = LP_REVMA_DISCOVERY_ATOM_LOTS;
-         double step_units = meta.lot_step > 0.0 ? atom / meta.lot_step : 0.0;
-         double normalized_atom = MathRound(step_units) * meta.lot_step;
+         long atom_units = VolumeStepUnits(atom, meta.lot_step);
+         double normalized_atom = (double)atom_units * meta.lot_step;
          long filling_mode = (long)SymbolInfoInteger(meta.broker_symbol,
             SYMBOL_FILLING_MODE);
          bool fok_supported =
@@ -270,6 +316,7 @@ private:
             meta.contract_size <= 0.0 || meta.min_lot <= 0.0 ||
             meta.max_lot < atom || meta.lot_step <= 0.0 ||
             atom + 0.000000001 < meta.min_lot ||
+            atom_units <= 0 ||
             MathAbs(normalized_atom - atom) > 0.000000001 ||
             meta.base_ccy < 0 || meta.base_ccy >= LP_CCY_COUNT ||
             meta.quote_ccy < 0 || meta.quote_ccy >= LP_CCY_COUNT ||
@@ -433,7 +480,12 @@ private:
          (opening || closing) && deal_type == expected_type &&
          deal_reason == DEAL_REASON_EXPERT &&
          deal_symbol == expected_symbol && deal_position > 0 &&
-         NormalizeDouble(volume, 2) == LP_REVMA_DISCOVERY_ATOM_LOTS &&
+         VolumeStepUnits(volume,
+            SymbolInfoDouble(deal_symbol, SYMBOL_VOLUME_STEP)) ==
+            VolumeStepUnits(LP_REVMA_DISCOVERY_ATOM_LOTS,
+               SymbolInfoDouble(deal_symbol, SYMBOL_VOLUME_STEP)) &&
+         VolumeStepUnits(volume,
+            SymbolInfoDouble(deal_symbol, SYMBOL_VOLUME_STEP)) > 0 &&
          order_clean;
       contamination = contamination || !managed_revma;
       LP_HashMixULong(hash, ticket);
@@ -476,6 +528,8 @@ private:
       const LP_TradePlan &plan,
       const LP_TradeExecutionResult &execution)
    {
+      if(!plan.gate108)
+         return true;
       if(execution.deal_count <= 0)
          return true;
       bool quarantine_close = plan.action == LP_INTENT_CLOSE_ALL_EA &&
@@ -529,12 +583,20 @@ private:
 
    void EnterGate108ExecutionQuarantine(const string reason)
    {
+      if(!m_gate108_research_active)
+      {
+         WriteError("gate108_path_ignored_outside_fx28", reason);
+         return;
+      }
       if(!m_gate108_execution_quarantine_active)
       {
          m_gate108_execution_quarantine_active = true;
          m_gate108_execution_quarantine_flat_confirmed = false;
          m_gate108_execution_quarantine_reason = reason == "" ?
             "gate108_execution_quarantine_unspecified" : reason;
+         m_mandatory.Event("close_owner_latch", "", 0, 0, 0, 0, 0, 0,
+            m_gate108_execution_quarantine_reason,
+            "owner=gate108_execution_quarantine", false);
          WriteError("gate108_execution_quarantine_latched",
             m_gate108_execution_quarantine_reason);
       }
@@ -593,6 +655,9 @@ private:
             "steps=" + (string)m_gate108_execution_quarantine_steps +
                "|reason=" + m_gate108_execution_quarantine_reason,
             0, 0, 0, 0, 0, 0);
+         m_mandatory.Event("confirmed_flat", "", 0, 0, 0, 0, 0, 0,
+            m_gate108_execution_quarantine_reason,
+            "owner=gate108_execution_quarantine", false);
          return;
       }
       if(!pending_clean || OrdersTotal() != 0 ||
@@ -610,8 +675,19 @@ private:
       plan.discovery_branch = LP_REVMA_BRANCH_R;
       plan.executable = true;
       plan.reason = "invalid_run_defensive_flatten";
+      m_mandatory.Event("quarantine_close", "", 0, 0, plan.intent_id, 0,
+         0, 0, plan.close_reason, plan.reason, false);
       LP_TradeExecutionResult execution;
       m_trade_router.Execute(plan, m_receipts, execution);
+      m_mandatory.Event("order_result", plan.symbol, 0, 0, plan.intent_id,
+         execution.order_ticket, execution.deal_ticket,
+         execution.position_ticket, plan.close_reason, execution.detail,
+         execution.order_send_attempted);
+      if(execution.accepted)
+         m_mandatory.Event("close_committed", plan.symbol, 0, 0,
+            plan.intent_id, execution.order_ticket, execution.deal_ticket,
+            execution.position_ticket, plan.close_reason, execution.detail,
+            execution.order_send_attempted);
       if(!RememberGate108RoutedDealSet(plan, execution))
          WriteError("gate108_quarantine_deal_linkage_failed",
             execution.detail);
@@ -642,6 +718,22 @@ private:
       m_portfolio_dirty = false;
       m_cached_positions_total = PositionsTotal();
       m_receipts.ObservePortfolioState(portfolio);
+      if(m_mandatory.Opened() &&
+         (m_last_mandatory_inventory_hash == 0 ||
+          m_last_mandatory_inventory_hash != portfolio.position_snapshot_hash))
+      {
+         m_mandatory.Event("inventory_reconciliation", "", portfolio.asof,
+            0, 0, 0, 0, 0, "",
+            "positions=" + IntegerToString(portfolio.open_position_count) +
+            "|managed=" + IntegerToString(portfolio.managed_position_count) +
+            "|grid=" + IntegerToString(portfolio.grid_group_position_count) +
+            "|external=" + IntegerToString(portfolio.external_position_count) +
+            "|unknown_managed=" + IntegerToString(
+               portfolio.unknown_managed_position_count) +
+            "|snapshot_hash=" + (string)portfolio.position_snapshot_hash,
+            false);
+         m_last_mandatory_inventory_hash = portfolio.position_snapshot_hash;
+      }
       m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_INVENTORY_REFRESH, started_at);
    }
 
@@ -958,11 +1050,21 @@ private:
          return 0;
       }
 
+      m_mandatory.Event("signal_created", signal.symbol, signal.source_m1_time,
+         0, 0, 0, 0, 0, "valid_revma_signal",
+         "direction=" + LP_RevmaDirectionName(signal.direction) +
+         "|q=" + DoubleToString(signal.q, 8) +
+         "|anchor=" + DoubleToString(signal.anchor, 8), false);
+
       LP_CalendarDecision calendar;
       LP_EvaluateCalendar(signal.source_m1_time, m_config, calendar);
       m_news_calendar.Apply(signal.source_m1_time, meta, m_config, calendar);
       if(calendar.week_boundary_blocked || calendar.news_blocked)
       {
+         m_mandatory.Event("risk_decision", signal.symbol,
+            signal.source_m1_time, 0, 0, 0, 0, 0,
+            calendar.news_blocked ? "news_blocked" : "session_blocked",
+            "calendar_reason=" + calendar.reason, false);
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_REVMA_SIGNAL_EVALUATION, started_at);
          return 0;
       }
@@ -974,6 +1076,12 @@ private:
          bool has_active_grid = m_grid_book.FindSymbolLaneGrid(signal.symbol_id, LP_LANE_REVMA, active_grid);
          bool birth_allowed = false;
          bool reentry_gate_open = m_revma_lifecycle_gate.Evaluate(signal, has_active_grid, m_receipts, birth_allowed);
+         m_mandatory.Event("birth_gate_decision", signal.symbol,
+            signal.source_m1_time, 0, 0, 0, 0, 0,
+            birth_allowed && reentry_gate_open ? "allowed" : "blocked",
+            "reentry_gate_open=" + LP_BoolText(reentry_gate_open) +
+            "|birth_allowed=" + LP_BoolText(birth_allowed) +
+            "|has_active_grid=" + LP_BoolText(has_active_grid), false);
          if(reentry_gate_open && !harvest.block_new_entries && !stop_take_profit_block_new_entries)
          {
             if(birth_allowed)
@@ -1057,6 +1165,8 @@ public:
       m_gate108_execution_quarantine_flat_confirmed = false;
       m_gate108_execution_quarantine_steps = 0;
       m_gate108_execution_quarantine_reason = "";
+      m_mandatory_history_waiting = false;
+      m_last_mandatory_inventory_hash = 0;
       for(int i = 0; i < LP_SYMBOL_COUNT; i++)
       {
          LP_ResetSignalSnapshot(m_latest_signals[i]);
@@ -1088,9 +1198,16 @@ public:
 
    int OnInit()
    {
+      m_mandatory.Reset();
+      LP_LoadConfig(m_config);
+      m_config_hash = LP_ConfigHash(m_config);
+      m_symbol_universe_hash = LP_SymbolUniverseHash(
+         m_config.broker_symbol_suffix);
       if(!Reset())
       {
          Print(LP_EA_NAME, " discovery reset preflight failed.");
+         m_mandatory.Open(m_config, m_config_hash, m_symbol_universe_hash);
+         FailInitialization("discovery_reset_preflight_failed");
          return INIT_FAILED;
       }
       m_started_tick_count = GetTickCount();
@@ -1099,10 +1216,17 @@ public:
       m_symbol_universe_hash = LP_SymbolUniverseHash(m_config.broker_symbol_suffix);
       m_gate108_research_active = Gate108ResearchRun();
 
+      if(!m_mandatory.Open(m_config, m_config_hash, m_symbol_universe_hash))
+         return INIT_FAILED;
+      m_mandatory.Event("initialization", "", 0, 0, 0, 0, 0, 0, "",
+         "phase=preflight|gate108_research_active=" +
+         LP_BoolText(m_gate108_research_active), false);
+
       if((bool)MQLInfoInteger(MQL_OPTIMIZATION))
       {
          Print(LP_EA_NAME,
             " optimization is disabled for this operator surface.");
+         FailInitialization("optimization_disabled");
          return INIT_FAILED;
       }
 
@@ -1110,12 +1234,14 @@ public:
          !LP_IsTesterRuntime())
       {
          Print(LP_EA_NAME, " Execution=Tester requires Strategy Tester runtime.");
+         FailInitialization("tester_runtime_required");
          return INIT_FAILED;
       }
 
       if(!m_receipts.Open(m_config, m_config_hash, m_symbol_universe_hash))
       {
          Print(LP_EA_NAME, " failed to open receipt files.");
+         FailInitialization("optional_receipt_open_failed");
          return INIT_FAILED;
       }
 
@@ -1126,6 +1252,7 @@ public:
       {
          WriteError("init_failed", operator_reason);
          m_receipts.Flush();
+         FailInitialization(operator_reason);
          return INIT_FAILED;
       }
 
@@ -1133,6 +1260,7 @@ public:
       {
          WriteError("init_failed", "hedging_account_required");
          m_receipts.Flush();
+         FailInitialization("hedging_account_required");
          return INIT_FAILED;
       }
 
@@ -1140,6 +1268,7 @@ public:
       {
          WriteError("init_failed", "live_mode_requires_enabled_news_guard_source");
          m_receipts.Flush();
+         FailInitialization("live_mode_requires_enabled_news_guard_source");
          return INIT_FAILED;
       }
 
@@ -1147,6 +1276,7 @@ public:
       {
          WriteError("init_failed", "live_mode_requires_timer_watchdog");
          m_receipts.Flush();
+         FailInitialization("live_mode_requires_timer_watchdog");
          return INIT_FAILED;
       }
 
@@ -1155,6 +1285,7 @@ public:
       {
          WriteError("init_failed", "symbol_universe_incomplete");
          m_receipts.Flush();
+         FailInitialization("symbol_universe_incomplete");
          return INIT_FAILED;
       }
       string symbol_execution_reason = "";
@@ -1163,6 +1294,7 @@ public:
       {
          WriteError("init_failed", symbol_execution_reason);
          m_receipts.Flush();
+         FailInitialization(symbol_execution_reason);
          return INIT_FAILED;
       }
 
@@ -1171,6 +1303,7 @@ public:
       {
          WriteError("init_failed", "news_guard_source_unavailable");
          m_receipts.Flush();
+         FailInitialization("news_guard_source_unavailable");
          return INIT_FAILED;
       }
 
@@ -1207,6 +1340,7 @@ public:
          WriteError("init_failed",
             "gate108_requires_flat_revma_only_usd_account");
          m_receipts.Flush();
+         FailInitialization("gate108_requires_flat_revma_only_usd_account");
          return INIT_FAILED;
       }
       if(m_gate108_research_active)
@@ -1221,6 +1355,7 @@ public:
             WriteError("init_failed",
                "gate108_equity_reference_quantization_failed");
             m_receipts.Flush();
+            FailInitialization("gate108_equity_reference_quantization_failed");
             return INIT_FAILED;
          }
          if(!CaptureGate108AccountHistoryBaseline())
@@ -1228,6 +1363,7 @@ public:
             WriteError("init_failed",
                "gate108_account_history_baseline_capture_failed");
             m_receipts.Flush();
+            FailInitialization("gate108_account_history_baseline_capture_failed");
             return INIT_FAILED;
          }
          string discovery_run_id = "G108A_" + LP_SafePart(
@@ -1240,6 +1376,8 @@ public:
                "gate108_discovery_initialize_failed:" +
                   m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
             m_receipts.Flush();
+            FailInitialization("gate108_discovery_initialize_failed:" +
+               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
             return INIT_FAILED;
          }
       }
@@ -1253,6 +1391,8 @@ public:
          EventSetTimer(m_config.timer_watchdog_seconds);
 
       m_initialized = true;
+      m_mandatory.Event("initialization", "", 0, 0, 0, 0, 0, 0, "",
+         "phase=ready|run_id=" + m_mandatory.RunId(), false);
       m_receipts.Write(
          LP_RECEIPT_RUN_START,
          "",
@@ -1289,6 +1429,22 @@ public:
    {
       if(m_config.use_timer_watchdog)
          EventKillTimer();
+
+      if(!m_initialized)
+      {
+         if(m_mandatory.Opened())
+         {
+            string init_reason = "deinitialization_before_initialized";
+            m_mandatory.FirstBlocker("deinitialization", "", 0, "", 0, 0,
+               0, 0, init_reason);
+            m_mandatory.Complete("FAIL", init_reason, PositionsTotal(),
+               OrdersTotal(), AccountInfoDouble(ACCOUNT_BALANCE),
+               AccountInfoDouble(ACCOUNT_EQUITY), false);
+            m_mandatory.Close();
+         }
+         m_receipts.Close();
+         return;
+      }
 
       LP_PortfolioState state;
       m_position_index.MarkDirty();
@@ -1446,7 +1602,24 @@ public:
          m_strategy_registry.RevmaLifecyclePersistenceMaxMicroseconds()
       );
       WriteRuntimeProfileSummary();
+      bool fully_reconciled = !m_fatal_invariant_latched &&
+         state.external_position_count == 0 &&
+         state.unknown_managed_position_count == 0 &&
+         state.entry_group_position_count == 0 &&
+         state.managed_position_count == state.grid_group_position_count &&
+         state.managed_position_count == 0 && OrdersTotal() == 0;
+      string completion_status = fully_reconciled ? "PASS" : "FAIL";
+      m_mandatory.Event("deinitialization", "", state.asof, 0, 0, 0, 0, 0,
+         completion_status,
+         "reason=" + IntegerToString(reason) +
+         "|managed=" + IntegerToString(state.managed_position_count),
+         false);
+      m_mandatory.Complete(completion_status,
+         fully_reconciled ? "none" : "run_not_fully_reconciled",
+         PositionsTotal(), OrdersTotal(), state.balance, state.equity,
+         fully_reconciled);
       m_receipts.Close();
+      m_mandatory.Close();
       m_initialized = false;
    }
 
@@ -1466,17 +1639,33 @@ public:
       const MqlTradeResult &result
    )
    {
+      m_mandatory.Event("transaction", trans.symbol, 0, (int)trans.type, 0,
+         trans.order, trans.deal, trans.position, "",
+         "request_magic=" + (string)request.magic +
+         "|retcode=" + IntegerToString((int)result.retcode), false);
       if(!m_initialized)
          return;
-      if(trans.type == TRADE_TRANSACTION_DEAL_UPDATE ||
+      if(m_gate108_research_active &&
          trans.type == TRADE_TRANSACTION_DEAL_DELETE)
       {
          m_gate108_account_deal_mutation_observed = true;
          EnterGate108ExecutionQuarantine(
-            "gate108_account_deal_mutation_observed");
+            "gate108_canonical_deal_deleted");
          return;
       }
-      if(trans.type == TRADE_TRANSACTION_DEAL_ADD && trans.deal > 0)
+      if(m_gate108_research_active &&
+         trans.type == TRADE_TRANSACTION_DEAL_UPDATE)
+      {
+         // A history update is not itself proof of deal tampering.  MT5 can
+         // refresh economic fields after DEAL_ADD.  Final deal-set and
+         // structural identity audits remain the authority for genuine drift.
+         m_mandatory.Event("deal_history_update", trans.symbol, 0,
+            (int)trans.type, 0, trans.order, trans.deal, trans.position,
+            "normal_history_refresh",
+            "history_update_is_not_automatic_quarantine", false);
+      }
+      if(m_gate108_research_active &&
+         trans.type == TRADE_TRANSACTION_DEAL_ADD && trans.deal > 0)
       {
          // Transaction ordering does not guarantee that the corresponding
          // history order is selectable yet.  Capture the exact ticket now;
@@ -1561,6 +1750,7 @@ public:
       bool tester_fast_cadence = TesterRuntime();
       bool single_pair_run = SinglePairRun();
       bool single_pair_history_waiting = false;
+      bool fx28_history_waiting = false;
       bool force_initial_fx28_scan = m_step_count == 1 && m_config.revma_universe_mode == LP_UNIVERSE_FX28;
       bool scan_symbol_clocks = !tester_fast_cadence ||
          force_initial_fx28_scan ||
@@ -1584,14 +1774,24 @@ public:
             LP_BarClockState clock_state;
             if(!m_clock.ProbeSymbol(meta, clock_state))
             {
-               if(single_pair_run)
+               datetime now = TimeCurrent();
+               if(m_pending_cohort_first_seen_time == 0)
+                  m_pending_cohort_first_seen_time = now;
+               long wait_seconds = (long)now -
+                  (long)m_pending_cohort_first_seen_time;
+               if(wait_seconds < 0 || wait_seconds >
+                  LP_REVMA_DISCOVERY_COHORT_WAIT_SECONDS)
                {
-                  single_pair_history_waiting = true;
-                  continue;
+                  LatchFatalInvariant(single_pair_run ?
+                     "single_pair_m1_history_wait_timeout" :
+                     "gate108_m1_history_wait_timeout");
+                  return;
                }
-               LatchFatalInvariant("gate108_m1_cohort_probe_failed:" +
-                  meta.canonical_symbol);
-               return;
+               if(single_pair_run)
+                  single_pair_history_waiting = true;
+               else
+                  fx28_history_waiting = true;
+               continue;
             }
             clock_ready_symbols++;
             if(cohort_count >= LP_SYMBOL_COUNT)
@@ -1610,6 +1810,20 @@ public:
                else if(clock_state.last_bar_time != cohort_m1_time)
                   cohort_source_times_mixed = true;
             }
+         }
+         bool history_waiting = single_pair_history_waiting ||
+            fx28_history_waiting;
+         if(m_mandatory.Opened() &&
+            m_mandatory_history_waiting != history_waiting)
+         {
+            m_mandatory.Event("history_waiting", _Symbol, 0, 0, 0, 0, 0, 0,
+               history_waiting ?
+                  (single_pair_run ? "WAITING_FOR_SINGLE_PAIR_HISTORY" :
+                     "WAITING_FOR_FX28_HISTORY") : "HISTORY_READY",
+               "active_symbols_scanned=" + IntegerToString(active_symbols_scanned) +
+               "|clock_ready_symbols=" + IntegerToString(clock_ready_symbols),
+               false);
+            m_mandatory_history_waiting = history_waiting;
          }
          if(single_pair_run)
          {
@@ -1676,6 +1890,9 @@ public:
                      cohort_states[i].last_bar_time;
                   new_symbol_bars[i].close = cohort_states[i].close;
                }
+               m_mandatory.Event("cohort_ready", _Symbol, cohort_m1_time, 0,
+                  0, 0, 0, 0, "WAITING_FOR_COMPLETE_COHORT_CLEARED",
+                  "symbols=" + IntegerToString(cohort_count), false);
             }
          }
       }
@@ -1711,21 +1928,26 @@ public:
          portfolio.managed_position_count !=
             portfolio.grid_group_position_count)
       {
-         LatchFatalInvariant("gate108_revma_only_account_contamination");
+         LatchFatalInvariant(m_gate108_research_active ?
+            "gate108_revma_only_account_contamination" :
+            "single_pair_revma_account_contamination");
          return;
       }
-      long actual_account_equity_minor = 0;
-      double gate108_money_quantum = MathPow(10.0,
-         -LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY_DIGITS);
-      if(!LP_RevmaDiscoveryMoneyToSignedMinor(portfolio.equity,
-             gate108_money_quantum, actual_account_equity_minor) ||
-         actual_account_equity_minor <= 0 ||
-         !m_strategy_registry.ReconcileRevmaDiscoveryRealConfirmedFlat(
-            m_grid_book, actual_account_equity_minor))
+      if(m_gate108_research_active)
       {
-         LatchFatalInvariant(
-            m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
-         return;
+         long actual_account_equity_minor = 0;
+         double gate108_money_quantum = MathPow(10.0,
+            -LP_REVMA_DISCOVERY_ACCOUNT_CURRENCY_DIGITS);
+         if(!LP_RevmaDiscoveryMoneyToSignedMinor(portfolio.equity,
+                gate108_money_quantum, actual_account_equity_minor) ||
+            actual_account_equity_minor <= 0 ||
+            !m_strategy_registry.ReconcileRevmaDiscoveryRealConfirmedFlat(
+               m_grid_book, actual_account_equity_minor))
+         {
+            LatchFatalInvariant(
+               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+            return;
+         }
       }
 
       bool grid_inventory_changed = m_step_count == 1 || m_grid_book.SnapshotHash() != m_last_grid_inventory_hash;
@@ -1749,7 +1971,7 @@ public:
       // Shared completed-M1 marking may escalate a close owner. Defer close
       // staging on those steps until the discovery batch has applied the new
       // authority, so no queued intent can retain a stale owner identity.
-      if(cycle_new_bars == 0)
+      if(m_gate108_research_active && cycle_new_bars == 0)
       {
          int discovery_real_close_intents =
             m_strategy_registry.ContinueRevmaDiscoveryRealCloses(
@@ -2002,7 +2224,8 @@ public:
             continue;
 
          bool discovery_route_authorized = true;
-         if(!m_strategy_registry.AuthorizeRevmaDiscoveryRealIntentBeforeRoute(
+         if(m_gate108_research_active &&
+            !m_strategy_registry.AuthorizeRevmaDiscoveryRealIntentBeforeRoute(
                intent, discovery_route_authorized))
          {
             LatchFatalInvariant(
@@ -2020,6 +2243,11 @@ public:
          m_risk_arbiter.Decide(intent, portfolio, m_currency_guard, decision, plan);
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RISK_RESERVATION, risk_reservation_started_at);
          LP_LogRiskDecision(m_receipts, decision);
+         m_mandatory.Event("risk_decision", intent.symbol,
+            intent.source_bar_time, 0, intent.intent_id, 0, 0, 0,
+            decision.allow_new_order || decision.allow_reduce ||
+               decision.allow_close ? "allowed" : "rejected",
+            decision.explanation, false);
          if(!m_strategy_registry.RecordRevmaRiskDecision(
             intent, decision, m_receipts))
          {
@@ -2031,8 +2259,24 @@ public:
             LP_LogTradePlan(m_receipts, plan);
          if(plan.executable)
          {
+            if(CloseAction(plan.action) && plan.close_reason == "")
+               plan.close_reason = plan.reason == "" ?
+                  "unspecified_close_owner" : plan.reason;
+            m_mandatory.Event("route_attempt", plan.symbol,
+               plan.discovery_source_m1_time, 0, plan.intent_id, 0, 0, 0,
+               CloseAction(plan.action) ? plan.close_reason : plan.reason,
+               "action=" + IntegerToString(plan.action) +
+               "|lots=" + DoubleToString(plan.lots, 8) +
+               "|gate108=" + LP_BoolText(plan.gate108), false);
             LP_TradeExecutionResult execution;
             m_trade_router.Execute(plan, m_receipts, execution);
+            m_mandatory.Event("order_result", plan.symbol,
+               plan.discovery_source_m1_time, 0, plan.intent_id,
+               execution.order_ticket, execution.deal_ticket,
+               execution.position_ticket,
+               CloseAction(plan.action) ? plan.close_reason :
+                  (execution.accepted ? "accepted" : "execution_rejected"),
+               execution.detail, execution.order_send_attempted);
             bool broker_state_may_have_changed =
                execution.order_send_attempted &&
                (execution.accepted || execution.partial_fill ||
@@ -2100,6 +2344,23 @@ public:
                else
                   LatchFatalInvariant(failure_reason);
                return;
+            }
+            if(execution.accepted)
+            {
+               string commit_stage = CloseAction(plan.action) ?
+                  "close_committed" :
+                  (plan.research_lifecycle_event ==
+                     LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
+                     "birth_committed" :
+                     (plan.research_lifecycle_event ==
+                        LP_RESEARCH_LIFECYCLE_GRID_ADD ?
+                        "add_committed" : "execution_commit"));
+               m_mandatory.Event(commit_stage, plan.symbol,
+                  plan.discovery_source_m1_time, 0, plan.intent_id,
+                  execution.order_ticket, execution.deal_ticket,
+                  execution.position_ticket,
+                  CloseAction(plan.action) ? plan.close_reason : "",
+                  execution.detail, execution.order_send_attempted);
             }
             if(!m_strategy_registry.RecordRevmaCloseExecution(
                plan, execution, m_receipts))

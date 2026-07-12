@@ -8,6 +8,25 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Hot Recovery Override
 
+### Current Override - 2026-07-11 Gate 109 Emergency Recovery
+
+Active lane: Gate 109 `revma-emergency-recovery`.
+
+The bounded repair addresses the single-pair post-fill false quarantine and
+restores mandatory Common Files evidence independent of optional receipts.
+Precompile static checks pass. One canonical terminal compile/sync to terminal
+`94497` passes with `0 errors, 0 warnings`; no Strategy Tester, optimization,
+benchmark, or backtest was run by Codex.
+
+Gate report:
+`docs/research/gates/gate109/GATE109_REVMA_EMERGENCY_RECOVERY_2026-07-11.md`.
+
+Current stop line: commit and push the repair, then stop for Freedom-owned
+single-pair mechanics runtime evidence. Do not claim economic validity, FX28 R
+parity, promotion, or live readiness. Single-pair remains on the legacy
+`EvaluateRevmaSymbol` path until a separately approved active-symbol R
+consolidation gate.
+
 ### Current Override - 2026-07-09
 
 Active lane: Gate 107 `revma-state-signal-harvest-harness`.

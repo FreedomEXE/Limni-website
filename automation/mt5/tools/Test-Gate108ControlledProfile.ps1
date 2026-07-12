@@ -183,14 +183,14 @@ try {
     foreach ($line in $bundleOutput) {
         if ($line -match '^([^=]+)=(.*)$') { $bundleMap[$matches[1]] = $matches[2] }
     }
-    if ($bundleMap['source_count'] -ne '57' -or
+    if ($bundleMap['source_count'] -ne '58' -or
         $bundleMap['external_include_count'] -ne '1' -or
         $bundleMap['external_includes'] -cne 'Trade/Trade.mqh') {
         throw "Gate108 canonical source closure shape mismatch."
     }
 
     $manifestRows = @(Import-Csv -LiteralPath $SourceManifestPath)
-    if ($manifestRows.Count -ne 57) { throw "Gate108 manifest row count mismatch." }
+    if ($manifestRows.Count -ne 58) { throw "Gate108 manifest row count mismatch." }
     $inputLines = [System.Collections.Generic.List[string]]::new()
     foreach ($row in $manifestRows) {
         $path = Join-Path $repoRoot ($row.repo_relative_path -replace '/', '\')
@@ -365,7 +365,7 @@ try {
     $proof.Add('gate=Gate108A')
     $proof.Add('status=PASS')
     $proof.Add('source_bundle_id=' + $bundleMap['bundle_id'])
-    $proof.Add('source_count=57')
+    $proof.Add('source_count=58')
     $proof.Add('external_include=Trade/Trade.mqh')
     $proof.Add('input_group_metadata_count=5')
     $proof.Add('broker_compatibility_inputs=1')
