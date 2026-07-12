@@ -3,6 +3,7 @@
 //|                                    COT-based weekly basket EA   |
 //+------------------------------------------------------------------+
 #property strict
+#property version "1.000"
 
 #include <Trade/Trade.mqh>
 #include "Include/Domain/Enums.mqh"

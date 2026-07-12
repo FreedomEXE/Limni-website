@@ -3,6 +3,7 @@
 //|                   Telemetry-only EA for manually traded accounts |
 //+------------------------------------------------------------------+
 #property strict
+#property version "1.000"
 
 #define TELEMETRY_ONLY 1
 

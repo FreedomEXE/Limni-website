@@ -44,6 +44,7 @@ engine/tmp/
 !app/tsconfig.json
 !database/contracts/*.json
 !app/src/lib/performance/embedded/data-integrity-audit.json
+!automation/mt5/tools/canonical-compile-state.json
 
 # IDE
 .vscode/

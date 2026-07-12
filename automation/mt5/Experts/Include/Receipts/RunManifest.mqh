@@ -21,7 +21,7 @@ void LP_WriteRunManifest(
       LP_RECEIPT_RUN_START,
       "",
       "started",
-      "ea=" + LP_EA_NAME +
+       "ea=" + LP_EA_DisplayName() +
          "|active_systems=" + LP_ActiveSystemsText(
             config.enable_revma_system,
             config.enable_kyma_system,
@@ -30,6 +30,10 @@ void LP_WriteRunManifest(
          "|execution=" + LP_ExecutionModeName(config.execution_mode) +
          "|profile_classification=" + LP_RunClassification(config.revma_universe_mode) +
          "|research_build_identity=" + LP_BUILD_GATE +
+         "|ea_version=" + LP_EA_VERSION +
+         "|source_bundle_algorithm=" + LP_EA_SOURCE_BUNDLE_ALGORITHM +
+         "|source_bundle_id=" + LP_EA_SOURCE_BUNDLE_ID +
+         "|source_bundle_short=" + LP_EA_SourceBundleShort() +
          "|scope=" + LP_BUILD_SCOPE +
          "|receipt_payload_contract=" + receipts.PayloadContract() +
          "|execution_mode=" + LP_ExecutionModeName(config.execution_mode) +
@@ -86,7 +90,7 @@ void LP_WriteRunManifest(
       0
    );
 
-   receipts.Summary("ea_name", LP_EA_NAME);
+   receipts.Summary("ea_name", LP_EA_DisplayName());
    receipts.Summary("active_systems", LP_ActiveSystemsText(
       config.enable_revma_system,
       config.enable_kyma_system,
@@ -97,6 +101,11 @@ void LP_WriteRunManifest(
    receipts.Summary("research_build_identity", LP_BUILD_GATE);
    receipts.Summary("ea_version", LP_EA_VERSION);
    receipts.Summary("build_gate", LP_BUILD_GATE);
+   receipts.Summary("source_bundle_algorithm", LP_EA_SOURCE_BUNDLE_ALGORITHM);
+   receipts.Summary("source_bundle_id", LP_EA_SOURCE_BUNDLE_ID);
+   receipts.Summary("source_bundle_short", LP_EA_SourceBundleShort());
+   receipts.Summary("ex5_build_identity", LP_EA_VERSION + "|" +
+      LP_EA_SourceBundleShort());
    receipts.Summary("build_scope", LP_BUILD_SCOPE);
    receipts.Summary("run_id", receipts.RunId());
    receipts.Summary("output_folder", config.output_folder);

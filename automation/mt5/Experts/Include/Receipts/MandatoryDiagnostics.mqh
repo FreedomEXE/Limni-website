@@ -105,12 +105,15 @@ public:
 
       FileWrite(m_manifest_handle, "field", "value");
       WriteManifestField("run_id", m_run_id);
-      WriteManifestField("ea_name", LP_EA_NAME);
+       WriteManifestField("ea_name", LP_EA_DisplayName());
       WriteManifestField("ea_version", LP_EA_VERSION);
       WriteManifestField("build_gate", LP_BUILD_GATE);
-      WriteManifestField("source_bundle_id", config.source_revision);
+      WriteManifestField("source_bundle_algorithm",
+         LP_EA_SOURCE_BUNDLE_ALGORITHM);
+      WriteManifestField("source_bundle_id", LP_EA_SOURCE_BUNDLE_ID);
+      WriteManifestField("source_bundle_short", LP_EA_SourceBundleShort());
       WriteManifestField("ex5_build_identity", LP_EA_VERSION + "|" +
-         LP_BUILD_GATE);
+         LP_EA_SourceBundleShort());
       WriteManifestField("config_hash", (string)config_hash);
       WriteManifestField("symbol_universe_hash", (string)symbol_universe_hash);
       WriteManifestField("active_systems", LP_ActiveSystemsText(
@@ -146,7 +149,9 @@ public:
       FileFlush(m_completion_handle);
       m_open = true;
       Print(LP_EA_NAME, " mandatory diagnostics initialized | run_id=",
-         m_run_id, " | common_folder=", m_folder);
+         m_run_id, " | common_folder=", m_folder,
+         " | version=", LP_EA_VERSION,
+         " | source_bundle=", LP_EA_SourceBundleShort());
       return true;
    }
 
@@ -270,7 +275,16 @@ public:
          return;
       Event("completion", "", 0, 0, 0, 0, 0, 0, reason,
          "status=" + status, false);
-      WriteCompletionField("status", status);
+       WriteCompletionField("status", status);
+       WriteCompletionField("ea_name", LP_EA_DisplayName());
+      WriteCompletionField("ea_version", LP_EA_VERSION);
+      WriteCompletionField("build_gate", LP_BUILD_GATE);
+      WriteCompletionField("source_bundle_algorithm",
+         LP_EA_SOURCE_BUNDLE_ALGORITHM);
+      WriteCompletionField("source_bundle_id", LP_EA_SOURCE_BUNDLE_ID);
+      WriteCompletionField("source_bundle_short", LP_EA_SourceBundleShort());
+      WriteCompletionField("ex5_build_identity", LP_EA_VERSION + "|" +
+         LP_EA_SourceBundleShort());
       WriteCompletionField("first_blocker", m_first_blocker_written ?
          m_first_blocker_reason : "none");
       WriteCompletionField("total_signals", IntegerToString(m_total_signals));
@@ -293,7 +307,9 @@ public:
       FileFlush(m_completion_handle);
       m_completed = true;
       Print(LP_EA_NAME, " mandatory diagnostics completed | run_id=", m_run_id,
-         " | common_folder=", m_folder, " | status=", status);
+         " | common_folder=", m_folder, " | status=", status,
+         " | version=", LP_EA_VERSION,
+         " | source_bundle=", LP_EA_SourceBundleShort());
    }
 
    void Close()

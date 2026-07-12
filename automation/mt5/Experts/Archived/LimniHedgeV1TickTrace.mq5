@@ -3,6 +3,7 @@
 //|       Gate 92 tester tick-surface export for repo parity replay  |
 //+------------------------------------------------------------------+
 #property strict
+#property version "1.000"
 
 input string OutputFolder="LimniHedge_V1_TickTrace";
 input int FlushEveryRows=10000;

@@ -18,7 +18,8 @@ $repoPrefix = $repoRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparator
 function Read-CanonicalSourceText {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [switch]$NormalizeSelfIdentity
+        [switch]$NormalizeSelfIdentity,
+        [switch]$NormalizeDisplayIdentity
     )
 
     $bytes = [System.IO.File]::ReadAllBytes($Path)
@@ -39,6 +40,14 @@ function Read-CanonicalSourceText {
         $matches = [regex]::Matches($text, $pattern)
         if ($matches.Count -ne 1) {
             throw "BuildInfo must contain exactly one source-bundle identity declaration."
+        }
+        $text = [regex]::Replace($text, $pattern, "`$1$selfSentinel`$2")
+    }
+    if ($NormalizeDisplayIdentity) {
+        $pattern = '(?m)(#property\s+description\s+"[^"\r\n]*source bundle\s+)[0-9a-fA-F]{12}(")'
+        $matches = [regex]::Matches($text, $pattern)
+        if ($matches.Count -ne 1) {
+            throw "EA source must contain exactly one displayed source-bundle hash."
         }
         $text = [regex]::Replace($text, $pattern, "`$1$selfSentinel`$2")
     }
@@ -115,7 +124,8 @@ try {
         $rawHashBytes = $sha256.ComputeHash($rawBytes)
         $rawHash = ([System.BitConverter]::ToString($rawHashBytes) -replace '-', '').ToLowerInvariant()
         $canonicalText = Read-CanonicalSourceText -Path $fullPath `
-            -NormalizeSelfIdentity:($fullPath -ieq $buildInfoPath)
+            -NormalizeSelfIdentity:($fullPath -ieq $buildInfoPath) `
+            -NormalizeDisplayIdentity:($fullPath -ieq $entryPoint)
         $canonicalBytes = $utf8NoBom.GetBytes($canonicalText)
         $fileHashBytes = $sha256.ComputeHash($canonicalBytes)
         $fileHash = ([System.BitConverter]::ToString($fileHashBytes) -replace '-', '').ToLowerInvariant()

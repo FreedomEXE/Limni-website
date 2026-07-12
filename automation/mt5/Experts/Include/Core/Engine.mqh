@@ -147,7 +147,9 @@ private:
 
    string OperatorIdentityText()
    {
-      return "EA: " + LP_EA_NAME +
+       return "EA: " + LP_EA_DisplayName() +
+         " | version=" + LP_EA_VERSION +
+         " | source_bundle=" + LP_EA_SourceBundleShort() +
          "\nActive Systems: " + LP_ActiveSystemsText(
             m_config.enable_revma_system,
             m_config.enable_kyma_system,
@@ -778,7 +780,7 @@ private:
       m_receipts.Summary("runtime_profile_tester_fast_cadence", LP_BoolText(TesterRuntime()));
       m_runtime_telemetry.WriteSummary(m_receipts);
       Print(
-         LP_EA_NAME,
+          LP_EA_DisplayName(),
          " runtime_profile|elapsed_wall_seconds=",
          DoubleToString(elapsed_seconds, 3),
          "|total_ticks=",
@@ -1297,6 +1299,8 @@ public:
          " | execution=", LP_ExecutionModeName(m_config.execution_mode),
          " | classification=", LP_RunClassification(m_config.revma_universe_mode),
          " | research_build=", LP_BUILD_GATE,
+         " | version=", LP_EA_VERSION,
+         " | source_bundle=", LP_EA_SourceBundleShort(),
          " | run_id=", m_receipts.RunId()
       );
       return INIT_SUCCEEDED;
@@ -1449,7 +1453,13 @@ public:
          LP_ExecutionModeName(m_config.execution_mode));
       m_receipts.Summary("completion_profile_classification",
          LP_RunClassification(m_config.revma_universe_mode));
-      m_receipts.Summary("completion_research_build_identity", LP_BUILD_GATE);
+       m_receipts.Summary("completion_research_build_identity", LP_BUILD_GATE);
+       m_receipts.Summary("completion_ea_name", LP_EA_DisplayName());
+      m_receipts.Summary("completion_ea_version", LP_EA_VERSION);
+      m_receipts.Summary("completion_source_bundle_id",
+         LP_EA_SOURCE_BUNDLE_ID);
+      m_receipts.Summary("completion_source_bundle_short",
+         LP_EA_SourceBundleShort());
       m_receipts.Summary("engine_steps", IntegerToString(m_step_count));
       m_receipts.Summary("total_ticks", IntegerToString(m_tick_count));
       m_receipts.Summary("total_new_bars", IntegerToString(m_total_new_bars));
@@ -1457,7 +1467,7 @@ public:
       m_receipts.Summary("total_intents", IntegerToString(m_total_intents));
       m_receipts.Write(LP_RECEIPT_RUN_END, "", "deinit",
          "reason=" + IntegerToString(reason) +
-         "|ea=" + LP_EA_NAME +
+          "|ea=" + LP_EA_DisplayName() +
          "|active_systems=" + LP_ActiveSystemsText(
             m_config.enable_revma_system,
             m_config.enable_kyma_system,
@@ -1466,6 +1476,9 @@ public:
          "|execution=" + LP_ExecutionModeName(m_config.execution_mode) +
          "|profile_classification=" + LP_RunClassification(m_config.revma_universe_mode) +
          "|research_build_identity=" + LP_BUILD_GATE +
+         "|ea_version=" + LP_EA_VERSION +
+         "|source_bundle_short=" + LP_EA_SourceBundleShort() +
+         "|source_bundle_id=" + LP_EA_SOURCE_BUNDLE_ID +
          "|gate108_finalize_ok=" + LP_BoolText(discovery_finalize_ok),
          0, 0, 0, 0, 0, 0);
       LP_BrokerExecutionIntegrity broker_integrity;

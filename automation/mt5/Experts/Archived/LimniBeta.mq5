@@ -3,6 +3,7 @@
 //|             Simple Limni indicator scaffold grid test harness    |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
+#property version "1.000"
 #property strict
 
 #include <Trade/Trade.mqh>
