@@ -956,8 +956,130 @@ bool LP_RevmaTelemetryTerminalProjectionValid(
       projection.projection_hash == row.terminal_projection_hash;
 }
 
+string LP_RevmaCycleStartEventShapeFailureReason(
+   const LP_RevmaDiscoveryTransitionRow &row)
+{
+   long expected_budget_minor = 0;
+   if(!LP_RevmaDiscoveryTelemetryEventValid(row.event_type))
+      return "event_type_invalid";
+   if(!LP_RevmaDiscoveryBranchValid(row.branch))
+      return "branch_invalid";
+   if(row.branch_cycle_id == 0)
+      return "branch_cycle_id_zero";
+   if(row.account_cycle_id == 0)
+      return "account_cycle_id_zero";
+   if(row.source_m1_time <= 0)
+      return "source_m1_time_invalid";
+   if(((long)row.source_m1_time % 60) != 0)
+      return "source_m1_time_not_minute_aligned";
+   if(row.event_time < row.source_m1_time)
+      return "event_time_before_source_m1";
+   if(row.concentration_q_cash_minor < 0)
+      return "concentration_q_cash_negative";
+   if((row.concentration_q_cash_minor == 0) !=
+      (row.concentration_currency_id == -1))
+      return "concentration_currency_zero_pair_mismatch";
+   if(row.concentration_currency_id < -1 ||
+      row.concentration_currency_id >= LP_CCY_COUNT)
+      return "concentration_currency_invalid";
+   if(!MathIsValidNumber(row.p0))
+      return "p0_not_finite";
+   if(!MathIsValidNumber(row.stress_price))
+      return "stress_price_not_finite";
+   if(!MathIsValidNumber(row.fill_price))
+      return "fill_price_not_finite";
+   if(!MathIsValidNumber(row.current_price))
+      return "current_price_not_finite";
+   if(!MathIsValidNumber(row.c0))
+      return "c0_not_finite";
+   if(!MathIsValidNumber(row.previous_center))
+      return "previous_center_not_finite";
+   if(!MathIsValidNumber(row.current_center))
+      return "current_center_not_finite";
+   if(!MathIsValidNumber(row.q0))
+      return "q0_not_finite";
+   if(!MathIsValidNumber(row.current_q))
+      return "current_q_not_finite";
+   if(!MathIsValidNumber(row.current_q_ratio))
+      return "current_q_ratio_not_finite";
+   if(!MathIsValidNumber(row.discovery_cell_price))
+      return "discovery_cell_price_not_finite";
+   if(!MathIsValidNumber(row.broker_tick_size))
+      return "broker_tick_size_not_finite";
+   if(!MathIsValidNumber(row.support0_q))
+      return "support0_q_not_finite";
+   if(!MathIsValidNumber(row.current_support_q))
+      return "current_support_q_not_finite";
+   if(!MathIsValidNumber(row.revision_q))
+      return "revision_q_not_finite";
+   if(!MathIsValidNumber(row.cumulative_signed_revision_q))
+      return "cumulative_signed_revision_q_not_finite";
+   if(!MathIsValidNumber(row.cumulative_absolute_revision_q))
+      return "cumulative_absolute_revision_q_not_finite";
+   if(!MathIsValidNumber(row.minimum_support_q))
+      return "minimum_support_q_not_finite";
+   if(!MathIsValidNumber(row.maximum_support_q))
+      return "maximum_support_q_not_finite";
+   if(!MathIsValidNumber(row.regression_sum_x))
+      return "regression_sum_x_not_finite";
+   if(!MathIsValidNumber(row.regression_sum_y))
+      return "regression_sum_y_not_finite";
+   if(!MathIsValidNumber(row.regression_sum_x2))
+      return "regression_sum_x2_not_finite";
+   if(!MathIsValidNumber(row.regression_sum_xy))
+      return "regression_sum_xy_not_finite";
+   if(!MathIsValidNumber(row.lots_before))
+      return "lots_before_not_finite";
+   if(!MathIsValidNumber(row.lots_after))
+      return "lots_after_not_finite";
+   if(!MathIsValidNumber(row.weighted_entry_sum))
+      return "weighted_entry_sum_not_finite";
+   if(row.budget_minor <= 0)
+      return "budget_minor_nonpositive";
+   if(row.equity_reference_minor <= 0)
+      return "equity_reference_minor_nonpositive";
+   if(!LP_RevmaDiscoveryCapitalBudgetMinor(row.equity_reference_minor,
+         expected_budget_minor))
+      return "capital_budget_formula_invalid";
+   if(row.budget_minor != expected_budget_minor)
+      return "budget_minor_formula_mismatch";
+   if(row.symbol_id < -1 || row.symbol_id >= LP_SYMBOL_COUNT)
+      return "symbol_id_invalid";
+   if(row.grid_generation != 0)
+      return "cycle_start_grid_generation_nonzero";
+   if(row.atoms_before < 0)
+      return "atoms_before_negative";
+   if(row.atoms_after < 0)
+      return "atoms_after_negative";
+   if(!LP_RevmaTelemetryLotsMatchAtoms(row.lots_before, row.atoms_before))
+      return "lots_before_atom_mismatch";
+   if(!LP_RevmaTelemetryLotsMatchAtoms(row.lots_after, row.atoms_after))
+      return "lots_after_atom_mismatch";
+   if(row.terminal_internal_state_hash != 0)
+      return "terminal_internal_state_hash_present";
+   if(row.terminal_projection_hash != 0)
+      return "terminal_projection_hash_present";
+   if(row.grid_terminal_reason != "")
+      return "grid_terminal_reason_present";
+   if(row.symbol_id != -1)
+      return "symbol_id_not_aggregate";
+   if(row.branch_grid_id != 0)
+      return "branch_grid_id_nonzero";
+   if(row.atoms_before != 0)
+      return "atoms_before_not_zero";
+   if(row.atoms_after != 0)
+      return "atoms_after_not_zero";
+   if(row.decision != "OPEN")
+      return "decision_not_open";
+   if(row.reason == "")
+      return "reason_empty";
+   return "";
+}
+
 bool LP_RevmaTelemetryEventShapeValid(const LP_RevmaDiscoveryTransitionRow &row)
 {
+   if(row.event_type == LP_REVMA_TELEMETRY_CYCLE_START)
+      return LP_RevmaCycleStartEventShapeFailureReason(row) == "";
    long expected_budget_minor = 0;
    if(!LP_RevmaDiscoveryTelemetryEventValid(row.event_type) ||
       !LP_RevmaDiscoveryBranchValid(row.branch) ||
@@ -2514,8 +2636,112 @@ private:
       m_matched_opportunity[row.symbol_id] = pair;
    }
 
-   bool ValidateTransitionState(const LP_RevmaDiscoveryTransitionRow &row)
+   string CycleStartTransitionStateFailureReason(
+      const LP_RevmaDiscoveryTransitionRow &row)
    {
+      if(m_branch_run_sealed[row.branch])
+         return "branch_run_sealed";
+      if(m_branch_terminal_boundary_m1[row.branch] > 0 &&
+         m_cycle_event_seen[row.branch]
+            [LP_REVMA_TELEMETRY_RUN_BOUNDARY_UNRESOLVED])
+         return "terminal_boundary_unresolved";
+      if(m_branch_terminal_boundary_m1[row.branch] > 0 &&
+         row.source_m1_time <= m_branch_terminal_boundary_m1[row.branch])
+         return "source_m1_not_after_terminal_boundary";
+      if(m_last_source_m1_time > 0 &&
+         row.source_m1_time < m_last_source_m1_time)
+         return "source_m1_regressed";
+      int slot = EventSymbolSlot(row.symbol_id);
+      if(slot < 0 || slot >= LP_REVMA_TELEMETRY_SYMBOL_SLOTS)
+         return "logical_event_slot_invalid";
+      if(m_last_logical_event_m1[row.branch][slot][row.event_type] >=
+         row.source_m1_time)
+         return "logical_event_repeated_or_regressed";
+      if(m_branch_cycle_id[row.branch] == 0)
+      {
+         if(row.branch_cycle_id != 1)
+            return "initial_branch_cycle_id_invalid";
+         if(row.account_cycle_id != 1)
+            return "initial_account_cycle_id_invalid";
+      }
+      else
+      {
+         if(m_branch_cycle_id[row.branch] >=
+               (ulong)LP_REVMA_GEOMETRY_ABS_LIMIT)
+            return "branch_cycle_id_limit_reached";
+         if(m_branch_account_cycle_id[row.branch] >=
+               (ulong)LP_REVMA_GEOMETRY_ABS_LIMIT)
+            return "account_cycle_id_limit_reached";
+         if(row.branch_cycle_id != m_branch_cycle_id[row.branch] + 1)
+            return "next_branch_cycle_id_invalid";
+         if(row.account_cycle_id !=
+               m_branch_account_cycle_id[row.branch] + 1)
+            return "next_account_cycle_id_invalid";
+         if(BranchHasOpenGrid(row.branch))
+            return "prior_cycle_grid_open";
+         if(BranchHasPendingFavorableDecision(row.branch))
+            return "prior_cycle_favorable_decision_pending";
+         if(!m_branch_cycle_sealed[row.branch])
+            return "prior_cycle_not_sealed";
+         if(m_branch_cycle_summary_id[row.branch] !=
+               m_branch_cycle_id[row.branch])
+            return "prior_cycle_summary_missing";
+         if(!m_branch_reconciliation_summary[row.branch])
+            return "prior_cycle_reconciliation_summary_missing";
+         if(!m_branch_reconciliation_clean[row.branch])
+            return "prior_cycle_reconciliation_unclean";
+         if(!m_cycle_event_seen[row.branch]
+               [LP_REVMA_TELEMETRY_CYCLE_CLOSE])
+            return "prior_cycle_close_missing";
+         if(m_cycle_event_seen[row.branch]
+               [LP_REVMA_TELEMETRY_RUN_BOUNDARY_UNRESOLVED])
+            return "prior_cycle_boundary_unresolved";
+         if(m_branch_run_sealed[row.branch])
+            return "branch_run_sealed";
+      }
+      if(!m_causal_matching_closed &&
+         (row.branch == LP_REVMA_BRANCH_U ||
+          row.branch == LP_REVMA_BRANCH_C))
+      {
+         int other_branch = row.branch == LP_REVMA_BRANCH_U ?
+            LP_REVMA_BRANCH_C : LP_REVMA_BRANCH_U;
+         bool other_is_previous =
+            m_branch_cycle_id[other_branch] + 1 == row.branch_cycle_id &&
+            m_branch_account_cycle_id[other_branch] + 1 ==
+               row.account_cycle_id;
+         bool other_is_same =
+            m_branch_cycle_id[other_branch] == row.branch_cycle_id &&
+            m_branch_account_cycle_id[other_branch] ==
+               row.account_cycle_id &&
+            m_branch_equity_reference_minor[other_branch] ==
+               row.equity_reference_minor &&
+            m_branch_budget_minor[other_branch] == row.budget_minor;
+         if(!other_is_previous && !other_is_same)
+            return "other_branch_cycle_linkage_invalid";
+      }
+      if(row.opportunity_id != 0)
+         return "causal_opportunity_present";
+      if(row.branch == LP_REVMA_BRANCH_R)
+      {
+         if(row.shared_origin_id != 0)
+            return "causal_shared_origin_present";
+         return "";
+      }
+      if(row.branch != LP_REVMA_BRANCH_U && row.branch != LP_REVMA_BRANCH_C)
+         return "causal_branch_invalid";
+      return "";
+   }
+
+   bool ValidateTransitionState(
+      const LP_RevmaDiscoveryTransitionRow &row,
+      string &failure_reason)
+   {
+      failure_reason = "";
+      if(row.event_type == LP_REVMA_TELEMETRY_CYCLE_START)
+      {
+         failure_reason = CycleStartTransitionStateFailureReason(row);
+         return failure_reason == "";
+      }
       if(m_branch_run_sealed[row.branch])
          return false;
       if(m_branch_terminal_boundary_m1[row.branch] > 0 &&
@@ -4589,41 +4815,188 @@ public:
       bool aggregate_branch_event = row.symbol_id == -1 &&
          row.event_type != LP_REVMA_TELEMETRY_FAILURE &&
          row.event_type != LP_REVMA_TELEMETRY_CYCLE_START;
-      if(!m_initialized || !m_valid || !row.valid ||
-         row.event_time <= 0 || row.run_id != m_run_id ||
-         row.source_revision != m_source_revision || row.profile_id != m_profile_id ||
-         row.profile_hash != m_profile_hash || row.config_hash != m_config_hash ||
-         row.formula_hash != m_formula_hash ||
-         row.symbol_id < -1 || row.symbol_id >= LP_SYMBOL_COUNT ||
-         row.sequence != 0 || row.event_hash != 0 || row.reconciliation_hash != 0 ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.run_id, false) ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.source_revision, false) ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.profile_id, false) ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.birth_bucket, true) ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.center_alignment, true) ||
-         !LP_RevmaTelemetryAsciiFieldValid(row.q_profile_id, true) ||
-          !LP_RevmaTelemetryAsciiFieldValid(row.decision, true) ||
-          !LP_RevmaTelemetryAsciiFieldValid(row.reason, true) ||
-          !LP_RevmaTelemetryAsciiFieldValid(row.grid_terminal_reason, true) ||
-         !LP_RevmaTelemetryEventShapeValid(row) ||
-         (aggregate_branch_event &&
-          (row.source_m1_time != m_registered_cohort_source_m1_time ||
-           row.shared_observation_snapshot_hash !=
-              m_registered_cohort_snapshot_hash ||
-           row.signal_identity_hash != m_registered_cohort_signal_hash ||
-           row.strategy_state_identity_hash !=
-              m_registered_cohort_strategy_hash)) ||
-         !ValidateTransitionState(row) ||
-         (row.candidate_identity != 0 &&
-          row.candidate_identity != LP_RevmaDiscoveryAdmissionIdentity(
-             row.branch, row.branch_grid_id, row.source_m1_time)) ||
-         (row.opportunity_id != 0 &&
-          row.opportunity_id != LP_RevmaDiscoveryOpportunityIdentity(
-             row.shared_origin_id, row.symbol_id, row.source_m1_time,
-             row.candidate_type, row.pre_candidate_state_hash,
-             row.matched_snapshot_hash)))
+      if(!m_initialized)
       {
-         Invalidate("transition_row_invariant_failure");
+         Invalidate("transition_telemetry_not_initialized");
+         return false;
+      }
+      if(!m_valid)
+      {
+         Invalidate("transition_telemetry_invalid");
+         return false;
+      }
+      if(!row.valid)
+      {
+         Invalidate("transition_row_invalid");
+         return false;
+      }
+      if(row.event_time <= 0)
+      {
+         Invalidate("transition_event_time_invalid");
+         return false;
+      }
+      if(row.run_id != m_run_id)
+      {
+         Invalidate("transition_run_id_mismatch");
+         return false;
+      }
+      if(row.source_revision != m_source_revision)
+      {
+         Invalidate("transition_source_revision_mismatch");
+         return false;
+      }
+      if(row.profile_id != m_profile_id)
+      {
+         Invalidate("transition_profile_id_mismatch");
+         return false;
+      }
+      if(row.profile_hash != m_profile_hash)
+      {
+         Invalidate("transition_profile_hash_mismatch");
+         return false;
+      }
+      if(row.config_hash != m_config_hash)
+      {
+         Invalidate("transition_config_hash_mismatch");
+         return false;
+      }
+      if(row.formula_hash != m_formula_hash)
+      {
+         Invalidate("transition_formula_hash_mismatch");
+         return false;
+      }
+      if(row.symbol_id < -1 || row.symbol_id >= LP_SYMBOL_COUNT)
+      {
+         Invalidate("transition_symbol_id_invalid");
+         return false;
+      }
+      if(row.sequence != 0)
+      {
+         Invalidate("transition_sequence_not_zero_before_materialization");
+         return false;
+      }
+      if(row.event_hash != 0)
+      {
+         Invalidate("transition_event_hash_not_zero_before_materialization");
+         return false;
+      }
+      if(row.reconciliation_hash != 0)
+      {
+         Invalidate("transition_reconciliation_hash_not_zero_before_materialization");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.run_id, false))
+      {
+         Invalidate("transition_ascii_run_id_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.source_revision, false))
+      {
+         Invalidate("transition_ascii_source_revision_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.profile_id, false))
+      {
+         Invalidate("transition_ascii_profile_id_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.birth_bucket, true))
+      {
+         Invalidate("transition_ascii_birth_bucket_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.center_alignment, true))
+      {
+         Invalidate("transition_ascii_center_alignment_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.q_profile_id, true))
+      {
+         Invalidate("transition_ascii_q_profile_id_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.decision, true))
+      {
+         Invalidate("transition_ascii_decision_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.reason, true))
+      {
+         Invalidate("transition_ascii_reason_invalid");
+         return false;
+      }
+      if(!LP_RevmaTelemetryAsciiFieldValid(row.grid_terminal_reason, true))
+      {
+         Invalidate("transition_ascii_grid_terminal_reason_invalid");
+         return false;
+      }
+      if(row.event_type == LP_REVMA_TELEMETRY_CYCLE_START)
+      {
+         string cycle_start_shape_reason =
+            LP_RevmaCycleStartEventShapeFailureReason(row);
+         if(cycle_start_shape_reason != "")
+         {
+            Invalidate("transition_cycle_start_event_shape_" +
+               cycle_start_shape_reason);
+            return false;
+         }
+      }
+      else if(!LP_RevmaTelemetryEventShapeValid(row))
+      {
+         Invalidate("transition_event_shape_invalid");
+         return false;
+      }
+      if(aggregate_branch_event &&
+         row.source_m1_time != m_registered_cohort_source_m1_time)
+      {
+         Invalidate("transition_cohort_source_m1_mismatch");
+         return false;
+      }
+      if(aggregate_branch_event &&
+         row.shared_observation_snapshot_hash !=
+            m_registered_cohort_snapshot_hash)
+      {
+         Invalidate("transition_cohort_snapshot_hash_mismatch");
+         return false;
+      }
+      if(aggregate_branch_event &&
+         row.signal_identity_hash != m_registered_cohort_signal_hash)
+      {
+         Invalidate("transition_cohort_signal_hash_mismatch");
+         return false;
+      }
+      if(aggregate_branch_event &&
+         row.strategy_state_identity_hash !=
+            m_registered_cohort_strategy_hash)
+      {
+         Invalidate("transition_cohort_strategy_hash_mismatch");
+         return false;
+      }
+      string transition_state_reason = "";
+      if(!ValidateTransitionState(row, transition_state_reason))
+      {
+         if(row.event_type == LP_REVMA_TELEMETRY_CYCLE_START &&
+            transition_state_reason != "")
+            Invalidate("transition_cycle_start_state_" +
+               transition_state_reason);
+         else
+            Invalidate("transition_state_invalid");
+         return false;
+      }
+      if(row.candidate_identity != 0 &&
+         row.candidate_identity != LP_RevmaDiscoveryAdmissionIdentity(
+            row.branch, row.branch_grid_id, row.source_m1_time))
+      {
+         Invalidate("transition_candidate_identity_invalid");
+         return false;
+      }
+      if(row.opportunity_id != 0 &&
+         row.opportunity_id != LP_RevmaDiscoveryOpportunityIdentity(
+            row.shared_origin_id, row.symbol_id, row.source_m1_time,
+            row.candidate_type, row.pre_candidate_state_hash,
+            row.matched_snapshot_hash))
+      {
+         Invalidate("transition_opportunity_identity_invalid");
          return false;
       }
       LP_RevmaDiscoveryTransitionRow materialized = row;
