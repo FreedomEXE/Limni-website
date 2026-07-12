@@ -4,18 +4,18 @@
 #ifndef __LIMNI_PORTFOLIO_REVMA_GRID_SLEEVE_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_GRID_SLEEVE_MQH__
 
-#include "..\\Core\\Types.mqh"
-#include "..\\Portfolio\\GridBook.mqh"
-#include "..\\Receipts\\ReceiptWriter.mqh"
-#include "IntentBus.mqh"
+#include "..\\..\\Core\\Types.mqh"
+#include "..\\..\\Portfolio\\GridBook.mqh"
+#include "..\\..\\Receipts\\ReceiptWriter.mqh"
+#include "..\\IntentBus.mqh"
 #include "RevmaTypes.mqh"
-#include "Revma\\RevmaDiscoveryTypes.mqh"
-#include "Revma\\RevmaPathGeometry.mqh"
-#include "Revma\\RevmaShadowPortfolio.mqh"
-#include "Revma\\RevmaRealPortfolio.mqh"
-#include "Revma\\RevmaDiscoveryTelemetry.mqh"
-#include "Revma\\RevmaDiscoveryTelemetryBridge.mqh"
-#include "Revma\\RevmaGridProtectionManager.mqh"
+#include "RevmaDiscoveryTypes.mqh"
+#include "RevmaPathGeometry.mqh"
+#include "RevmaShadowPortfolio.mqh"
+#include "RevmaRealPortfolio.mqh"
+#include "RevmaDiscoveryTelemetry.mqh"
+#include "RevmaDiscoveryTelemetryBridge.mqh"
+#include "RevmaGridProtectionManager.mqh"
 
 struct LP_RevmaGridBirthSnapshot
 {
@@ -91,7 +91,7 @@ void LP_ResetRevmaGridBirthSnapshot(LP_RevmaGridBirthSnapshot &birth)
    birth.favorable_add_count = 0;
 }
 
-#include "Revma\\RevmaResearchTelemetry.mqh"
+#include "RevmaResearchTelemetry.mqh"
 
 struct LP_RevmaPendingLifecycle
 {
@@ -1610,6 +1610,7 @@ private:
       intent.config_hash = m_config_hash;
       intent.strategy_version_hash = m_strategy_version_hash;
       intent.human_reason = reason;
+      intent.execution_contract.defer_deal_proof = true;
    }
 
    bool AddHit(
@@ -4327,7 +4328,12 @@ public:
             "gate108_R_close_owner=" +
                IntegerToString(real_grid.close_owner),
             grid.floating_pnl, intent);
-         intent.gate108 = true;
+          intent.gate108 = true;
+          intent.execution_contract.defer_deal_proof = false;
+          intent.execution_contract.close_limit_override = 1;
+          intent.execution_contract.close_identity_filter = true;
+          intent.execution_contract.close_lane_id = LP_LANE_REVMA;
+          intent.execution_contract.close_variant_id = LP_VARIANT_REVMA_REVERSION;
          intent.discovery_branch = LP_REVMA_BRANCH_R;
          intent.discovery_branch_grid_id = real_grid.branch_grid_id;
          intent.discovery_shared_snapshot_hash =
@@ -4667,6 +4673,10 @@ public:
             intent.requested_lots = LP_REVMA_DISCOVERY_ATOM_LOTS;
             intent.expires_at = (datetime)((long)TimeCurrent() + 600);
             intent.gate108 = true;
+            intent.execution_contract.defer_deal_proof = false;
+            intent.execution_contract.exact_lots_required = true;
+            intent.execution_contract.exact_lots = LP_REVMA_DISCOVERY_ATOM_LOTS;
+            intent.execution_contract.close_limit_override = 1;
             intent.discovery_branch = LP_REVMA_BRANCH_R;
             intent.discovery_branch_grid_id = candidate.branch_grid_id;
             intent.discovery_candidate_identity =

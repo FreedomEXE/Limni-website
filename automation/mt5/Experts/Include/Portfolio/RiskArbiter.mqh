@@ -68,24 +68,6 @@ private:
          return false;
       }
 
-      if(intent.gate108 &&
-         (intent.discovery_branch != 0 ||
-          intent.discovery_branch_grid_id == 0 ||
-          intent.discovery_shared_snapshot_hash == 0 ||
-          intent.discovery_source_m1_time <= 0 ||
-          ((long)intent.discovery_source_m1_time % 60) != 0 ||
-          (IsOpenAction(intent.action) &&
-           (intent.discovery_candidate_identity == 0 ||
-            intent.discovery_pre_candidate_state_hash == 0 ||
-            NormalizeDouble(intent.requested_lots, 2) != 0.01)) ||
-          (IsCloseAction(intent.action) &&
-           (intent.discovery_close_owner <= 0 ||
-            intent.discovery_origin_terminal_reason == ""))))
-      {
-         reason = "gate108_typed_intent_invariant_failure";
-         return false;
-      }
-
       if(intent.action != LP_INTENT_CLOSE_ALL_EA)
       {
          if(!LP_IsSupportedMagicLaneVariant(intent.lane_id, intent.variant_id) ||
@@ -220,6 +202,7 @@ private:
       plan.close_reason = intent.close_reason;
       plan.reason = intent.human_reason;
       plan.executable = true;
+      plan.execution_contract = intent.execution_contract;
 
       if(intent.action == LP_INTENT_CLOSE_ALL_EA)
       {

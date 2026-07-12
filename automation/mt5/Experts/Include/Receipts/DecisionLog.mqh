@@ -30,34 +30,6 @@ string LP_StopTakeProfitReceiptFields(
 
 void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
 {
-   string reason = intent.human_reason;
-   string payload_reference = "";
-   if(receipts.CompactLongRunMode() &&
-      (intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ||
-       intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_ADD))
-   {
-      int candidate_receipt_kind = intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
-         LP_RECEIPT_REVMA_GRID_BIRTH : LP_RECEIPT_REVMA_GRID_ADD;
-      string expected_reason = intent.research_lifecycle_event == LP_RESEARCH_LIFECYCLE_GRID_BIRTH ?
-         "revma_grid_birth" : "revma_grid_add";
-      int reason_separator = StringFind(intent.human_reason, "|");
-      string actual_reason = reason_separator >= 0 ?
-         StringSubstr(intent.human_reason, 0, reason_separator) : intent.human_reason;
-      if(actual_reason == expected_reason)
-      {
-         reason = actual_reason;
-         payload_reference =
-            "|payload_contract=" + receipts.PayloadContract() +
-            "|candidate_payload_role=reference" +
-            "|candidate_payload_ref_receipt_type=" + LP_ReceiptKindName(candidate_receipt_kind) +
-            "|candidate_payload_ref_status=intent_created" +
-            "|candidate_payload_ref_intent_id=" + (string)intent.intent_id;
-      }
-      else
-         payload_reference = "|payload_contract=inline_fallback_reason_mismatch" +
-            "|expected_lifecycle_reason=" + expected_reason;
-   }
-
    receipts.Write(
       LP_RECEIPT_INTENT,
       intent.symbol,
@@ -67,7 +39,7 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
          "|lots=" + DoubleToString(intent.requested_lots, 4) +
           "|score=" + DoubleToString(intent.score, 6) +
           "|grid_key=" + (string)intent.grid_key +
-          "|research_lifecycle_event=" + LP_ResearchLifecycleEventName(intent.research_lifecycle_event) +
+          "|research_lifecycle_event=" + IntegerToString(intent.research_lifecycle_event) +
           "|research_add_type=" + intent.research_add_type +
           "|close_reason=" + intent.close_reason +
           "|source_bar_time=" + LP_Stamp(intent.source_bar_time) +
@@ -79,7 +51,7 @@ void LP_LogTradeIntent(LP_ReceiptWriter &receipts, const LP_TradeIntent &intent)
              intent.target_take_profit_price,
              intent.target_stop_loss_price
           ) +
-          "|reason=" + reason + payload_reference,
+          "|reason=" + intent.human_reason,
       intent.lane_id,
       intent.variant_id,
       intent.grid_key,
@@ -118,7 +90,7 @@ void LP_LogTradePlan(LP_ReceiptWriter &receipts, const LP_TradePlan &plan)
          "|action=" + IntegerToString(plan.action) +
          "|direction=" + IntegerToString(plan.direction) +
           "|lots=" + DoubleToString(plan.lots, 4) +
-          "|research_lifecycle_event=" + LP_ResearchLifecycleEventName(plan.research_lifecycle_event) +
+          "|research_lifecycle_event=" + IntegerToString(plan.research_lifecycle_event) +
           "|research_add_type=" + plan.research_add_type +
           "|close_reason=" + plan.close_reason +
          LP_StopTakeProfitReceiptFields(

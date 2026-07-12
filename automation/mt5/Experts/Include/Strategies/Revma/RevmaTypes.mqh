@@ -4,9 +4,9 @@
 #ifndef __LIMNI_PORTFOLIO_REVMA_TYPES_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_TYPES_MQH__
 
-#include "..\\Core\\Types.mqh"
-#include "..\\Core\\SymbolUniverse.mqh"
-#include "..\\..\\..\\Indicators\\Include\\LimniPairDirectionCore.mqh"
+#include "..\\..\\Core\\Types.mqh"
+#include "..\\..\\Core\\SymbolUniverse.mqh"
+#include "..\\..\\..\\..\\Indicators\\Include\\LimniPairDirectionCore.mqh"
 
 #define LP_REVMA_SYSTEM_ID "revma-v001"
 #define LP_REVMA_SYSTEM_NAME "Revma v001"

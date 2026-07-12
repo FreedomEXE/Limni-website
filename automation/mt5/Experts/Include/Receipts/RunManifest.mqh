@@ -7,7 +7,7 @@
 #include "..\\Core\\BuildInfo.mqh"
 #include "..\\Core\\Types.mqh"
 #include "..\\Market\\SessionCalendar.mqh"
-#include "..\\Strategies\\RevmaTypes.mqh"
+#include "..\\Strategies\\Revma\\RevmaTypes.mqh"
 #include "ReceiptWriter.mqh"
 
 void LP_WriteRunManifest(

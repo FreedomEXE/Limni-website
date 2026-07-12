@@ -6,7 +6,7 @@
 
 #include "..\\..\\Core\\Types.mqh"
 #include "..\\..\\Receipts\\ReceiptWriter.mqh"
-#include "..\\RevmaTypes.mqh"
+#include "RevmaTypes.mqh"
 
 class LP_RevmaLifecycleGate
 {

@@ -6,7 +6,7 @@
 
 #include "..\\Core\\Types.mqh"
 #include "IntentBus.mqh"
-#include "RevmaGridSleeve.mqh"
+#include "Revma\\RevmaGridSleeve.mqh"
 
 class LP_StrategyRegistry
 {

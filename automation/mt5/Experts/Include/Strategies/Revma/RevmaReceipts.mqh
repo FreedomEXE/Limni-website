@@ -5,7 +5,7 @@
 #define __LIMNI_PORTFOLIO_REVMA_RECEIPTS_MQH__
 
 #include "..\\..\\Receipts\\ReceiptWriter.mqh"
-#include "..\\RevmaTypes.mqh"
+#include "RevmaTypes.mqh"
 
 void LP_WriteRevmaSignalReceipt(
    LP_ReceiptWriter &receipts,

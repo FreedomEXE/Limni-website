@@ -141,6 +141,38 @@ enum LP_IntentAction
    LP_INTENT_SYNC_GRID_TP = 6
 };
 
+// Strategy-provided execution capabilities.  The broker layer transports and
+// applies these generic capabilities without interpreting strategy meaning.
+struct LP_ExecutionContract
+{
+   bool defer_deal_proof;
+   bool exact_lots_required;
+   double exact_lots;
+   int close_limit_override;
+   bool close_identity_filter;
+   int close_lane_id;
+   int close_variant_id;
+};
+
+void LP_ResetExecutionContract(LP_ExecutionContract &contract)
+{
+   contract.defer_deal_proof = false;
+   contract.exact_lots_required = false;
+   contract.exact_lots = 0.0;
+   contract.close_limit_override = 0;
+   contract.close_identity_filter = false;
+   contract.close_lane_id = LP_LANE_NONE;
+   contract.close_variant_id = LP_VARIANT_NONE;
+}
+
+bool LP_ExecutionContractPresent(const LP_ExecutionContract &contract)
+{
+   return contract.defer_deal_proof ||
+      contract.exact_lots_required ||
+      contract.close_limit_override > 0 ||
+      contract.close_identity_filter;
+}
+
 enum LP_ResearchLifecycleEvent
 {
    LP_RESEARCH_LIFECYCLE_NONE = 0,
@@ -461,6 +493,7 @@ struct LP_TradeIntent
    ulong config_hash;
    ulong strategy_version_hash;
    string human_reason;
+   LP_ExecutionContract execution_contract;
 };
 
 void LP_ResetTradeIntent(LP_TradeIntent &intent)
@@ -474,6 +507,7 @@ void LP_ResetTradeIntent(LP_TradeIntent &intent)
    intent.variant_id = LP_VARIANT_NONE;
    intent.action = LP_INTENT_NONE;
    intent.direction = LP_SIDE_NONE;
+   LP_ResetExecutionContract(intent.execution_contract);
 }
 
 struct LP_RiskDecision
@@ -533,6 +567,7 @@ struct LP_TradePlan
    string comment;
    string reason;
    bool executable;
+   LP_ExecutionContract execution_contract;
 };
 
 #define LP_MAX_EXECUTION_DEAL_TICKETS 32

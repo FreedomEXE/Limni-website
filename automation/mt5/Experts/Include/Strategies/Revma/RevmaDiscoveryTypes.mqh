@@ -6,7 +6,7 @@
 
 #include "..\\..\\Core\\BuildInfo.mqh"
 #include "..\\..\\Core\\Types.mqh"
-#include "..\\RevmaTypes.mqh"
+#include "RevmaTypes.mqh"
 
 #define LP_REVMA_DISCOVERY_FORMULA_ID "revma-adaptive-grid-discovery-v1"
 #define LP_REVMA_DISCOVERY_PROFILE_ID "gate108-core-institutional-v1"

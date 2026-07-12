@@ -7,7 +7,7 @@
 #include "BuildInfo.mqh"
 #include "Types.mqh"
 #include "..\\..\\..\\Indicators\\Include\\LimniQStateCore.mqh"
-#include "..\\Strategies\\RevmaTypes.mqh"
+#include "..\\Strategies\\Revma\\RevmaTypes.mqh"
 
 enum ExecutionModeInput
 {

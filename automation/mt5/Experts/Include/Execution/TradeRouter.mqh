@@ -287,15 +287,14 @@ private:
       bool executed_retcode = IsExecutedFillRetcode(execution.retcode);
       bool deal_proof = !executed_retcode ||
          CaptureCanonicalDealSet(plan, execution);
-      bool deferred_single_pair_deal_proof = !plan.gate108 &&
+      bool deferred_deal_proof = plan.execution_contract.defer_deal_proof &&
          executed_retcode && execution.deal_ticket > 0 &&
          execution.executed_lots > 0.0;
-      // A tester fill can be reported before its history row is selectable.
-      // Keep the broker result accepted for single-pair mechanics and let the
-      // later DEAL_ADD/history reconciliation complete the linkage.  Gate108
-      // R keeps its stricter canonical deal-set requirement.
+      // A caller may explicitly permit a broker fill before its history row
+      // is selectable.  Later transaction/history reconciliation completes
+      // the linkage; the router does not interpret the caller's strategy.
       execution.accepted = request_ok && executed_retcode &&
-         (deal_proof || deferred_single_pair_deal_proof);
+         (deal_proof || deferred_deal_proof);
       execution.broker_rejected = !execution.accepted &&
          !executed_retcode && execution.retcode != TRADE_RETCODE_PLACED;
 
@@ -312,7 +311,7 @@ private:
          "|deal_set_complete=" + LP_BoolText(execution.deal_set_complete) +
          "|deal_linkage_clean=" + LP_BoolText(execution.deal_linkage_clean) +
          "|deal_proof_deferred=" +
-            LP_BoolText(deferred_single_pair_deal_proof && !deal_proof) +
+          LP_BoolText(deferred_deal_proof && !deal_proof) +
          "|deal_count=" + IntegerToString(execution.deal_count) +
          "|deal_set_hash=" + (string)execution.deal_set_hash;
    }
@@ -857,12 +856,13 @@ private:
       long position_magic = (long)PositionGetInteger(POSITION_MAGIC);
       if(!LP_IsManagedMagic(position_magic))
          return false;
-      if(plan.gate108 && plan.action == LP_INTENT_CLOSE_ALL_EA)
+      if(plan.execution_contract.close_identity_filter &&
+         plan.action == LP_INTENT_CLOSE_ALL_EA)
       {
-         LP_MagicParts quarantine_parts;
-         if(!LP_DecodeMagic(position_magic, quarantine_parts) ||
-            quarantine_parts.lane_id != LP_LANE_REVMA ||
-            quarantine_parts.variant_id != LP_VARIANT_REVMA_REVERSION)
+         LP_MagicParts filtered_parts;
+         if(!LP_DecodeMagic(position_magic, filtered_parts) ||
+            filtered_parts.lane_id != plan.execution_contract.close_lane_id ||
+            filtered_parts.variant_id != plan.execution_contract.close_variant_id)
             return false;
       }
       LP_TradePlan position_plan;
@@ -1004,10 +1004,9 @@ private:
 
       string close_scope = plan.action == LP_INTENT_CLOSE_ALL_EA ? "account_all_ea" :
          (plan.action == LP_INTENT_REDUCE_GRID ? "grid_reduce" : "grid_close");
-      int close_limit = plan.gate108 &&
-         (plan.action == LP_INTENT_CLOSE_GRID ||
-          plan.action == LP_INTENT_CLOSE_ALL_EA) ?
-         1 : m_config.max_close_positions_per_step;
+      int close_limit = plan.execution_contract.close_limit_override > 0 ?
+         plan.execution_contract.close_limit_override :
+         m_config.max_close_positions_per_step;
       int matched = 0;
       int attempted = 0;
       int closed = 0;
@@ -1032,12 +1031,13 @@ private:
          long magic = (long)PositionGetInteger(POSITION_MAGIC);
          if(!LP_IsManagedMagic(magic))
             continue;
-         if(plan.gate108 && plan.action == LP_INTENT_CLOSE_ALL_EA)
+         if(plan.execution_contract.close_identity_filter &&
+            plan.action == LP_INTENT_CLOSE_ALL_EA)
          {
-            LP_MagicParts quarantine_parts;
-            if(!LP_DecodeMagic(magic, quarantine_parts) ||
-               quarantine_parts.lane_id != LP_LANE_REVMA ||
-               quarantine_parts.variant_id != LP_VARIANT_REVMA_REVERSION)
+            LP_MagicParts filtered_parts;
+            if(!LP_DecodeMagic(magic, filtered_parts) ||
+               filtered_parts.lane_id != plan.execution_contract.close_lane_id ||
+               filtered_parts.variant_id != plan.execution_contract.close_variant_id)
                continue;
          }
 
@@ -1162,8 +1162,9 @@ public:
       m_ready = true;
    }
 
-   bool CancelGate108ManagedPendingOrders(
-      LP_ReceiptWriter &receipts,
+   bool CancelManagedPendingOrders(
+      const LP_TradePlan &plan,
+       LP_ReceiptWriter &receipts,
       int &matched,
       int &deleted,
       int &failed,
@@ -1186,17 +1187,19 @@ public:
          long magic = OrderGetInteger(ORDER_MAGIC);
          string symbol = OrderGetString(ORDER_SYMBOL);
          LP_MagicParts parts;
-         bool managed_revma = LP_IsManagedMagic(magic) &&
-            LP_DecodeMagic(magic, parts) &&
-            parts.lane_id == LP_LANE_REVMA &&
-            parts.variant_id == LP_VARIANT_REVMA_REVERSION;
-         if(!managed_revma)
+         bool managed = LP_IsManagedMagic(magic) &&
+            LP_DecodeMagic(magic, parts);
+         if(managed && plan.execution_contract.close_identity_filter &&
+            (parts.lane_id != plan.execution_contract.close_lane_id ||
+             parts.variant_id != plan.execution_contract.close_variant_id))
+            managed = false;
+         if(!managed)
          {
             foreign++;
             receipts.Write(
                LP_RECEIPT_ERROR,
                symbol,
-               "gate108_quarantine_foreign_pending_order",
+               "managed_close_foreign_pending_order",
                "ticket=" + (string)ticket + "|magic=" + (string)magic,
                0, 0, 0, 0, 0, magic);
             continue;
@@ -1213,8 +1216,8 @@ public:
          receipts.Write(
             LP_RECEIPT_ORDER_RESULT,
             symbol,
-            accepted ? "gate108_quarantine_order_cancelled" :
-               "gate108_quarantine_order_cancel_failed",
+             accepted ? "managed_close_order_cancelled" :
+                "managed_close_order_cancel_failed",
             "ticket=" + (string)ticket +
                "|magic=" + (string)magic +
                "|retcode=" + IntegerToString((int)retcode) +
@@ -1286,12 +1289,12 @@ public:
          WriteOrderRequest(receipts, plan, "lot_rejected", "reason=" + lot_reason);
          return false;
       }
-      if(plan.gate108 &&
-         NormalizeDouble(normalized_lots, 2) !=
-            NormalizeDouble(0.01, 2))
+      if(plan.execution_contract.exact_lots_required &&
+         NormalizeDouble(normalized_lots, 8) !=
+            NormalizeDouble(plan.execution_contract.exact_lots, 8))
       {
          execution.detail =
-            "order_send_attempted=false|reason=gate108_atom_lot_mismatch";
+            "order_send_attempted=false|reason=exact_lot_contract_mismatch";
          execution.session_outcome = "not_reached_lot_invariant";
          WriteOrderRequest(receipts, plan, "lot_rejected", execution.detail);
          return false;

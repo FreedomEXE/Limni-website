@@ -46,6 +46,7 @@ void LP_ResetTradePlan(LP_TradePlan &plan)
    plan.comment = "";
    plan.reason = "";
    plan.executable = false;
+   LP_ResetExecutionContract(plan.execution_contract);
 }
 
 #endif // __LIMNI_PORTFOLIO_TRADE_PLAN_MQH__

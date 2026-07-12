@@ -4,11 +4,11 @@
 #ifndef __LIMNI_PORTFOLIO_REVMA_SIGNAL_STATE_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_SIGNAL_STATE_MQH__
 
-#include "..\\Core\\Types.mqh"
-#include "..\\Core\\SymbolUniverse.mqh"
-#include "..\\Market\\SymbolSpecCache.mqh"
-#include "..\\Strategies\\RevmaTypes.mqh"
-#include "..\\..\\..\\Indicators\\Include\\LimniRadialMovementGrid.mqh"
+#include "..\\..\\Core\\Types.mqh"
+#include "..\\..\\Core\\SymbolUniverse.mqh"
+#include "..\\..\\Market\\SymbolSpecCache.mqh"
+#include "RevmaTypes.mqh"
+#include "..\\..\\..\\..\\Indicators\\Include\\LimniRadialMovementGrid.mqh"
 
 #define LP_REVMA_LINE_EVENT_WINDOW 55
 #define LP_REVMA_STOCH_EVENT_WINDOW 55
