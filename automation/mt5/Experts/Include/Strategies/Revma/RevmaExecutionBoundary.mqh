@@ -1,5 +1,6 @@
 /*-----------------------------------------------
   Revma execution and research-validity boundary
+  Phase B.2.1: explicit observation outcome propagation.
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_REVMA_EXECUTION_BOUNDARY_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_EXECUTION_BOUNDARY_MQH__
@@ -302,18 +303,23 @@ public:
       return true;
    }
 
-   bool ObserveTransaction(const MqlTradeTransaction &trans,
-      const bool fatal_latched, LP_MandatoryDiagnostics &mandatory,
-      LP_ReceiptWriter &receipts)
-   {
-      if(!m_active)
-         return true;
-      if(trans.type == TRADE_TRANSACTION_DEAL_DELETE)
-      {
-         m_account_deal_mutation_observed = true;
-         EnterQuarantine("gate108_canonical_deal_deleted", mandatory, receipts);
-         return true;
-      }
+    LP_ExecutionObservationOutcome ObserveTransaction(
+       const MqlTradeTransaction &trans,
+       const bool fatal_latched,
+       LP_MandatoryDiagnostics &mandatory,
+       LP_ReceiptWriter &receipts,
+       string &outcome_reason)
+    {
+       outcome_reason = "";
+       if(!m_active)
+          return LP_EXECUTION_OBSERVATION_OK;
+       if(trans.type == TRADE_TRANSACTION_DEAL_DELETE)
+       {
+          m_account_deal_mutation_observed = true;
+          EnterQuarantine("gate108_canonical_deal_deleted", mandatory, receipts);
+          outcome_reason = m_quarantine_reason;
+          return LP_EXECUTION_OBSERVATION_QUARANTINE;
+       }
       if(trans.type == TRADE_TRANSACTION_DEAL_UPDATE)
       {
          mandatory.Event("deal_history_update", trans.symbol, 0,
@@ -329,13 +335,18 @@ public:
          {
             EnterQuarantine("gate108_incremental_deal_audit_failed",
                mandatory, receipts);
-            return false;
+            outcome_reason = m_quarantine_reason;
+            return LP_EXECUTION_OBSERVATION_AUDIT_FAILURE;
          }
          if(fatal_latched && !m_quarantine_active)
+         {
             EnterQuarantine("gate108_delayed_deal_after_fatal_quarantine",
                mandatory, receipts);
+            outcome_reason = m_quarantine_reason;
+            return LP_EXECUTION_OBSERVATION_QUARANTINE;
+         }
       }
-      return true;
+      return LP_EXECUTION_OBSERVATION_OK;
    }
 
    void EnterQuarantine(const string reason,

@@ -1,6 +1,6 @@
 /*-----------------------------------------------
   Revma adapter
-  Phase B.1: literal boundary over the existing Revma implementation.
+  Phase B.2.1: explicit execution observation outcome forwarding.
 -----------------------------------------------*/
 #ifndef __LIMNI_PORTFOLIO_REVMA_ADAPTER_MQH__
 #define __LIMNI_PORTFOLIO_REVMA_ADAPTER_MQH__
@@ -152,13 +152,16 @@ public:
       return m_execution.RememberRoutedDealSet(plan, execution);
    }
 
-   bool ObserveExecutionTransaction(const MqlTradeTransaction &trans,
-      const bool fatal_latched, LP_MandatoryDiagnostics &mandatory,
-      LP_ReceiptWriter &receipts)
-   {
-      return m_execution.ObserveTransaction(trans, fatal_latched,
-         mandatory, receipts);
-   }
+    LP_ExecutionObservationOutcome ObserveExecutionTransaction(
+       const MqlTradeTransaction &trans,
+       const bool fatal_latched,
+       LP_MandatoryDiagnostics &mandatory,
+       LP_ReceiptWriter &receipts,
+       string &outcome_reason)
+    {
+       return m_execution.ObserveTransaction(trans, fatal_latched,
+          mandatory, receipts, outcome_reason);
+    }
 
    bool FinalizeExecutionDealAudit(ulong &final_deal_count,
       ulong &final_deal_hash, bool &final_contamination, bool &exact_sets)

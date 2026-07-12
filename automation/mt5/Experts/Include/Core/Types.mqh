@@ -173,6 +173,13 @@ bool LP_ExecutionContractPresent(const LP_ExecutionContract &contract)
       contract.close_identity_filter;
 }
 
+enum LP_ExecutionObservationOutcome
+{
+   LP_EXECUTION_OBSERVATION_OK = 0,
+   LP_EXECUTION_OBSERVATION_QUARANTINE = 1,
+   LP_EXECUTION_OBSERVATION_AUDIT_FAILURE = 2
+};
+
 enum LP_ResearchLifecycleEvent
 {
    LP_RESEARCH_LIFECYCLE_NONE = 0,

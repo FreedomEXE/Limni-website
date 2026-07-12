@@ -875,22 +875,8 @@ public:
       Step("timer");
    }
 
-   void OnTradeTransaction(
-      const MqlTradeTransaction &trans,
-      const MqlTradeRequest &request,
-      const MqlTradeResult &result
-   )
+   void MarkTradeTransactionDirty(const MqlTradeTransaction &trans)
    {
-      m_mandatory.Event("transaction", trans.symbol, 0, (int)trans.type, 0,
-         trans.order, trans.deal, trans.position, "",
-         "request_magic=" + (string)request.magic +
-         "|retcode=" + IntegerToString((int)result.retcode), false);
-      if(!m_initialized)
-         return;
-      if(m_discovery_active &&
-         !m_revma_adapter.ObserveExecutionTransaction(trans,
-            m_fatal_invariant_latched, m_mandatory, m_receipts))
-         return;
       bool commission_deal_transaction =
          trans.type == TRADE_TRANSACTION_DEAL_ADD ||
          trans.type == TRADE_TRANSACTION_DEAL_UPDATE ||
@@ -907,6 +893,62 @@ public:
       }
       m_position_index.MarkDirty();
       m_portfolio_dirty = true;
+   }
+
+   void OnTradeTransaction(
+      const MqlTradeTransaction &trans,
+      const MqlTradeRequest &request,
+      const MqlTradeResult &result
+   )
+   {
+      m_mandatory.Event("transaction", trans.symbol, 0, (int)trans.type, 0,
+         trans.order, trans.deal, trans.position, "",
+         "request_magic=" + (string)request.magic +
+         "|retcode=" + IntegerToString((int)result.retcode), false);
+      if(!m_initialized)
+          return;
+      if(m_discovery_active)
+      {
+         string observation_reason = "";
+         LP_ExecutionObservationOutcome observation =
+            m_revma_adapter.ObserveExecutionTransaction(trans,
+               m_fatal_invariant_latched, m_mandatory, m_receipts,
+               observation_reason);
+         if(observation != LP_EXECUTION_OBSERVATION_OK)
+         {
+            MarkTradeTransactionDirty(trans);
+            string failure_reason = observation_reason == "" ?
+               "strategy_execution_observation_failed" : observation_reason;
+            LatchFatalInvariant(failure_reason);
+            string outcome_name = observation ==
+               LP_EXECUTION_OBSERVATION_QUARANTINE ?
+               "quarantine" : "audit_failure";
+            m_receipts.Write(
+               LP_RECEIPT_TRADE_TRANSACTION,
+               trans.symbol,
+               "transaction_observation_failure",
+               "type=" + IntegerToString((int)trans.type) +
+                  "|order=" + (string)trans.order +
+                  "|deal=" + (string)trans.deal +
+                  "|observation_outcome=" + outcome_name +
+                  "|reason=" + failure_reason +
+                  "|request_magic=" + (string)request.magic +
+                  "|retcode=" + IntegerToString((int)result.retcode),
+               0,
+               0,
+               0,
+               0,
+               0,
+               (long)request.magic
+            );
+            ulong transaction_flush_started_at = m_runtime_telemetry.Start();
+            m_receipts.Flush();
+            m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_RECEIPT_FLUSH,
+               transaction_flush_started_at);
+            return;
+         }
+      }
+      MarkTradeTransactionDirty(trans);
       m_receipts.Write(
          LP_RECEIPT_TRADE_TRANSACTION,
          trans.symbol,
@@ -1309,14 +1351,16 @@ public:
        {
           if(m_discovery_active)
           {
-             string discovery_snapshot_reason = "";
-             int discovery_intents =
-                m_revma_adapter.ProcessDiscoveryCompletedM1Batch(
+              string discovery_snapshot_reason = "";
+              ulong batch_evaluations = 0;
+              int discovery_intents =
+                 m_revma_adapter.ProcessDiscoveryCompletedM1Batch(
                    new_symbol_ids, new_symbol_bars, new_symbol_count,
                    m_symbol_cache, m_tick_cache, m_news_calendar, m_config,
-                   m_grid_book, m_intent_bus, m_runtime_telemetry,
-                   m_total_strategy_symbol_evaluations,
-                   discovery_snapshot_reason);
+                    m_grid_book, m_intent_bus, m_runtime_telemetry,
+                    batch_evaluations,
+                    discovery_snapshot_reason);
+              m_total_strategy_symbol_evaluations += batch_evaluations;
              if(discovery_intents < 0 ||
                 m_revma_adapter.RevmaDiscoveryFaultLatched())
              {
