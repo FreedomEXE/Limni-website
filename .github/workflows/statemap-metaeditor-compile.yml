@@ -109,3 +109,5 @@ jobs:
           path: StateMap-compile.log
           if-no-files-found: ignore
           retention-days: 1
+
+# Pull-request compile probe; removed from the active branch after validation.
