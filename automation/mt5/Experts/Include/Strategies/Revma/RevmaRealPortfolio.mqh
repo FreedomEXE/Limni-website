@@ -249,6 +249,18 @@ struct LP_RevmaRealPortfolioState
    ulong run_candidate_admitted_count;
    ulong run_candidate_rejected_count;
    ulong run_inventory_transition_count;
+   ulong run_candidate_diag_invalid_revma_classification_count;
+   ulong run_candidate_diag_session_ineligible_count;
+   ulong run_candidate_diag_news_ineligible_count;
+   ulong run_candidate_diag_reentry_blocked_count;
+   ulong run_candidate_diag_already_exposed_capacity_blocked_count;
+   ulong run_candidate_diag_other_invariant_failure_count;
+   string run_candidate_diag_first_invalid_revma_classification;
+   string run_candidate_diag_first_session_ineligible;
+   string run_candidate_diag_first_news_ineligible;
+   string run_candidate_diag_first_reentry_blocked;
+   string run_candidate_diag_first_already_exposed_capacity_blocked;
+   string run_candidate_diag_first_other_invariant_failure;
 };
 
 void LP_ResetRevmaRealPortfolioState(LP_RevmaRealPortfolioState &state)
@@ -368,6 +380,20 @@ private:
          return false;
       value++;
       return true;
+   }
+
+   void RecordCandidateDiagnostic(
+      ulong &count,
+      string &first_example,
+      const LP_RevmaCompletedM1Snapshot &snapshot,
+      const string reason)
+   {
+      if(count < (ulong)LP_REVMA_DISCOVERY_MINOR_ABS_LIMIT)
+         count++;
+      if(first_example == "")
+         first_example = "symbol=" + LP_CanonicalSymbol(snapshot.symbol_id) +
+            "|source_m1_time=" + LP_Stamp(snapshot.source_m1_time) +
+            "|reason=" + reason;
    }
 
    bool RecordBuilt()
@@ -767,6 +793,13 @@ private:
       m_candidates[index].terminal = true;
       m_candidates[index].decision = LP_REVMA_DISCOVERY_DECISION_REJECT;
       m_candidates[index].decision_reason = reason;
+      if(reason == "real_execution_two_atom_envelope_exhausted" ||
+         reason == "fill_reconciliation_capacity_overrun_blocks_new_exposure" ||
+         reason == "capital_budget_capacity_exhausted")
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_already_exposed_capacity_blocked_count,
+            m_portfolio.run_candidate_diag_first_already_exposed_capacity_blocked,
+            m_candidates[index].snapshot, reason);
       return RecordDecision(false);
    }
 
@@ -1221,24 +1254,64 @@ public:
          m_portfolio.allocation_complete ||
          snapshot.source_m1_time != m_portfolio.batch_m1_time ||
          !LP_RevmaCompletedM1SnapshotValid(snapshot))
+      {
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_other_invariant_failure_count,
+            m_portfolio.run_candidate_diag_first_other_invariant_failure,
+            snapshot, "build_input_invalid");
          return false;
+      }
       LP_RevmaRealGrid grid = m_grids[snapshot.symbol_id];
       bool birth = !grid.active;
       int direction = birth ? snapshot.direction : grid.direction;
       int candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_NONE;
       if(birth)
       {
-         if(!snapshot.birth_eligible || !snapshot.session_allowed ||
-            !snapshot.news_allowed ||
-            !ReentryEligible(grid, snapshot.source_m1_time,
-               snapshot.strategy_state_identity_hash))
+         if(!snapshot.birth_eligible)
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_invalid_revma_classification_count,
+               m_portfolio.run_candidate_diag_first_invalid_revma_classification,
+               snapshot, "birth_eligible_false");
             return true;
+         }
+         if(!snapshot.session_allowed)
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_session_ineligible_count,
+               m_portfolio.run_candidate_diag_first_session_ineligible,
+               snapshot, "session_allowed_false");
+            return true;
+         }
+         if(!snapshot.news_allowed)
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_news_ineligible_count,
+               m_portfolio.run_candidate_diag_first_news_ineligible,
+               snapshot, "news_allowed_false");
+            return true;
+         }
+         if(!ReentryEligible(grid, snapshot.source_m1_time,
+               snapshot.strategy_state_identity_hash))
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_reentry_blocked_count,
+               m_portfolio.run_candidate_diag_first_reentry_blocked,
+               snapshot, "reentry_ineligible");
+            return true;
+         }
          candidate_type = LP_REVMA_DISCOVERY_CANDIDATE_BIRTH;
       }
       else
       {
          if(grid.close_owner != LP_REVMA_DISCOVERY_CLOSE_NONE)
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_already_exposed_capacity_blocked_count,
+               m_portfolio.run_candidate_diag_first_already_exposed_capacity_blocked,
+               snapshot, "active_grid_close_owner");
             return true;
+         }
          long decision_ticks = 0;
          long minimum_ticks = 0;
          long maximum_ticks = 0;
@@ -1248,7 +1321,13 @@ public:
                grid.broker_tick_size, minimum_ticks) ||
             !LP_RevmaPriceToTicks(grid.maximum_entry_price,
                grid.broker_tick_size, maximum_ticks))
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_other_invariant_failure_count,
+               m_portfolio.run_candidate_diag_first_other_invariant_failure,
+               snapshot, "price_to_ticks_failed");
             return false;
+         }
          long lower = minimum_ticks > grid.mesh.discovery_cell_ticks ?
             minimum_ticks - grid.mesh.discovery_cell_ticks : 0;
          long upper = maximum_ticks + grid.mesh.discovery_cell_ticks;
@@ -1257,13 +1336,23 @@ public:
          bool favorable = direction == LP_SIDE_LONG ?
             decision_ticks >= upper : (lower > 0 && decision_ticks <= lower);
          if(!adverse && !favorable)
+         {
+            RecordCandidateDiagnostic(
+               m_portfolio.run_candidate_diag_already_exposed_capacity_blocked_count,
+               m_portfolio.run_candidate_diag_first_already_exposed_capacity_blocked,
+               snapshot, "active_grid_not_at_add_boundary");
             return true;
+         }
          candidate_type = adverse ?
             LP_REVMA_DISCOVERY_CANDIDATE_ADVERSE_ADD :
             LP_REVMA_DISCOVERY_CANDIDATE_FAVORABLE_ADD;
       }
       if(m_candidate_count >= LP_SYMBOL_COUNT)
       {
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_other_invariant_failure_count,
+            m_portfolio.run_candidate_diag_first_other_invariant_failure,
+            snapshot, "real_candidate_capacity_exhausted");
          Invalidate("real_candidate_capacity_exhausted");
          return false;
       }
@@ -1312,14 +1401,26 @@ public:
             candidate.fill_proxy_price, candidate.liquidation_price,
             snapshot_a_g, candidate.incremental_margin_minor,
             candidate.incremental_liquidation_minor, slope))
+      {
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_other_invariant_failure_count,
+            m_portfolio.run_candidate_diag_first_other_invariant_failure,
+            snapshot, "snapshot_direction_values_invalid");
          return false;
+      }
       candidate.a_g_candidate_minor = birth ? snapshot_a_g :
          grid.a_g_candidate_minor;
       candidate.incremental_close_cost_minor = 0;
       candidate.incremental_reservation_minor = 0;
       if(birth && !SafeMultiply(candidate.a_g_candidate_minor, 2,
          candidate.incremental_reservation_minor))
+      {
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_other_invariant_failure_count,
+            m_portfolio.run_candidate_diag_first_other_invariant_failure,
+            snapshot, "birth_reservation_overflow");
          return false;
+      }
       candidate.shared_snapshot_hash = snapshot.snapshot_hash;
       candidate.snapshot = snapshot;
       candidate.matched_snapshot_hash =
@@ -1340,10 +1441,16 @@ public:
          candidate.candidate_identity == 0 ||
           candidate.pre_candidate_state_hash == 0 ||
           candidate.strategy_state_identity_hash == 0 ||
-          candidate.initial_history_boundary <= 0 ||
-          candidate.initial_history_boundary > candidate.source_m1_time ||
-          candidate.matched_snapshot_hash == 0)
+         candidate.initial_history_boundary <= 0 ||
+         candidate.initial_history_boundary > candidate.source_m1_time ||
+         candidate.matched_snapshot_hash == 0)
+      {
+         RecordCandidateDiagnostic(
+            m_portfolio.run_candidate_diag_other_invariant_failure_count,
+            m_portfolio.run_candidate_diag_first_other_invariant_failure,
+            snapshot, "candidate_identity_invalid");
          return false;
+      }
       m_candidates[m_candidate_count++] = candidate;
       return RecordBuilt();
    }

@@ -3,8 +3,8 @@
 //|                  Institutional multi-strategy portfolio shell     |
 //+------------------------------------------------------------------+
 #property copyright "LIMNI LTD"
-#property version   "1.036"
-#property description "Limni Portfolio EA | version 1.036 | source bundle a58bc2c844d6"
+#property version   "1.037"
+#property description "Limni Portfolio EA | version 1.037 | source bundle 03ba4004c81f"
 #property strict
 
 #include "..\\Include\\Core\\Engine.mqh"

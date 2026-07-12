@@ -6,11 +6,11 @@
 #define __LIMNI_PORTFOLIO_BUILD_INFO_MQH__
 
 const string LP_EA_NAME = "Limni Portfolio EA";
-const string LP_EA_VERSION = "1.036";
-const string LP_BUILD_GATE = "Gate109PhaseB2_1";
-const string LP_BUILD_SCOPE = "phase-b2-1-execution-outcome-safety-v1";
+const string LP_EA_VERSION = "1.037";
+const string LP_BUILD_GATE = "Gate109Fx28Diagnostics";
+const string LP_BUILD_SCOPE = "phase-fx28-bounded-diagnostics-v1";
 const string LP_EA_SOURCE_BUNDLE_ALGORITHM = "sha256-canonical-local-include-closure-v1";
-const string LP_EA_SOURCE_BUNDLE_ID = "sha256:a58bc2c844d6a03496132f93a51faad19283cd1eed64a1298f299fee53bdfbc5";
+const string LP_EA_SOURCE_BUNDLE_ID = "sha256:03ba4004c81f85198eac178685fac236833d440fdaa2423f0876052fac66852e";
 const string LP_GATE108_CONTROLLED_PROFILE_ID = "gate108-core-institutional-v1";
 const bool LP_GATE108_CONTROLLED_BUILD = true;
 const long LP_MAGIC_BASE = 930000000000000;

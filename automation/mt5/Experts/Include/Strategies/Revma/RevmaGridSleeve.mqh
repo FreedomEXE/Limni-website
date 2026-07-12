@@ -5325,6 +5325,42 @@ public:
       }
 
       m_research_telemetry.Finalize(config, broker_integrity, receipts);
+      LP_RevmaRealPortfolioState real_portfolio;
+      if(m_discovery_real_portfolio.GetPortfolio(real_portfolio))
+      {
+         receipts.Summary("revma_fx28_r_candidate_built_count",
+            (string)real_portfolio.run_candidate_built_count);
+         receipts.Summary("revma_fx28_r_candidate_decision_count",
+            (string)real_portfolio.run_candidate_decision_count);
+         receipts.Summary("revma_fx28_r_candidate_admitted_count",
+            (string)real_portfolio.run_candidate_admitted_count);
+         receipts.Summary("revma_fx28_r_candidate_rejected_count",
+            (string)real_portfolio.run_candidate_rejected_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_invalid_revma_classification_count",
+            (string)real_portfolio.run_candidate_diag_invalid_revma_classification_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_invalid_revma_classification_first_example",
+            real_portfolio.run_candidate_diag_first_invalid_revma_classification);
+         receipts.Summary("revma_fx28_r_candidate_rejection_session_ineligible_count",
+            (string)real_portfolio.run_candidate_diag_session_ineligible_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_session_ineligible_first_example",
+            real_portfolio.run_candidate_diag_first_session_ineligible);
+         receipts.Summary("revma_fx28_r_candidate_rejection_news_ineligible_count",
+            (string)real_portfolio.run_candidate_diag_news_ineligible_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_news_ineligible_first_example",
+            real_portfolio.run_candidate_diag_first_news_ineligible);
+         receipts.Summary("revma_fx28_r_candidate_rejection_reentry_blocked_count",
+            (string)real_portfolio.run_candidate_diag_reentry_blocked_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_reentry_blocked_first_example",
+            real_portfolio.run_candidate_diag_first_reentry_blocked);
+         receipts.Summary("revma_fx28_r_candidate_rejection_already_exposed_capacity_blocked_count",
+            (string)real_portfolio.run_candidate_diag_already_exposed_capacity_blocked_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_already_exposed_capacity_blocked_first_example",
+            real_portfolio.run_candidate_diag_first_already_exposed_capacity_blocked);
+         receipts.Summary("revma_fx28_r_candidate_rejection_other_invariant_failure_count",
+            (string)real_portfolio.run_candidate_diag_other_invariant_failure_count);
+         receipts.Summary("revma_fx28_r_candidate_rejection_other_invariant_failure_first_example",
+            real_portfolio.run_candidate_diag_first_other_invariant_failure);
+      }
       receipts.Summary("revma_pending_lifecycle_max_active", IntegerToString(m_pending_lifecycle_max_active));
       receipts.Summary("revma_pending_lifecycle_max_allocated", IntegerToString(m_pending_lifecycle_max_allocated));
       receipts.Summary("revma_lifecycle_persistence_policy", PersistencePolicyName());

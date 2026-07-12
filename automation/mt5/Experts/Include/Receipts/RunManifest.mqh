@@ -29,6 +29,9 @@ void LP_WriteRunManifest(
          "|universe=" + LP_UniverseDisplayName(config.revma_universe_mode) +
          "|execution=" + LP_ExecutionModeName(config.execution_mode) +
          "|profile_classification=" + LP_RunClassification(config.revma_universe_mode) +
+         "|loaded_runtime_input_hash=" + (string)config_hash +
+         "|fx28_active=" + LP_BoolText(config.enable_revma_system &&
+            config.revma_universe_mode == LP_UNIVERSE_FX28) +
          "|research_build_identity=" + LP_BUILD_GATE +
          "|ea_version=" + LP_EA_VERSION +
          "|source_bundle_algorithm=" + LP_EA_SOURCE_BUNDLE_ALGORITHM +
@@ -110,6 +113,7 @@ void LP_WriteRunManifest(
    receipts.Summary("run_id", receipts.RunId());
    receipts.Summary("output_folder", config.output_folder);
    receipts.Summary("config_hash", (string)config_hash);
+   receipts.Summary("loaded_runtime_input_hash", (string)config_hash);
    receipts.Summary("symbol_universe_hash", (string)symbol_universe_hash);
    receipts.Summary("execution_mode", LP_ExecutionModeName(config.execution_mode));
    receipts.Summary("enable_trading", LP_BoolText(config.enable_trading));
@@ -138,6 +142,8 @@ void LP_WriteRunManifest(
    receipts.Summary("revma_system_id", LP_REVMA_SYSTEM_ID);
    receipts.Summary("revma_system_name", LP_REVMA_SYSTEM_NAME);
    receipts.Summary("revma_universe_mode", LP_UniverseModeName(config.revma_universe_mode));
+   receipts.Summary("fx28_active", LP_BoolText(config.enable_revma_system &&
+      config.revma_universe_mode == LP_UNIVERSE_FX28));
    receipts.Summary("revma_setup", "MEAN_REVERSION");
    receipts.Summary("revma_formula_id", LP_REVMA_FORMULA_ID);
    receipts.Summary("revma_formula_hash", (string)LP_RevmaFormulaHash());
