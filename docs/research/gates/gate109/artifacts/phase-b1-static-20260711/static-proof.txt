@@ -1,0 +1,11 @@
+status=PASS
+source_bundle_status=MATCH
+source_bundle_id=sha256:0ec41f9f53ebb58cbe1b8552592e64f0fa3070bd124dfe95196ea99baa59d74a
+source_count=53
+git_diff_check=PASS
+protected_hash_status=PASS
+static_adapter_has_existing_delegate=True
+static_adapter_has_no_enable_state=True
+static_engine_includes_adapter=True
+static_engine_excludes_registry=True
+static_registry_not_active_reference=True

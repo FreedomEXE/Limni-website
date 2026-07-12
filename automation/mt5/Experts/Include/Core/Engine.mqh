@@ -14,7 +14,7 @@
 #include "..\\Market\\TickBarCache.mqh"
 #include "..\\Market\\M1Clock.mqh"
 #include "..\\Signals\\RevmaSignalState.mqh"
-#include "..\\Strategies\\StrategyRegistry.mqh"
+#include "..\\Strategies\\Revma\\RevmaAdapter.mqh"
 #include "..\\Strategies\\Revma\\RevmaLifecycleGate.mqh"
 #include "..\\Strategies\\Revma\\RevmaReceipts.mqh"
 #include "..\\Strategies\\Revma\\RevmaVisualReporter.mqh"
@@ -99,7 +99,7 @@ private:
    LP_TickBarCache m_tick_cache;
    LP_M1Clock m_clock;
    LP_RevmaSignalState m_revma_state;
-   LP_StrategyRegistry m_strategy_registry;
+   LP_RevmaAdapter m_revma_adapter;
    LP_RevmaLifecycleGate m_revma_lifecycle_gate;
    LP_RevmaVisualReporter m_revma_visual_reporter;
    LP_IntentBus m_intent_bus;
@@ -229,7 +229,7 @@ private:
       }
       m_fatal_invariant_latched = true;
       if(m_gate108_research_active)
-         m_strategy_registry.InvalidateRevmaDiscovery(first_reason);
+         m_revma_adapter.InvalidateRevmaDiscovery(first_reason);
       WriteError("fatal_invariant_latched", first_reason);
    }
 
@@ -730,7 +730,7 @@ private:
       double elapsed_seconds = 0.0;
       if(m_started_tick_count > 0)
          elapsed_seconds = (double)(GetTickCount() - m_started_tick_count) / 1000.0;
-      ulong broker_tp_sync_ticket_scans = m_strategy_registry.RevmaBrokerTpSyncTicketScanCount() +
+      ulong broker_tp_sync_ticket_scans = m_revma_adapter.RevmaBrokerTpSyncTicketScanCount() +
          m_trade_router.BrokerTpSyncTicketScanCount();
 
       m_receipts.Summary("runtime_profile_total_engine_steps", IntegerToString(m_step_count));
@@ -974,16 +974,16 @@ private:
          {
             if(birth_allowed)
                m_revma_lifecycle_gate.WriteReceipt(m_receipts, signal, "revma_grid_birth_allowed", "fresh_state_change_gate_open", false);
-            emitted = m_strategy_registry.EvaluateRevma(signal, m_config, m_grid_book, m_receipts, m_intent_bus, birth_allowed);
+            emitted = m_revma_adapter.EvaluateRevma(signal, m_config, m_grid_book, m_receipts, m_intent_bus, birth_allowed);
          }
       }
 
        string dashboard_text = OperatorIdentityText() + "\n" +
-          m_strategy_registry.RevmaVisualDashboardText();
+          m_revma_adapter.RevmaVisualDashboardText();
       if(m_revma_visual_reporter.UpdateRequired(m_config, dashboard_text, emitted > 0))
       {
-         bool screenshot_requested = m_strategy_registry.ConsumeRevmaDashboardScreenshotRequest();
-         double centerline_price = m_strategy_registry.RevmaVisualCenterlinePrice();
+         bool screenshot_requested = m_revma_adapter.ConsumeRevmaDashboardScreenshotRequest();
+         double centerline_price = m_revma_adapter.RevmaVisualCenterlinePrice();
          m_revma_visual_reporter.Update(m_config, dashboard_text, centerline_price, screenshot_requested, m_receipts);
       }
 
@@ -1001,7 +1001,7 @@ private:
 public:
    bool Reset()
    {
-      if(!m_strategy_registry.CanReset())
+      if(!m_revma_adapter.CanReset())
          return false;
       m_config_hash = 0;
       m_symbol_universe_hash = 0;
@@ -1059,7 +1059,7 @@ public:
       m_news_calendar.Reset();
       m_clock.Reset();
       m_revma_state.Reset();
-      if(!m_strategy_registry.Reset())
+      if(!m_revma_adapter.Reset())
          return false;
       m_intent_bus.Reset();
       m_position_commission_cache.Reset();
@@ -1188,8 +1188,7 @@ public:
 
       m_account_guard.Configure(m_config);
       m_currency_guard.Configure(m_config);
-      m_strategy_registry.SetEnabled(m_config.enable_strategy_evaluation);
-      m_strategy_registry.Configure(m_config_hash, m_config);
+      m_revma_adapter.Configure(m_config_hash, m_config);
       m_trade_router.Configure(m_config);
 
       LP_PortfolioState state;
@@ -1201,9 +1200,9 @@ public:
       m_last_currency_exposure_hash = m_currency_guard.SnapshotHash();
       m_grid_book.WriteReceipt(m_receipts);
       m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
-      m_strategy_registry.LoadRevmaGridState(m_grid_book, m_receipts);
-      m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
-      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
+      m_revma_adapter.LoadRevmaGridState(m_grid_book, m_receipts);
+      m_revma_adapter.CleanupRevmaGridState(m_grid_book, m_receipts);
+      m_revma_adapter.ObserveRevmaGridPath(m_grid_book);
 
       if(m_gate108_research_active &&
          (state.open_position_count != 0 ||
@@ -1248,15 +1247,15 @@ public:
          string discovery_run_id = "G108A_" + LP_SafePart(
             LP_Stamp(TimeLocal()) + "_R" +
             IntegerToString((long)GetTickCount()));
-         if(!m_strategy_registry.InitializeRevmaDiscovery(m_config,
+         if(!m_revma_adapter.InitializeRevmaDiscovery(m_config,
                discovery_run_id, equity_reference_minor, money_quantum))
          {
             WriteError("init_failed",
                "gate108_discovery_initialize_failed:" +
-                  m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+                  m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             m_receipts.Flush();
             FailInitialization("gate108_discovery_initialize_failed:" +
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             return INIT_FAILED;
          }
       }
@@ -1330,8 +1329,8 @@ public:
       LP_PortfolioState state;
       m_position_index.MarkDirty();
       RefreshPortfolioAndGrid(state);
-      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
-      m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
+      m_revma_adapter.ObserveRevmaGridPath(m_grid_book);
+      m_revma_adapter.CleanupRevmaGridState(m_grid_book, m_receipts);
       LP_WritePortfolioSummary(m_receipts, state);
 
       bool discovery_finalize_ok = true;
@@ -1339,7 +1338,7 @@ public:
       ulong final_deal_hash = 0;
       bool final_deal_contamination = false;
       ulong final_deal_tickets[];
-      if(m_strategy_registry.RevmaDiscoveryInitialized())
+      if(m_revma_adapter.RevmaDiscoveryInitialized())
       {
          long actual_account_equity_minor = 0;
          double money_quantum = MathPow(10.0,
@@ -1354,7 +1353,7 @@ public:
              state.equity, money_quantum, actual_account_equity_minor) &&
             actual_account_equity_minor > 0;
          bool real_reconciled = account_inventory_clean && equity_clean &&
-            m_strategy_registry.ReconcileRevmaDiscoveryRealConfirmedFlat(
+            m_revma_adapter.ReconcileRevmaDiscoveryRealConfirmedFlat(
                m_grid_book, actual_account_equity_minor);
          bool incremental_deal_contamination = false;
          bool routed_deal_contamination = false;
@@ -1399,10 +1398,10 @@ public:
                 (!real_reconciled ?
                    "gate108_final_real_inventory_reconciliation_failed" :
                    "gate108_final_account_deal_audit_mismatch"));
-            m_strategy_registry.InvalidateRevmaDiscovery(audit_reason);
+            m_revma_adapter.InvalidateRevmaDiscovery(audit_reason);
          }
          discovery_finalize_ok =
-            m_strategy_registry.FinalizeRevmaDiscovery();
+            m_revma_adapter.FinalizeRevmaDiscovery();
          m_receipts.Summary("gate108_final_deal_count",
             (string)final_deal_count);
          m_receipts.Summary("gate108_final_deal_hash",
@@ -1434,11 +1433,11 @@ public:
          m_receipts.Summary("gate108_execution_quarantine_reason",
             m_gate108_execution_quarantine_reason);
          m_receipts.Summary("gate108_discovery_completion_valid",
-            LP_BoolText(m_strategy_registry.
+            LP_BoolText(m_revma_adapter.
                RevmaDiscoveryCompletionValid()));
          if(!discovery_finalize_ok)
             WriteError("gate108_finalize_failed",
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
       }
 
       m_receipts.Summary("deinit_reason", IntegerToString(reason));
@@ -1483,13 +1482,13 @@ public:
          0, 0, 0, 0, 0, 0);
       LP_BrokerExecutionIntegrity broker_integrity;
       m_trade_router.GetBrokerExecutionIntegrity(broker_integrity);
-      m_strategy_registry.FinalizeRevmaResearchTelemetry(m_config,
+      m_revma_adapter.FinalizeRevmaResearchTelemetry(m_config,
          broker_integrity, m_receipts);
       m_runtime_telemetry.ObserveAggregate(
          LP_RUNTIME_LIFECYCLE_PERSISTENCE,
-         m_strategy_registry.RevmaLifecyclePersistenceWriteCount(),
-         m_strategy_registry.RevmaLifecyclePersistenceTotalMicroseconds(),
-         m_strategy_registry.RevmaLifecyclePersistenceMaxMicroseconds()
+         m_revma_adapter.RevmaLifecyclePersistenceWriteCount(),
+         m_revma_adapter.RevmaLifecyclePersistenceTotalMicroseconds(),
+         m_revma_adapter.RevmaLifecyclePersistenceMaxMicroseconds()
       );
       WriteRuntimeProfileSummary();
       bool fully_reconciled = !m_fatal_invariant_latched &&
@@ -1810,7 +1809,7 @@ public:
 
       LP_PortfolioState portfolio;
       RefreshPortfolioAndGrid(portfolio);
-      m_strategy_registry.ObserveRevmaGridPath(m_grid_book);
+      m_revma_adapter.ObserveRevmaGridPath(m_grid_book);
       if(portfolio.external_position_count != 0 ||
          OrdersTotal() != 0 ||
          portfolio.unknown_managed_position_count != 0 ||
@@ -1831,11 +1830,11 @@ public:
          if(!LP_RevmaDiscoveryMoneyToSignedMinor(portfolio.equity,
                 gate108_money_quantum, actual_account_equity_minor) ||
             actual_account_equity_minor <= 0 ||
-            !m_strategy_registry.ReconcileRevmaDiscoveryRealConfirmedFlat(
+            !m_revma_adapter.ReconcileRevmaDiscoveryRealConfirmedFlat(
                m_grid_book, actual_account_equity_minor))
          {
             LatchFatalInvariant(
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             return;
          }
       }
@@ -1855,7 +1854,7 @@ public:
       {
          m_grid_book.WriteReceipt(m_receipts);
          m_last_grid_inventory_hash = m_grid_book.SnapshotHash();
-         m_strategy_registry.CleanupRevmaGridState(m_grid_book, m_receipts);
+         m_revma_adapter.CleanupRevmaGridState(m_grid_book, m_receipts);
       }
 
       // Shared completed-M1 marking may escalate a close owner. Defer close
@@ -1864,7 +1863,7 @@ public:
       if(m_gate108_research_active && cycle_new_bars == 0)
       {
          int discovery_real_close_intents =
-            m_strategy_registry.ContinueRevmaDiscoveryRealCloses(
+            m_revma_adapter.ContinueRevmaDiscoveryRealCloses(
                m_grid_book, m_intent_bus);
          if(discovery_real_close_intents > 0)
             m_total_intents += discovery_real_close_intents;
@@ -1938,16 +1937,17 @@ public:
 
       int revma_grid_exit_intents = 0;
       bool account_liquidation_owns_closes = m_stop_take_profit_liquidation_active;
-       bool revma_grid_close_latched = m_strategy_registry.HasLatchedRevmaGridClose();
+      bool revma_grid_close_latched = m_revma_adapter.HasLatchedRevmaGridClose();
        bool should_scan_grid_exits =
-          LP_RevmaAnySleeveStopTakeProfitEnabled(m_config) &&
-          !account_liquidation_owns_closes && portfolio.open_grid_count > 0 &&
-          (revma_grid_close_latched || !tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
+         m_config.enable_strategy_evaluation &&
+         LP_RevmaAnySleeveStopTakeProfitEnabled(m_config) &&
+         !account_liquidation_owns_closes && portfolio.open_grid_count > 0 &&
+         (revma_grid_close_latched || !tester_fast_cadence || cycle_new_bars > 0 || grid_inventory_changed || dirty_before_refresh || m_stop_take_profit_liquidation_active);
       if(should_scan_grid_exits)
       {
          ulong grid_close_started_at = m_runtime_telemetry.Start();
          m_total_grid_exit_scans++;
-         revma_grid_exit_intents = m_strategy_registry.EvaluateRevmaGridExits(
+         revma_grid_exit_intents = m_revma_adapter.EvaluateRevmaGridExits(
             m_config,
             m_grid_book,
             m_receipts,
@@ -1955,7 +1955,7 @@ public:
          );
          m_runtime_telemetry.ObserveElapsed(LP_RUNTIME_GRID_CLOSE_EVALUATION, grid_close_started_at);
       }
-       bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0 || revma_grid_close_latched;
+      bool revma_grid_exit_block_new_entries = revma_grid_exit_intents > 0 || revma_grid_close_latched;
       bool exit_block_new_entries = stop_take_profit_block_new_entries || revma_grid_exit_block_new_entries;
       if(revma_grid_exit_intents > 0)
          m_total_intents += revma_grid_exit_intents;
@@ -1963,6 +1963,7 @@ public:
       int revma_grid_tp_sync_intents = 0;
       bool tp_sync_periodic_due = tester_fast_cadence && m_closed_m1_cycles_since_tp_sync >= 15;
       bool should_scan_tp_sync =
+         m_config.enable_strategy_evaluation &&
          m_config.broker_grid_tp_sync_mode != LP_BROKER_GRID_TP_SYNC_OFF &&
          portfolio.open_grid_count > 0 &&
          !account_liquidation_owns_closes &&
@@ -1976,7 +1977,7 @@ public:
       {
          ulong broker_tp_sync_started_at = m_runtime_telemetry.Start();
          m_total_tp_sync_scans++;
-         revma_grid_tp_sync_intents = m_strategy_registry.SyncRevmaGridTakeProfits(
+         revma_grid_tp_sync_intents = m_revma_adapter.SyncRevmaGridTakeProfits(
             m_config,
             m_grid_book,
             m_receipts,
@@ -2053,13 +2054,13 @@ public:
             }
          }
          int discovery_intents =
-            m_strategy_registry.ProcessRevmaDiscoveryCompletedM1Batch(
+            m_revma_adapter.ProcessRevmaDiscoveryCompletedM1Batch(
                discovery_snapshots, LP_SYMBOL_COUNT, m_grid_book,
                m_intent_bus);
-         if(m_strategy_registry.RevmaDiscoveryFaultLatched())
+         if(m_revma_adapter.RevmaDiscoveryFaultLatched())
          {
             LatchFatalInvariant(
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             return;
          }
           if(discovery_intents > 0)
@@ -2096,12 +2097,12 @@ public:
          return;
 
        if(m_gate108_research_active &&
-          (m_strategy_registry.RevmaDiscoveryFaultLatched() ||
-           (m_strategy_registry.RevmaDiscoveryInitialized() &&
-            !m_strategy_registry.RevmaDiscoveryOperationalValid())))
+          (m_revma_adapter.RevmaDiscoveryFaultLatched() ||
+           (m_revma_adapter.RevmaDiscoveryInitialized() &&
+            !m_revma_adapter.RevmaDiscoveryOperationalValid())))
       {
          LatchFatalInvariant(
-            m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+            m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
          return;
       }
 
@@ -2115,11 +2116,11 @@ public:
 
          bool discovery_route_authorized = true;
          if(m_gate108_research_active &&
-            !m_strategy_registry.AuthorizeRevmaDiscoveryRealIntentBeforeRoute(
+            !m_revma_adapter.AuthorizeRevmaDiscoveryRealIntentBeforeRoute(
                intent, discovery_route_authorized))
          {
             LatchFatalInvariant(
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             return;
          }
          if(!discovery_route_authorized)
@@ -2138,11 +2139,11 @@ public:
             decision.allow_new_order || decision.allow_reduce ||
                decision.allow_close ? "allowed" : "rejected",
             decision.explanation, false);
-         if(!m_strategy_registry.RecordRevmaRiskDecision(
+         if(!m_revma_adapter.RecordRevmaRiskDecision(
             intent, decision, m_receipts))
          {
             LatchFatalInvariant(
-               m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+               m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
             return;
          }
          if(plan.executable)
@@ -2221,10 +2222,10 @@ public:
                   plan.magic
                );
             }
-            if(!m_strategy_registry.RecordRevmaExecutionOutcome(
+            if(!m_revma_adapter.RecordRevmaExecutionOutcome(
                plan, execution, m_receipts))
             {
-               string failure_reason = m_strategy_registry.
+               string failure_reason = m_revma_adapter.
                   RevmaDiscoveryTelemetryInvalidReason();
                if(broker_state_may_have_changed)
                {
@@ -2252,10 +2253,10 @@ public:
                   CloseAction(plan.action) ? plan.close_reason : "",
                   execution.detail, execution.order_send_attempted);
             }
-            if(!m_strategy_registry.RecordRevmaCloseExecution(
+            if(!m_revma_adapter.RecordRevmaCloseExecution(
                plan, execution, m_receipts))
             {
-               string failure_reason = m_strategy_registry.
+               string failure_reason = m_revma_adapter.
                   RevmaDiscoveryTelemetryInvalidReason();
                if(broker_state_may_have_changed)
                {
@@ -2270,10 +2271,10 @@ public:
       }
 
        if(m_gate108_research_active &&
-          !m_strategy_registry.EndRevmaDiscoveryRealBatch())
+          !m_revma_adapter.EndRevmaDiscoveryRealBatch())
       {
          LatchFatalInvariant(
-            m_strategy_registry.RevmaDiscoveryTelemetryInvalidReason());
+            m_revma_adapter.RevmaDiscoveryTelemetryInvalidReason());
          return;
       }
 
