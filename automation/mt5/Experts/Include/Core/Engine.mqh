@@ -13,14 +13,12 @@
 #include "..\\Market\\SymbolSpecCache.mqh"
 #include "..\\Market\\TickBarCache.mqh"
 #include "..\\Market\\M1Clock.mqh"
-#include "..\\Signals\\LrmgState.mqh"
 #include "..\\Signals\\RevmaSignalState.mqh"
 #include "..\\Strategies\\StrategyRegistry.mqh"
 #include "..\\Strategies\\Revma\\RevmaLifecycleGate.mqh"
 #include "..\\Strategies\\Revma\\RevmaReceipts.mqh"
 #include "..\\Strategies\\Revma\\RevmaVisualReporter.mqh"
 #include "..\\Strategies\\Revma\\RevmaDiscoveryValuation.mqh"
-#include "..\\Strategies\\PortfolioIntentSelector.mqh"
 #include "..\\Strategies\\IntentBus.mqh"
 #include "..\\Portfolio\\PositionIndex.mqh"
 #include "..\\Portfolio\\PositionCommissionCache.mqh"
@@ -64,8 +62,6 @@ private:
    ulong m_last_grid_inventory_hash;
    ulong m_last_revma_tp_sync_scan_hash;
    int m_closed_m1_cycles_since_tp_sync;
-   datetime m_last_portfolio_qstate_asof;
-   ulong m_last_portfolio_qstate_hash;
    bool m_cached_portfolio_valid;
    bool m_portfolio_dirty;
    bool m_stop_take_profit_liquidation_active;
@@ -94,8 +90,6 @@ private:
    bool m_mandatory_history_waiting;
    ulong m_last_mandatory_inventory_hash;
    LP_PortfolioState m_cached_portfolio;
-   LP_SignalSnapshot m_latest_signals[LP_SYMBOL_COUNT];
-   bool m_signal_available[LP_SYMBOL_COUNT];
 
    LP_ReceiptWriter m_receipts;
    LP_MandatoryDiagnostics m_mandatory;
@@ -104,12 +98,10 @@ private:
    LP_NewsCalendar m_news_calendar;
    LP_TickBarCache m_tick_cache;
    LP_M1Clock m_clock;
-   LP_LrmgState m_lrmg_state;
    LP_RevmaSignalState m_revma_state;
    LP_StrategyRegistry m_strategy_registry;
    LP_RevmaLifecycleGate m_revma_lifecycle_gate;
    LP_RevmaVisualReporter m_revma_visual_reporter;
-   LP_PortfolioIntentSelector m_intent_selector;
    LP_IntentBus m_intent_bus;
    LP_PositionCommissionCache m_position_commission_cache;
    LP_PositionIndex m_position_index;
@@ -244,12 +236,6 @@ private:
       ulong id = m_next_system_intent_id;
       m_next_system_intent_id++;
       return id;
-   }
-
-   void ClearSignalAvailability()
-   {
-      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
-         m_signal_available[i] = false;
    }
 
    bool TesterRuntime()
@@ -889,106 +875,6 @@ private:
       );
    }
 
-   ulong BuildPortfolioQStateHash(const LP_SignalSnapshot &signals[])
-   {
-      string payload = LimniQStateFormulaId() + "|" + (string)LimniQStateFormulaHash();
-      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-      {
-         const LP_SignalSnapshot signal = signals[symbol_id];
-         payload += "|" + IntegerToString(symbol_id) +
-            ":" + LP_Stamp(signal.source_m1_time) +
-            ":" + DoubleToString(signal.pair_q_score, 6) +
-            ":" + DoubleToString(signal.base_currency_score, 6) +
-            ":" + DoubleToString(signal.quote_currency_score, 6) +
-            ":" + DoubleToString(signal.pair_direction_score, 6) +
-            ":" + IntegerToString(signal.pair_state) +
-            ":" + IntegerToString(signal.market_mode);
-      }
-      return LP_HashString(payload);
-   }
-
-   bool BuildPortfolioQStateSnapshot(
-      LP_PortfolioQStateSnapshot &snapshot,
-      LP_SignalSnapshot &signals[],
-      bool &available[]
-   )
-   {
-      LP_ResetPortfolioQStateSnapshot(snapshot);
-      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
-      {
-         LP_ResetSignalSnapshot(signals[i]);
-         available[i] = false;
-      }
-
-      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-      {
-         LP_SymbolMeta meta;
-         if(!m_symbol_cache.Get(symbol_id, meta))
-         {
-            snapshot.reason_code = "symbol_meta_unavailable";
-            snapshot.detail = "symbol_id=" + IntegerToString(symbol_id);
-            return false;
-         }
-
-         LP_TickSnapshot tick;
-         m_tick_cache.RefreshTick(meta.broker_symbol, tick);
-
-         LP_SignalSnapshot signal;
-         if(!m_lrmg_state.BuildQStatePairSnapshot(meta, signal))
-         {
-            snapshot.reason_code = signal.reason_code == "" ? "pair_qstate_build_failed" : signal.reason_code;
-            snapshot.detail = "symbol=" + meta.broker_symbol;
-            return false;
-         }
-
-         if(snapshot.asof_m1_time <= 0)
-            snapshot.asof_m1_time = signal.source_m1_time;
-         else if(signal.source_m1_time != snapshot.asof_m1_time)
-         {
-            snapshot.reason_code = "mixed_source_m1_time";
-            snapshot.detail = "symbol=" + meta.broker_symbol +
-               "|expected=" + LP_Stamp(snapshot.asof_m1_time) +
-               "|actual=" + LP_Stamp(signal.source_m1_time);
-            return false;
-         }
-
-         LP_CalendarDecision calendar;
-         LP_EvaluateCalendar(snapshot.asof_m1_time, m_config, calendar);
-         m_news_calendar.Apply(snapshot.asof_m1_time, meta, m_config, calendar);
-         signal.session_allowed = !calendar.week_boundary_blocked;
-         signal.news_allowed = !calendar.news_blocked;
-         signal.reason = calendar.reason;
-
-         signals[symbol_id] = signal;
-         available[symbol_id] = true;
-         snapshot.valid_pair_count++;
-      }
-
-      if(snapshot.valid_pair_count != LP_SYMBOL_COUNT)
-      {
-         snapshot.reason_code = "incomplete_portfolio_qstate";
-         snapshot.detail = "valid_pair_count=" + IntegerToString(snapshot.valid_pair_count);
-         return false;
-      }
-
-      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-      {
-         signals[symbol_id].portfolio_asof_m1_time = snapshot.asof_m1_time;
-         signals[symbol_id].portfolio_valid_pair_count = snapshot.valid_pair_count;
-      }
-
-      m_lrmg_state.ApplyCurrencyQState(signals, available, m_config);
-      snapshot.snapshot_hash = BuildPortfolioQStateHash(signals);
-      snapshot.valid = true;
-      snapshot.reason_code = "portfolio_qstate_ready";
-      snapshot.detail = "all_pairs_same_closed_m1";
-
-      for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
-         signals[symbol_id].portfolio_snapshot_hash = snapshot.snapshot_hash;
-
-      return true;
-   }
-
    bool AddHarvestCloseIntent(const LP_HarvestDecision &harvest, LP_IntentBus &bus)
    {
       LP_TradeIntent intent;
@@ -1136,8 +1022,6 @@ public:
       m_last_grid_inventory_hash = 0;
       m_last_revma_tp_sync_scan_hash = 0;
       m_closed_m1_cycles_since_tp_sync = 0;
-      m_last_portfolio_qstate_asof = 0;
-      m_last_portfolio_qstate_hash = 0;
       m_cached_portfolio_valid = false;
       m_portfolio_dirty = true;
       m_stop_take_profit_liquidation_active = false;
@@ -1167,21 +1051,14 @@ public:
       m_gate108_execution_quarantine_reason = "";
       m_mandatory_history_waiting = false;
       m_last_mandatory_inventory_hash = 0;
-      for(int i = 0; i < LP_SYMBOL_COUNT; i++)
-      {
-         LP_ResetSignalSnapshot(m_latest_signals[i]);
-         m_signal_available[i] = false;
-      }
       m_receipts.Reset();
       m_runtime_telemetry.Reset();
       m_symbol_cache.Reset();
       m_news_calendar.Reset();
       m_clock.Reset();
-      m_lrmg_state.Reset();
       m_revma_state.Reset();
       if(!m_strategy_registry.Reset())
          return false;
-      m_intent_selector.Reset();
       m_intent_bus.Reset();
       m_position_commission_cache.Reset();
       m_position_index.Reset();
