@@ -225,7 +225,8 @@ single-pair mode.
 
 ## Gate handoff
 
-The emergency code/compile boundary is complete and pushed separately from any
-runtime conclusion. Next gate: Freedom-owned single-pair mechanics run and
-receipt review only. No optimization, benchmark, long run, promotion, or live
+The emergency code/compile boundary is complete and pushed in repair commit
+`e783713995e39f93013e52394dd0d7f5cb4b3fc2`, separately from any runtime
+conclusion. Next gate: Freedom-owned single-pair mechanics run and receipt
+review only. No optimization, benchmark, long run, promotion, or live
 readiness claim is open.

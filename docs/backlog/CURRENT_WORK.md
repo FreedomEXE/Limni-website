@@ -21,7 +21,7 @@ benchmark, or backtest was run by Codex.
 Gate report:
 `docs/research/gates/gate109/GATE109_REVMA_EMERGENCY_RECOVERY_2026-07-11.md`.
 
-Current stop line: commit and push the repair, then stop for Freedom-owned
+Current stop line: the repair is committed and pushed; stop for Freedom-owned
 single-pair mechanics runtime evidence. Do not claim economic validity, FX28 R
 parity, promotion, or live readiness. Single-pair remains on the legacy
 `EvaluateRevmaSymbol` path until a separately approved active-symbol R
