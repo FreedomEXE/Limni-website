@@ -1,0 +1,4 @@
+status=PASS
+case=current_source_version_contract|PASS|source_changed=True|version=1.040|source_bundle_short=fcf775569287
+case=terminal_source_identity|PASS
+case=repo_terminal_ex5_hash_parity|PASS|repo_sha256=92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C|terminal_sha256=92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C

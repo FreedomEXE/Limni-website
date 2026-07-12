@@ -1,11 +1,11 @@
 {
-    "contract":  "limni-ea-version-source-sync-v1",
-    "terminal_id":  "94497",
-    "ea_name":  "Limni Portfolio EA",
-    "ea_version":  "1.039",
-    "source_bundle_id":  "sha256:86bb1b6a48f3d55ea340fcb3e790431f97882f19582e6383c6fa486c22ac98e8",
-    "source_bundle_short":  "86bb1b6a48f3",
-    "repo_ex5_sha256":  "4CAB024119BFA48CFBF2EB7E4EC5B843C1B3B4FDFD5B0A38B8FF6B72EF59111C",
-    "terminal_ex5_sha256":  "4CAB024119BFA48CFBF2EB7E4EC5B843C1B3B4FDFD5B0A38B8FF6B72EF59111C",
-    "last_success_utc":  "2026-07-12T17:44:51.0795120Z"
+  "contract": "limni-ea-version-source-sync-v1",
+  "terminal_id": "94497",
+  "ea_name": "Limni Portfolio EA",
+  "ea_version": "1.040",
+  "source_bundle_id": "sha256:fcf7755692871e7df3972a268a501685a5f75314652944fde2a367b76cd8d51e",
+  "source_bundle_short": "fcf775569287",
+  "repo_ex5_sha256": "92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C",
+  "terminal_ex5_sha256": "92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C",
+  "last_success_utc": "2026-07-12T18:23:49.9411236Z"
 }

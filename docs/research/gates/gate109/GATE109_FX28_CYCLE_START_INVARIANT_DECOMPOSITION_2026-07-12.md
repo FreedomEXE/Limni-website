@@ -2,15 +2,37 @@
 
 ## Status
 
-The `AppendTransition()` cycle-start preflight is now ordered and fail-closed.
-The cycle-start event-shape and transition-state paths expose the first
-violated subcondition. This is a compile-verified diagnostic/contract repair;
-no Strategy Tester smoke, backtest, benchmark, optimization, or runtime
-functional claim was made in this work.
+The `AppendTransition()` cycle-start preflight is ordered and fail-closed.
+The v1.039 runtime receipt identified the first violated subcondition. v1.040
+repairs the row-reset state that caused it and is compile-verified. No
+Strategy Tester smoke, backtest, benchmark, optimization, or runtime
+functional rerun was performed by Codex.
+
+## Fresh runtime evidence — v1.039
+
+The newly produced Common Files artifact is:
+
+```text
+LimniPortfolioEA/LPEA_2025_01_01_00_00_00_R308208000/
+```
+
+Its identity is `Limni Portfolio EA v1.039 [86bb1b6a48f3]`, and its first
+blocker is:
+
+```text
+discovery_cycle_start_R_failed:transition_cycle_start_event_shape_grid_terminal_reason_present
+```
+
+The corresponding `events.csv` records `cohort_ready` followed by the fatal
+invariant, and `completion.csv` records `total_signals=0`, `births=0`,
+`adds=0`, `closes=0`, `route_attempts=0`, and `broker_mutations=0`. The Gate108
+telemetry completion receipt records the same canonical reason while its
+transition and summary files remain header-only. This is a pre-trade telemetry
+abort, not an economic rejection or broker-routing result.
 
 ## Runtime evidence boundary
 
-The preserved Common Files artifact is:
+The earlier preserved Common Files artifact is:
 
 ```text
 LimniPortfolioEA/ARCHIVE/Gate108/gate108_G108A_2025_01_01_00_00_00_R300234625_completion.csv
@@ -29,12 +51,11 @@ with the R cycle-start operation first in `ProcessDiscoveryCompletedM1Batch()`.
 The rejected row was never serialized, so that historical artifact cannot
 distinguish the ten inner preflight conditions. It is also an EA `1.037`
 runtime with source bundle `03ba4004c81f`; it is not a runtime receipt for
-`d477800` (`1.038`, `c46d482c8b6b`) or this repair (`1.039`).
+`d477800` (`1.038`, `c46d482c8b6b`) or this repair (`1.040`).
 
-Therefore the exact historical runtime subcondition is not recoverable from
-the available receipt. The source-level static reconstruction of the freshly
-initialized R cycle-start row has no false condition; a guessed economic or
-state repair would be unjustified and could weaken the invariant.
+Therefore the exact subcondition for that historical v1.037 receipt is not
+recoverable from the rejected-row artifact. The fresh v1.039 receipt now names
+the first failed predicate and allows a bounded state-level repair.
 
 ## Ordered validation contract
 
@@ -71,27 +92,33 @@ remain fail-closed.
 
 ## Static root-cause result
 
-For the first R cycle-start after reset:
+For the fresh v1.039 R cycle-start:
 
-- telemetry state is initialized and valid;
-- `SeedTransitionRow()` supplies valid row state and all run/profile/hash
-  identity fields from the same telemetry object;
-- `EmitDiscoveryCycleStart()` supplies branch R, cycle/account `1`, a positive
-  minute-aligned source time, event time at or after that source, `symbol_id=-1`,
-  `OPEN`, and a non-empty reason;
-- the real portfolio supplies the same positive equity and budget values used
-  by `LP_RevmaDiscoveryCapitalBudgetMinor()`;
-- sequence and event/reconciliation hashes are zero before materialization;
-- the reset numeric fields are finite and zero-safe;
-- reset transition state has no prior source, logical event, terminal boundary,
-  sealed branch, open grid, or pending causal state.
+- preflight conditions 1–5 passed, because the ordered path reached condition
+  6;
+- condition 6, `LP_RevmaTelemetryEventShapeValid(row)`, failed its exact
+  cycle-start subcondition `row.grid_terminal_reason != ""`;
+- the canonical reason was
+  `transition_cycle_start_event_shape_grid_terminal_reason_present`;
+- cohort linkage, candidate identity, and opportunity identity were
+  non-applicable for this row: `aggregate_branch_event` is false for
+  `LP_REVMA_TELEMETRY_CYCLE_START`, and the seeded candidate/opportunity IDs
+  are zero;
+- no transition state or economic admission was reached, which is consistent
+  with the zero-trade receipt.
 
-Thus the statically proven root cause of the observed failure surface is loss
-of first-failure provenance in the compound preflight. The underlying runtime
-row/state mismatch that caused the historical `transition_row_invariant_failure`
-is not present in the persisted evidence and is intentionally not guessed.
-The smallest safe correction is the ordered decomposition that preserves the
-original invariant set and makes the next runtime-owned receipt actionable.
+The static call path proves the state mismatch. `SeedTransitionRow()` calls
+`LP_ResetRevmaDiscoveryTransitionRow()`. That reset calls `ZeroMemory(row)` and
+explicitly clears `decision` and `reason`, but did not explicitly clear the
+`grid_terminal_reason` string. The cycle-start emitter does not assign that
+field before `AppendTransition()`. Runtime therefore observed a non-empty
+terminal reason on a non-terminal cycle-start row, violating the existing
+shape invariant.
+
+The smallest repair is the single explicit reset assignment
+`row.grid_terminal_reason = ""`. The invariant remains fail-closed and
+unchanged; the row now satisfies the state contract it was intended to satisfy
+after reset.
 
 ## Preservation proof
 
@@ -102,6 +129,8 @@ original invariant set and makes the next runtime-owned receipt actionable.
 - State is still applied only after row validation, hash construction, guard
   checks, and buffer/resource checks succeed.
 - The non-cycle `ValidateTransitionState()` acceptance path is unchanged.
+- The cycle-start event-shape invariant is unchanged; only the reset now
+  deterministically clears its terminal-reason field.
 - The cycle-start helper is limited to conditions that can affect a
   cycle-start row; downstream candidate/grid branches are non-applicable after
   the existing cycle-start shape contract has passed.
@@ -109,15 +138,17 @@ original invariant set and makes the next runtime-owned receipt actionable.
 ## Compile and identity evidence
 
 ```text
-artifact=canonical-compile-20260712-cycle-start-invariant
+artifact=canonical-compile-20260712-cycle-start-reset-repair-rerun
 terminal=94497
-ea_version=1.039
-compile_result=Result: 0 errors, 0 warnings, 55216 ms elapsed
+ea_version=1.040
+compile_result=Result: 0 errors, 0 warnings, 308537 ms elapsed
 compiler_process_exit_code=1 (MetaEditor wrapper; result line is clean)
-source_bundle=sha256:86bb1b6a48f3d55ea340fcb3e790431f97882f19582e6383c6fa486c22ac98e8
+source_bundle=sha256:fcf7755692871e7df3972a268a501685a5f75314652944fde2a367b76cd8d51e
 source_count=54
-repo_ex5_sha256=4CAB024119BFA48CFBF2EB7E4EC5B843C1B3B4FDFD5B0A38B8FF6B72EF59111C
-terminal_ex5_sha256=4CAB024119BFA48CFBF2EB7E4EC5B843C1B3B4FDFD5B0A38B8FF6B72EF59111C
+version_contract_precompile=PASS
+version_contract_postcompile=PASS
+repo_ex5_sha256=92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C
+terminal_ex5_sha256=92C5D28B2755797B6C6C4AA96B06BF6220C8DB09CC39BD4CEA45D86D43C77F9C
 repo_terminal_ex5_byte_identical=true
 strategy_tester_run=false
 backtest_run=false
@@ -125,6 +156,12 @@ optimization_run=false
 benchmark_run=false
 ```
 
-Functional FX28 acceptance remains a Freedom-owned runtime gate. No claim that
-this commit alone repairs the underlying runtime mismatch is made until the
-next permitted runtime evidence identifies the canonical subreason.
+The preceding bounded compile invocation in
+`canonical-compile-20260712-cycle-start-reset-repair` reached the same clean
+`code generated` result but its five-minute caller timeout expired before the
+wrapper receipt was written. The `-rerun` artifact above is the authoritative
+complete receipt.
+
+Functional FX28 acceptance remains a Freedom-owned runtime gate. Codex did not
+run the v1.040 tester; the next runtime receipt must confirm that cycle-start
+telemetry passes and discovery reaches the normal signal/admission path.

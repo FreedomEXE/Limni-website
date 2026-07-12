@@ -259,6 +259,7 @@ void LP_ResetRevmaDiscoveryTransitionRow(LP_RevmaDiscoveryTransitionRow &row)
    row.concentration_currency_id = -1;
    row.decision = "";
    row.reason = "";
+   row.grid_terminal_reason = "";
 }
 
 struct LP_RevmaDiscoverySummaryRow
