@@ -8,6 +8,13 @@ on:
       - automation/mt5/Indicators/Limni/StateMap.mq5
       - .github/workflows/statemap-metaeditor-compile.yml
       - .statemap-build/StateMap.mq5.gz.b64
+  pull_request:
+    branches:
+      - main
+    paths:
+      - automation/mt5/Indicators/Limni/StateMap.mq5
+      - .github/workflows/statemap-metaeditor-compile.yml
+      - .statemap-build/StateMap.mq5.gz.b64
 
 permissions:
   contents: read
