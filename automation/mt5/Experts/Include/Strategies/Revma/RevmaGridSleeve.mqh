@@ -3111,14 +3111,19 @@ private:
    bool CacheDiscoveryCohort(
       LP_RevmaCompletedM1Snapshot &snapshots[],
       const int snapshot_count,
-      const datetime source_m1_time)
+      const datetime source_m1_time,
+      string &failure_reason)
    {
+      failure_reason = "";
       m_discovery_last_cohort_valid = false;
       m_discovery_last_cohort_hash = 0;
       m_discovery_last_cohort_signal_hash = 0;
       m_discovery_last_cohort_strategy_hash = 0;
       if(snapshot_count != LP_SYMBOL_COUNT || source_m1_time <= 0)
+      {
+         failure_reason = "cohort_input_invalid";
          return false;
+      }
       bool seen[LP_SYMBOL_COUNT];
       LP_RevmaCompletedM1Snapshot staged[LP_SYMBOL_COUNT];
       for(int i = 0; i < LP_SYMBOL_COUNT; i++) seen[i] = false;
@@ -3128,14 +3133,20 @@ private:
          if(!LP_RevmaCompletedM1SnapshotValid(snapshots[i]) ||
             snapshots[i].source_m1_time != source_m1_time ||
             symbol_id < 0 || symbol_id >= LP_SYMBOL_COUNT || seen[symbol_id])
+         {
+            failure_reason = "cohort_snapshot_invalid";
             return false;
+         }
          staged[symbol_id] = snapshots[i];
          seen[symbol_id] = true;
       }
       for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
       {
          if(!seen[symbol_id])
+         {
+            failure_reason = "cohort_symbol_missing";
             return false;
+         }
       }
       ulong cohort_hash = LP_HashString(
          "gate108_fx28_completed_m1_cohort_v1");
@@ -3158,7 +3169,10 @@ private:
             staged[symbol_id].strategy_state_identity_hash);
       }
       if(cohort_hash == 0 || signal_hash == 0 || strategy_hash == 0)
+      {
+         failure_reason = "cohort_identity_hash_zero";
          return false;
+      }
       for(int symbol_id = 0; symbol_id < LP_SYMBOL_COUNT; symbol_id++)
          m_discovery_last_cohort[symbol_id] = staged[symbol_id];
       m_discovery_last_cohort_hash = cohort_hash;
@@ -3166,7 +3180,13 @@ private:
       m_discovery_last_cohort_strategy_hash = strategy_hash;
       if(!m_discovery_telemetry.RegisterCompletedM1CohortIdentity(
             source_m1_time, cohort_hash, signal_hash, strategy_hash))
+      {
+         failure_reason = m_discovery_telemetry.InvalidReason();
+         if(failure_reason == "")
+            failure_reason =
+               "completed_m1_cohort_identity_registration_failed";
          return false;
+      }
       m_discovery_last_cohort_valid = true;
       return true;
    }
@@ -3176,24 +3196,37 @@ private:
       const ulong cycle_id,
       const long equity_reference_minor,
       const long budget_minor,
-      const datetime source_m1_time)
+      const datetime source_m1_time,
+      string &failure_reason)
    {
+      failure_reason = "";
       if(!LP_RevmaDiscoveryBranchValid(branch) || cycle_id == 0 ||
          source_m1_time <= 0 || equity_reference_minor <= 0 ||
          budget_minor <= 0)
+      {
+         failure_reason = "cycle_start_input_invalid";
          return false;
+      }
       if(m_discovery_telemetry_cycle_started[branch] == cycle_id)
          return true;
       if(m_discovery_telemetry_cycle_sealed[branch] >=
             (ulong)LP_REVMA_GEOMETRY_ABS_LIMIT ||
-         cycle_id != m_discovery_telemetry_cycle_sealed[branch] + 1 ||
+          cycle_id != m_discovery_telemetry_cycle_sealed[branch] + 1 ||
          (m_discovery_telemetry_cycle_started[branch] != 0 &&
           m_discovery_telemetry_cycle_started[branch] !=
              m_discovery_telemetry_cycle_sealed[branch]))
+      {
+         failure_reason = "cycle_start_order_invalid";
          return false;
+      }
       LP_RevmaDiscoveryTransitionRow row;
       if(!m_discovery_telemetry.SeedTransitionRow(row))
+      {
+         failure_reason = m_discovery_telemetry.InvalidReason();
+         if(failure_reason == "")
+            failure_reason = "telemetry_seed_transition_row_failed";
          return false;
+      }
       row.event_type = LP_REVMA_TELEMETRY_CYCLE_START;
       row.event_time = TimeCurrent() < source_m1_time ?
          source_m1_time : TimeCurrent();
@@ -3211,7 +3244,14 @@ private:
       ulong event_hash = 0;
       if(!m_discovery_telemetry.AppendTransition(row, event_hash) ||
          event_hash == 0)
+      {
+         failure_reason = m_discovery_telemetry.InvalidReason();
+         if(failure_reason == "")
+            failure_reason = event_hash == 0 ?
+               "transition_append_event_hash_missing" :
+               "transition_append_failed";
          return false;
+      }
       m_discovery_telemetry_cycle_started[branch] = cycle_id;
       m_discovery_telemetry_close_owner[branch] =
          LP_REVMA_DISCOVERY_CLOSE_NONE;
@@ -4438,24 +4478,64 @@ public:
             m_discovery_real_portfolio.InvalidReason());
          return 0;
       }
+      string failure_reason = "";
       LP_RevmaRealPortfolioState cycle_r;
-      if(!CacheDiscoveryCohort(snapshots, snapshot_count, source_m1_time) ||
-         !m_discovery_real_portfolio.GetPortfolio(cycle_r) ||
-         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
-            cycle_u) ||
-         !m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
-            cycle_c) ||
-         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_R, cycle_r.cycle_id,
-            cycle_r.equity_reference_minor, cycle_r.capital_budget_minor,
-            source_m1_time) ||
-         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_U, cycle_u.cycle_id,
-            cycle_u.equity_reference_minor, cycle_u.capital_budget_minor,
-            source_m1_time) ||
-         !EmitDiscoveryCycleStart(LP_REVMA_BRANCH_C, cycle_c.cycle_id,
-            cycle_c.equity_reference_minor, cycle_c.capital_budget_minor,
-            source_m1_time))
+      if(!CacheDiscoveryCohort(snapshots, snapshot_count, source_m1_time,
+            failure_reason))
       {
-         InvalidateDiscovery("discovery_cycle_start_or_cohort_cache_failed");
+         InvalidateDiscovery("discovery_cohort_cache_failed:" +
+            (failure_reason == "" ? "unspecified" : failure_reason));
+         return 0;
+      }
+      if(!m_discovery_real_portfolio.GetPortfolio(cycle_r))
+      {
+         InvalidateDiscovery("discovery_R_portfolio_state_unavailable:" +
+            (m_discovery_real_portfolio.InvalidReason() == "" ?
+             "unspecified" : m_discovery_real_portfolio.InvalidReason()));
+         return 0;
+      }
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_U,
+            cycle_u))
+      {
+         InvalidateDiscovery("discovery_U_portfolio_state_unavailable:" +
+            (m_discovery_shadow_portfolio.BranchInvalidReason(
+               LP_REVMA_BRANCH_U) == "" ? "unspecified" :
+             m_discovery_shadow_portfolio.BranchInvalidReason(
+               LP_REVMA_BRANCH_U)));
+         return 0;
+      }
+      if(!m_discovery_shadow_portfolio.GetPortfolio(LP_REVMA_BRANCH_C,
+            cycle_c))
+      {
+         InvalidateDiscovery("discovery_C_portfolio_state_unavailable:" +
+            (m_discovery_shadow_portfolio.BranchInvalidReason(
+               LP_REVMA_BRANCH_C) == "" ? "unspecified" :
+             m_discovery_shadow_portfolio.BranchInvalidReason(
+               LP_REVMA_BRANCH_C)));
+         return 0;
+      }
+      if(!EmitDiscoveryCycleStart(LP_REVMA_BRANCH_R, cycle_r.cycle_id,
+            cycle_r.equity_reference_minor, cycle_r.capital_budget_minor,
+            source_m1_time, failure_reason))
+      {
+         InvalidateDiscovery("discovery_cycle_start_R_failed:" +
+            (failure_reason == "" ? "unspecified" : failure_reason));
+         return 0;
+      }
+      if(!EmitDiscoveryCycleStart(LP_REVMA_BRANCH_U, cycle_u.cycle_id,
+            cycle_u.equity_reference_minor, cycle_u.capital_budget_minor,
+            source_m1_time, failure_reason))
+      {
+         InvalidateDiscovery("discovery_cycle_start_U_failed:" +
+            (failure_reason == "" ? "unspecified" : failure_reason));
+         return 0;
+      }
+      if(!EmitDiscoveryCycleStart(LP_REVMA_BRANCH_C, cycle_c.cycle_id,
+            cycle_c.equity_reference_minor, cycle_c.capital_budget_minor,
+            source_m1_time, failure_reason))
+      {
+         InvalidateDiscovery("discovery_cycle_start_C_failed:" +
+            (failure_reason == "" ? "unspecified" : failure_reason));
          return 0;
       }
       bool c_latched_before[LP_SYMBOL_COUNT];
@@ -5031,11 +5111,12 @@ public:
    {
       if(!m_discovery_valid)
          return;
+      if(m_discovery_invalid_reason == "")
+         m_discovery_invalid_reason = reason == "" ?
+            "discovery_invalid_unspecified" : reason;
       m_discovery_valid = false;
-      m_discovery_invalid_reason = reason == "" ?
-         "discovery_invalid_unspecified" : reason;
       if(m_discovery_initialized && !m_discovery_finalized)
-         m_discovery_telemetry.LatchFailure(m_discovery_invalid_reason);
+          m_discovery_telemetry.LatchFailure(m_discovery_invalid_reason);
    }
 
    bool DiscoveryTelemetryValid()
@@ -5064,7 +5145,10 @@ public:
 
    string DiscoveryTelemetryInvalidReason()
    {
-      if(m_discovery_invalid_reason != "")
+      bool generic_cycle_start_reason =
+         m_discovery_invalid_reason ==
+            "discovery_cycle_start_or_cohort_cache_failed";
+      if(m_discovery_invalid_reason != "" && !generic_cycle_start_reason)
          return m_discovery_invalid_reason;
       if(!m_discovery_real_portfolio.Valid())
          return "R:" + m_discovery_real_portfolio.InvalidReason();
@@ -5074,7 +5158,12 @@ public:
       if(!m_discovery_shadow_portfolio.BranchValid(LP_REVMA_BRANCH_C))
          return "C:" + m_discovery_shadow_portfolio.BranchInvalidReason(
             LP_REVMA_BRANCH_C);
-      return m_discovery_telemetry.InvalidReason();
+      string telemetry_reason = m_discovery_telemetry.InvalidReason();
+      if(telemetry_reason != "")
+         return telemetry_reason;
+      if(m_discovery_invalid_reason != "")
+         return m_discovery_invalid_reason;
+      return "not_initialized";
    }
 
    bool RecordRiskDecision(

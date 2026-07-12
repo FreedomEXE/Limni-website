@@ -4646,7 +4646,11 @@ public:
       materialized.event_hash = row_hash;
       materialized.reconciliation_hash = chain_hash;
       string line = TransitionLine(materialized);
-      if(!GuardLine(line, true)) return false;
+      if(!GuardLine(line, true))
+      {
+         Invalidate("transition_line_guard_failed");
+         return false;
+      }
       if(m_transition_count >= LP_REVMA_DISCOVERY_TRANSITION_BUFFER_ROWS)
       {
          Invalidate("transition_buffer_resource_guard");

@@ -2,10 +2,10 @@
     "contract":  "limni-ea-version-source-sync-v1",
     "terminal_id":  "94497",
     "ea_name":  "Limni Portfolio EA",
-    "ea_version":  "1.037",
-    "source_bundle_id":  "sha256:03ba4004c81f85198eac178685fac236833d440fdaa2423f0876052fac66852e",
-    "source_bundle_short":  "03ba4004c81f",
-    "repo_ex5_sha256":  "A6FB684363B34A7C2EABA25467DF3FB5E5D4155C2C84E76C401C982C90CD7ECE",
-    "terminal_ex5_sha256":  "A6FB684363B34A7C2EABA25467DF3FB5E5D4155C2C84E76C401C982C90CD7ECE",
-    "last_success_utc":  "2026-07-12T06:49:56.4115772Z"
+    "ea_version":  "1.038",
+    "source_bundle_id":  "sha256:c46d482c8b6b1628f210928d451fd6576f63797969d4962a61634efe09bddd96",
+    "source_bundle_short":  "c46d482c8b6b",
+    "repo_ex5_sha256":  "7ED5C01D8696AB67DFBCBC125CBFC2608820A35D65192A5CDE38C6018B2E85D1",
+    "terminal_ex5_sha256":  "7ED5C01D8696AB67DFBCBC125CBFC2608820A35D65192A5CDE38C6018B2E85D1",
+    "last_success_utc":  "2026-07-12T17:07:27.3518133Z"
 }
